@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="24dp">
+
+        <!-- ── Empty state ─────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/emptyState"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="visible"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎧"
+                android:textSize="56sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nothing playing yet"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tap play on a recording in the Library to start listening."
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <!-- ── Player content ──────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/playerContent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Waveform -->
+            <com.treecast.app.ui.listen.PlaybackWaveformView
+                android:id="@+id/waveformView"
+                android:layout_width="match_parent"
+                android:layout_height="130dp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Date + Duration on one row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="20dp">
+
+                <TextView
+                    android:id="@+id/tvRecordedAt"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_dim"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_dim"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- Seek bar -->
+            <SeekBar
+                android:id="@+id/seekBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:progressTint="@color/accent"
+                android:thumbTint="@color/accent"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Time row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:id="@+id/tvPosition"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0:00"
+                    android:textColor="@color/text_dim"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvRemaining"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-0:00"
+                    android:textColor="@color/text_dim"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- Transport controls -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="28dp">
+
+                <ImageView
+                    android:id="@+id/btnSkipBack"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:src="@drawable/ic_skip_back"
+                    android:padding="10dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="@color/text_primary" />
+
+                <ImageView
+                    android:id="@+id/btnPlayPause"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:src="@drawable/ic_play"
+                    android:padding="14dp"
+                    android:backgroundTint="@color/accent"
+                    android:background="@drawable/bg_circle_accent"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="@color/white"
+                    android:layout_marginHorizontal="20dp" />
+
+                <ImageView
+                    android:id="@+id/btnSkipForward"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:src="@drawable/ic_skip_forward"
+                    android:padding="10dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="@color/text_primary" />
+
+            </LinearLayout>
+
+            <!-- ╔══════════════════════════════════════╗ -->
+            <!-- ║  Mini tab panel (Categorize | Marks) ║ -->
+            <!-- ╚══════════════════════════════════════╝ -->
+
+            <!-- Mini tab bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:background="@color/surface"
+                android:layout_marginBottom="0dp">
+
+                <TextView
+                    android:id="@+id/tabCategorize"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="Categorize"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_primary"
+                    android:gravity="center"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/surface_light" />
+
+                <TextView
+                    android:id="@+id/tabMarks"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="Marks"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_dim"
+                    android:gravity="center"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+            <!-- Active tab indicator bar -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/surface"
+                android:layout_marginBottom="12dp">
+
+                <View
+                    android:id="@+id/tabIndicator"
+                    android:layout_width="0dp"
+                    android:layout_height="2dp"
+                    android:background="@color/accent" />
+
+            </FrameLayout>
+
+            <!-- Page 0: Categorize -->
+            <com.treecast.app.ui.common.CategoryPickerView
+                android:id="@+id/categoryPicker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="visible" />
+
+            <!-- Page 1: Marks -->
+            <LinearLayout
+                android:id="@+id/marksPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:visibility="gone">
+
+                <!-- Delete (left — used less often) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeleteMark"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Delete"
+                    android:textSize="12sp"
+                    android:textColor="#FF5252"
+                    android:enabled="false"
+                    android:alpha="0.4"
+                    app:icon="@drawable/ic_delete"
+                    app:iconSize="16dp"
+                    app:iconTint="#FF5252"
+                    app:iconGravity="textStart"
+                    app:cornerRadius="8dp" />
+
+                <!-- Scrollable timestamps (centre, weight 1) -->
+                <HorizontalScrollView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:scrollbars="none"
+                    android:layout_marginHorizontal="4dp">
+
+                    <LinearLayout
+                        android:id="@+id/markTimestampList"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="4dp" />
+
+                </HorizontalScrollView>
+
+                <!-- Mark button (right — used most) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddMark"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mark"
+                    android:textSize="12sp"
+                    android:textColor="@color/accent"
+                    app:icon="@drawable/ic_mark"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/accent"
+                    app:iconGravity="textStart"
+                    app:cornerRadius="8dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.core.widget.NestedScrollView>

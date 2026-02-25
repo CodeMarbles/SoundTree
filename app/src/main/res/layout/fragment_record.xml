@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="24dp">
+
+        <!-- ── Live waveform visualiser ───────────────────────────── -->
+        <com.treecast.app.ui.record.WaveformView
+            android:id="@+id/waveformView"
+            android:layout_width="0dp"
+            android:layout_height="100dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="8dp" />
+
+        <!-- ── Recording timer ────────────────────────────────────── -->
+        <TextView
+            android:id="@+id/tvTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0:00"
+            android:textSize="56sp"
+            android:textColor="@color/text_primary"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.03"
+            app:layout_constraintTop_toBottomOf="@id/waveformView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp" />
+
+        <!-- ── Record / Pause / Resume button ────────────────────── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRecord"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:text="● REC"
+            android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/rec_red"
+            app:cornerRadius="32dp"
+            app:layout_constraintTop_toBottomOf="@id/tvTimer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="20dp" />
+
+        <!-- ── Stop & save button ─────────────────────────────────── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStop"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:text="■  Stop &amp; Save"
+            android:textSize="15sp"
+            android:textColor="@color/text_primary"
+            android:backgroundTint="@color/surface_light"
+            app:cornerRadius="26dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/btnRecord"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp" />
+
+        <!-- ── Category picker (reusable widget) ──────────────────── -->
+        <!--
+            Positioned below the stop button, above the lock FAB.
+            User can browse the tree here while recording.
+        -->
+        <com.treecast.app.ui.common.CategoryPickerView
+            android:id="@+id/categoryPicker"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/btnStop"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_bias="0"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="72dp" />
+
+        <!-- ── Lock FAB (bottom-right, above bottom nav) ──────────── -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabLock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_nav_settings"
+            android:contentDescription="Lock screen"
+            app:backgroundTint="@color/surface_light"
+            app:tint="@color/text_dim"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.core.widget.NestedScrollView>

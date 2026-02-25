@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mini Player bar — persistent strip above the bottom nav.
+  Tapping anywhere navigates to the Listen tab.
+  The play/pause button is the only interactive control here;
+  everything else is handled on the Listen tab.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:background="@color/surface"
+    android:elevation="4dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Thin accent line across the top edge -->
+    <View
+        android:id="@+id/accentLine"
+        android:layout_width="0dp"
+        android:layout_height="2dp"
+        android:background="@color/accent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Skip back 15 -->
+    <ImageView
+        android:id="@+id/btnMiniSkipBack"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="12dp"
+        android:src="@drawable/ic_skip_back"
+        android:padding="6dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="@color/text_primary"
+        app:layout_constraintTop_toBottomOf="@id/accentLine"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Play / Pause -->
+    <ImageView
+        android:id="@+id/btnMiniPlayPause"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:src="@drawable/ic_play"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="@color/accent"
+        app:layout_constraintTop_toBottomOf="@id/accentLine"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/btnMiniSkipBack" />
+
+    <!-- Skip forward 15 -->
+    <ImageView
+        android:id="@+id/btnMiniSkipForward"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="4dp"
+        android:src="@drawable/ic_skip_forward"
+        android:padding="6dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="@color/text_primary"
+        app:layout_constraintTop_toBottomOf="@id/accentLine"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/btnMiniPlayPause" />
+
+    <!-- Title + progress bar stacked vertically -->
+    <LinearLayout
+        android:id="@+id/miniInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginHorizontal="10dp"
+        app:layout_constraintTop_toBottomOf="@id/accentLine"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/btnMiniSkipForward"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvMiniTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Recording title"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <!-- Thin progress line -->
+        <ProgressBar
+            android:id="@+id/miniProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="5dp"
+            android:progressTint="@color/accent"
+            android:progressBackgroundTint="@color/surface_light"
+            android:max="1000"
+            android:progress="0" />
+
+        <TextView
+            android:id="@+id/tvMiniTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0:00 / 0:00"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp"
+            android:layout_marginTop="3dp" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

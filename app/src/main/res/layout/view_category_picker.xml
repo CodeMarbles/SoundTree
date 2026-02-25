@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Inflated INTO CategoryPickerView (a LinearLayout subclass).
+  Do not use merge here — the root IS the LinearLayout.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_picker"
+    android:layout_marginTop="12dp">
+
+    <!-- Collapsed header row -->
+    <LinearLayout
+        android:id="@+id/headerRow"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/tvSelectedCategory"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📁  Uncategorised"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/ivChevron"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_chevron_down"
+            app:tint="@color/text_dim" />
+
+    </LinearLayout>
+
+    <!-- Expanded body -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- "Uncategorised / Inbox" option -->
+        <TextView
+            android:id="@+id/tvUncategorised"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:text="📥  Uncategorised (Inbox)"
+            android:textColor="@color/text_dim"
+            android:textSize="13sp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/surface_light"
+            android:layout_marginHorizontal="12dp" />
+
+        <!-- Category tree -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerCategories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="220dp"
+            android:nestedScrollingEnabled="true"
+            android:paddingBottom="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout>
