@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- ── Main row ───────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp">
+
+        <!-- Inline play/pause button -->
+        <ImageView
+            android:id="@+id/btnInlinePlay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_play"
+            android:padding="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="@color/accent" />
+
+        <!-- Unlistened dot -->
+        <View
+            android:id="@+id/dotListened"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:background="@drawable/dot_unlistened"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="10dp" />
+
+        <!-- Title + meta -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/tvMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_dim"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <!-- Expand chevron -->
+        <ImageView
+            android:id="@+id/ivChevron"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_chevron_down"
+            android:rotation="-90"
+            app:tint="@color/text_dim"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <!-- ── Expandable controls ────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/expandedControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="8dp"
+        android:background="@color/surface">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/surface_light"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRename"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Rename"
+                android:textSize="11sp"
+                android:textColor="@color/text_primary"
+                app:icon="@drawable/ic_rename"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_primary"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMove"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Move"
+                android:textSize="11sp"
+                android:textColor="@color/text_primary"
+                app:icon="@drawable/ic_move"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_primary"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDelete"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Delete"
+                android:textSize="11sp"
+                android:textColor="#FF5252"
+                app:icon="@drawable/ic_delete"
+                app:iconSize="16dp"
+                app:iconTint="#FF5252"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+        </LinearLayout>
+
+        <com.treecast.app.ui.common.CategoryPickerView
+            android:id="@+id/inlineCategoryPicker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>

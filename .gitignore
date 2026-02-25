@@ -1,0 +1,7 @@
+/gradle/wrapper/gradle-wrapper.properties
+/.gradle/
+/app/build/
+/gradle/
+/.idea/
+/gradlew
+/gradlew.bat
