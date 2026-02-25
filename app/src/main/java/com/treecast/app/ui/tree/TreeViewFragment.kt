@@ -20,7 +20,10 @@ class TreeViewFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var treeAdapter: TreeItemAdapter
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentTreeViewBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -29,6 +32,7 @@ class TreeViewFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         treeAdapter = TreeItemAdapter(
+            // Chevron click — toggle tree children collapse
             onCategoryClick = { node, isCollapsed ->
                 viewModel.toggleCollapse(node.category.id, isCollapsed)
             },
@@ -43,9 +47,18 @@ class TreeViewFragment : Fragment() {
                     }
                 }
             },
-            onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMove   = { id, catId -> viewModel.moveRecording(id, catId) },
-            onDelete = { rec -> viewModel.deleteRecording(rec) }
+            onRename         = { id, title  -> viewModel.renameRecording(id, title) },
+            onMove           = { id, catId  -> viewModel.moveRecording(id, catId) },
+            onDelete         = { rec        -> viewModel.deleteRecording(rec) },
+            onRenameCategory = { id, name   -> viewModel.renameCategory(id, name) },
+            onCategoryIconClick = { cat ->
+                EmojiPickerBottomSheet { emoji ->
+                    viewModel.updateCategoryIcon(cat.id, emoji)
+                }.show(childFragmentManager, "emoji_picker")
+            },
+            onDeleteCategory = { cat ->
+                viewModel.deleteCategory(cat)
+            }
         )
 
         binding.recyclerTree.apply {
@@ -67,7 +80,7 @@ class TreeViewFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
                 treeAdapter.nowPlayingId = state?.recording?.id ?: -1L
-                treeAdapter.isPlaying = state?.isPlaying ?: false
+                treeAdapter.isPlaying    = state?.isPlaying ?: false
             }
         }
 

@@ -8,7 +8,7 @@
 
     <!--
       Inner swipe is disabled (isUserInputEnabled = false).
-      Navigation between Uncategorized / Tree View is now handled
+      Navigation between Uncategorized / Topics is now handled
       by the sub-nav bar below. The outer ViewPager2 owns all
       horizontal swipe gestures again, so no special MainActivity
       intercept is needed.
@@ -35,7 +35,7 @@
 
     <!--
       ┌─────────────────────────────────────────────────────────────┐
-      │  [📥 Uncategorized]  [🌳 Tree View]  │                      │
+      │  [📥 Uncategorized]  [💭 Topics]  │                         │
       └─────────────────────────────────────────────────────────────┘
       Matches the height and visual weight of the main bottomNav bar.
       Left side: two static nav buttons.
@@ -83,7 +83,7 @@
 
         </LinearLayout>
 
-        <!-- ── Tree View button ─────────────────────────────────── -->
+        <!-- ── Topics button ────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/subNavTreeView"
             android:layout_width="wrap_content"
@@ -99,14 +99,14 @@
                 android:id="@+id/tvTreeViewEmoji"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🌳"
+                android:text="💭"
                 android:textSize="22sp" />
 
             <TextView
                 android:id="@+id/tvTreeViewLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tree View"
+                android:text="Topics"
                 android:textColor="@color/text_primary"
                 android:textSize="10sp"
                 android:layout_marginTop="3dp" />

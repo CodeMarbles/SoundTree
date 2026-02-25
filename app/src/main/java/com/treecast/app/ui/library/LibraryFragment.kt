@@ -16,7 +16,7 @@ import com.treecast.app.ui.MainViewModel
  * Library tab.
  *
  * Contains two sub-views managed by an internal ViewPager2:
- *   [0] TreeViewFragment  — 🌳 Podcast Tree
+ *   [0] TreeViewFragment  — 💭 Topics
  *   [1] InboxTileFragment — 📥 Uncategorized (Inbox)
  *
  * Swipe navigation between the sub-views is DISABLED. The user
@@ -37,13 +37,8 @@ class LibraryFragment : Fragment() {
     private lateinit var tileAdapter: LibraryTilesAdapter
 
     // PAGE_* constants mirror the adapter order
-    private val PAGE_TREE         = 0
+    private val PAGE_TREE          = 0
     private val PAGE_UNCATEGORIZED = 1
-
-    private val tileTitles = mapOf(
-        PAGE_TREE          to "Podcast Tree",
-        PAGE_UNCATEGORIZED to "Uncategorized"
-    )
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -76,14 +71,13 @@ class LibraryFragment : Fragment() {
         binding.tilePager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 updateSubNavSelection(position)
-                val title = tileTitles[position] ?: "Library"
-                (requireActivity() as? MainActivity)?.setTopTitle(title)
+                // Title stays "Library" regardless of sub-page — no update here.
             }
         })
 
-        // Initial state — Tree View selected
+        // Initial state — Topics selected, top title fixed to Library
         updateSubNavSelection(PAGE_TREE)
-        (requireActivity() as? MainActivity)?.setTopTitle(tileTitles[PAGE_TREE]!!)
+        (requireActivity() as? MainActivity)?.setTopTitle("Library")
     }
 
     override fun onDestroyView() {
@@ -98,7 +92,7 @@ class LibraryFragment : Fragment() {
      * the Library tab is active.
      *
      * Returns true if the back press was consumed here (i.e. we navigated
-     * from Uncategorized → Tree View), or false if MainActivity should
+     * from Uncategorized → Topics), or false if MainActivity should
      * continue with its own back-stack logic (leaving the Library tab).
      */
     fun handleBackPress(): Boolean {

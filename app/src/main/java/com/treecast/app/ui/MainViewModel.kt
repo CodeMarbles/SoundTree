@@ -223,8 +223,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun createCategory(name: String, parentId: Long?, icon: String = "🎙️", color: String = "#6C63FF") =
         viewModelScope.launch { repo.createCategory(name, parentId, icon, color) }
 
-    fun updateCategory(c: CategoryEntity) = viewModelScope.launch { repo.updateCategory(c) }
-    fun deleteCategory(c: CategoryEntity) = viewModelScope.launch { repo.deleteCategory(c) }
+    fun renameCategory(id: Long, name: String) = viewModelScope.launch {
+        val cat = repo.getCategoryById(id) ?: return@launch
+        repo.updateCategory(cat.copy(name = name, updatedAt = System.currentTimeMillis()))
+    }
+    fun updateCategoryIcon(id: Long, icon: String) = viewModelScope.launch {
+        val cat = repo.getCategoryById(id) ?: return@launch
+        repo.updateCategory(cat.copy(icon = icon, updatedAt = System.currentTimeMillis()))
+    }
+
+    fun deleteCategory(cat: CategoryEntity) = viewModelScope.launch {
+        repo.deleteCategory(cat)
+    }
+
 
     // ── Lock ──────────────────────────────────────────────────────────
     private val _isLocked = MutableStateFlow(false)

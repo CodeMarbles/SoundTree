@@ -10,6 +10,14 @@
     <color name="surface">#1A1A25</color>
     <color name="surface_light">#252535</color>
 
+    <!--
+      Expanded-controls panel background.
+      Similar luminance to surface_light but warm/brown rather than
+      blue-grey — gives the controls tray a distinct feel without
+      jumping out of the overall dark palette.
+    -->
+    <color name="controls_bg">#231A14</color>
+
     <!-- Text -->
     <color name="text_primary">#EEEEFF</color>
     <color name="text_dim">#7878A0</color>
@@ -19,19 +27,14 @@
     <color name="warning">#FFA726</color>
 
     <!-- Marks -->
-    <!-- Waveform / chip teal for selected mark -->
     <color name="mark_teal">#00BFA5</color>
-    <!-- Waveform pink (normal mark lines) — also used for last-passed chip bg -->
     <color name="mark_pink">#C2185B</color>
-    <!-- Last-passed chip background (same pink family) -->
     <color name="mark_pink_bg">#C2185B</color>
-    <!-- Marks panel background — a shade darker than surface (#1A1A25) to frame the panel -->
     <color name="marks_panel_bg">#111118</color>
-    <!-- Mark button filled background — dark pink 900 -->
     <color name="mark_btn_bg">#880E4F</color>
 
     <!-- Uncategorised label on Listen page -->
-    <color name="uncategorized_label">#B8860B</color><!-- dark-goldenrod: warm yellow, not too bright -->
+    <color name="uncategorized_label">#B8860B</color>
 
     <!-- Material required -->
     <color name="purple_200">#FFBB86FC</color>
@@ -41,4 +44,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Required for icon picker -->
+    <color name="transparent">#00000000</color>
 </resources>

@@ -41,6 +41,7 @@ class TreeCastRepository(context: Context) {
     ): Long = categoryDao.insert(CategoryEntity(name = name, parentId = parentId, icon = icon, color = color))
 
     suspend fun updateCategory(category: CategoryEntity) = categoryDao.update(category)
+    suspend fun getCategoryById(id: Long): CategoryEntity? = categoryDao.getById(id)
     suspend fun deleteCategory(category: CategoryEntity) = categoryDao.delete(category)
     suspend fun toggleCollapse(id: Long, collapsed: Boolean) = categoryDao.setCollapsed(id, collapsed)
     fun getAllCategories() = categoryDao.getAllCategories()

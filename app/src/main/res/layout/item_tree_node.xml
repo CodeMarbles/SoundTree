@@ -1,74 +1,169 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="56dp"
-    android:paddingVertical="4dp"
-    android:paddingEnd="16dp"
-    android:background="?attr/selectableItemBackground">
+    android:orientation="vertical">
 
-    <!-- Color indicator bar on the left -->
-    <View
-        android:id="@+id/colorBar"
-        android:layout_width="4dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Icon emoji -->
-    <TextView
-        android:id="@+id/tvIcon"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:text="🎙️"
-        android:textSize="22sp"
-        android:gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/colorBar"
-        android:layout_marginStart="12dp" />
-
-    <!-- Category name -->
-    <TextView
-        android:id="@+id/tvName"
-        android:layout_width="0dp"
+    <!-- ── Main row ──────────────────────────────────────────────── -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:ellipsize="end"
-        android:maxLines="1"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toEndOf="@id/tvIcon"
-        app:layout_constraintEnd_toStartOf="@id/ivChevron"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp" />
+        android:minHeight="56dp"
+        android:paddingVertical="4dp"
+        android:paddingEnd="16dp"
+        android:foreground="?attr/selectableItemBackground">
 
-    <!-- Episode/folder count -->
-    <TextView
-        android:id="@+id/tvCount"
-        android:layout_width="0dp"
+        <View
+            android:id="@+id/colorBar"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/tvIcon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:text="🎙️"
+            android:textSize="22sp"
+            android:gravity="center"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/colorBar"
+            android:layout_marginStart="12dp" />
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:maxLines="1"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@id/tvIcon"
+            app:layout_constraintEnd_toStartOf="@id/ivChevron"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/tvCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp"
+            app:layout_constraintTop_toBottomOf="@id/tvName"
+            app:layout_constraintStart_toStartOf="@id/tvName"
+            app:layout_constraintEnd_toEndOf="@id/tvName"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Chevron: tree-children collapse only -->
+        <ImageView
+            android:id="@+id/ivChevron"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/arrow_down_float"
+            android:padding="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="@color/text_dim"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- ── Expandable edit controls ──────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/expandedControls"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_dim"
-        android:textSize="12sp"
-        app:layout_constraintTop_toBottomOf="@id/tvName"
-        app:layout_constraintStart_toStartOf="@id/tvName"
-        app:layout_constraintEnd_toEndOf="@id/tvName"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="10dp" />
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:background="@color/controls_bg">
 
-    <!-- Expand/collapse chevron -->
-    <ImageView
-        android:id="@+id/ivChevron"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@android:drawable/arrow_down_float"
-        app:tint="@color/text_dim"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/surface_light"
+            android:layout_marginBottom="4dp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Icon: filled circle icon, opens emoji picker -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnIcon"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Icon"
+                android:textSize="11sp"
+                android:textColor="@color/text_primary"
+                app:icon="@drawable/ic_circle"
+                app:iconSize="14dp"
+                app:iconTint="@color/text_primary"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+            <!-- Rename -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRename"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Rename"
+                android:textSize="11sp"
+                android:textColor="@color/text_primary"
+                app:icon="@drawable/ic_rename"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_primary"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+            <!-- Delete: enabled by adapter only when topic is empty -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDelete"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Delete"
+                android:textSize="11sp"
+                android:textColor="#FF5252"
+                app:icon="@drawable/ic_delete"
+                app:iconSize="16dp"
+                app:iconTint="#FF5252"
+                app:iconGravity="textStart"
+                app:cornerRadius="8dp" />
+
+            <!-- Details: placeholder, no action yet -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDetails"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Details"
+                android:textSize="11sp"
+                android:textColor="@color/text_dim"
+                app:icon="@null"
+                app:cornerRadius="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

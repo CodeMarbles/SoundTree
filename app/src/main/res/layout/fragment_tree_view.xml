@@ -40,17 +40,17 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="🌳 Podcast Tree"
+                    android:text="💭 Topics"
                     android:textColor="@color/text_primary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
-                <!-- Add root category FAB -->
+                <!-- Add root topic FAB -->
                 <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
                     android:id="@+id/fabAddCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="44dp"
-                    android:text="+ Folder"
+                    android:text="💭 + Topic"
                     android:textSize="13sp"
                     app:icon="@null"
                     android:backgroundTint="@color/accent"
@@ -86,7 +86,7 @@
                 android:id="@+id/tvEmpty"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No podcasts yet.\nTap + Folder to start organising."
+                android:text="No topics yet.\nTap 💭 + Topic to get started."
                 android:textColor="@color/text_dim"
                 android:textSize="14sp"
                 android:textAlignment="center"

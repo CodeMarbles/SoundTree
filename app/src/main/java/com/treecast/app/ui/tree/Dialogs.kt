@@ -8,7 +8,7 @@ import android.widget.LinearLayout
 import androidx.fragment.app.DialogFragment
 
 /**
- * Dialog for creating a new category/folder.
+ * Dialog for creating a new topic.
  * RecordingOptionsSheet has been replaced by the inline
  * expand/collapse controls row on each recording item.
  */
@@ -23,11 +23,11 @@ class NewCategoryDialog(
             val pad = (16 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad, pad, pad)
         }
-        val nameInput = EditText(requireContext()).apply { hint = "Folder name" }
+        val nameInput = EditText(requireContext()).apply { hint = "Topic name" }
         layout.addView(nameInput)
 
         return AlertDialog.Builder(requireContext())
-            .setTitle(if (parentId == null) "New Root Category" else "New Sub-folder")
+            .setTitle(if (parentId == null) "New Topic" else "New Sub-topic")
             .setView(layout)
             .setPositiveButton("Create") { _, _ ->
                 val name = nameInput.text.toString().trim()

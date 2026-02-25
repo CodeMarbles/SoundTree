@@ -20,4 +20,25 @@
         <item name="android:windowFullscreen">false</item>
     </style>
 
+    <!--
+      Dark theme for BottomSheetDialogFragments.
+
+      The default BottomSheetDialog theme is light — colorSurface and
+      colorOnSurface come from a light Material theme, which is why the
+      EmojiPickerView category icons render black. By inheriting from
+      Theme.MaterialComponents.BottomSheetDialog and re-applying our
+      dark colour tokens we get white icons and a matching background.
+    -->
+    <style name="Theme.TreeCast.BottomSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:windowBackground">@color/transparent</item>
+        <item name="bottomSheetStyle">@style/Widget.TreeCast.BottomSheet</item>
+    </style>
+
+    <style name="Widget.TreeCast.BottomSheet" parent="Widget.MaterialComponents.BottomSheet">
+        <item name="backgroundTint">@color/surface</item>
+    </style>
+
 </resources>
