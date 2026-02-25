@@ -54,6 +54,11 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <!-- ── Uncategorized button ─────────────────────────────── -->
+        <!--
+          background is set programmatically in updateSubNavSelection()
+          to surface_light (selected) or transparent (unselected).
+          The ripple is kept via foreground so taps still feel interactive.
+        -->
         <LinearLayout
             android:id="@+id/subNavInbox"
             android:layout_width="wrap_content"
@@ -61,7 +66,7 @@
             android:orientation="vertical"
             android:gravity="center"
             android:paddingHorizontal="18dp"
-            android:background="?attr/selectableItemBackground"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true">
 
@@ -91,7 +96,7 @@
             android:orientation="vertical"
             android:gravity="center"
             android:paddingHorizontal="18dp"
-            android:background="?attr/selectableItemBackground"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true">
 

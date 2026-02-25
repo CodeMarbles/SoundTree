@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.viewpager2.widget.ViewPager2
@@ -32,11 +33,6 @@ class LibraryFragment : Fragment() {
 
     private val PAGE_TOPICS      = 0
     private val PAGE_INBOX       = 1
-
-    private val tileTitles = mapOf(
-        PAGE_TOPICS to "Topics",
-        PAGE_INBOX  to "Inbox"
-    )
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -68,14 +64,17 @@ class LibraryFragment : Fragment() {
         binding.tilePager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 updateSubNavSelection(position)
-                val title = tileTitles[position] ?: ""
-                (requireActivity() as? MainActivity)?.setTopTitle(title)
+                // Always show "Library" in the top bar regardless of which sub-page is active.
+                (requireActivity() as? MainActivity)?.setTopTitle("Library")
             }
         })
 
-        // Start on Topics page
+        // Start on Topics page.
+        // Set title immediately here too — onPageSelected may not fire when the
+        // initial position is already 0.
         binding.tilePager.setCurrentItem(PAGE_TOPICS, false)
         updateSubNavSelection(PAGE_TOPICS)
+        (requireActivity() as? MainActivity)?.setTopTitle("Library")
     }
 
     override fun onDestroyView() {
@@ -94,6 +93,12 @@ class LibraryFragment : Fragment() {
     }
 
     private fun updateSubNavSelection(position: Int) {
+        val selectedBg = ContextCompat.getColor(requireContext(), R.color.surface_light)
+        val defaultBg  = android.graphics.Color.TRANSPARENT
+
+        binding.subNavTopics.setBackgroundColor(if (position == PAGE_TOPICS) selectedBg else defaultBg)
+        binding.subNavInbox.setBackgroundColor(if (position == PAGE_INBOX)  selectedBg else defaultBg)
+
         binding.subNavTopics.isSelected = (position == PAGE_TOPICS)
         binding.subNavInbox.isSelected  = (position == PAGE_INBOX)
     }

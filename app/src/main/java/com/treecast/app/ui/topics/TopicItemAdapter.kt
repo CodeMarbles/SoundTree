@@ -11,6 +11,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -261,6 +262,15 @@ class TopicItemAdapter(
             tvDuration.text = formatDuration(rec.durationMs)
             tvDate.text     = formatDate(rec.createdAt)
             dotListened.visibility = if (rec.isListened) View.GONE else View.VISIBLE
+
+            // ── Selection highlight ───────────────────────────────────
+            // Tint the row background when this recording is the loaded/playing one.
+            // The ripple lives on foreground (item_tree_leaf.xml) so this is safe.
+            val isSelected = rec.id == nowPlayingId
+            itemView.setBackgroundColor(
+                if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
+                else android.graphics.Color.TRANSPARENT
+            )
 
             val isThisPlaying = rec.id == nowPlayingId && isPlaying
             btnInlinePlay.setImageResource(

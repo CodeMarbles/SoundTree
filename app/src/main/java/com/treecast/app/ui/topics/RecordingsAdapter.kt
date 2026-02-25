@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -52,7 +53,6 @@ class RecordingsAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        // IDs from item_recording.xml
         private val btnInlinePlay:    ImageView       = v.findViewById(R.id.btnInlinePlay)
         private val dotListened:      View            = v.findViewById(R.id.dotListened)
         private val tvTitle:          TextView        = v.findViewById(R.id.tvTitle)
@@ -80,7 +80,15 @@ class RecordingsAdapter(
             tvMeta.text  = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
             dotListened.visibility = if (rec.isListened) View.GONE else View.VISIBLE
 
-            val isThisPlaying = rec.id == nowPlayingId && isPlaying
+            // ── Selection highlight ───────────────────────────────────
+            // Tint the row background when this recording is the loaded/playing one.
+            val isSelected = rec.id == nowPlayingId
+            itemView.setBackgroundColor(
+                if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
+                else android.graphics.Color.TRANSPARENT
+            )
+
+            val isThisPlaying = isSelected && isPlaying
             btnInlinePlay.setImageResource(
                 if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
             btnInlinePlay.setOnClickListener { onPlayPause(rec) }
@@ -110,35 +118,38 @@ class RecordingsAdapter(
 
         private fun toggleExpand(position: Int) {
             if (position == RecyclerView.NO_POSITION) return
-            val rec  = getItem(position)
-            val prev = expandedId
-            expandedId = if (rec.id == expandedId) -1L else rec.id
-            if (prev != -1L && prev != rec.id) {
-                val prevPos = currentList.indexOfFirst { it.id == prev }
+            val rec = getItem(position) ?: return
+            val previousExpanded = expandedId
+            expandedId = if (expandedId == rec.id) -1L else rec.id
+
+            if (previousExpanded != -1L) {
+                val prevPos = currentList.indexOfFirst { it.id == previousExpanded }
                 if (prevPos != -1) notifyItemChanged(prevPos)
             }
             notifyItemChanged(position)
         }
 
-        private fun collapseItem(id: Long) {
-            if (expandedId != id) return
-            expandedId = -1L
-            val pos = currentList.indexOfFirst { it.id == id }
-            if (pos != -1) notifyItemChanged(pos)
+        private fun collapseItem(recordingId: Long) {
+            if (expandedId == recordingId) {
+                expandedId = -1L
+                val pos = currentList.indexOfFirst { it.id == recordingId }
+                if (pos != -1) notifyItemChanged(pos)
+            }
         }
 
         private fun showRenameDialog(rec: RecordingEntity) {
-            val input = EditText(itemView.context).apply { setText(rec.title); selectAll() }
-            val pad = (16 * itemView.resources.displayMetrics.density).toInt()
-            val container = LinearLayout(itemView.context).apply {
-                setPadding(pad, 0, pad, 0); addView(input)
+            val ctx = itemView.context
+            val input = EditText(ctx).apply {
+                setText(rec.title)
+                selectAll()
+                setPadding(48, 24, 48, 8)
             }
-            AlertDialog.Builder(itemView.context)
-                .setTitle("Rename")
-                .setView(container)
+            AlertDialog.Builder(ctx)
+                .setTitle("Rename recording")
+                .setView(input)
                 .setPositiveButton("Save") { _, _ ->
-                    val t = input.text.toString().trim()
-                    if (t.isNotEmpty()) { onRename(rec.id, t); collapseItem(rec.id) }
+                    val newTitle = input.text.toString().trim()
+                    if (newTitle.isNotEmpty()) onRename(rec.id, newTitle)
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -146,20 +157,22 @@ class RecordingsAdapter(
 
         private fun showDeleteDialog(rec: RecordingEntity) {
             AlertDialog.Builder(itemView.context)
-                .setTitle("Delete recording?")
-                .setMessage("\"${rec.title}\"\n\nThis cannot be undone.")
+                .setTitle("Delete recording")
+                .setMessage("\"${rec.title}\" will be permanently deleted.")
                 .setPositiveButton("Delete") { _, _ -> onDelete(rec) }
                 .setNegativeButton("Cancel", null)
                 .show()
         }
     }
 
+    // ── Helpers ────────────────────────────────────────────────────────
+
     private fun formatDuration(ms: Long): String {
-        val s = ms / 1000; val m = s / 60
-        return if (m >= 60) "%dh %02dm".format(m / 60, m % 60)
-        else "%dm %02ds".format(m, s % 60)
+        val s = ms / 1000
+        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60)
+        else "%d:%02d".format(s / 60, s % 60)
     }
 
-    private fun formatDate(epoch: Long): String =
-        SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epoch))
+    private fun formatDate(epochMs: Long): String =
+        SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMs))
 }
