@@ -262,8 +262,8 @@
             </FrameLayout>
 
             <!-- Page 0: Categorize -->
-            <com.treecast.app.ui.common.CategoryPickerView
-                android:id="@+id/categoryPicker"
+            <com.treecast.app.ui.common.TopicPickerView
+                android:id="@+id/topicPicker"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="visible" />

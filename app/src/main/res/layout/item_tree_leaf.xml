@@ -158,8 +158,8 @@
 
         </LinearLayout>
 
-        <com.treecast.app.ui.common.CategoryPickerView
-            android:id="@+id/inlineCategoryPicker"
+        <com.treecast.app.ui.common.TopicPickerView
+            android:id="@+id/inlineTopicPicker"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:visibility="gone" />

@@ -32,8 +32,7 @@ class RecordFragment : Fragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
 
-    // Selected destination category (null = Inbox)
-    private var selectedCategoryId: Long? = null
+    private var selectedTopicId: Long? = null
 
     // ── Recording service ─────────────────────────────────────────────
     private var recordingService: RecordingService? = null
@@ -75,7 +74,7 @@ class RecordFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupButtons()
-        setupCategoryPicker()
+        setupTopicPicker()
         observeLock()
         bindRecordingService()
     }
@@ -89,7 +88,6 @@ class RecordFragment : Fragment() {
         _binding = null
     }
 
-    // ── Public ────────────────────────────────────────────────────────
     fun triggerQuickRecord() {
         if (isBound && recordingService != null) startRecording()
         else pendingQuickRecord = true
@@ -99,9 +97,9 @@ class RecordFragment : Fragment() {
     private fun setupButtons() {
         binding.btnRecord.setOnClickListener {
             when (recordingService?.state?.value) {
-                RecordingService.State.IDLE     -> checkPermissionAndRecord()
+                RecordingService.State.IDLE      -> checkPermissionAndRecord()
                 RecordingService.State.RECORDING -> pauseRecording()
-                RecordingService.State.PAUSED   -> resumeRecording()
+                RecordingService.State.PAUSED    -> resumeRecording()
                 null -> checkPermissionAndRecord()
             }
         }
@@ -109,16 +107,15 @@ class RecordFragment : Fragment() {
         binding.fabLock.setOnClickListener { viewModel.setLocked(true) }
     }
 
-    private fun setupCategoryPicker() {
-        // Wire categories from ViewModel into the picker widget
+    private fun setupTopicPicker() {
+        // fragment_record.xml: id topicPicker (renamed from categoryPicker in step-3 XML edit)
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allCategories.collect { categories ->
-                binding.categoryPicker.setCategories(categories)
+            viewModel.allTopics.collect { topics ->
+                binding.topicPicker.setTopics(topics)
             }
         }
-        // Listen for selection
-        binding.categoryPicker.onCategorySelected = { categoryId ->
-            selectedCategoryId = categoryId
+        binding.topicPicker.onTopicSelected = { topicId ->
+            selectedTopicId = topicId
         }
     }
 
@@ -128,14 +125,10 @@ class RecordFragment : Fragment() {
             svc.state.collect { updateUiForState(it) }
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            svc.elapsedMs.collect { ms ->
-                binding.tvTimer.text = formatDuration(ms)
-            }
+            svc.elapsedMs.collect { ms -> binding.tvTimer.text = formatDuration(ms) }
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            svc.amplitude.collect { amp ->
-                binding.waveformView.pushAmplitude(amp)
-            }
+            svc.amplitude.collect { amp -> binding.waveformView.pushAmplitude(amp) }
         }
     }
 
@@ -157,6 +150,7 @@ class RecordFragment : Fragment() {
                 binding.btnStop.visibility = View.GONE
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
+                binding.topicPicker.collapse()
             }
             RecordingService.State.RECORDING -> {
                 binding.btnRecord.text = "⏸  Pause"
@@ -201,7 +195,7 @@ class RecordFragment : Fragment() {
         svc.startRecording()
     }
 
-    private fun pauseRecording() { recordingService?.pauseRecording() }
+    private fun pauseRecording()  { recordingService?.pauseRecording() }
     private fun resumeRecording() { recordingService?.resumeRecording() }
 
     private fun stopAndSave() {
@@ -215,11 +209,10 @@ class RecordFragment : Fragment() {
                 durationMs    = durationMs,
                 fileSizeBytes = File(filePath).length(),
                 title         = "Recording – $stamp",
-                categoryId    = selectedCategoryId
+                topicId       = selectedTopicId
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
-            // Collapse the picker after save
-            binding.categoryPicker.collapse()
+            binding.topicPicker.collapse()
         } else {
             Toast.makeText(requireContext(), "Nothing recorded", Toast.LENGTH_SHORT).show()
         }

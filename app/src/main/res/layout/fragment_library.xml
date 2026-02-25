@@ -55,7 +55,7 @@
 
         <!-- ── Uncategorized button ─────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/subNavUncategorized"
+            android:id="@+id/subNavInbox"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:orientation="vertical"
@@ -85,7 +85,7 @@
 
         <!-- ── Topics button ────────────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/subNavTreeView"
+            android:id="@+id/subNavTopics"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:orientation="vertical"

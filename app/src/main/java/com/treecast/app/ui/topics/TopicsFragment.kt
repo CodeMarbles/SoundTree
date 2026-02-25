@@ -1,4 +1,4 @@
-package com.treecast.app.ui.library
+package com.treecast.app.ui.topics
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,31 +8,30 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.treecast.app.databinding.FragmentInboxTileBinding
+import com.treecast.app.databinding.FragmentTopicsBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
-import com.treecast.app.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.launch
 
-class InboxTileFragment : Fragment() {
+class TopicsFragment : Fragment() {
 
-    private var _binding: FragmentInboxTileBinding? = null
+    private var _binding: FragmentTopicsBinding? = null
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by activityViewModels()
-    private lateinit var adapter: RecordingsAdapter
+    private lateinit var topicItemAdapter: TopicItemAdapter
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentInboxTileBinding.inflate(inflater, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragmentTopicsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = RecordingsAdapter(
+        topicItemAdapter = TopicItemAdapter(
+            onTopicClick = { node, isCollapsed ->
+                viewModel.toggleCollapse(node.topic.id, isCollapsed)
+            },
             onPlayPause = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
                 if (nowPlaying?.recording?.id == rec.id) {
@@ -49,27 +48,30 @@ class InboxTileFragment : Fragment() {
             onDelete = { rec -> viewModel.deleteRecording(rec) }
         )
 
-        binding.recyclerInbox.apply {
-            this.adapter = this@InboxTileFragment.adapter
+        binding.recyclerTopics.apply {
+            adapter = topicItemAdapter
             layoutManager = LinearLayoutManager(requireContext())
+            setHasFixedSize(false)
+        }
+
+        binding.fabAddTopic.setOnClickListener {
+            NewTopicDialog(parentId = null) { name, icon, color ->
+                viewModel.createTopic(name, null, icon, color)
+            }.show(childFragmentManager, "new_topic")
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics -> adapter.topics = topics }
+            viewModel.allTopics.collect { topics -> topicItemAdapter.topics = topics }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.treeItems.collect { items -> topicItemAdapter.submitList(items) }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
-                adapter.nowPlayingId = state?.recording?.id ?: -1L
-                adapter.isPlaying    = state?.isPlaying ?: false
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.inbox.collect { recs ->
-                adapter.submitList(recs)
-                binding.tvEmpty.visibility = if (recs.isEmpty()) View.VISIBLE else View.GONE
-                binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
+                topicItemAdapter.nowPlayingId = state?.recording?.id ?: -1L
+                topicItemAdapter.isPlaying = state?.isPlaying ?: false
             }
         }
     }

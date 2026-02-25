@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Inflated INTO CategoryPickerView (a LinearLayout subclass).
-  Do not use merge here — the root IS the LinearLayout.
--->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -12,7 +8,6 @@
     android:background="@drawable/bg_picker"
     android:layout_marginTop="12dp">
 
-    <!-- Collapsed header row -->
     <LinearLayout
         android:id="@+id/headerRow"
         android:layout_width="match_parent"
@@ -25,7 +20,7 @@
         android:focusable="true">
 
         <TextView
-            android:id="@+id/tvSelectedCategory"
+            android:id="@+id/tvSelectedTopic"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -42,13 +37,11 @@
 
     </LinearLayout>
 
-    <!-- Expanded body -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- "Uncategorised / Inbox" option -->
         <TextView
             android:id="@+id/tvUncategorised"
             android:layout_width="match_parent"
@@ -68,9 +61,8 @@
             android:background="@color/surface_light"
             android:layout_marginHorizontal="12dp" />
 
-        <!-- Category tree -->
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerCategories"
+            android:id="@+id/recyclerTopics"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:maxHeight="220dp"

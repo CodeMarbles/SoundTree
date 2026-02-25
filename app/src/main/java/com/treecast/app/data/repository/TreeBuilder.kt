@@ -1,7 +1,7 @@
 package com.treecast.app.data.repository
 
-import com.treecast.app.data.entities.CategoryEntity
 import com.treecast.app.data.entities.RecordingEntity
+import com.treecast.app.data.entities.TopicEntity
 
 // ─────────────────────────────────────────────────────────
 // Domain models used by the UI layer
@@ -9,7 +9,7 @@ import com.treecast.app.data.entities.RecordingEntity
 
 /** A node in the in-memory podcast tree */
 data class TreeNode(
-    val category: CategoryEntity,
+    val topic: TopicEntity,
     val children: MutableList<TreeNode> = mutableListOf(),
     val recordings: MutableList<RecordingEntity> = mutableListOf(),
     var depth: Int = 0
@@ -37,25 +37,25 @@ object TreeBuilder {
 
     /**
      * Build a forest (list of root TreeNodes) from flat DB lists.
-     * Recordings without a categoryId go to [inbox].
+     * Recordings without a topicId go to [inbox].
      */
     fun build(
-        categories: List<CategoryEntity>,
+        topics: List<TopicEntity>,
         recordings: List<RecordingEntity>
     ): List<TreeNode> {
-        val nodeMap = categories.associate { it.id to TreeNode(category = it) }
+        val nodeMap = topics.associate { it.id to TreeNode(topic = it) }
 
-        // Assign recordings to their category nodes
+        // Assign recordings to their topic nodes
         for (rec in recordings) {
-            val catId = rec.categoryId ?: continue
-            nodeMap[catId]?.recordings?.add(rec)
+            val topicId = rec.topicId ?: continue
+            nodeMap[topicId]?.recordings?.add(rec)
         }
 
         // Wire parent-child relationships
         val roots = mutableListOf<TreeNode>()
-        for (cat in categories) {
-            val node = nodeMap[cat.id] ?: continue
-            val parentId = cat.parentId
+        for (t in topics) {
+            val node = nodeMap[t.id] ?: continue
+            val parentId = t.parentId
             if (parentId == null) {
                 node.depth = 0
                 roots.add(node)
@@ -73,9 +73,9 @@ object TreeBuilder {
         }
 
         // Sort each level
-        roots.sortBy { it.category.sortOrder }
+        roots.sortBy { it.topic.sortOrder }
         nodeMap.values.forEach { node ->
-            node.children.sortBy { it.category.sortOrder }
+            node.children.sortBy { it.topic.sortOrder }
             node.recordings.sortBy { it.sortOrder }
         }
 
@@ -84,40 +84,31 @@ object TreeBuilder {
 
     /**
      * Flatten the tree into a RecyclerView-compatible list,
-     * respecting each node's [isCollapsed] flag.
+     * respecting each node's collapsed state from [collapsedIds].
      */
     fun flatten(
         roots: List<TreeNode>,
         collapsedIds: Set<Long> = emptySet()
     ): List<TreeItem> {
         val result = mutableListOf<TreeItem>()
-        for (root in roots) {
-            flattenNode(root, result, collapsedIds)
-        }
-        return result
-    }
-
-    private fun flattenNode(
-        node: TreeNode,
-        result: MutableList<TreeItem>,
-        collapsedIds: Set<Long>
-    ) {
-        val isCollapsed = node.category.id in collapsedIds
-        result.add(
-            TreeItem.Node(
-                treeNode = node,
-                depth = node.depth,
-                hasChildren = node.children.isNotEmpty() || node.recordings.isNotEmpty(),
-                isCollapsed = isCollapsed
+        fun visit(node: TreeNode) {
+            val isCollapsed = node.topic.id in collapsedIds
+            result.add(
+                TreeItem.Node(
+                    treeNode = node,
+                    depth = node.depth,
+                    hasChildren = node.children.isNotEmpty() || node.recordings.isNotEmpty(),
+                    isCollapsed = isCollapsed
+                )
             )
-        )
-        if (!isCollapsed) {
-            for (child in node.children) {
-                flattenNode(child, result, collapsedIds)
-            }
-            for (rec in node.recordings) {
-                result.add(TreeItem.Leaf(recording = rec, depth = node.depth + 1))
+            if (!isCollapsed) {
+                node.children.forEach { visit(it) }
+                node.recordings.forEach { rec ->
+                    result.add(TreeItem.Leaf(recording = rec, depth = node.depth + 1))
+                }
             }
         }
+        roots.forEach { visit(it) }
+        return result
     }
 }

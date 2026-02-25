@@ -1,4 +1,4 @@
-package com.treecast.app.ui.tree
+package com.treecast.app.ui.topics
 
 import android.app.AlertDialog
 import android.app.Dialog
@@ -8,11 +8,9 @@ import android.widget.LinearLayout
 import androidx.fragment.app.DialogFragment
 
 /**
- * Dialog for creating a new topic.
- * RecordingOptionsSheet has been replaced by the inline
- * expand/collapse controls row on each recording item.
+ * Dialog for creating a new topic/folder.
  */
-class NewCategoryDialog(
+class NewTopicDialog(
     private val parentId: Long?,
     private val onCreated: (name: String, icon: String, color: String) -> Unit
 ) : DialogFragment() {
@@ -27,7 +25,7 @@ class NewCategoryDialog(
         layout.addView(nameInput)
 
         return AlertDialog.Builder(requireContext())
-            .setTitle(if (parentId == null) "New Topic" else "New Sub-topic")
+            .setTitle(if (parentId == null) "New Root Topic" else "New Sub-topic")
             .setView(layout)
             .setPositiveButton("Create") { _, _ ->
                 val name = nameInput.text.toString().trim()

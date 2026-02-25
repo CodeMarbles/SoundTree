@@ -19,12 +19,12 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id")
     suspend fun getById(id: Long): RecordingEntity?
 
-    /** All recordings in a category, newest first */
-    @Query("SELECT * FROM recordings WHERE category_id = :categoryId ORDER BY created_at DESC")
-    fun getByCategory(categoryId: Long): Flow<List<RecordingEntity>>
+    /** All recordings in a topic, newest first */
+    @Query("SELECT * FROM recordings WHERE topic_id = :topicId ORDER BY created_at DESC")
+    fun getByTopic(topicId: Long): Flow<List<RecordingEntity>>
 
-    /** Inbox: uncategorised recordings */
-    @Query("SELECT * FROM recordings WHERE category_id IS NULL ORDER BY created_at DESC")
+    /** Inbox: recordings with no topic assigned */
+    @Query("SELECT * FROM recordings WHERE topic_id IS NULL ORDER BY created_at DESC")
     fun getInbox(): Flow<List<RecordingEntity>>
 
     /** All recordings flat list, newest first */
@@ -45,14 +45,14 @@ interface RecordingDao {
     @Query("UPDATE recordings SET is_favourite = :fav WHERE id = :id")
     suspend fun setFavourite(id: Long, fav: Boolean)
 
-    @Query("UPDATE recordings SET category_id = :categoryId WHERE id = :id")
-    suspend fun moveToCategory(id: Long, categoryId: Long?)
+    @Query("UPDATE recordings SET topic_id = :topicId WHERE id = :id")
+    suspend fun moveToTopic(id: Long, topicId: Long?)
 
     @Query("UPDATE recordings SET title = :title WHERE id = :id")
     suspend fun rename(id: Long, title: String)
 
-    @Query("SELECT COUNT(*) FROM recordings WHERE category_id = :categoryId")
-    suspend fun countInCategory(categoryId: Long): Int
+    @Query("SELECT COUNT(*) FROM recordings WHERE topic_id = :topicId")
+    suspend fun countInTopic(topicId: Long): Int
 
     @Query("SELECT COUNT(*) FROM recordings")
     suspend fun countAll(): Int

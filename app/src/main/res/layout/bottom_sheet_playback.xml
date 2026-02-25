@@ -108,9 +108,9 @@
         app:cornerRadius="24dp"
         android:layout_marginBottom="4dp" />
 
-    <!-- Category picker — move this recording while listening -->
-    <com.treecast.app.ui.common.CategoryPickerView
-        android:id="@+id/categoryPicker"
+    <!-- Topic picker — move this recording while listening -->
+    <com.treecast.app.ui.common.TopicPickerView
+        android:id="@+id/topicPicker"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

@@ -8,16 +8,16 @@ import androidx.room.PrimaryKey
 
 /**
  * Represents a node (folder) in the podcast tree.
- * parentId == null means this is a root-level category.
+ * parentId == null means this is a root-level topic.
  *
- * The full tree is reconstructed in-memory from a flat list of CategoryEntities.
+ * The full tree is reconstructed in-memory from a flat list of TopicEntities.
  * Depth is unlimited — the only constraint is that cycles must not be created.
  */
 @Entity(
-    tableName = "categories",
+    tableName = "topics",
     foreignKeys = [
         ForeignKey(
-            entity = CategoryEntity::class,
+            entity = TopicEntity::class,
             parentColumns = ["id"],
             childColumns = ["parent_id"],
             onDelete = ForeignKey.CASCADE
@@ -25,7 +25,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index("parent_id")]
 )
-data class CategoryEntity(
+data class TopicEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 
     /** Null = root node */

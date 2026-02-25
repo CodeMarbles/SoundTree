@@ -1,6 +1,6 @@
 # TreeCast
 
-A personal podcast recorder and organiser for Android. Record audio, sort it into a hierarchical category tree, and play it back — all on-device with no cloud dependency.
+A personal podcast recorder and organiser for Android. Record audio, sort it into a hierarchical topic tree, and play it back — all on-device with no cloud dependency.
 
 ---
 
@@ -20,12 +20,12 @@ A personal podcast recorder and organiser for Android. Record audio, sort it int
 
 The app has four tabs managed by a `ViewPager2`:
 
-| Tab | Description |
-|-----|-------------|
-| **Settings** | Playback preferences and session stats |
-| **Record** | Live recording with stop/save |
-| **Library** | Podcast Tree and Inbox sub-pages |
-| **Listen** | Full playback controls, category picker, and marks panel |
+| Tab | Description                                           |
+|-----|-------------------------------------------------------|
+| **Settings** | Playback preferences and session stats                |
+| **Record** | Live recording with stop/save                         |
+| **Library** | Podcast Tree and Inbox sub-pages                      |
+| **Listen** | Full playback controls, topic picker, and marks panel |
 
 The back button walks your tab history in reverse order. Inside the Library tab, pressing back from the Inbox sub-page returns to Podcast Tree before leaving the tab entirely.
 

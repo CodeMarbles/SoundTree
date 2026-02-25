@@ -8,25 +8,25 @@ import androidx.room.PrimaryKey
 
 /**
  * A single recorded audio episode (leaf node in the podcast tree).
- * Belongs to a category (nullable = uncategorised / Inbox).
+ * Belongs to a topic (nullable = uncategorised / Inbox).
  */
 @Entity(
     tableName = "recordings",
     foreignKeys = [
         ForeignKey(
-            entity = CategoryEntity::class,
+            entity = TopicEntity::class,
             parentColumns = ["id"],
-            childColumns = ["category_id"],
+            childColumns = ["topic_id"],
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("category_id")]
+    indices = [Index("topic_id")]
 )
 data class RecordingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 
     /** Null = "Inbox" (uncategorised) */
-    @ColumnInfo(name = "category_id") val categoryId: Long? = null,
+    @ColumnInfo(name = "topic_id") val topicId: Long? = null,
 
     @ColumnInfo(name = "title") val title: String,
 
@@ -52,7 +52,7 @@ data class RecordingEntity(
     /** Whether this recording is marked as a favourite */
     @ColumnInfo(name = "is_favourite") val isFavourite: Boolean = false,
 
-    /** Display order within its category */
+    /** Display order within its topic */
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
 
     /**

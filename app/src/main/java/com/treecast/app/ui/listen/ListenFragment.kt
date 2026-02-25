@@ -28,17 +28,9 @@ class ListenFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private var isSeeking = false
 
-    // Which mini-tab is selected: 0 = Categorize, 1 = Marks
     private var selectedTab = 0
-
-    // Track the last recording ID we set a default tab for, so we only
-    // auto-select the tab once per recording load (not on every position tick).
     private var defaultTabRecordingId: Long? = null
-
-    // Chip views keyed by markId — rebuilt when mark list changes.
     private val markChips = mutableMapOf<Long, TextView>()
-
-    // The mark whose position we have most recently passed.
     private var lastPassedMarkId: Long? = null
 
     override fun onCreateView(
@@ -53,7 +45,7 @@ class ListenFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupTransportControls()
         setupMiniTabs()
-        setupCategoryPicker()
+        setupTopicPicker()
         setupMarksPanel()
         observeNowPlaying()
         observeMarks()
@@ -96,8 +88,6 @@ class ListenFragment : Fragment() {
 
     private fun selectTab(tab: Int) {
         selectedTab = tab
-        val density = resources.displayMetrics.density
-
         binding.tabCategorize.setTextColor(
             if (tab == 0) requireContext().getColor(R.color.text_primary)
             else requireContext().getColor(R.color.text_dim)
@@ -110,7 +100,7 @@ class ListenFragment : Fragment() {
         val indicator = binding.tabIndicator
         val parent = indicator.parent as View
         parent.post {
-            val tabWidth = parent.width / 2
+            val tabWidth    = parent.width / 2
             val targetWidth = (tabWidth * 0.6f).toInt()
             val offset = if (tab == 0) (tabWidth - targetWidth) / 2
             else tabWidth + (tabWidth - targetWidth) / 2
@@ -120,20 +110,21 @@ class ListenFragment : Fragment() {
             indicator.translationX = offset.toFloat()
         }
 
-        binding.categoryPicker.visibility = if (tab == 0) View.VISIBLE else View.GONE
-        binding.marksPanel.visibility     = if (tab == 1) View.VISIBLE else View.GONE
+        // fragment_listen.xml: binding.topicPicker (was categoryPicker — step-3 XML edit)
+        binding.topicPicker.visibility = if (tab == 0) View.VISIBLE else View.GONE
+        binding.marksPanel.visibility  = if (tab == 1) View.VISIBLE else View.GONE
     }
 
-    // ── Category picker ────────────────────────────────────────────────
-    private fun setupCategoryPicker() {
+    // ── Topic picker ───────────────────────────────────────────────────
+    private fun setupTopicPicker() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allCategories.collect { cats ->
-                binding.categoryPicker.setCategories(cats)
+            viewModel.allTopics.collect { topics ->
+                binding.topicPicker.setTopics(topics)
             }
         }
-        binding.categoryPicker.onCategorySelected = { catId ->
+        binding.topicPicker.onTopicSelected = { topicId ->
             viewModel.nowPlaying.value?.recording?.id?.let { recId ->
-                viewModel.moveRecording(recId, catId)
+                viewModel.moveRecording(recId, topicId)
             }
         }
     }
@@ -154,7 +145,6 @@ class ListenFragment : Fragment() {
                 val hasSelection = selectedId != null
                 binding.btnDeleteMark.isEnabled = hasSelection
                 binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
-                // Restyle chips without rebuilding them
                 updateMarkChipStyles()
             }
         }
@@ -166,220 +156,119 @@ class ListenFragment : Fragment() {
         markChips.clear()
 
         val density  = resources.displayMetrics.density
-        val state    = viewModel.nowPlaying.value
-        val duration = state?.durationMs ?: 1L
+        val duration = viewModel.nowPlaying.value?.durationMs ?: 1L
 
-        // Feed mark fractions to waveform
-        binding.waveformView.setMarks(
-            marks.map { mark ->
-                (mark.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f) to mark.id
-            }
-        )
-
-        if (marks.isEmpty()) {
-            val hint = TextView(requireContext()).apply {
-                text = "No marks yet"
-                textSize = 12f
-                setTextColor(requireContext().getColor(R.color.text_dim))
-                gravity = Gravity.CENTER_VERTICAL
-                val pad = (8 * density).toInt()
-                setPadding(pad, 0, pad, 0)
-            }
-            container.addView(hint)
-            return
-        }
-
-        // Circle chips: equal padding so the view forms a circle around the text.
-        // FlowLayout handles the gaps between chips automatically.
-        val padPx = (9 * density).toInt()
-
-        for (mark in marks) {
+        marks.forEach { mark ->
             val chip = TextView(requireContext()).apply {
                 text = formatMs(mark.positionMs)
                 textSize = 12f
+                setPadding(
+                    (10 * density).toInt(), (4 * density).toInt(),
+                    (10 * density).toInt(), (4 * density).toInt()
+                )
                 gravity = Gravity.CENTER
-                setPadding(padPx, padPx, padPx, padPx)
-                val minSizePx = (38 * density).toInt()
-                minWidth  = minSizePx
-                minHeight = minSizePx
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 12 * density
+                    setColor(0xFF_2A2A3E.toInt())
+                }
+                layoutParams = ViewGroup.MarginLayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    val m = (4 * density).toInt()
+                    setMargins(m, m, m, m)
+                }
                 setOnClickListener {
-                    val alreadySelected = viewModel.selectedMarkId.value == mark.id
-                    viewModel.selectMark(if (alreadySelected) null else mark.id)
-                    if (!alreadySelected) viewModel.seekTo(mark.positionMs)
+                    viewModel.seekTo(mark.positionMs)
+                    viewModel.selectMark(mark.id)
                 }
             }
             markChips[mark.id] = chip
             container.addView(chip)
         }
 
-        // Apply correct styles after all chips are created
+        binding.waveformView.setMarks(
+            marks.map { it.positionMs.toFloat() / duration.toFloat() to it.id }
+        )
         updateMarkChipStyles()
     }
 
-    /**
-     * Style each chip based on three states (mutually exclusive, priority order):
-     *  1. Selected → teal circle border, teal text
-     *  2. Last-passed → pink circle fill, white text
-     *  3. Default → no background, dim text
-     *
-     * Call this whenever selected mark OR playback position changes.
-     */
     private fun updateMarkChipStyles() {
-        val marks    = viewModel.marks.value
-        val posMs    = viewModel.nowPlaying.value?.positionMs ?: 0L
-        val selected = viewModel.selectedMarkId.value
-
-        // Compute last-passed: highest positionMs that is ≤ current position
-        val passed = marks
-            .filter { it.positionMs <= posMs }
-            .maxByOrNull { it.positionMs }
-        lastPassedMarkId = passed?.id
-
-        val colorTeal  = requireContext().getColor(R.color.mark_teal)
-        val colorPink  = requireContext().getColor(R.color.mark_pink)
-        val colorWhite = requireContext().getColor(R.color.white)
-        val colorDim   = requireContext().getColor(R.color.text_dim)
-
-        for ((markId, chip) in markChips) {
-            val isSelected   = markId == selected
+        val selectedId = viewModel.selectedMarkId.value
+        markChips.forEach { (markId, chip) ->
+            val isSelected   = markId == selectedId
             val isLastPassed = markId == lastPassedMarkId
-
-            when {
-                isSelected && isLastPassed -> {
-                    // Both: pink solid fill + teal border on top, teal text
-                    chip.background = makeBorderedSolidCircle(
-                        fillColor   = colorPink,
-                        borderColor = colorTeal,
-                        strokeDp    = 2f
-                    )
-                    chip.setTextColor(colorWhite)
-                }
-                isSelected -> {
-                    // Selected only: teal border, transparent fill
-                    chip.background = makeBorderCircle(colorTeal, strokeDp = 2f)
-                    chip.setTextColor(colorWhite)
-                }
-                isLastPassed -> {
-                    // Last-passed: pink solid fill, white text.
-                    // Always shown regardless of whether another mark is selected.
-                    chip.background = makeSolidCircle(colorPink)
-                    chip.setTextColor(colorWhite)
-                }
-                else -> {
-                    chip.background = null
-                    chip.setTextColor(colorDim)
-                }
-            }
+            (chip.background as? GradientDrawable)?.setColor(when {
+                isSelected   -> 0xFF_00BFA5.toInt()
+                isLastPassed -> 0xFF_C2185B.toInt()
+                else         -> 0xFF_2A2A3E.toInt()
+            })
+            chip.setTextColor(
+                if (isSelected || isLastPassed) 0xFF_FFFFFF.toInt()
+                else requireContext().getColor(R.color.text_dim)
+            )
         }
     }
 
-    // ── Drawable helpers ───────────────────────────────────────────────
-
-    private fun makeBorderCircle(color: Int, strokeDp: Float): GradientDrawable {
-        val strokePx = (strokeDp * resources.displayMetrics.density).toInt()
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setStroke(strokePx, color)
-            setColor(android.graphics.Color.TRANSPARENT)
-        }
-    }
-
-    private fun makeSolidCircle(color: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-        }
-    }
-
-    /** Pink fill + teal border — for a mark that is both selected and last-passed. */
-    private fun makeBorderedSolidCircle(fillColor: Int, borderColor: Int, strokeDp: Float): GradientDrawable {
-        val strokePx = (strokeDp * resources.displayMetrics.density).toInt()
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(fillColor)
-            setStroke(strokePx, borderColor)
-        }
-    }
-
-    // ── nowPlaying observation ─────────────────────────────────────────
+    // ── Now Playing observer ───────────────────────────────────────────
     private fun observeNowPlaying() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.nowPlaying.collect { state ->
-                if (state == null) showEmpty() else showPlayer(state)
+            viewModel.nowPlaying.collect { state -> updateUi(state) }
+        }
+    }
+
+    private fun updateUi(state: NowPlayingState?) {
+        if (state == null) {
+            binding.tvTitle.text     = "Nothing playing"
+            binding.tvPosition.text  = "0:00"
+            binding.tvRemaining.text = "-0:00"
+            binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            binding.seekBar.progress = 0
+            binding.waveformView.setProgress(0f)
+            return
+        }
+
+        binding.tvTitle.text = state.recording.title
+        binding.btnPlayPause.setImageResource(
+            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+
+        if (!isSeeking) {
+            val dur = state.durationMs.coerceAtLeast(1L)
+            val pos = state.positionMs
+            binding.seekBar.max      = dur.toInt()
+            binding.seekBar.progress = pos.toInt()
+            binding.tvPosition.text  = formatMs(pos)
+            binding.tvRemaining.text = "-${formatMs(dur - pos)}"
+            binding.waveformView.setProgress(pos.toFloat() / dur.toFloat())
+        }
+
+        // Auto-select default tab once per recording load
+        if (defaultTabRecordingId != state.recording.id) {
+            defaultTabRecordingId = state.recording.id
+            binding.waveformView.setSeed(state.recording.id)
+            selectTab(if (state.recording.topicId == null) 0 else 1)
+
+            val topicName = viewModel.allTopics.value
+                .find { it.id == state.recording.topicId }?.name ?: "Uncategorised"
+            binding.topicPicker.setSelectedTopic(state.recording.topicId, topicName)
+        }
+
+        // Highlight the last-passed mark
+        val marks = viewModel.marks.value
+        if (marks.isNotEmpty()) {
+            val pos    = state.positionMs
+            val passed = marks.filter { it.positionMs <= pos }.maxByOrNull { it.positionMs }
+            if (passed?.id != lastPassedMarkId) {
+                lastPassedMarkId = passed?.id
+                updateMarkChipStyles()
             }
         }
     }
 
-    private fun showEmpty() {
-        binding.emptyState.visibility    = View.VISIBLE
-        binding.playerContent.visibility = View.GONE
-    }
-
-    private fun showPlayer(state: NowPlayingState) {
-        binding.emptyState.visibility    = View.GONE
-        binding.playerContent.visibility = View.VISIBLE
-
-        val rec = state.recording
-
-        // ── Default tab: set once per new recording load ───────────────
-        if (rec.id != defaultTabRecordingId) {
-            defaultTabRecordingId = rec.id
-            // If the recording is already categorised → open Marks panel by default.
-            // If it still needs a category → open Categorize.
-            selectTab(if (rec.categoryId != null) 1 else 0)
-        }
-
-        binding.waveformView.setSeed(rec.id)
-        val frac = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
-        binding.waveformView.setProgress(frac)
-
-        // ── Category label above title ────────────────────────────────
-        val catName = rec.categoryId?.let { id ->
-            viewModel.allCategories.value.find { it.id == id }?.name
-        }
-        if (catName != null) {
-            binding.tvCategory.text = catName
-            binding.tvCategory.setTextColor(requireContext().getColor(R.color.text_dim))
-        } else {
-            binding.tvCategory.text = "Uncategorized"
-            binding.tvCategory.setTextColor(requireContext().getColor(R.color.uncategorized_label))
-        }
-        binding.tvCategory.visibility = View.VISIBLE
-
-        binding.tvTitle.text = rec.title
-        binding.tvRecordedAt.text = formatDateTime(rec.createdAt)
-        binding.tvDuration.text   = formatMs(rec.durationMs)
-
-        if (!isSeeking) {
-            binding.seekBar.max      = state.durationMs.toInt()
-            binding.seekBar.progress = state.positionMs.toInt()
-        }
-        binding.tvPosition.text  = formatMs(state.positionMs)
-        binding.tvRemaining.text = "-${formatMs(state.durationMs - state.positionMs)}"
-
-        binding.btnPlayPause.setImageResource(
-            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
-        )
-
-        // Update category picker selection
-        if (rec.categoryId != null) {
-            val cn = viewModel.allCategories.value.find { it.id == rec.categoryId }?.name
-                ?: "Uncategorised"
-            binding.categoryPicker.setSelectedCategory(rec.categoryId, cn)
-        } else {
-            binding.categoryPicker.setSelectedCategory(null, "Uncategorised")
-        }
-
-        // Re-apply last-passed chip styling now that position has changed
-        updateMarkChipStyles()
-    }
-
-    // ── Formatting helpers ─────────────────────────────────────────────
     private fun formatMs(ms: Long): String {
-        val s = ms / 1000
-        return "%d:%02d".format(s / 60, s % 60)
+        val s = ms / 1000; val m = s / 60
+        return if (m >= 60) "%d:%02d:%02d".format(m / 60, m % 60, s % 60)
+        else "%d:%02d".format(m, s % 60)
     }
-
-    private fun formatDateTime(epochMs: Long): String =
-        SimpleDateFormat("MMM d, yyyy  HH:mm", Locale.getDefault()).format(Date(epochMs))
 }

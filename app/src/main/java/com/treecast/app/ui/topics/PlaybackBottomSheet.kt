@@ -1,4 +1,4 @@
-package com.treecast.app.ui.tree
+package com.treecast.app.ui.topics
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,11 +12,6 @@ import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
 import kotlinx.coroutines.launch
 
-/**
- * Bottom sheet player — thin wrapper over MainViewModel's shared player.
- * No MediaPlayer here; all playback is delegated so the Mini Player
- * and Listen tab stay perfectly in sync.
- */
 class PlaybackBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
@@ -41,10 +36,9 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val recordingId = arguments?.getLong(ARG_ID) ?: return
-        val recording = viewModel.allRecordings.value.find { it.id == recordingId }
+        val recording   = viewModel.allRecordings.value.find { it.id == recordingId }
             ?: run { dismiss(); return }
 
-        // Start playing immediately via shared ViewModel player
         viewModel.play(recording)
 
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
@@ -54,54 +48,56 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
         binding.btnFavourite.apply {
             text = if (recording.isFavourite) "💔  Unfavourite" else "❤️  Add to Favourites"
             setOnClickListener {
-                val newFav = viewModel.nowPlaying.value?.recording?.isFavourite?.not() ?: false
+                val newFav = viewModel.nowPlaying.value?.recording?.isFavourite?.not() ?: true
                 viewModel.setFavourite(recordingId, newFav)
                 text = if (newFav) "💔  Unfavourite" else "❤️  Add to Favourites"
             }
         }
 
+        // bottom_sheet_playback.xml: id topicPicker (renamed from categoryPicker in step-3 XML edit)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.allTopics.collect { topics ->
+                binding.topicPicker.setTopics(topics)
+                val topicName = recording.topicId?.let { id -> topics.find { it.id == id }?.name }
+                    ?: "Uncategorised"
+                binding.topicPicker.setSelectedTopic(recording.topicId, topicName)
+            }
+        }
+        binding.topicPicker.onTopicSelected = { topicId ->
+            viewModel.moveRecording(recordingId, topicId)
+        }
+
+        // Seek bar
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) {}
             override fun onStopTrackingTouch(sb: SeekBar) { viewModel.seekTo(sb.progress.toLong()) }
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser) binding.tvPosition.text = formatMs(progress.toLong())
+                if (fromUser) viewModel.seekTo(progress.toLong())
             }
         })
 
-        // Category picker
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allCategories.collect { cats -> binding.categoryPicker.setCategories(cats) }
-        }
-        if (recording.categoryId != null) {
-            val catName = viewModel.allCategories.value.find { it.id == recording.categoryId }?.name
-                ?: "Uncategorised"
-            binding.categoryPicker.setSelectedCategory(recording.categoryId, catName)
-        }
-        binding.categoryPicker.onCategorySelected = { catId ->
-            viewModel.moveRecording(recordingId, catId)
-        }
-
-        // Observe shared state to keep UI in sync
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
                 if (state == null) return@collect
-                binding.tvTitle.text    = state.recording.title
-                binding.tvDuration.text = formatMs(state.durationMs)
-                binding.seekBar.max     = state.durationMs.toInt()
-                binding.seekBar.progress = state.positionMs.toInt()
-                binding.tvPosition.text = formatMs(state.positionMs)
+                val dur = state.durationMs.coerceAtLeast(1L)
+                val pos = state.positionMs
+                binding.seekBar.max      = dur.toInt()
+                binding.seekBar.progress = pos.toInt()
+                binding.tvPosition.text  = formatMs(pos)
+                binding.tvRemaining.text = "-${formatMs(dur - pos)}"
                 binding.btnPlayPause.text = if (state.isPlaying) "⏸" else "▶"
             }
         }
     }
 
     override fun onDestroyView() {
-        _binding = null
         super.onDestroyView()
+        _binding = null
     }
 
     private fun formatMs(ms: Long): String {
-        val s = ms / 1000
-        return "%d:%02d".format(s / 60, s % 60)
+        val s = ms / 1000; val m = s / 60
+        return if (m >= 60) "%d:%02d:%02d".format(m / 60, m % 60, s % 60)
+        else "%d:%02d".format(m, s % 60)
     }
 }
