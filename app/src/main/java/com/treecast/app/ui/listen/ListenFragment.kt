@@ -8,8 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.TextView
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -69,8 +67,8 @@ class ListenFragment : Fragment() {
     // ── Transport ──────────────────────────────────────────────────────
     private fun setupTransportControls() {
         binding.btnPlayPause.setOnClickListener   { viewModel.togglePlayPause() }
-        binding.btnSkipBack.setOnClickListener    { viewModel.skipBack15() }
-        binding.btnSkipForward.setOnClickListener { viewModel.skipForward15() }
+        binding.btnSkipBack.setOnClickListener    { viewModel.skipBack() }
+        binding.btnSkipForward.setOnClickListener { viewModel.skipForward() }
 
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) { isSeeking = true }

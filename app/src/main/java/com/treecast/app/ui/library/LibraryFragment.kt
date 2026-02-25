@@ -91,6 +91,26 @@ class LibraryFragment : Fragment() {
         _binding = null
     }
 
+    // ── Back press handling ───────────────────────────────────────────
+
+    /**
+     * Called by MainActivity when the system back button is pressed while
+     * the Library tab is active.
+     *
+     * Returns true if the back press was consumed here (i.e. we navigated
+     * from Uncategorized → Tree View), or false if MainActivity should
+     * continue with its own back-stack logic (leaving the Library tab).
+     */
+    fun handleBackPress(): Boolean {
+        if (!isAdded || _binding == null) return false
+        return if (binding.tilePager.currentItem == PAGE_UNCATEGORIZED) {
+            binding.tilePager.setCurrentItem(PAGE_TREE, true)
+            true
+        } else {
+            false
+        }
+    }
+
     // ── Sub-nav visual state ──────────────────────────────────────────
 
     /**

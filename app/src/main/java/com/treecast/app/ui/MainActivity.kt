@@ -3,6 +3,7 @@ package com.treecast.app.ui
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -36,6 +37,22 @@ class MainActivity : AppCompatActivity() {
         PAGE_LISTEN   to "Listen"
     )
 
+    // ── Back-stack navigation ─────────────────────────────────────────
+    //
+    // navHistory records every page the user visits, in order.
+    // Back presses walk it in reverse; when only one entry remains
+    // (or it's empty) we fall through to finish().
+    //
+    // isNavigatingBack suppresses history recording during the
+    // programmatic setCurrentItem() call that back navigation triggers.
+    private val navHistory = ArrayDeque<Int>()
+    private var isNavigatingBack = false
+
+    // Direct reference to the Library fragment so we can ask it to
+    // handle sub-page back presses (Uncategorized → Tree View) before
+    // we pop our own back stack.
+    private lateinit var libraryFragment: LibraryFragment
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -46,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         setupViewPager()
         setupBottomNav()
         setupMiniPlayer()
+        setupBackNavigation()
         observeLockState()
         observeTopTitle()
 
@@ -56,10 +74,12 @@ class MainActivity : AppCompatActivity() {
 
     // ── ViewPager ─────────────────────────────────────────────────────
     private fun setupViewPager() {
+        libraryFragment = LibraryFragment()
+
         val adapter = MainPagerAdapter(this).apply {
             addFragment(SettingsFragment(), "Settings")
             addFragment(RecordFragment(),   "Record")
-            addFragment(LibraryFragment(),  "Library")
+            addFragment(libraryFragment,    "Library")
             addFragment(ListenFragment(),   "Listen")
         }
         binding.viewPager.adapter = adapter
@@ -68,24 +88,64 @@ class MainActivity : AppCompatActivity() {
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                // The inner Library tile-pager no longer claims swipe gestures,
-                // so the outer ViewPager2 stays enabled on every tab —
-                // no isUserInputEnabled intercept needed for PAGE_LIBRARY.
                 updateBottomNavSelection(position)
                 if (position != PAGE_LIBRARY) {
                     viewModel.setTopTitle(pageTitles[position] ?: "")
                 }
                 // When on Library, LibraryFragment drives the top title itself.
+
+                // ── History recording ──────────────────────────────────
+                // Skip recording when we are the ones driving this page
+                // change as part of a back-press; only record genuine
+                // forward navigation initiated by the user.
+                if (isNavigatingBack) {
+                    isNavigatingBack = false
+                    return
+                }
+                // Avoid duplicate consecutive entries (e.g. from a
+                // swipe that briefly reports the same page twice).
+                if (navHistory.isEmpty() || navHistory.last() != position) {
+                    navHistory.addLast(position)
+                }
+            }
+        })
+    }
+
+    // ── Back navigation ───────────────────────────────────────────────
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // 1. Give LibraryFragment first refusal when it's active.
+                //    It will consume the press if the user is on a sub-page
+                //    (Uncategorized) and navigate them to Tree View instead.
+                if (binding.viewPager.currentItem == PAGE_LIBRARY &&
+                    libraryFragment.handleBackPress()
+                ) {
+                    return
+                }
+
+                // 2. Walk the main tab back stack.
+                //    The current page is navHistory.last(); the page to
+                //    return to is the one before it.
+                if (navHistory.size > 1) {
+                    navHistory.removeLast()              // discard current page
+                    val target = navHistory.last()       // peek at previous page
+                    isNavigatingBack = true
+                    binding.viewPager.setCurrentItem(target, true)
+                } else {
+                    // Nothing left in history — exit the app.
+                    finish()
+                }
             }
         })
     }
 
     // ── Bottom nav ────────────────────────────────────────────────────
     private fun setupBottomNav() {
-        binding.navSettings.setOnClickListener { binding.viewPager.currentItem = PAGE_SETTINGS }
-        binding.navRecord.setOnClickListener   { binding.viewPager.currentItem = PAGE_RECORD   }
-        binding.navLibrary.setOnClickListener  { binding.viewPager.currentItem = PAGE_LIBRARY  }
-        binding.navListen.setOnClickListener   { binding.viewPager.currentItem = PAGE_LISTEN   }
+        binding.navSettings.setOnClickListener { navigateTo(PAGE_SETTINGS) }
+        binding.navRecord.setOnClickListener   { navigateTo(PAGE_RECORD)   }
+        binding.navLibrary.setOnClickListener  { navigateTo(PAGE_LIBRARY)  }
+        binding.navListen.setOnClickListener   { navigateTo(PAGE_LISTEN)   }
         updateBottomNavSelection(PAGE_RECORD)
     }
 
@@ -103,6 +163,18 @@ class MainActivity : AppCompatActivity() {
         icon(binding.ivRecordIcon,   binding.tvRecordLabel,   position == PAGE_RECORD)
         icon(binding.ivLibraryIcon,  binding.tvLibraryLabel,  position == PAGE_LIBRARY)
         icon(binding.ivListenIcon,   binding.tvListenLabel,   position == PAGE_LISTEN)
+    }
+
+    // ── Public navigation helper ──────────────────────────────────────
+    //
+    // Called by child fragments (e.g. InboxTileFragment, TreeViewFragment)
+    // when they want to programmatically switch tabs.
+    fun navigateTo(page: Int) {
+        binding.viewPager.currentItem = page
+    }
+
+    fun setTopTitle(title: String) {
+        viewModel.setTopTitle(title)
     }
 
     // ── Mini Player ───────────────────────────────────────────────────
@@ -126,19 +198,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Controls
+        binding.miniPlayer.root.setOnClickListener {
+            navigateTo(PAGE_LISTEN)
+        }
+
         binding.miniPlayer.btnMiniPlayPause.setOnClickListener {
             viewModel.togglePlayPause()
         }
+
         binding.miniPlayer.btnMiniSkipBack.setOnClickListener {
-            viewModel.skipBack15()
-        }
-        binding.miniPlayer.btnMiniSkipForward.setOnClickListener {
-            viewModel.skipForward15()
-        }
-        // Tap anywhere else on the mini player → go to Listen tab
-        binding.miniPlayer.root.setOnClickListener {
-            binding.viewPager.currentItem = PAGE_LISTEN
+            viewModel.skipBack()
         }
     }
 
@@ -150,11 +219,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    fun setTopTitle(title: String) { viewModel.setTopTitle(title) }
-
-    /** Navigate to any top-level page from anywhere in the app. */
-    fun navigateTo(page: Int) { binding.viewPager.currentItem = page }
 
     // ── Lock ──────────────────────────────────────────────────────────
     private fun observeLockState() {
@@ -186,7 +250,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun formatMs(ms: Long): String {
-        val s = ms / 1000
-        return "%d:%02d".format(s / 60, s % 60)
+        val totalSecs = ms / 1000
+        val mins = totalSecs / 60
+        val secs = totalSecs % 60
+        return "%d:%02d".format(mins, secs)
     }
 }

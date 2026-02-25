@@ -8,7 +8,6 @@ import android.widget.SeekBar
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.treecast.app.R
 import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
 import kotlinx.coroutines.launch
@@ -49,8 +48,8 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
         viewModel.play(recording)
 
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
-        binding.btnRewind.setOnClickListener    { viewModel.skipBack15() }
-        binding.btnForward.setOnClickListener   { viewModel.skipForward15() }
+        binding.btnRewind.setOnClickListener    { viewModel.skipBack() }
+        binding.btnForward.setOnClickListener   { viewModel.skipForward() }
 
         binding.btnFavourite.apply {
             text = if (recording.isFavourite) "💔  Unfavourite" else "❤️  Add to Favourites"

@@ -1,6 +1,8 @@
 package com.treecast.app.ui
 
 import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -12,7 +14,6 @@ import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeItem
-import com.treecast.app.data.repository.TreeNode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -30,6 +31,10 @@ data class NowPlayingState(
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo: TreeCastRepository = (app as TreeCastApp).repository
+
+    // ── Persistent settings ───────────────────────────────────────────
+    private val prefs: SharedPreferences =
+        app.getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
 
     // ── Session ───────────────────────────────────────────────────────
     private var currentSessionId: Long = -1L
@@ -119,12 +124,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
-    fun skipBack15() {
+    fun skipBack() {
         val mp = mediaPlayer ?: return
         seekTo((mp.currentPosition - _scrubBackSecs.value * 1_000L).coerceAtLeast(0L))
     }
 
-    fun skipForward15() {
+    fun skipForward() {
         val mp = mediaPlayer ?: return
         seekTo((mp.currentPosition + _scrubForwardSecs.value * 1_000L).coerceAtMost(mp.duration.toLong()))
     }
@@ -228,20 +233,40 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Playback preferences ───────────────────────────────────────────
 
+    // ── Playback preferences ───────────────────────────────────────────
+    //
+    // Each preference is backed by SharedPreferences so values survive
+    // process death. The initial value is read from prefs on first load;
+    // every setter writes back immediately via apply() (async, non-blocking).
+
     /** When true, starting playback automatically switches to the Listen tab. */
-    private val _autoNavigateToListen = MutableStateFlow(false)
+    private val _autoNavigateToListen =
+        MutableStateFlow(prefs.getBoolean(PREF_AUTO_NAVIGATE, false))
     val autoNavigateToListen: StateFlow<Boolean> = _autoNavigateToListen
-    fun setAutoNavigateToListen(enabled: Boolean) { _autoNavigateToListen.value = enabled }
+    fun setAutoNavigateToListen(enabled: Boolean) {
+        _autoNavigateToListen.value = enabled
+        prefs.edit().putBoolean(PREF_AUTO_NAVIGATE, enabled).apply()
+    }
 
     /** Seconds to seek backwards when the skip-back button is tapped (default 15). */
-    private val _scrubBackSecs = MutableStateFlow(15)
+    private val _scrubBackSecs =
+        MutableStateFlow(prefs.getInt(PREF_SCRUB_BACK_SECS, 15))
     val scrubBackSecs: StateFlow<Int> = _scrubBackSecs
-    fun setScrubBackSecs(secs: Int) { _scrubBackSecs.value = secs.coerceAtLeast(5) }
+    fun setScrubBackSecs(secs: Int) {
+        val v = secs.coerceAtLeast(5)
+        _scrubBackSecs.value = v
+        prefs.edit().putInt(PREF_SCRUB_BACK_SECS, v).apply()
+    }
 
     /** Seconds to seek forward when the skip-forward button is tapped (default 15). */
-    private val _scrubForwardSecs = MutableStateFlow(15)
+    private val _scrubForwardSecs =
+        MutableStateFlow(prefs.getInt(PREF_SCRUB_FORWARD_SECS, 15))
     val scrubForwardSecs: StateFlow<Int> = _scrubForwardSecs
-    fun setScrubForwardSecs(secs: Int) { _scrubForwardSecs.value = secs.coerceAtLeast(5) }
+    fun setScrubForwardSecs(secs: Int) {
+        val v = secs.coerceAtLeast(5)
+        _scrubForwardSecs.value = v
+        prefs.edit().putInt(PREF_SCRUB_FORWARD_SECS, v).apply()
+    }
 
     // ── Marks ──────────────────────────────────────────────────────────
     /** Marks for the currently loaded recording, live from DB. */
@@ -276,6 +301,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             repo.deleteMark(id)
             _selectedMarkId.value = null
         }
+    }
+
+    // ── Prefs keys ────────────────────────────────────────────────────
+    companion object {
+        private const val PREF_AUTO_NAVIGATE    = "auto_navigate_to_listen"
+        private const val PREF_SCRUB_BACK_SECS  = "scrub_back_secs"
+        private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
     }
 
 }
