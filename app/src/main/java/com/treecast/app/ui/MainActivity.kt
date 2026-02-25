@@ -68,12 +68,14 @@ class MainActivity : AppCompatActivity() {
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                // Disable outer swipe on Library so the inner tile pager owns horizontal gestures
-                binding.viewPager.isUserInputEnabled = (position != PAGE_LIBRARY)
+                // The inner Library tile-pager no longer claims swipe gestures,
+                // so the outer ViewPager2 stays enabled on every tab —
+                // no isUserInputEnabled intercept needed for PAGE_LIBRARY.
                 updateBottomNavSelection(position)
                 if (position != PAGE_LIBRARY) {
                     viewModel.setTopTitle(pageTitles[position] ?: "")
                 }
+                // When on Library, LibraryFragment drives the top title itself.
             }
         })
     }
@@ -90,7 +92,6 @@ class MainActivity : AppCompatActivity() {
     private fun updateBottomNavSelection(position: Int) {
         val accent = ContextCompat.getColor(this, R.color.accent)
         val dim    = ContextCompat.getColor(this, R.color.text_dim)
-        val white  = ContextCompat.getColor(this, R.color.text_primary)
 
         fun icon(iv: android.widget.ImageView, label: android.widget.TextView?, active: Boolean) {
             iv.setColorFilter(if (active) accent else dim)
@@ -99,29 +100,25 @@ class MainActivity : AppCompatActivity() {
         }
 
         icon(binding.ivSettingsIcon, binding.tvSettingsLabel, position == PAGE_SETTINGS)
-        icon(binding.ivRecordIcon,   binding.tvRecordLabel,  position == PAGE_RECORD)
-        icon(binding.ivLibraryIcon,  binding.tvLibraryLabel, position == PAGE_LIBRARY)
-        icon(binding.ivListenIcon,   binding.tvListenLabel,  position == PAGE_LISTEN)
+        icon(binding.ivRecordIcon,   binding.tvRecordLabel,   position == PAGE_RECORD)
+        icon(binding.ivLibraryIcon,  binding.tvLibraryLabel,  position == PAGE_LIBRARY)
+        icon(binding.ivListenIcon,   binding.tvListenLabel,   position == PAGE_LISTEN)
     }
 
     // ── Mini Player ───────────────────────────────────────────────────
     private fun setupMiniPlayer() {
-        // Show/hide based on nowPlaying state
+        // Show/hide and update content based on nowPlaying state
         lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
-                val visible = state != null
-                binding.miniPlayer.root.visibility = if (visible) View.VISIBLE else View.GONE
+                binding.miniPlayer.root.visibility = if (state != null) View.VISIBLE else View.GONE
 
                 if (state != null) {
                     binding.miniPlayer.tvMiniTitle.text = state.recording.title
                     val frac = if (state.durationMs > 0)
                         (state.positionMs * 1000 / state.durationMs).toInt() else 0
                     binding.miniPlayer.miniProgressBar.progress = frac
-
-                    val pos = formatMs(state.positionMs)
-                    val dur = formatMs(state.durationMs)
-                    binding.miniPlayer.tvMiniTime.text = "$pos / $dur"
-
+                    binding.miniPlayer.tvMiniTime.text =
+                        "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
                     binding.miniPlayer.btnMiniPlayPause.setImageResource(
                         if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
                     )
@@ -177,7 +174,7 @@ class MainActivity : AppCompatActivity() {
             val btn = binding.btnUnlock
             val loc = IntArray(2); btn.getLocationOnScreen(loc)
             val inBounds = ev.rawX >= loc[0] && ev.rawX <= loc[0] + btn.width &&
-                           ev.rawY >= loc[1] && ev.rawY <= loc[1] + btn.height
+                    ev.rawY >= loc[1] && ev.rawY <= loc[1] + btn.height
             return if (inBounds) super.dispatchTouchEvent(ev) else true
         }
         return super.dispatchTouchEvent(ev)

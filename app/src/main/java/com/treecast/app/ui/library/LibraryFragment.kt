@@ -4,8 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.viewpager2.widget.ViewPager2
@@ -17,12 +15,18 @@ import com.treecast.app.ui.MainViewModel
 /**
  * Library tab.
  *
- * Horizontal carousel of tile-cards:
+ * Contains two sub-views managed by an internal ViewPager2:
  *   [0] TreeViewFragment  — 🌳 Podcast Tree
- *   [1] InboxTileFragment — 📥 Inbox
+ *   [1] InboxTileFragment — 📥 Uncategorized (Inbox)
  *
- * A small peek (12dp padding) hints that the cards are swipeable.
- * Dot indicators below make it unambiguous.
+ * Swipe navigation between the sub-views is DISABLED. The user
+ * navigates via the sub-nav bar at the bottom of this fragment.
+ * This means the outer ViewPager2 (Listen ↔ Library ↔ Record) owns
+ * all horizontal swipe gestures when the Library tab is active —
+ * no special intercept is required in MainActivity.
+ *
+ * The sub-nav bar mirrors the style of the main bottom nav and has
+ * room on its right side for a future feature.
  */
 class LibraryFragment : Fragment() {
 
@@ -32,8 +36,14 @@ class LibraryFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var tileAdapter: LibraryTilesAdapter
 
-    private val tileTitles = listOf("Podcast Tree", "Inbox")
-    private val dotViews = mutableListOf<ImageView>()
+    // PAGE_* constants mirror the adapter order
+    private val PAGE_TREE         = 0
+    private val PAGE_UNCATEGORIZED = 1
+
+    private val tileTitles = mapOf(
+        PAGE_TREE          to "Podcast Tree",
+        PAGE_UNCATEGORIZED to "Uncategorized"
+    )
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,22 +58,32 @@ class LibraryFragment : Fragment() {
 
         tileAdapter = LibraryTilesAdapter(this)
         binding.tilePager.adapter = tileAdapter
-        binding.tilePager.offscreenPageLimit = 3
+        binding.tilePager.offscreenPageLimit = 2
 
-        applyCarouselTransform()
-        buildDotIndicators()
+        // ── Disable swipe inside the Library ──────────────────────────
+        // The outer ViewPager2 now owns horizontal swipe while on this tab.
+        binding.tilePager.isUserInputEnabled = false
 
+        // ── Sub-nav button clicks ─────────────────────────────────────
+        binding.subNavTreeView.setOnClickListener {
+            binding.tilePager.setCurrentItem(PAGE_TREE, true)
+        }
+        binding.subNavUncategorized.setOnClickListener {
+            binding.tilePager.setCurrentItem(PAGE_UNCATEGORIZED, true)
+        }
+
+        // ── Sync sub-nav selection with pager position ────────────────
         binding.tilePager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                updateDots(position)
-                val title = tileTitles.getOrElse(position) { "Library" }
+                updateSubNavSelection(position)
+                val title = tileTitles[position] ?: "Library"
                 (requireActivity() as? MainActivity)?.setTopTitle(title)
             }
         })
 
-        // Set initial state
-        updateDots(0)
-        (requireActivity() as? MainActivity)?.setTopTitle(tileTitles[0])
+        // Initial state — Tree View selected
+        updateSubNavSelection(PAGE_TREE)
+        (requireActivity() as? MainActivity)?.setTopTitle(tileTitles[PAGE_TREE]!!)
     }
 
     override fun onDestroyView() {
@@ -71,45 +91,18 @@ class LibraryFragment : Fragment() {
         _binding = null
     }
 
-    private fun applyCarouselTransform() {
-        val density = resources.displayMetrics.density
-        // Subtle scale + alpha so adjacent card is clearly secondary
-        binding.tilePager.setPageTransformer { page, position ->
-            val absPos = kotlin.math.abs(position)
-            page.scaleY = 1f - 0.03f * absPos
-            page.alpha  = 1f - 0.12f * absPos
-        }
-    }
+    // ── Sub-nav visual state ──────────────────────────────────────────
 
-    private fun buildDotIndicators() {
-        val density = resources.displayMetrics.density
-        val margin = (6 * density).toInt()
-
-        repeat(tileTitles.size) { i ->
-            val dot = ImageView(requireContext()).apply {
-                setImageResource(
-                    if (i == 0) R.drawable.dot_indicator_active
-                    else R.drawable.dot_indicator_inactive
-                )
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(margin, 0, margin, 0)
-                }
-                layoutParams = lp
-            }
-            binding.pageIndicator.addView(dot)
-            dotViews.add(dot)
-        }
-    }
-
-    private fun updateDots(activeIndex: Int) {
-        dotViews.forEachIndexed { i, dot ->
-            dot.setImageResource(
-                if (i == activeIndex) R.drawable.dot_indicator_active
-                else R.drawable.dot_indicator_inactive
-            )
-        }
+    /**
+     * Highlights the active button container at full opacity; dims the
+     * inactive one to 0.40 alpha — matching the treatment used in the
+     * main bottom nav bar.
+     *
+     * Alphaing the parent LinearLayout covers both the emoji and the
+     * label in one shot, with no ImageView tinting needed.
+     */
+    private fun updateSubNavSelection(activePosition: Int) {
+        binding.subNavTreeView.alpha      = if (activePosition == PAGE_TREE)          1f else 0.40f
+        binding.subNavUncategorized.alpha = if (activePosition == PAGE_UNCATEGORIZED) 1f else 0.40f
     }
 }

@@ -7,32 +7,126 @@
     android:background="@color/bg_dark">
 
     <!--
-      The outer ViewPager2 has isUserInputEnabled disabled while this
-      tab is active (set in MainActivity.onPageSelected), so this inner
-      pager owns all horizontal swipe gestures without conflict.
+      Inner swipe is disabled (isUserInputEnabled = false).
+      Navigation between Uncategorized / Tree View is now handled
+      by the sub-nav bar below. The outer ViewPager2 owns all
+      horizontal swipe gestures again, so no special MainActivity
+      intercept is needed.
     -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/tilePager"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:paddingHorizontal="12dp"
-        android:clipToPadding="false"
         android:overScrollMode="never"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/pageIndicator"
+        app:layout_constraintBottom_toTopOf="@id/dividerSubNav"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Dot page indicator -->
-    <LinearLayout
-        android:id="@+id/pageIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="24dp"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+    <!-- 1 dp separator between content and sub-nav bar -->
+    <View
+        android:id="@+id/dividerSubNav"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="@color/surface_light"
+        app:layout_constraintBottom_toTopOf="@id/librarySubNav"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <!--
+      ┌─────────────────────────────────────────────────────────────┐
+      │  [📥 Uncategorized]  [🌳 Tree View]  │                      │
+      └─────────────────────────────────────────────────────────────┘
+      Matches the height and visual weight of the main bottomNav bar.
+      Left side: two static nav buttons.
+      Thin vertical divider.
+      Right side: blank — reserved for a future feature.
+    -->
+    <LinearLayout
+        android:id="@+id/librarySubNav"
+        android:layout_width="0dp"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:background="@color/surface"
+        android:elevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- ── Uncategorized button ─────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/subNavUncategorized"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="18dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/tvUncategorizedEmoji"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📥"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/tvUncategorizedLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Uncategorized"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp"
+                android:layout_marginTop="3dp" />
+
+        </LinearLayout>
+
+        <!-- ── Tree View button ─────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/subNavTreeView"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="18dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/tvTreeViewEmoji"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🌳"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/tvTreeViewLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tree View"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp"
+                android:layout_marginTop="3dp" />
+
+        </LinearLayout>
+
+        <!-- ── Vertical divider ─────────────────────────────────── -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginHorizontal="4dp"
+            android:background="@color/surface_light" />
+
+        <!-- ── Future feature space (blank) ────────────────────── -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
