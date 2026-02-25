@@ -44,16 +44,33 @@
         android:layout_height="wrap_content"
         android:progressTint="@color/accent"
         android:thumbTint="@color/accent"
-        android:layout_marginBottom="6dp" />
+        android:layout_marginBottom="4dp" />
 
-    <TextView
-        android:id="@+id/tvPosition"
-        android:layout_width="wrap_content"
+    <!-- Time row -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="0:00"
-        android:textColor="@color/text_dim"
-        android:textSize="12sp"
-        android:layout_marginBottom="20dp" />
+        android:orientation="horizontal"
+        android:layout_marginBottom="20dp">
+
+        <TextView
+            android:id="@+id/tvPosition"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0:00"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tvRemaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-0:00"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp" />
+
+    </LinearLayout>
 
     <!-- Playback controls -->
     <LinearLayout
@@ -79,8 +96,7 @@
             android:layout_height="72dp"
             android:text="▶"
             android:textSize="24sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="@color/accent"
+            android:textColor="@color/text_primary"
             app:cornerRadius="36dp"
             android:layout_marginHorizontal="16dp" />
 
@@ -96,19 +112,16 @@
 
     </LinearLayout>
 
-    <!-- Favourite toggle -->
+    <!-- Favourite button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnFavourite"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
         android:text="❤️  Add to Favourites"
-        android:textColor="@color/text_primary"
-        app:strokeColor="@color/surface_light"
-        app:cornerRadius="24dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="16dp" />
 
-    <!-- Topic picker — move this recording while listening -->
+    <!-- Topic picker -->
     <com.treecast.app.ui.common.TopicPickerView
         android:id="@+id/topicPicker"
         android:layout_width="match_parent"

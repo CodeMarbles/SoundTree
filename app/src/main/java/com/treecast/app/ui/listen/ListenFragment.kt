@@ -219,6 +219,10 @@ class ListenFragment : Fragment() {
     }
 
     private fun updateUi(state: NowPlayingState?) {
+        // ── Show/hide empty state vs player ──────────────────────────────
+        binding.emptyState.visibility    = if (state == null) View.VISIBLE else View.GONE
+        binding.playerContent.visibility = if (state == null) View.GONE    else View.VISIBLE
+
         if (state == null) {
             binding.tvTitle.text     = "Nothing playing"
             binding.tvPosition.text  = "0:00"

@@ -29,8 +29,14 @@ class TopicsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         topicItemAdapter = TopicItemAdapter(
-            onTopicClick = { node, isCollapsed ->
+            onTopicClick  = { node, isCollapsed ->
                 viewModel.toggleCollapse(node.topic.id, isCollapsed)
+            },
+            onTopicRename = { topic, newName ->
+                viewModel.updateTopic(topic.copy(name = newName))
+            },
+            onTopicDelete = { topic ->
+                viewModel.deleteTopic(topic)
             },
             onPlayPause = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
@@ -42,6 +48,11 @@ class TopicsFragment : Fragment() {
                         (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
                     }
                 }
+            },
+            onTopicIconChange = { topic ->
+                EmojiPickerBottomSheet { emoji ->
+                    viewModel.updateTopic(topic.copy(icon = emoji))
+                }.show(childFragmentManager, "emoji_picker")
             },
             onRename = { id, title -> viewModel.renameRecording(id, title) },
             onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
@@ -71,7 +82,7 @@ class TopicsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
                 topicItemAdapter.nowPlayingId = state?.recording?.id ?: -1L
-                topicItemAdapter.isPlaying = state?.isPlaying ?: false
+                topicItemAdapter.isPlaying    = state?.isPlaying ?: false
             }
         }
     }
