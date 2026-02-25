@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circle outline in teal — used as background for the currently-selected mark timestamp chip -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <stroke
+        android:width="2dp"
+        android:color="@color/mark_teal" />
+    <solid android:color="@android:color/transparent" />
+</shape>

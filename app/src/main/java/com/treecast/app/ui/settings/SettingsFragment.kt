@@ -40,12 +40,39 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlaybackSettings() {
-        // Initialise toggle from ViewModel state
+        // ── Auto-navigate toggle ───────────────────────────────────────
         binding.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
-
-        // User changes the toggle → push to ViewModel
         binding.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setAutoNavigateToListen(isChecked)
+        }
+
+        // ── Scrub Back ────────────────────────────────────────────────
+        // Initialise display from ViewModel
+        binding.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
+
+        binding.btnScrubBackMinus.setOnClickListener {
+            val newVal = (viewModel.scrubBackSecs.value - 5).coerceAtLeast(5)
+            viewModel.setScrubBackSecs(newVal)
+            binding.tvScrubBackSecs.text = newVal.toString()
+        }
+        binding.btnScrubBackPlus.setOnClickListener {
+            val newVal = viewModel.scrubBackSecs.value + 5
+            viewModel.setScrubBackSecs(newVal)
+            binding.tvScrubBackSecs.text = newVal.toString()
+        }
+
+        // ── Scrub Forward ─────────────────────────────────────────────
+        binding.tvScrubForwardSecs.text = viewModel.scrubForwardSecs.value.toString()
+
+        binding.btnScrubForwardMinus.setOnClickListener {
+            val newVal = (viewModel.scrubForwardSecs.value - 5).coerceAtLeast(5)
+            viewModel.setScrubForwardSecs(newVal)
+            binding.tvScrubForwardSecs.text = newVal.toString()
+        }
+        binding.btnScrubForwardPlus.setOnClickListener {
+            val newVal = viewModel.scrubForwardSecs.value + 5
+            viewModel.setScrubForwardSecs(newVal)
+            binding.tvScrubForwardSecs.text = newVal.toString()
         }
     }
 

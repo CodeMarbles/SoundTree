@@ -69,7 +69,23 @@
                 android:layout_height="130dp"
                 android:layout_marginBottom="20dp" />
 
-            <!-- Title -->
+            <!--
+                Category label above the recording title.
+                Shown in text_dim when categorised; in uncategorized_label (muted yellow)
+                when the recording is still in the Inbox.
+            -->
+            <TextView
+                android:id="@+id/tvCategory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textColor="@color/text_dim"
+                android:layout_marginBottom="4dp"
+                android:visibility="gone" />
+
+            <!-- Recording title -->
             <TextView
                 android:id="@+id/tvTitle"
                 android:layout_width="match_parent"
@@ -253,64 +269,79 @@
                 android:visibility="visible" />
 
             <!-- Page 1: Marks -->
+            <!--
+                Vertical panel:
+                  • Top area   — FlowLayout chips, wraps to new rows as marks accumulate.
+                                 The outer NestedScrollView handles vertical scrolling.
+                  • Bottom row — Delete (left) + Mark (right) on their own line.
+                The whole panel sits on a slightly darker background so it reads as a unit.
+            -->
             <LinearLayout
                 android:id="@+id/marksPanel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:minHeight="56dp"
+                android:orientation="vertical"
+                android:background="@color/marks_panel_bg"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp"
                 android:visibility="gone">
 
-                <!-- Delete (left — used less often) -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnDeleteMark"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
+                <!-- ── Chip flow area ──────────────────────────── -->
+                <com.treecast.app.ui.listen.FlowLayout
+                    android:id="@+id/markTimestampList"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Delete"
-                    android:textSize="12sp"
-                    android:textColor="#FF5252"
-                    android:enabled="false"
-                    android:alpha="0.4"
-                    app:icon="@drawable/ic_delete"
-                    app:iconSize="16dp"
-                    app:iconTint="#FF5252"
-                    app:iconGravity="textStart"
-                    app:cornerRadius="8dp" />
+                    android:minHeight="36dp"
+                    android:paddingBottom="8dp" />
 
-                <!-- Scrollable timestamps (centre, weight 1) -->
-                <HorizontalScrollView
-                    android:layout_width="0dp"
+                <!-- ── Button row ──────────────────────────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:scrollbars="none"
-                    android:layout_marginHorizontal="4dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="4dp">
 
-                    <LinearLayout
-                        android:id="@+id/markTimestampList"
+                    <!-- Delete — less prominent, left side -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeleteMark"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="4dp" />
+                        android:text="Delete"
+                        android:textSize="13sp"
+                        android:textColor="#FF5252"
+                        android:enabled="false"
+                        android:alpha="0.4"
+                        app:icon="@drawable/ic_delete"
+                        app:iconSize="16dp"
+                        app:iconTint="#FF5252"
+                        app:iconGravity="textStart"
+                        app:cornerRadius="8dp" />
 
-                </HorizontalScrollView>
+                    <!-- Spacer pushes Mark button to the right -->
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
 
-                <!-- Mark button (right — used most) -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAddMark"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Mark"
-                    android:textSize="12sp"
-                    android:textColor="@color/accent"
-                    app:icon="@drawable/ic_mark"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/accent"
-                    app:iconGravity="textStart"
-                    app:cornerRadius="8dp" />
+                    <!-- Mark — prominent filled dark-pink button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAddMark"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="＋ Mark"
+                        android:textSize="15sp"
+                        android:textColor="@color/white"
+                        android:backgroundTint="@color/mark_btn_bg"
+                        app:icon="@drawable/ic_mark"
+                        app:iconSize="18dp"
+                        app:iconTint="@color/white"
+                        app:iconGravity="textStart"
+                        app:cornerRadius="20dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 

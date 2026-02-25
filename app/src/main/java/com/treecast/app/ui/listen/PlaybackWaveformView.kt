@@ -17,7 +17,8 @@ import kotlin.math.sin
  *
  * Bars left of the playhead are accent-gradient coloured; right are dim.
  * Mark positions are drawn as dark-pink vertical lines with a small
- * downward-pointing triangle at the top. The selected mark is brighter.
+ * downward-pointing triangle at the top.
+ * The selected mark is drawn in teal instead of pink to distinguish it clearly.
  */
 class PlaybackWaveformView @JvmOverloads constructor(
     context: Context,
@@ -37,9 +38,10 @@ class PlaybackWaveformView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
 
-    // Dark-pink mark line and triangle
+    // Normal mark: dark pink (same colour used for last-passed chip background)
     private val MARK_COLOR          = 0xFF_C2185B.toInt()   // material pink 700
-    private val MARK_COLOR_SELECTED = 0xFF_F06292.toInt()   // lighter pink for selected
+    // Selected mark: teal — visually distinct from the pink marks
+    private val MARK_COLOR_SELECTED = 0xFF_00BFA5.toInt()   // material teal A700
 
     private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = MARK_COLOR
@@ -48,7 +50,7 @@ class PlaybackWaveformView @JvmOverloads constructor(
     }
     private val markPaintSelected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = MARK_COLOR_SELECTED
-        strokeWidth = 1.5f * density
+        strokeWidth = 2f * density          // slightly thicker so teal stands out
         style = Paint.Style.FILL_AND_STROKE
     }
 
@@ -89,10 +91,10 @@ class PlaybackWaveformView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (width == 0 || height == 0) return
 
-        val bw     = barWidthDp * density
-        val bg     = barGapDp   * density
-        val cr     = cornerDp   * density
-        val stride = bw + bg
+        val bw       = barWidthDp * density
+        val bg       = barGapDp   * density
+        val cr       = cornerDp   * density
+        val stride   = bw + bg
         val barCount = (width / stride).toInt().coerceAtLeast(1)
         val centerY  = height / 2f
         val maxHalf  = centerY * 0.88f
@@ -114,25 +116,30 @@ class PlaybackWaveformView @JvmOverloads constructor(
         canvas.drawLine(playheadX, 0f, playheadX, height.toFloat(), playheadPaint)
 
         // ── Mark lines + triangles ─────────────────────────────────
-        val triSize = 7f * density    // half-width of triangle base
+        // Draw non-selected marks first so the selected one renders on top.
+        val triSize   = 7f * density
         val triHeight = 6f * density
 
+        // Pass 1: unselected
         for ((fraction, markId) in markFractions) {
+            if (markId == selectedMarkId) continue
             val x = fraction * width
-            val isSelected = markId == selectedMarkId
-            val paint = if (isSelected) markPaintSelected else markPaint
-
-            // Vertical line full height
-            canvas.drawLine(x, 0f, x, height.toFloat(), paint)
-
-            // Downward triangle at the very top (apex pointing down)
+            canvas.drawLine(x, 0f, x, height.toFloat(), markPaint)
             val path = Path().apply {
-                moveTo(x - triSize, 0f)
-                lineTo(x + triSize, 0f)
-                lineTo(x, triHeight)
-                close()
+                moveTo(x - triSize, 0f); lineTo(x + triSize, 0f); lineTo(x, triHeight); close()
             }
-            canvas.drawPath(path, paint)
+            canvas.drawPath(path, markPaint)
+        }
+
+        // Pass 2: selected (drawn on top in teal)
+        for ((fraction, markId) in markFractions) {
+            if (markId != selectedMarkId) continue
+            val x = fraction * width
+            canvas.drawLine(x, 0f, x, height.toFloat(), markPaintSelected)
+            val path = Path().apply {
+                moveTo(x - triSize, 0f); lineTo(x + triSize, 0f); lineTo(x, triHeight); close()
+            }
+            canvas.drawPath(path, markPaintSelected)
         }
     }
 

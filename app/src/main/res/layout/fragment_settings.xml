@@ -55,7 +55,7 @@
                 android:orientation="vertical"
                 android:padding="4dp">
 
-                <!-- Auto-navigate to Listen toggle -->
+                <!-- ── Auto-navigate to Listen toggle ─────────── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -95,15 +95,177 @@
 
                 </LinearLayout>
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/surface_light"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- ── Scrub Back length ───────────────────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Scrub Back"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Seconds to jump back when ⏪ is tapped"
+                            android:textColor="@color/text_dim"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <!-- Minus button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScrubBackMinus"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:text="−"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:strokeColor="@color/surface_light"
+                        app:cornerRadius="18dp" />
+
+                    <!-- Value field -->
+                    <TextView
+                        android:id="@+id/tvScrubBackSecs"
+                        android:layout_width="48dp"
+                        android:layout_height="36dp"
+                        android:gravity="center"
+                        android:text="15"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <!-- Plus button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScrubBackPlus"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:text="+"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:strokeColor="@color/surface_light"
+                        app:cornerRadius="18dp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/surface_light"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- ── Scrub Forward length ────────────────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Scrub Forward"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Seconds to jump forward when ⏩ is tapped"
+                            android:textColor="@color/text_dim"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <!-- Minus button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScrubForwardMinus"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:text="−"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:strokeColor="@color/surface_light"
+                        app:cornerRadius="18dp" />
+
+                    <!-- Value field -->
+                    <TextView
+                        android:id="@+id/tvScrubForwardSecs"
+                        android:layout_width="48dp"
+                        android:layout_height="36dp"
+                        android:gravity="center"
+                        android:text="15"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <!-- Plus button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScrubForwardPlus"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:text="+"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:padding="0dp"
+                        app:strokeColor="@color/surface_light"
+                        app:cornerRadius="18dp" />
+
+                </LinearLayout>
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- ── Session info section ─────────────────────────────── -->
+        <!-- ── Stats section ────────────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SESSION INFO"
+            android:text="STATS"
             android:textColor="@color/text_dim"
             android:textSize="11sp"
             android:textAllCaps="true"
@@ -115,31 +277,30 @@
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
             app:cardBackgroundColor="@color/surface"
-            app:cardElevation="0dp"
-            android:layout_marginBottom="16dp">
+            app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:id="@+id/tvLastOpened"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Last session: —"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="8dp" />
+                    android:textColor="@color/text_dim"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="6dp" />
 
                 <TextView
                     android:id="@+id/tvTotalRecordings"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Total recordings: —"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
+                    android:textColor="@color/text_dim"
+                    android:textSize="13sp" />
 
             </LinearLayout>
 

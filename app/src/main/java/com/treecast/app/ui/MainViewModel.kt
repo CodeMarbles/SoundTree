@@ -118,14 +118,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _nowPlaying.value = _nowPlaying.value?.copy(positionMs = ms)
     }
 
+
     fun skipBack15() {
         val mp = mediaPlayer ?: return
-        seekTo((mp.currentPosition - 15_000L).coerceAtLeast(0L))
+        seekTo((mp.currentPosition - _scrubBackSecs.value * 1_000L).coerceAtLeast(0L))
     }
 
     fun skipForward15() {
         val mp = mediaPlayer ?: return
-        seekTo((mp.currentPosition + 15_000L).coerceAtMost(mp.duration.toLong()))
+        seekTo((mp.currentPosition + _scrubForwardSecs.value * 1_000L).coerceAtMost(mp.duration.toLong()))
     }
 
     fun pausePlayback() {
@@ -226,10 +227,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setLocked(locked: Boolean) { _isLocked.value = locked }
 
     // ── Playback preferences ───────────────────────────────────────────
+
     /** When true, starting playback automatically switches to the Listen tab. */
     private val _autoNavigateToListen = MutableStateFlow(false)
     val autoNavigateToListen: StateFlow<Boolean> = _autoNavigateToListen
     fun setAutoNavigateToListen(enabled: Boolean) { _autoNavigateToListen.value = enabled }
+
+    /** Seconds to seek backwards when the skip-back button is tapped (default 15). */
+    private val _scrubBackSecs = MutableStateFlow(15)
+    val scrubBackSecs: StateFlow<Int> = _scrubBackSecs
+    fun setScrubBackSecs(secs: Int) { _scrubBackSecs.value = secs.coerceAtLeast(5) }
+
+    /** Seconds to seek forward when the skip-forward button is tapped (default 15). */
+    private val _scrubForwardSecs = MutableStateFlow(15)
+    val scrubForwardSecs: StateFlow<Int> = _scrubForwardSecs
+    fun setScrubForwardSecs(secs: Int) { _scrubForwardSecs.value = secs.coerceAtLeast(5) }
 
     // ── Marks ──────────────────────────────────────────────────────────
     /** Marks for the currently loaded recording, live from DB. */
