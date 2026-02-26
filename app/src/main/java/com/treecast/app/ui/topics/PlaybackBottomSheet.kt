@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
 
 class PlaybackBottomSheet : BottomSheetDialogFragment() {
@@ -58,9 +59,12 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allTopics.collect { topics ->
                 binding.topicPicker.setTopics(topics)
-                val topicName = recording.topicId?.let { id -> topics.find { it.id == id }?.name }
-                    ?: "Uncategorised"
-                binding.topicPicker.setSelectedTopic(recording.topicId, topicName)
+                val topic = recording.topicId?.let { id -> topics.find { it.id == id } }
+                binding.topicPicker.setSelectedTopic(
+                    recording.topicId,
+                    topic?.name ?: "Uncategorised",
+                    topic?.icon ?: Icons.INBOX
+                )
             }
         }
         binding.topicPicker.onTopicSelected = { topicId ->

@@ -10,4 +10,5 @@
     <string name="picker_uncategorised">📥  Uncategorised (Inbox)</string>
     <string name="empty_tree">No topics yet.\nTap 💭 + Topic to get started.</string>
     <string name="empty_inbox">Your unsorted recordings appear here.</string>
+    <string name="uncategorised">💭 Uncategorised</string>
 </resources>

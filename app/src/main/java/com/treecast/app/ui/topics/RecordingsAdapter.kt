@@ -20,6 +20,7 @@ import com.treecast.app.R
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.ui.common.TopicPickerView
+import com.treecast.app.util.Icons
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -113,9 +114,12 @@ class RecordingsAdapter(
                 picker.visibility = if (showing) View.GONE else View.VISIBLE
                 if (!showing) {
                     picker.setTopics(topics)
-                    val topicName = rec.topicId?.let { id -> topics.find { it.id == id }?.name }
-                        ?: "Uncategorised"
-                    picker.setSelectedTopic(rec.topicId, topicName)
+                    val topic = rec.topicId?.let { id -> topics.find { it.id == id } }
+                    picker.setSelectedTopic(
+                        rec.topicId,
+                        topic?.name ?: "Uncategorised",
+                        topic?.icon ?: Icons.INBOX
+                    )
                     picker.onTopicSelected = { topicId ->
                         onMove(rec.id, topicId)
                         picker.visibility = View.GONE

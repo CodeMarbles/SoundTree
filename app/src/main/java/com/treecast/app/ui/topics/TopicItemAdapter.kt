@@ -23,6 +23,7 @@ import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.data.repository.TreeNode
 import com.treecast.app.ui.common.TopicPickerView
+import com.treecast.app.util.Icons
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -278,7 +279,7 @@ class TopicItemAdapter(
             val isSelected = rec.id == nowPlayingId
             itemView.setBackgroundColor(
                 if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
-                else android.graphics.Color.TRANSPARENT
+                else Color.TRANSPARENT
             )
 
             val isThisPlaying = rec.id == nowPlayingId && isPlaying
@@ -297,9 +298,12 @@ class TopicItemAdapter(
                 picker.visibility = if (showing) View.GONE else View.VISIBLE
                 if (!showing) {
                     picker.setTopics(topics)
-                    val topicName = rec.topicId?.let { id -> topics.find { it.id == id }?.name }
-                        ?: "Uncategorised"
-                    picker.setSelectedTopic(rec.topicId, topicName)
+                    val topic = rec.topicId?.let { id -> topics.find { it.id == id } }
+                    picker.setSelectedTopic(
+                        rec.topicId,
+                        topic?.name ?: "Uncategorised",
+                        topic?.icon ?: Icons.INBOX
+                    )
                     picker.onTopicSelected = { topicId ->
                         onMove(rec.id, topicId)
                         picker.visibility = View.GONE

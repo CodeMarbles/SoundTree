@@ -17,6 +17,7 @@ import com.treecast.app.R
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeNode
+import com.treecast.app.util.Icons
 
 class TopicPickerView @JvmOverloads constructor(
     context: Context,
@@ -29,6 +30,7 @@ class TopicPickerView @JvmOverloads constructor(
     private var isExpanded = false
     private var selectedTopicId: Long? = null
     private var selectedTopicName: String = "Uncategorised"
+    private var selectedTopicIcon: String = Icons.INBOX
     private val collapsedNodeIds = mutableSetOf<Long>()
     private var lastRoots: List<TreeNode> = emptyList()
 
@@ -38,6 +40,7 @@ class TopicPickerView @JvmOverloads constructor(
     private val ivChevron: ImageView
     private val recyclerView: RecyclerView
     private val tvUncategorised: TextView
+    private val dropdownContainer: LinearLayout
 
     private val treeAdapter = TopicTreeAdapter(
         onNodeClick  = { node -> handleNodeClick(node) },
@@ -48,18 +51,18 @@ class TopicPickerView @JvmOverloads constructor(
         orientation = VERTICAL
         LayoutInflater.from(context).inflate(R.layout.view_topic_picker, this, true)
 
-        headerRow       = findViewById(R.id.headerRow)
-        tvSelected      = findViewById(R.id.tvSelectedTopic)     // view_topic_picker.xml
-        ivChevron       = findViewById(R.id.ivChevron)
-        recyclerView    = findViewById(R.id.recyclerTopics)       // view_topic_picker.xml
-        tvUncategorised = findViewById(R.id.tvUncategorised)
+        headerRow         = findViewById(R.id.headerRow)
+        tvSelected        = findViewById(R.id.tvSelectedTopic)
+        ivChevron         = findViewById(R.id.ivChevron)
+        recyclerView      = findViewById(R.id.recyclerTopics)
+        tvUncategorised   = findViewById(R.id.tvUncategorised)
+        dropdownContainer = findViewById(R.id.dropdownContainer)
 
         recyclerView.adapter       = treeAdapter
         recyclerView.layoutManager = LinearLayoutManager(context)
-        recyclerView.visibility    = View.GONE
 
         headerRow.setOnClickListener { toggle() }
-        tvUncategorised.setOnClickListener { selectTopic(null, "Uncategorised") }
+        tvUncategorised.setOnClickListener { selectTopic(null, "Uncategorised", Icons.INBOX) }
 
         updateHeader()
     }
@@ -71,11 +74,13 @@ class TopicPickerView @JvmOverloads constructor(
         refreshAdapterList()
     }
 
-    fun setSelectedTopic(topicId: Long?, topicName: String) {
+    fun setSelectedTopic(topicId: Long?, topicName: String, topicIcon: String = "📥") {
         selectedTopicId   = topicId
         selectedTopicName = topicName
+        selectedTopicIcon = topicIcon   // ← ADD
         updateHeader()
     }
+
 
     fun collapse() {
         if (isExpanded) toggle()
@@ -92,22 +97,15 @@ class TopicPickerView @JvmOverloads constructor(
             addUpdateListener { ivChevron.rotation = it.animatedValue as Float }
             start()
         }
-        recyclerView.visibility = if (isExpanded) View.VISIBLE else View.GONE
+        dropdownContainer.visibility = if (isExpanded) View.VISIBLE else View.GONE
     }
 
     private fun updateHeader() {
-        tvSelected.text = "📁  $selectedTopicName"
+        tvSelected.text = "$selectedTopicIcon  $selectedTopicName"
     }
 
-    private fun handleNodeClick(node: TreeNode) = selectTopic(node.topic.id, node.topic.name)
-
-    private fun selectTopic(id: Long?, name: String) {
-        selectedTopicId   = id
-        selectedTopicName = name
-        updateHeader()
-        collapse()
-        onTopicSelected?.invoke(id)
-    }
+    private fun handleNodeClick(node: TreeNode) =
+        selectTopic(node.topic.id, node.topic.name, node.topic.icon)
 
     private fun toggleNode(topicId: Long) {
         if (!collapsedNodeIds.add(topicId)) collapsedNodeIds.remove(topicId)
@@ -126,6 +124,15 @@ class TopicPickerView @JvmOverloads constructor(
             if (!collapsed) out.addAll(buildAdapterItems(node.children, depth + 1))
         }
         return out
+    }
+
+    private fun selectTopic(id: Long?, name: String, icon: String) {
+        selectedTopicId   = id
+        selectedTopicName = name
+        selectedTopicIcon = icon   // ← ADD
+        updateHeader()
+        collapse()
+        onTopicSelected?.invoke(id)
     }
 }
 

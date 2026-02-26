@@ -16,9 +16,8 @@ import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.databinding.FragmentListenBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.NowPlayingState
+import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 class ListenFragment : Fragment() {
 
@@ -253,9 +252,12 @@ class ListenFragment : Fragment() {
             binding.waveformView.setSeed(state.recording.id)
             selectTab(if (state.recording.topicId == null) 0 else 1)
 
-            val topicName = viewModel.allTopics.value
-                .find { it.id == state.recording.topicId }?.name ?: "Uncategorised"
-            binding.topicPicker.setSelectedTopic(state.recording.topicId, topicName)
+            val topic = viewModel.allTopics.value.find { it.id == state.recording.topicId }
+            binding.topicPicker.setSelectedTopic(
+                state.recording.topicId,
+                topic?.name ?: "Uncategorised",
+                topic?.icon ?: Icons.INBOX
+            )
         }
 
         // Highlight the last-passed mark
