@@ -92,6 +92,15 @@ class LibraryFragment : Fragment() {
         }
     }
 
+    /**
+     * Called after a recording is saved and the app jumps to Library.
+     * Routes to Inbox (topicId == null) or Topics (topicId != null).
+     */
+    fun jumpToSubPageForRecording(topicId: Long?) {
+        val target = if (topicId == null) PAGE_INBOX else PAGE_TOPICS
+        binding.tilePager.setCurrentItem(target, false)
+    }
+
     private fun updateSubNavSelection(position: Int) {
         val selectedBg = ContextCompat.getColor(requireContext(), R.color.surface_light)
         val defaultBg  = android.graphics.Color.TRANSPARENT

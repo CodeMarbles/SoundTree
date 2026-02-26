@@ -35,6 +35,7 @@ class TopicItemAdapter(
     private val onRename:       (id: Long, newTitle: String) -> Unit,
     private val onMove:         (id: Long, topicId: Long?) -> Unit,
     private val onDelete:       (RecordingEntity) -> Unit,
+    private val onSelect: (Long) -> Unit = {},
 ) : ListAdapter<TreeItem, RecyclerView.ViewHolder>(DIFF) {
 
     companion object {
@@ -63,6 +64,9 @@ class TopicItemAdapter(
     var nowPlayingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
     var isPlaying: Boolean = false
+        set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
+
+    var selectedRecordingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
 
     override fun getItemViewType(position: Int) = when (getItem(position)) {
@@ -243,7 +247,12 @@ class TopicItemAdapter(
         private val gestureDetector = GestureDetectorCompat(v.context,
             object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                    toggleExpand(bindingAdapterPosition); return true
+                    val pos = bindingAdapterPosition
+                    if (pos != RecyclerView.NO_POSITION) {
+                        (getItem(pos) as? TreeItem.Leaf)?.let { onSelect(it.recording.id) }
+                    }
+                    toggleExpand(bindingAdapterPosition)
+                    return true
                 }
             })
 

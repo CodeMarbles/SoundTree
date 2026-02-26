@@ -19,6 +19,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
+import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -204,7 +205,7 @@ class RecordFragment : Fragment() {
         if (filePath != null && File(filePath).exists()) {
             val stamp = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
                 .format(Date(System.currentTimeMillis()))
-            viewModel.saveRecording(
+            val savedDeferred = viewModel.saveRecording(
                 filePath      = filePath,
                 durationMs    = durationMs,
                 fileSizeBytes = File(filePath).length(),
@@ -213,6 +214,18 @@ class RecordFragment : Fragment() {
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
             binding.topicPicker.collapse()
+
+            val topicIdForNav = selectedTopicId
+            selectedTopicId = null
+
+            if (viewModel.jumpToLibraryOnSave.value) {
+                lifecycleScope.launch {
+                    val newId = savedDeferred.await()
+                    viewModel.selectRecording(newId)
+                    (requireActivity() as? MainActivity)
+                        ?.navigateToLibraryForRecording(topicIdForNav)
+                }
+            }
         } else {
             Toast.makeText(requireContext(), "Nothing recorded", Toast.LENGTH_SHORT).show()
         }

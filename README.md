@@ -108,6 +108,7 @@ User preferences are stored in `SharedPreferences` (`treecast_settings`) and loa
 
 | Preference | Key | Default |
 |------------|-----|---------|
+| Jump to recording after saving | `jump_to_library_on_save` | true |
 | Auto-navigate to Listen on play | `auto_navigate_to_listen` | false |
 | Scrub-back interval (seconds) | `scrub_back_secs` | 15 |
 | Scrub-forward interval (seconds) | `scrub_forward_secs` | 15 |

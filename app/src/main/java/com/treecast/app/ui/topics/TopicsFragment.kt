@@ -56,7 +56,8 @@ class TopicsFragment : Fragment() {
             },
             onRename = { id, title -> viewModel.renameRecording(id, title) },
             onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
-            onDelete = { rec -> viewModel.deleteRecording(rec) }
+            onDelete = { rec -> viewModel.deleteRecording(rec) },
+            onSelect = { id -> viewModel.selectRecording(id) },
         )
 
         binding.recyclerTopics.apply {
@@ -83,6 +84,12 @@ class TopicsFragment : Fragment() {
             viewModel.nowPlaying.collect { state ->
                 topicItemAdapter.nowPlayingId = state?.recording?.id ?: -1L
                 topicItemAdapter.isPlaying    = state?.isPlaying ?: false
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.selectedRecordingId.collect { id ->
+                topicItemAdapter.selectedRecordingId = id
             }
         }
     }

@@ -173,6 +173,16 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.currentItem = page
     }
 
+    /**
+     * Called from RecordFragment after a save completes.
+     * Switches to the Library tab and tells LibraryFragment which
+     * sub-page to show (Topics if the recording had a topic, Inbox otherwise).
+     */
+    fun navigateToLibraryForRecording(topicId: Long?) {
+        navigateTo(PAGE_LIBRARY)
+        libraryFragment.jumpToSubPageForRecording(topicId)
+    }
+
     fun setTopTitle(title: String) {
         viewModel.setTopTitle(title)
     }

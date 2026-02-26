@@ -28,6 +28,7 @@ class RecordingsAdapter(
     private val onRename:    (id: Long, newTitle: String) -> Unit,
     private val onMove:      (id: Long, topicId: Long?) -> Unit,
     private val onDelete:    (RecordingEntity) -> Unit,
+    private val onSelect:    (Long) -> Unit = {},   // ← new, defaulted so call sites compile
 ) : ListAdapter<RecordingEntity, RecordingsAdapter.VH>(DIFF) {
 
     companion object {
@@ -43,6 +44,9 @@ class RecordingsAdapter(
     var nowPlayingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
     var isPlaying: Boolean = false
+        set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
+
+    var selectedRecordingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
 
     private var expandedId: Long = -1L
@@ -67,7 +71,12 @@ class RecordingsAdapter(
         private val gestureDetector = GestureDetectorCompat(v.context,
             object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                    toggleExpand(bindingAdapterPosition); return true
+                    val pos = bindingAdapterPosition
+                    if (pos != RecyclerView.NO_POSITION) {
+                        onSelect(getItem(pos).id)
+                    }
+                    toggleExpand(bindingAdapterPosition)
+                    return true
                 }
             })
 
@@ -82,7 +91,7 @@ class RecordingsAdapter(
 
             // ── Selection highlight ───────────────────────────────────
             // Tint the row background when this recording is the loaded/playing one.
-            val isSelected = rec.id == nowPlayingId
+            val isSelected = rec.id == selectedRecordingId
             itemView.setBackgroundColor(
                 if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
                 else android.graphics.Color.TRANSPARENT

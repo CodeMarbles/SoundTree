@@ -46,7 +46,8 @@ class InboxTileFragment : Fragment() {
             },
             onRename = { id, title -> viewModel.renameRecording(id, title) },
             onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
-            onDelete = { rec -> viewModel.deleteRecording(rec) }
+            onDelete = { rec -> viewModel.deleteRecording(rec) },
+            onSelect = { id -> viewModel.selectRecording(id) },
         )
 
         binding.recyclerInbox.apply {
@@ -62,6 +63,12 @@ class InboxTileFragment : Fragment() {
             viewModel.nowPlaying.collect { state ->
                 adapter.nowPlayingId = state?.recording?.id ?: -1L
                 adapter.isPlaying    = state?.isPlaying ?: false
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.selectedRecordingId.collect { id ->
+                adapter.selectedRecordingId = id
             }
         }
 

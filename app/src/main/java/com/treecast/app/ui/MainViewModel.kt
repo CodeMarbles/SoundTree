@@ -35,6 +35,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_AUTO_NAVIGATE      = "auto_navigate_to_listen"
         private const val PREF_SCRUB_BACK_SECS    = "scrub_back_secs"
         private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
+        private const val PREF_JUMP_TO_LIBRARY = "jump_to_library_on_save"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -175,7 +176,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun saveRecording(
         filePath: String, durationMs: Long, fileSizeBytes: Long,
         title: String, topicId: Long? = null
-    ) = viewModelScope.launch {
+    ): Deferred<Long> = viewModelScope.async {
         repo.saveRecording(filePath, durationMs, fileSizeBytes, title, topicId)
     }
 
@@ -226,6 +227,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _scrubForwardSecs.value = v
         prefs.edit().putInt(PREF_SCRUB_FORWARD_SECS, v).apply()
     }
+
+    // ── Jump to Library on save ───────────────────────────────────────
+    private val _jumpToLibraryOnSave =
+        MutableStateFlow(prefs.getBoolean(PREF_JUMP_TO_LIBRARY, true))
+    val jumpToLibraryOnSave: StateFlow<Boolean> = _jumpToLibraryOnSave
+    fun setJumpToLibraryOnSave(enabled: Boolean) {
+        _jumpToLibraryOnSave.value = enabled
+        prefs.edit().putBoolean(PREF_JUMP_TO_LIBRARY, enabled).apply()
+    }
+
+    // ── Selected recording ────────────────────────────────────────────
+    private val _selectedRecordingId = MutableStateFlow(-1L)
+    val selectedRecordingId: StateFlow<Long> = _selectedRecordingId
+    fun selectRecording(id: Long) { _selectedRecordingId.value = id }
 
     // ── Marks ──────────────────────────────────────────────────────────
     private val _marks = MutableStateFlow<List<MarkEntity>>(emptyList())

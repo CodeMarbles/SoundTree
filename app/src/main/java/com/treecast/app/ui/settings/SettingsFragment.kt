@@ -40,6 +40,12 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlaybackSettings() {
+        // ── Jump to Library on save toggle ───────────────────────────────
+        binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
+        binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setJumpToLibraryOnSave(isChecked)
+        }
+
         // ── Auto-navigate toggle ───────────────────────────────────────
         binding.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
         binding.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
