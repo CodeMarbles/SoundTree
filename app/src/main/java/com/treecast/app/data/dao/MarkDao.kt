@@ -16,6 +16,10 @@ interface MarkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(mark: MarkEntity): Long
 
+    /** Bulk insert — used to flush in-memory recording marks to the DB on save. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(marks: List<MarkEntity>)
+
     @Delete
     suspend fun delete(mark: MarkEntity)
 

@@ -61,6 +61,39 @@ class TreeCastRepository(context: Context) {
         )
     )
 
+    /**
+     * Saves a recording and atomically flushes any marks dropped during
+     * that recording session. The recording row is inserted first to
+     * obtain its ID, then all mark timestamps are inserted in bulk.
+     * If [markTimestamps] is empty, no mark rows are written.
+     */
+    suspend fun saveRecordingWithMarks(
+        filePath: String,
+        durationMs: Long,
+        fileSizeBytes: Long,
+        title: String,
+        topicId: Long? = null,
+        markTimestamps: List<Long>
+    ): Long {
+        val recordingId = saveRecording(filePath, durationMs, fileSizeBytes, title, topicId)
+        if (markTimestamps.isNotEmpty()) {
+            saveMarks(recordingId, markTimestamps)
+        }
+        return recordingId
+    }
+
+    /**
+     * Bulk-inserts mark timestamps for a given recording.
+     * Called by [saveRecordingWithMarks]; can also be called independently
+     * if marks need to be added to an existing recording in bulk.
+     */
+    suspend fun saveMarks(recordingId: Long, timestamps: List<Long>) {
+        val entities = timestamps.map { positionMs ->
+            MarkEntity(recordingId = recordingId, positionMs = positionMs)
+        }
+        markDao.insertAll(entities)
+    }
+
     suspend fun updateRecording(recording: RecordingEntity) = recordingDao.update(recording)
     suspend fun deleteRecording(recording: RecordingEntity) = recordingDao.delete(recording)
     suspend fun moveRecording(id: Long, topicId: Long?) = recordingDao.moveToTopic(id, topicId)

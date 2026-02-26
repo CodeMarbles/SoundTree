@@ -52,12 +52,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var currentSessionId: Long = -1L
     fun onAppOpen()  = viewModelScope.launch { currentSessionId = repo.openSession() }
 
-    /**
-     * Called when MainActivity goes to background (onStop).
-     * Saves the current playback position to DB so it can be resumed,
-     * but deliberately does NOT stop or pause the PlaybackService —
-     * background playback continuing is the whole point of the service.
-     */
     fun onAppClose() = viewModelScope.launch {
         saveCurrentPosition()
         if (currentSessionId != -1L) repo.closeSession(currentSessionId)
@@ -71,17 +65,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setTopTitle(title: String) { _topTitle.value = title }
 
     // ── Now Playing ───────────────────────────────────────────────────
-    // This StateFlow is the single source of truth for all playback UI
-    // (ListenFragment, mini player, RecordingsAdapter play icons, etc.).
-    // Its external shape is unchanged from the old MediaPlayer version,
-    // so no UI code needs to change.
     private val _nowPlaying = MutableStateFlow<NowPlayingState?>(null)
     val nowPlaying: StateFlow<NowPlayingState?> = _nowPlaying
 
     // ── Media3 MediaController ────────────────────────────────────────
-    // MediaController is the client-side handle to PlaybackService's
-    // ExoPlayer instance. Building it via buildAsync() automatically
-    // starts and binds to PlaybackService — no manual startService() needed.
     private val controllerFuture: ListenableFuture<MediaController>
     private var mediaController: MediaController? = null
     private var progressJob: Job? = null
@@ -106,13 +93,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    /**
-     * Listens to ExoPlayer state changes and keeps _nowPlaying in sync.
-     *
-     * We handle isPlaying changes here rather than in play()/togglePlayPause()
-     * so that external events (audio focus loss, headphone unplug, notification
-     * pause button) are reflected in the UI automatically.
-     */
     private val playerListener = object : Player.Listener {
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -121,14 +101,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 startProgressPolling(_nowPlaying.value?.recording?.id ?: return)
             } else {
                 stopProgressPolling()
-                // Persist position whenever we pause, so a crash doesn't lose it.
                 viewModelScope.launch { saveCurrentPosition() }
             }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
-                // Mark as fully listened and reset position in the DB.
                 val recId = _nowPlaying.value?.recording?.id ?: return
                 viewModelScope.launch { repo.updatePlayback(recId, 0L, true) }
                 _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = false, positionMs = 0L)
@@ -148,23 +126,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         stopProgressPolling()
 
-        // Load the file into ExoPlayer. Using Uri.fromFile so ExoPlayer
-        // resolves the local path the same way MediaPlayer.setDataSource() did.
         val uri = Uri.fromFile(File(recording.filePath))
         controller.setMediaItem(MediaItem.fromUri(uri))
         controller.prepare()
 
-        // Seek to resume position before calling play() — ExoPlayer queues
-        // the seek and executes it once STATE_READY is reached.
         if (recording.playbackPositionMs > 0L) {
             controller.seekTo(recording.playbackPositionMs)
         }
         controller.play()
 
-        // Immediately update _nowPlaying so the UI responds without waiting
-        // for the first playerListener callback. Use the stored durationMs
-        // from the DB rather than querying ExoPlayer (duration isn't available
-        // until STATE_READY, but we already have it from the save-time measurement).
         _nowPlaying.value = NowPlayingState(
             recording  = recording,
             isPlaying  = true,
@@ -179,13 +149,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun togglePlayPause() {
         val controller = mediaController ?: return
         if (controller.isPlaying) controller.pause() else controller.play()
-        // _nowPlaying will be updated by onIsPlayingChanged in playerListener.
     }
 
     fun seekTo(posMs: Long) {
         mediaController?.seekTo(posMs)
-        // Update immediately for snappy seek-bar response; the polling loop
-        // will keep it accurate thereafter.
         _nowPlaying.value = _nowPlaying.value?.copy(positionMs = posMs)
     }
 
@@ -207,8 +174,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Position polling ──────────────────────────────────────────────
-    // Polls the controller every 500 ms to keep the progress bar and
-    // time displays up to date during active playback.
 
     private fun startProgressPolling(recordingId: Long) {
         stopProgressPolling()
@@ -228,7 +193,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         progressJob = null
     }
 
-    /** Saves current playback position to the DB without touching player state. */
     private suspend fun saveCurrentPosition() {
         val state = _nowPlaying.value ?: return
         val pos = mediaController?.currentPosition ?: state.positionMs
@@ -241,11 +205,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         super.onCleared()
         stopProgressPolling()
         marksJob?.cancel()
-        // Releasing the future cleanly disconnects from PlaybackService.
-        // The service itself will keep running if it's still playing
-        // (e.g., after a configuration change recreates the Activity but
-        // the ViewModel is re-created fresh). In practice the ViewModel
-        // survives config changes, so this path is mainly for process death.
         MediaController.releaseFuture(controllerFuture)
     }
 
@@ -275,11 +234,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     fun setSearchQuery(q: String) { _searchQuery.value = q }
 
+    /**
+     * Saves a recording with no marks. Kept for any call sites that don't
+     * need mark support (currently none, but keeps the API flexible).
+     */
     fun saveRecording(
         filePath: String, durationMs: Long, fileSizeBytes: Long,
         title: String, topicId: Long? = null
     ): Deferred<Long> = viewModelScope.async {
         repo.saveRecording(filePath, durationMs, fileSizeBytes, title, topicId)
+    }
+
+    /**
+     * Saves a recording and flushes any marks dropped during that session
+     * to the database in a single operation. This is the primary save path
+     * called from [RecordFragment.stopAndSave].
+     *
+     * If [markTimestamps] is empty the behaviour is identical to [saveRecording].
+     */
+    fun saveRecordingWithMarks(
+        filePath: String, durationMs: Long, fileSizeBytes: Long,
+        title: String, topicId: Long? = null,
+        markTimestamps: List<Long>
+    ): Deferred<Long> = viewModelScope.async {
+        repo.saveRecordingWithMarks(filePath, durationMs, fileSizeBytes, title, topicId, markTimestamps)
     }
 
     fun deleteRecording(r: RecordingEntity)     = viewModelScope.launch { repo.deleteRecording(r) }
@@ -363,8 +341,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun selectMark(id: Long?) { _selectedMarkId.value = id }
 
     fun addMark() {
-        // Use the controller's live position for maximum accuracy rather
-        // than the 500 ms-polled value in _nowPlaying.
         val posMs = mediaController?.currentPosition
             ?: _nowPlaying.value?.positionMs
             ?: return

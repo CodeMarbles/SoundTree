@@ -121,6 +121,13 @@
                 android:backgroundTint="#1E7D45"
                 app:cornerRadius="26dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDropMark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📍 Mark"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- ── "Recording Topic" label ─────────────────────────────── -->

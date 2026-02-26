@@ -111,6 +111,12 @@ class RecordFragment : Fragment() {
 
         binding.btnStopSave.setOnClickListener { stopAndSave() }
 
+        // Drop mark button — in-app counterpart of the notification action.
+        // Delegates directly to the service via Binder.
+        binding.btnDropMark.setOnClickListener {
+            recordingService?.dropMark()
+        }
+
         // Cancel requires a double-tap to prevent accidental presses.
         binding.btnCancel.setOnClickListener {
             val now = System.currentTimeMillis()
@@ -126,7 +132,6 @@ class RecordFragment : Fragment() {
     }
 
     private fun setupTopicPicker() {
-        // fragment_record.xml: id topicPicker
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allTopics.collect { topics ->
                 binding.topicPicker.setTopics(topics)
@@ -148,6 +153,12 @@ class RecordFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             svc.amplitude.collect { amp -> binding.waveformView.pushAmplitude(amp) }
         }
+        // Keep the mark count badge in sync with the service.
+        viewLifecycleOwner.lifecycleScope.launch {
+            svc.pendingMarkCount.collect { count ->
+                binding.btnDropMark.text = if (count > 0) "📍 Mark ($count)" else "📍 Mark"
+            }
+        }
     }
 
     private fun observeLock() {
@@ -166,7 +177,8 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.rec_red)
                 binding.stopSaveContainer.visibility = View.GONE
-                lastCancelTapMs = 0L   // reset double-tap state on idle
+                binding.btnDropMark.visibility = View.GONE
+                lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
                 binding.topicPicker.collapse()
@@ -176,12 +188,14 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(android.R.color.holo_orange_light)
                 binding.stopSaveContainer.visibility = View.VISIBLE
+                binding.btnDropMark.visibility = View.VISIBLE
             }
             RecordingService.State.PAUSED -> {
                 binding.btnRecord.text = "▶  Resume"
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.accent)
                 binding.stopSaveContainer.visibility = View.VISIBLE
+                binding.btnDropMark.visibility = View.VISIBLE
             }
         }
     }
@@ -219,16 +233,18 @@ class RecordFragment : Fragment() {
 
     private fun stopAndSave() {
         val svc = recordingService ?: return
-        val (filePath, durationMs) = svc.stopRecording()
-        if (filePath != null && File(filePath).exists()) {
+        // StopResult replaces the old Pair — same first two fields plus markTimestamps.
+        val result = svc.stopRecording()
+        if (result.filePath != null && File(result.filePath).exists()) {
             val stamp = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
                 .format(Date(System.currentTimeMillis()))
-            val savedDeferred = viewModel.saveRecording(
-                filePath      = filePath,
-                durationMs    = durationMs,
-                fileSizeBytes = File(filePath).length(),
-                title         = "Recording – $stamp",
-                topicId       = selectedTopicId
+            val savedDeferred = viewModel.saveRecordingWithMarks(
+                filePath       = result.filePath,
+                durationMs     = result.durationMs,
+                fileSizeBytes  = File(result.filePath).length(),
+                title          = "Recording – $stamp",
+                topicId        = selectedTopicId,
+                markTimestamps = result.markTimestamps
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
             binding.topicPicker.collapse()
@@ -250,10 +266,10 @@ class RecordFragment : Fragment() {
 
     private fun cancelRecording() {
         val svc = recordingService ?: return
-        val (filePath, _) = svc.stopRecording()
-        // Delete the audio file — nothing is saved
-        if (filePath != null) {
-            File(filePath).delete()
+        val result = svc.stopRecording()
+        // Delete the audio file — nothing is saved, marks are discarded.
+        if (result.filePath != null) {
+            File(result.filePath).delete()
         }
         selectedTopicId = null
         lastCancelTapMs = 0L
