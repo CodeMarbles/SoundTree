@@ -67,6 +67,15 @@ dependencies {
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
+    // ── Media3 (ExoPlayer + MediaSession) ────────────────────────────────
+    // Replaces the raw MediaPlayer used for playback. Provides background
+    // playback via MediaSessionService, lock screen / notification controls,
+    // audio focus handling, and Bluetooth headset button support.
+    def media3_version = '1.2.1'
+    implementation "androidx.media3:media3-exoplayer:$media3_version"
+    implementation "androidx.media3:media3-session:$media3_version"
+    implementation "androidx.media3:media3-ui:$media3_version"
+
     // Charts / waveform visualization
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
 }

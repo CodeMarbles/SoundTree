@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
@@ -38,12 +39,32 @@
             android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
 
-        <!-- Recording foreground service -->
+        <!-- Recording foreground service (microphone) -->
         <service
             android:name=".service.RecordingService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Playback foreground service (Media3 MediaSessionService) -->
+        <!--
+            foregroundServiceType="mediaPlayback" is required on API 29+ for
+            a service that plays audio while the app is in the background.
+            Media3's MediaSessionService handles the foreground notification
+            automatically — no startForeground() call needed in our code.
+
+            exported="true" is required so the system media button receiver
+            and lock screen controls can bind to this service's MediaSession.
+        -->
+        <service
+            android:name=".service.PlaybackService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
     </application>
 
