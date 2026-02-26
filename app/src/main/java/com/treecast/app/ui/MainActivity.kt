@@ -1,5 +1,6 @@
 package com.treecast.app.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
@@ -21,6 +22,22 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_QUICK_RECORD = "quick_record"
+
+        // Extras set by RecordingService when a save is triggered from the
+        // notification action button. MainActivity uses these in onNewIntent
+        // (app already running) and onCreate (cold start after notification
+        // save, unlikely but handled) to navigate to the saved recording.
+        const val EXTRA_SAVED_RECORDING_ID = "saved_recording_id"
+        const val EXTRA_SAVED_TOPIC_ID     = "saved_topic_id"
+
+        // TODO: On app startup, scan the recordings directory for .m4a files
+        //  that have no corresponding row in the recordings table (orphaned by
+        //  a mid-save process death). For each orphan found, offer the user a
+        //  prompt to import it (auto-generating a title from the file timestamp)
+        //  or delete it. This guards against the rare case where the process is
+        //  killed between RecordingService finalising the audio file and the
+        //  Room insert completing. See SplashActivity for the startup hook point.
+
         const val PAGE_SETTINGS = 0
         const val PAGE_RECORD   = 1
         const val PAGE_LIBRARY  = 2
@@ -67,9 +84,50 @@ class MainActivity : AppCompatActivity() {
         observeLockState()
         observeTopTitle()
 
-        if (intent.getBooleanExtra(EXTRA_QUICK_RECORD, false)) {
-            binding.viewPager.currentItem = PAGE_RECORD
+        when {
+            // A save completed in the notification while the app was away —
+            // navigate directly to the saved recording.
+            intent.hasExtra(EXTRA_SAVED_RECORDING_ID) -> handleNotificationSaveIntent(intent)
+
+            // Normal quick-record launch from SplashActivity.
+            intent.getBooleanExtra(EXTRA_QUICK_RECORD, false) ->
+                binding.viewPager.currentItem = PAGE_RECORD
         }
+    }
+
+    /**
+     * Called when the app is already running and a new intent arrives — the
+     * primary path for notification-save navigation since the back stack is
+     * almost always alive when the user is actively recording.
+     *
+     * [FLAG_ACTIVITY_SINGLE_TOP] on the intent from [RecordingService] ensures
+     * this is called rather than a second instance of MainActivity being created.
+     */
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        if (intent?.hasExtra(EXTRA_SAVED_RECORDING_ID) == true) {
+            handleNotificationSaveIntent(intent)
+        }
+    }
+
+    /**
+     * Navigates to the Library and selects the recording identified by the
+     * extras in [intent]. Mirrors the post-save navigation that
+     * [RecordFragment.stopAndSave] performs when the app is in the foreground.
+     *
+     * Only called when [EXTRA_SAVED_RECORDING_ID] is present; the topic extra
+     * is optional (null means the recording landed in Inbox).
+     */
+    private fun handleNotificationSaveIntent(intent: Intent) {
+        val recordingId = intent.getLongExtra(EXTRA_SAVED_RECORDING_ID, -1L)
+        if (recordingId == -1L) return
+
+        val topicId = if (intent.hasExtra(EXTRA_SAVED_TOPIC_ID))
+            intent.getLongExtra(EXTRA_SAVED_TOPIC_ID, -1L).takeIf { it != -1L }
+        else null
+
+        viewModel.selectRecording(recordingId)
+        navigateToLibraryForRecording(topicId)
     }
 
     // ── ViewPager ─────────────────────────────────────────────────────
@@ -104,7 +162,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 // Avoid duplicate consecutive entries (e.g. from a
                 // swipe that briefly reports the same page twice).
-                if (navHistory.isEmpty() || navHistory.last() != position) {
+                if (navHistory.lastOrNull() != position) {
                     navHistory.addLast(position)
                 }
             }
@@ -115,25 +173,17 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // 1. Give LibraryFragment first refusal when it's active.
-                //    It will consume the press if the user is on a sub-page
-                //    (Uncategorized) and navigate them to Tree View instead.
+                // Give the Library fragment first crack at consuming the press
+                // so it can pop its own sub-page stack (e.g. Inbox → Tree View).
                 if (binding.viewPager.currentItem == PAGE_LIBRARY &&
-                    libraryFragment.handleBackPress()
-                ) {
-                    return
-                }
+                    libraryFragment.handleBackPress()) return
 
-                // 2. Walk the main tab back stack.
-                //    The current page is navHistory.last(); the page to
-                //    return to is the one before it.
                 if (navHistory.size > 1) {
-                    navHistory.removeLast()              // discard current page
-                    val target = navHistory.last()       // peek at previous page
+                    navHistory.removeLast()
+                    val target = navHistory.last()
                     isNavigatingBack = true
                     binding.viewPager.setCurrentItem(target, true)
                 } else {
-                    // Nothing left in history — exit the app.
                     finish()
                 }
             }
@@ -165,10 +215,8 @@ class MainActivity : AppCompatActivity() {
         icon(binding.ivListenIcon,   binding.tvListenLabel,   position == PAGE_LISTEN)
     }
 
-    // ── Public navigation helper ──────────────────────────────────────
-    //
-    // Called by child fragments (e.g. InboxTileFragment, TreeViewFragment)
-    // when they want to programmatically switch tabs.
+    // ── Public navigation helpers ─────────────────────────────────────
+
     fun navigateTo(page: Int) {
         binding.viewPager.currentItem = page
     }
@@ -189,7 +237,6 @@ class MainActivity : AppCompatActivity() {
 
     // ── Mini Player ───────────────────────────────────────────────────
     private fun setupMiniPlayer() {
-        // Show/hide and update content based on nowPlaying state
         lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
                 binding.miniPlayer.root.visibility = if (state != null) View.VISIBLE else View.GONE
@@ -241,32 +288,17 @@ class MainActivity : AppCompatActivity() {
                 binding.lockOverlay.visibility = if (locked) View.VISIBLE else View.GONE
             }
         }
-    }
 
-    fun onUnlockClicked(@Suppress("UNUSED_PARAMETER") v: View) {
-        viewModel.setLocked(false)
-    }
-
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        if (viewModel.isLocked.value) {
-            val btn = binding.btnUnlock
-            val loc = IntArray(2); btn.getLocationOnScreen(loc)
-            val inBounds = ev.rawX >= loc[0] && ev.rawX <= loc[0] + btn.width &&
-                    ev.rawY >= loc[1] && ev.rawY <= loc[1] + btn.height
-            return if (inBounds) super.dispatchTouchEvent(ev) else true
+        binding.lockOverlay.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_UP) {
+                viewModel.setLocked(false)
+            }
+            true
         }
-        return super.dispatchTouchEvent(ev)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        viewModel.onAppClose()
     }
 
     private fun formatMs(ms: Long): String {
-        val totalSecs = ms / 1000
-        val mins = totalSecs / 60
-        val secs = totalSecs % 60
-        return "%d:%02d".format(mins, secs)
+        val s = ms / 1000
+        return "%d:%02d".format(s / 60, s % 60)
     }
 }

@@ -21,6 +21,7 @@ import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -135,15 +136,27 @@ class RecordFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allTopics.collect { topics ->
                 binding.topicPicker.setTopics(topics)
+                // If the selected topic was deleted by the user, reset the picker
+                // and the service back to Uncategorised (null) automatically.
+                if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
+                    selectedTopicId = null
+                    binding.topicPicker.setSelectedTopic(null, "Uncategorised", Icons.INBOX)
+                    recordingService?.setTopic(null)
+                }
             }
         }
         binding.topicPicker.onTopicSelected = { topicId ->
             selectedTopicId = topicId
+            val svc = recordingService
+            if (svc != null && svc.state.value != RecordingService.State.IDLE) {
+                svc.setTopic(topicId)
+            }
         }
     }
 
     private fun observeServiceState() {
         val svc = recordingService ?: return
+
         viewLifecycleOwner.lifecycleScope.launch {
             svc.state.collect { updateUiForState(it) }
         }
@@ -161,6 +174,20 @@ class RecordFragment : Fragment() {
                     binding.tvMarkCount.visibility = View.VISIBLE
                 } else {
                     binding.tvMarkCount.visibility = View.GONE
+                }
+            }
+        }
+        // Observe saves that were triggered from the notification action button.
+        // The service has already written to the database by the time this
+        // emits, so we only need to handle post-save navigation here — no
+        // second DB write should occur.
+        viewLifecycleOwner.lifecycleScope.launch {
+            svc.notificationSaveEvent.collect { saved ->
+                binding.topicPicker.collapse()
+                if (viewModel.jumpToLibraryOnSave.value) {
+                    viewModel.selectRecording(saved.recordingId)
+                    (requireActivity() as? MainActivity)
+                        ?.navigateToLibraryForRecording(saved.topicId)
                 }
             }
         }
@@ -230,7 +257,9 @@ class RecordFragment : Fragment() {
             pendingQuickRecord = true
             return
         }
-        svc.startRecording()
+        // Pass the currently selected topic so the service has it from the
+        // first moment of recording, without needing a separate SET_TOPIC call.
+        svc.startRecording(topicId = selectedTopicId)
     }
 
     private fun pauseRecording()  { recordingService?.pauseRecording() }
@@ -238,23 +267,30 @@ class RecordFragment : Fragment() {
 
     private fun stopAndSave() {
         val svc = recordingService ?: return
-        // StopResult replaces the old Pair — same first two fields plus markTimestamps.
         val result = svc.stopRecording()
         if (result.filePath != null && File(result.filePath).exists()) {
             val stamp = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
                 .format(Date(System.currentTimeMillis()))
+
+            // Guard against the user having deleted the selected topic while
+            // the recording was in progress. Fall back to Inbox (null) rather
+            // than producing a foreign key violation on save.
+            val resolvedTopicId = selectedTopicId?.takeIf { id ->
+                viewModel.allTopics.value.any { it.id == id }
+            }
+
             val savedDeferred = viewModel.saveRecordingWithMarks(
                 filePath       = result.filePath,
                 durationMs     = result.durationMs,
                 fileSizeBytes  = File(result.filePath).length(),
                 title          = "Recording – $stamp",
-                topicId        = selectedTopicId,
+                topicId        = resolvedTopicId,
                 markTimestamps = result.markTimestamps
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
             binding.topicPicker.collapse()
 
-            val topicIdForNav = selectedTopicId
+            val topicIdForNav = resolvedTopicId
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {

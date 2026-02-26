@@ -9,8 +9,9 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.treecast.app.R
+import com.treecast.app.TreeCastApp
 import com.treecast.app.ui.MainActivity
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -36,6 +37,13 @@ import java.util.*
  * caller (RecordFragment → MainViewModel) inserts them into the DB
  * alongside the new recording row. On cancel, the result is discarded,
  * so no marks are ever written.
+ *
+ * Notification save:
+ * When the user taps "Save" in the notification, [saveFromNotification]
+ * handles the entire save pipeline internally — DB write, navigation
+ * intent — without needing RecordFragment to be in the foreground.
+ * RecordFragment observes [notificationSaveEvent] to perform post-save
+ * navigation if the app happens to already be visible.
  */
 class RecordingService : Service() {
 
@@ -58,6 +66,14 @@ class RecordingService : Service() {
         val markTimestamps: List<Long>   // elapsed-ms values, not wall-clock
     )
 
+    /**
+     * Emitted on [notificationSaveEvent] once a notification-triggered save
+     * completes. [RecordFragment] observes this to perform post-save
+     * navigation when the app is in the foreground, exactly mirroring the
+     * behaviour of [RecordFragment.stopAndSave].
+     */
+    data class SavedFromNotification(val recordingId: Long, val topicId: Long?)
+
     private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state
 
@@ -79,10 +95,28 @@ class RecordingService : Service() {
     private val _pendingMarkCount = MutableStateFlow(0)
     val pendingMarkCount: StateFlow<Int> = _pendingMarkCount
 
+    // ── Notification save event ───────────────────────────────────────
+    // replay=1 so RecordFragment catches the event even if it subscribes
+    // slightly after the DB write completes (e.g. during a brief rebind).
+    private val _notificationSaveEvent = MutableSharedFlow<SavedFromNotification>(replay = 1)
+    val notificationSaveEvent: SharedFlow<SavedFromNotification> =
+        _notificationSaveEvent.asSharedFlow()
+
     private var mediaRecorder: MediaRecorder? = null
     private var currentFilePath: String? = null
     private var startTimeMs: Long = 0L
     private var accumulatedMs: Long = 0L
+
+    // ── Topic tracking ────────────────────────────────────────────────
+    // Kept in sync with RecordFragment's selectedTopicId via startRecording()
+    // and ACTION_SET_TOPIC. Used when saving from the notification so the
+    // recording lands in the correct topic even if the UI is not alive.
+    private var pendingTopicId: Long? = null
+
+    // ── Coroutine scope ───────────────────────────────────────────────
+    // Used for DB writes triggered by notification actions. Lives for the
+    // lifetime of the service; cancelled in onDestroy.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val amplitudeRunnable = object : Runnable {
         override fun run() {
@@ -106,10 +140,22 @@ class RecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START     -> startRecording()
+            ACTION_START -> {
+                // Accept the currently selected topic so the service can save
+                // to the right place even if the UI goes away before the user
+                // taps Save in the notification.
+                pendingTopicId = intent.getLongExtra(EXTRA_TOPIC_ID, -1L).takeIf { it != -1L }
+                startRecording()
+            }
             ACTION_PAUSE     -> pauseRecording()
             ACTION_RESUME    -> resumeRecording()
             ACTION_STOP      -> stopRecording()
+            ACTION_SAVE      -> saveFromNotification()
+            ACTION_SET_TOPIC -> {
+                // RecordFragment fires this whenever the topic picker selection
+                // changes while a recording is in progress.
+                pendingTopicId = intent.getLongExtra(EXTRA_TOPIC_ID, -1L).takeIf { it != -1L }
+            }
             ACTION_DROP_MARK -> dropMark()
         }
         return START_STICKY
@@ -117,11 +163,20 @@ class RecordingService : Service() {
 
     override fun onDestroy() {
         stopRecording()
+        serviceScope.cancel()
         super.onDestroy()
     }
 
-    fun startRecording(): String? {
+    // ── Binder API ────────────────────────────────────────────────────
+
+    /**
+     * Starts a new recording. [topicId] is the currently selected topic
+     * from [RecordFragment]; passing it here keeps [pendingTopicId] in sync
+     * from the very first moment of recording.
+     */
+    fun startRecording(topicId: Long? = null): String? {
         if (_state.value != State.IDLE) return currentFilePath
+        if (topicId != null) pendingTopicId = topicId
 
         val file = createOutputFile()
         currentFilePath = file.absolutePath
@@ -154,9 +209,7 @@ class RecordingService : Service() {
 
     fun pauseRecording() {
         if (_state.value != State.RECORDING) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mediaRecorder?.pause()
-        }
+        mediaRecorder?.pause()
         accumulatedMs += System.currentTimeMillis() - startTimeMs
         _state.value = State.PAUSED
         updateNotification("Paused")
@@ -165,9 +218,7 @@ class RecordingService : Service() {
 
     fun resumeRecording() {
         if (_state.value != State.PAUSED) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mediaRecorder?.resume()
-        }
+        mediaRecorder?.resume()
         startTimeMs = System.currentTimeMillis()
         _state.value = State.RECORDING
         updateNotification("Recording…")
@@ -208,6 +259,15 @@ class RecordingService : Service() {
     }
 
     /**
+     * Updates the topic that will be used if the user saves from the
+     * notification. Called from [RecordFragment] via Binder whenever the
+     * topic picker selection changes during an active recording.
+     */
+    fun setTopic(topicId: Long?) {
+        pendingTopicId = topicId
+    }
+
+    /**
      * Captures the current recording position as a mark.
      *
      * Uses [_elapsedMs] as the timestamp — this is always accurate
@@ -235,6 +295,72 @@ class RecordingService : Service() {
 
     fun getCurrentFilePath(): String? = currentFilePath
 
+    // ── Notification save ─────────────────────────────────────────────
+
+    /**
+     * Handles the "Save" notification action button.
+     *
+     * Stops the recorder synchronously (so the audio file is finalised
+     * immediately), then launches a coroutine to write the recording and
+     * any pending marks to the database. Once the DB write completes:
+     *
+     *  1. [notificationSaveEvent] is emitted so that [RecordFragment] can
+     *     perform post-save navigation if the app is currently in the
+     *     foreground.
+     *  2. A [FLAG_ACTIVITY_SINGLE_TOP] intent is fired at [MainActivity] so
+     *     that Android brings the app back to the Library and selects the
+     *     new recording — identical behaviour to saving from inside the app.
+     *     If the screen is locked or the system refuses to bring the activity
+     *     forward, this is silently ignored; the recording is already safe.
+     *
+     * The "jump to library on save" preference is respected: if the user has
+     * turned it off, neither the intent nor the navigation event is fired.
+     */
+    private fun saveFromNotification() {
+        val result = stopRecording()
+        if (result.filePath == null || !File(result.filePath).exists()) return
+
+        val topicId      = pendingTopicId
+        val filePath     = result.filePath
+        val durationMs   = result.durationMs
+        val fileSizeBytes = File(filePath).length()
+        val title        = "Recording – ${
+            SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date())
+        }"
+        val marks        = result.markTimestamps
+
+        val repo         = (applicationContext as TreeCastApp).repository
+        val prefs        = getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
+        val jumpToLibrary = prefs.getBoolean("jump_to_library_on_save", true)
+
+        serviceScope.launch {
+            // Guard against the user having deleted the selected topic while the
+            // recording was in progress. Fall back to Inbox (null) rather than
+            // producing a foreign key violation on save.
+            val resolvedTopicId = if (topicId != null && repo.topicExists(topicId)) topicId else null
+
+            val recordingId = repo.saveRecordingWithMarks(
+                filePath       = filePath,
+                durationMs     = durationMs,
+                fileSizeBytes  = fileSizeBytes,
+                title          = title,
+                topicId        = resolvedTopicId,
+                markTimestamps = marks
+            )
+
+            _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))
+
+            if (jumpToLibrary) {
+                val navIntent = Intent(applicationContext, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                    putExtra(MainActivity.EXTRA_SAVED_RECORDING_ID, recordingId)
+                    resolvedTopicId?.let { putExtra(MainActivity.EXTRA_SAVED_TOPIC_ID, it) }
+                }
+                startActivity(navIntent)
+            }
+        }
+    }
+
     private fun createOutputFile(): File {
         val dir = File(getExternalFilesDir(null), "recordings").also { it.mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -253,12 +379,14 @@ class RecordingService : Service() {
 
     /**
      * Builds the recording notification with three action buttons:
-     *   [⏸ Pause | ▶ Resume] · [⏹ Stop] · [📍 Mark]
+     *   [⏸ Pause | ▶ Resume] · [💾 Save] · [📍 Mark]
      *
      * Pause and Resume are mutually exclusive based on current state.
-     * The Mark button fires ACTION_DROP_MARK back at this service so it
-     * works from the lock screen and notification shade without the app
-     * being in the foreground.
+     * Save stops the recording and persists it to the database (including
+     * any marks), then re-opens the app to the Library — equivalent to
+     * tapping Stop & Save inside the app.
+     * Mark fires ACTION_DROP_MARK back at this service so it works from
+     * the lock screen and notification shade.
      */
     private fun buildNotification(statusText: String): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java)
@@ -287,20 +415,14 @@ class RecordingService : Service() {
             )
         }
 
-        // ── Stop action ───────────────────────────────────────────────
-        // Note: tapping Stop from the notification stops the recording
-        // but the result (file + marks) is lost, because RecordFragment
-        // is not in the foreground to call stopAndSave(). This is the
-        // same behaviour as before — stop-from-notification has always
-        // been a "discard" operation. A future improvement could save
-        // automatically, but that requires more plumbing.
-        val stopIntent = Intent(this, RecordingService::class.java)
-            .apply { action = ACTION_STOP }
-        val stopPi = PendingIntent.getService(
-            this, REQUEST_STOP, stopIntent, PendingIntent.FLAG_IMMUTABLE
+        // ── Save action ───────────────────────────────────────────────
+        val saveIntent = Intent(this, RecordingService::class.java)
+            .apply { action = ACTION_SAVE }
+        val savePi = PendingIntent.getService(
+            this, REQUEST_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
         )
-        val stopAction = NotificationCompat.Action(
-            android.R.drawable.ic_media_previous, "Stop", stopPi
+        val saveAction = NotificationCompat.Action(
+            android.R.drawable.ic_menu_save, "Save", savePi
         )
 
         // ── Drop Mark action ──────────────────────────────────────────
@@ -325,7 +447,7 @@ class RecordingService : Service() {
             .setContentIntent(openAppPi)
             .setOngoing(true)
             .addAction(toggleAction)
-            .addAction(stopAction)
+            .addAction(saveAction)
             .addAction(markAction)
             .build()
     }
@@ -341,8 +463,8 @@ class RecordingService : Service() {
     }
 
     companion object {
-        private const val TAG           = "RecordingService"
-        private const val CHANNEL_ID    = "treecast_recording"
+        private const val TAG            = "RecordingService"
+        private const val CHANNEL_ID     = "treecast_recording"
         private const val NOTIFICATION_ID = 1001
 
         // Intent actions
@@ -350,17 +472,35 @@ class RecordingService : Service() {
         const val ACTION_PAUSE     = "com.treecast.PAUSE"
         const val ACTION_RESUME    = "com.treecast.RESUME"
         const val ACTION_STOP      = "com.treecast.STOP"
+        const val ACTION_SAVE      = "com.treecast.SAVE"
+        const val ACTION_SET_TOPIC = "com.treecast.SET_TOPIC"
         const val ACTION_DROP_MARK = "com.treecast.DROP_MARK"
+
+        // Intent extras
+        const val EXTRA_TOPIC_ID = "com.treecast.extra.TOPIC_ID"
 
         // PendingIntent request codes (must be unique per action)
         private const val REQUEST_PAUSE  = 10
         private const val REQUEST_RESUME = 11
-        private const val REQUEST_STOP   = 12
+        private const val REQUEST_STOP   = 12   // kept for completeness; not in notification
         private const val REQUEST_MARK   = 13
+        private const val REQUEST_SAVE   = 14
 
-        fun startIntent(ctx: Context) =
-            Intent(ctx, RecordingService::class.java).apply { action = ACTION_START }
+        fun startIntent(ctx: Context, topicId: Long? = null) =
+            Intent(ctx, RecordingService::class.java).apply {
+                action = ACTION_START
+                topicId?.let { putExtra(EXTRA_TOPIC_ID, it) }
+            }
+
         fun stopIntent(ctx: Context) =
             Intent(ctx, RecordingService::class.java).apply { action = ACTION_STOP }
+
+        fun setTopicIntent(ctx: Context, topicId: Long?) =
+            Intent(ctx, RecordingService::class.java).apply {
+                action = ACTION_SET_TOPIC
+                topicId?.let { putExtra(EXTRA_TOPIC_ID, it) }
+                // If topicId is null no extra is added; onStartCommand reads
+                // absence of the extra as "clear the topic" via takeIf.
+            }
     }
 }

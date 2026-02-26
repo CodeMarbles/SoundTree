@@ -77,7 +77,7 @@ class TopicPickerView @JvmOverloads constructor(
     fun setSelectedTopic(topicId: Long?, topicName: String, topicIcon: String = "📥") {
         selectedTopicId   = topicId
         selectedTopicName = topicName
-        selectedTopicIcon = topicIcon   // ← ADD
+        selectedTopicIcon = topicIcon
         updateHeader()
     }
 
@@ -129,7 +129,7 @@ class TopicPickerView @JvmOverloads constructor(
     private fun selectTopic(id: Long?, name: String, icon: String) {
         selectedTopicId   = id
         selectedTopicName = name
-        selectedTopicIcon = icon   // ← ADD
+        selectedTopicIcon = icon
         updateHeader()
         collapse()
         onTopicSelected?.invoke(id)
