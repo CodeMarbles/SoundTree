@@ -1,261 +1,258 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
-    android:fillViewport="true">
+    android:background="@color/bg_dark">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="24dp">
+    <!-- ── Scrollable content (everything except the pinned bottom row) ── -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/recordScrollView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/markLockContainer">
 
-        <!-- ── Live waveform visualiser ───────────────────────────── -->
-        <com.treecast.app.ui.record.WaveformView
-            android:id="@+id/waveformView"
-            android:layout_width="0dp"
-            android:layout_height="100dp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="8dp" />
-
-        <!-- ── Recording timer ────────────────────────────────────── -->
-        <TextView
-            android:id="@+id/tvTimer"
-            android:layout_width="wrap_content"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="0:00"
-            android:textSize="56sp"
-            android:textColor="@color/text_primary"
-            android:fontFamily="monospace"
-            android:letterSpacing="0.03"
-            app:layout_constraintTop_toBottomOf="@id/waveformView"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="16dp" />
+            android:padding="24dp">
 
-        <!-- ── Record / Pause / Resume button ────────────────────── -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRecord"
-            android:layout_width="0dp"
-            android:layout_height="64dp"
-            android:text="● REC"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="@color/rec_red"
-            app:cornerRadius="32dp"
-            app:layout_constraintTop_toBottomOf="@id/tvTimer"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="20dp" />
-
-        <!-- ── Cancel / Stop & Save button row (shown while recording) ── -->
-        <!--
-            Replaces the old single btnStop. Hidden until recording starts.
-            Cancel is on the left (red, double-tap required).
-            Stop & Save is on the right (green).
-        -->
-        <LinearLayout
-            android:id="@+id/stopSaveContainer"
-            android:layout_width="0dp"
-            android:layout_height="72dp"
-            android:orientation="horizontal"
-            android:visibility="gone"
-            android:layout_marginTop="12dp"
-            app:layout_constraintTop_toBottomOf="@id/btnRecord"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <!-- ── Cancel button (double-tap required) ──────────────── -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btnCancel"
+            <!-- ── Live waveform visualiser ───────────────────────────── -->
+            <com.treecast.app.ui.record.WaveformView
+                android:id="@+id/waveformView"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:cardBackgroundColor="#CC2222"
-                app:cardCornerRadius="26dp"
-                app:cardElevation="0dp">
+                android:layout_height="100dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginTop="8dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    android:gravity="center">
+            <!-- ── Recording timer ────────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textSize="56sp"
+                android:textColor="@color/text_primary"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.03"
+                app:layout_constraintTop_toBottomOf="@id/waveformView"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginTop="16dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✕  Cancel"
-                        android:textColor="#FFFFFF"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Double Tap to Cancel"
-                        android:textColor="#CCFFFFFF"
-                        android:textSize="10sp"
-                        android:layout_marginTop="2dp" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ── Stop & Save button ───────────────────────────────── -->
+            <!-- ── Record / Pause / Resume button ────────────────────── -->
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnStopSave"
+                android:id="@+id/btnRecord"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="💾  Stop &amp; Save"
-                android:textSize="15sp"
+                android:layout_height="64dp"
+                android:text="● REC"
+                android:textSize="18sp"
                 android:textColor="#FFFFFF"
-                android:backgroundTint="#1E7D45"
-                app:cornerRadius="26dp" />
+                android:backgroundTint="@color/rec_red"
+                app:cornerRadius="32dp"
+                app:layout_constraintTop_toBottomOf="@id/tvTimer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginTop="20dp" />
 
-        </LinearLayout>
-
-        <!-- ── Lock / Mark button row (shown while recording) ────────── -->
-        <!--
-            Lock is narrow (weight 1, ~25%) on the left — infrequent press.
-            Mark is wide (weight 3, ~75%) on the right — frequent press.
-            Both match the card/corner style of the Cancel and Stop & Save row.
-        -->
-        <LinearLayout
-            android:id="@+id/markLockContainer"
-            android:layout_width="0dp"
-            android:layout_height="72dp"
-            android:orientation="horizontal"
-            android:visibility="gone"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <!-- ── Lock Screen button (narrow, left, mild yellow) ──── -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btnLockScreen"
+            <!-- ── Cancel / Stop & Save row ──────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/stopSaveContainer"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:cardBackgroundColor="#3A3000"
-                app:cardCornerRadius="26dp"
-                app:cardElevation="0dp">
+                android:layout_height="72dp"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:layout_marginTop="12dp"
+                app:layout_constraintTop_toBottomOf="@id/btnRecord"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnCancel"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    android:gravity="center">
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="#CC2222"
+                    app:cardCornerRadius="26dp"
+                    app:cardElevation="0dp">
 
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:src="@drawable/ic_lock"
-                        app:tint="#F5C842"
-                        android:layout_marginBottom="3dp" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Lock\nScreen"
-                        android:textColor="#F5C842"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:gravity="center"
-                        android:lineSpacingMultiplier="1.1" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✕  Cancel"
+                            android:textColor="#FFFFFF"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
 
-                </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Double Tap to Cancel"
+                            android:textColor="#CCFFFFFF"
+                            android:textSize="10sp"
+                            android:layout_marginTop="2dp" />
 
-            </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
 
-            <!-- ── Mark button (wide, right) ────────────────────────── -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btnDropMark"
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStopSave"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="💾  Stop &amp; Save"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#1E7D45"
+                    app:cornerRadius="26dp" />
+
+            </LinearLayout>
+
+            <!-- ── Recording Topic label ──────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvRecordingTopicLabel"
                 android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Recording Topic"
+                android:textColor="@color/text_dim"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:layout_marginTop="24dp"
+                app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- ── Topic picker ───────────────────────────────────────── -->
+            <com.treecast.app.ui.common.TopicPickerView
+                android:id="@+id/topicPicker"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/tvRecordingTopicLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- ── Lock / Mark row — pinned to bottom, never scrolls ─────────── -->
+    <LinearLayout
+        android:id="@+id/markLockContainer"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="12dp"
+        android:paddingTop="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- ── Lock Screen button (narrow, left, mild yellow) ──────── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btnLockScreen"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="#3A3000"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="3"
-                android:layout_marginStart="8dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="26dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/surface_light"
-                app:strokeWidth="1dp">
+                android:orientation="vertical"
+                android:gravity="center">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    android:gravity="center">
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_lock"
+                    app:tint="#F5C842"
+                    android:layout_marginBottom="3dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="📍  Mark"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Lock\nScreen"
+                    android:textColor="#F5C842"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.1" />
 
-                    <TextView
-                        android:id="@+id/tvMarkCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 marks"
-                        android:textColor="@color/text_dim"
-                        android:textSize="11sp"
-                        android:layout_marginTop="3dp"
-                        android:visibility="gone" />
+            </LinearLayout>
 
-                </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            </com.google.android.material.card.MaterialCardView>
-
-        </LinearLayout>
-
-        <!-- ── "Recording Topic" label ─────────────────────────────── -->
-        <TextView
-            android:id="@+id/tvRecordingTopicLabel"
+        <!-- ── Mark button (wide, right) ────────────────────────────── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btnDropMark"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="Recording Topic"
-            android:textColor="@color/text_dim"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginTop="24dp"
-            app:layout_constraintTop_toBottomOf="@id/markLockContainer"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:layout_height="match_parent"
+            android:layout_weight="3"
+            android:layout_marginStart="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/surface_light"
+            app:strokeWidth="1dp">
 
-        <!-- ── Topic picker (reusable widget) ──────────────────────── -->
-        <!--
-            Positioned below the Recording Topic label, above the lock FAB.
-            User can browse the tree here while recording.
-        -->
-        <com.treecast.app.ui.common.TopicPickerView
-            android:id="@+id/topicPicker"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@id/tvRecordingTopicLabel"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintVertical_bias="0"
-            android:layout_marginTop="8dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📍  Mark"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
-</androidx.core.widget.NestedScrollView>
+                <TextView
+                    android:id="@+id/tvMarkCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0 marks"
+                    android:textColor="@color/text_dim"
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

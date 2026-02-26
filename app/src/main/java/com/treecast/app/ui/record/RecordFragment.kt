@@ -182,7 +182,7 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.rec_red)
                 binding.stopSaveContainer.visibility = View.GONE
-                binding.btnDropMark.visibility = View.GONE
+                binding.markLockContainer.visibility = View.GONE
                 lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
@@ -193,14 +193,14 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(android.R.color.holo_orange_light)
                 binding.stopSaveContainer.visibility = View.VISIBLE
-                binding.btnDropMark.visibility = View.VISIBLE
+                binding.markLockContainer.visibility = View.VISIBLE
             }
             RecordingService.State.PAUSED -> {
                 binding.btnRecord.text = "▶  Resume"
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.accent)
                 binding.stopSaveContainer.visibility = View.VISIBLE
-                binding.btnDropMark.visibility = View.VISIBLE
+                binding.markLockContainer.visibility = View.VISIBLE
             }
         }
     }
