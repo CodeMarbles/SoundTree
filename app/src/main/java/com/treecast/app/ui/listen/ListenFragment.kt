@@ -48,6 +48,7 @@ class ListenFragment : Fragment() {
         setupMarksPanel()
         observeNowPlaying()
         observeMarks()
+        observeWaveform()
     }
 
     override fun onDestroyView() {
@@ -145,6 +146,18 @@ class ListenFragment : Fragment() {
                 binding.btnDeleteMark.isEnabled = hasSelection
                 binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
                 updateMarkChipStyles()
+            }
+        }
+    }
+
+    private fun observeWaveform() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.waveformState.collect { pair ->
+                val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
+                if (pair != null && pair.first == currentId) {
+                    // Real data arrived — replace the fake seed-based waveform
+                    binding.waveformView.setAmplitudes(pair.second)
+                }
             }
         }
     }
@@ -249,7 +262,14 @@ class ListenFragment : Fragment() {
         // Auto-select default tab once per recording load
         if (defaultTabRecordingId != state.recording.id) {
             defaultTabRecordingId = state.recording.id
+
+            // Show fake waveform instantly, then replace with real data
             binding.waveformView.setSeed(state.recording.id)
+            viewModel.loadWaveform(
+                recordingId = state.recording.id,
+                filePath    = state.recording.filePath
+            )
+
             selectTab(if (state.recording.topicId == null) 0 else 1)
 
             val topic = viewModel.allTopics.value.find { it.id == state.recording.topicId }

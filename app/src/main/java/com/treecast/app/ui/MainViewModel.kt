@@ -5,7 +5,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -22,6 +24,8 @@ import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.service.PlaybackService
+import com.treecast.app.util.WaveformCache
+import com.treecast.app.util.WaveformExtractor
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.io.File
@@ -206,6 +210,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         stopProgressPolling()
         marksJob?.cancel()
         MediaController.releaseFuture(controllerFuture)
+        waveformJob?.cancel()
     }
 
     // ── Tree ──────────────────────────────────────────────────────────
@@ -260,7 +265,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.saveRecordingWithMarks(filePath, durationMs, fileSizeBytes, title, topicId, markTimestamps)
     }
 
-    fun deleteRecording(r: RecordingEntity)     = viewModelScope.launch { repo.deleteRecording(r) }
+    fun deleteRecording(r: RecordingEntity) = viewModelScope.launch {
+        repo.deleteRecording(r)
+        waveformCache.delete(r.id)
+    }
     fun moveRecording(id: Long, topicId: Long?) = viewModelScope.launch { repo.moveRecording(id, topicId) }
     fun setFavourite(id: Long, fav: Boolean)    = viewModelScope.launch { repo.setFavourite(id, fav) }
     fun renameRecording(id: Long, title: String)= viewModelScope.launch { repo.renameRecording(id, title) }
@@ -331,6 +339,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var marksJob: Job? = null
 
+    // ── Waveform ──────────────────────────────────────────────────────
+    private val waveformCache = WaveformCache(app)
+
+    /**
+     * Emits (recordingId, amplitudes) whenever a real waveform finishes
+     * loading (from cache or freshly extracted). The fragment observes this
+     * and passes the array to [PlaybackWaveformView.setAmplitudes].
+     *
+     * Null means "no waveform loaded yet / loading in progress".
+     */
+    private val _waveformState = MutableStateFlow<Pair<Long, FloatArray>?>(null)
+    val waveformState: StateFlow<Pair<Long, FloatArray>?> = _waveformState.asStateFlow()
+
+    private var waveformJob: Job? = null
+
     private fun startObservingMarks(recordingId: Long) {
         marksJob?.cancel()
         marksJob = viewModelScope.launch {
@@ -353,6 +376,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.deleteMark(id)
             _selectedMarkId.value = null
+        }
+    }
+
+    /**
+     * Kicks off waveform loading for [recordingId] / [filePath].
+     *
+     * Execution order:
+     *   1. Cancel any in-flight extraction for a previous recording.
+     *   2. If a cached array exists on disk, emit it immediately (< 5 ms).
+     *   3. Otherwise, extract from the audio file on an IO thread
+     *      (typically 300–800 ms even for a 1-hour M4A), cache the result,
+     *      then emit.
+     *
+     * The fragment keeps displaying the seed-based fake waveform until
+     * this emits, so there is no blank period during extraction.
+     */
+    fun loadWaveform(recordingId: Long, filePath: String) {
+        waveformJob?.cancel()
+        waveformJob = viewModelScope.launch(Dispatchers.IO) {
+            // Fast path: already cached
+            val cached = waveformCache.load(recordingId)
+            if (cached != null) {
+                _waveformState.value = recordingId to cached
+                return@launch
+            }
+
+            // Slow path: extract from file then persist
+            val amps = WaveformExtractor.extract(filePath)
+            waveformCache.save(recordingId, amps)
+            _waveformState.value = recordingId to amps
         }
     }
 }

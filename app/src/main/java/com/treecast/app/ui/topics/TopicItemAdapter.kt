@@ -276,7 +276,7 @@ class TopicItemAdapter(
             // ── Selection highlight ───────────────────────────────────
             // Tint the row background when this recording is the loaded/playing one.
             // The ripple lives on foreground (item_tree_leaf.xml) so this is safe.
-            val isSelected = rec.id == nowPlayingId
+            val isSelected    = rec.id == selectedRecordingId || rec.id == nowPlayingId
             itemView.setBackgroundColor(
                 if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
                 else Color.TRANSPARENT
