@@ -219,6 +219,10 @@ class MainActivity : AppCompatActivity() {
         binding.miniPlayer.btnMiniSkipBack.setOnClickListener {
             viewModel.skipBack()
         }
+
+        binding.miniPlayer.btnMiniSkipForward.setOnClickListener {
+            viewModel.skipForward()
+        }
     }
 
     // ── Top title ─────────────────────────────────────────────────────
