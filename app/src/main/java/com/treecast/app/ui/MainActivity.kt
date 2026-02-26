@@ -288,7 +288,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.lockOverlay.setOnClickListener {
+        // Consume all touches on the overlay so nothing beneath it is accidentally
+        // triggered while locked — but do NOT unlock on a bare tap.
+        binding.lockOverlay.setOnTouchListener { _, _ -> true }
+
+        // The only path to unlock is the explicit UNLOCK button.
+        binding.btnUnlock.setOnClickListener {
             viewModel.setLocked(false)
         }
     }

@@ -220,8 +220,7 @@
             android:text="Unlock"
             android:textSize="16sp"
             app:cornerRadius="28dp"
-            android:backgroundTint="@color/accent"
-            android:onClick="onUnlockClicked" />
+            android:backgroundTint="@color/accent" />
 
     </FrameLayout>
 
