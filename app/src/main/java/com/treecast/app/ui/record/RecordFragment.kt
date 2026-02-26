@@ -128,7 +128,7 @@ class RecordFragment : Fragment() {
             }
         }
 
-        binding.fabLock.setOnClickListener { viewModel.setLocked(true) }
+        binding.btnLockScreen.setOnClickListener { viewModel.setLocked(true) }
     }
 
     private fun setupTopicPicker() {
@@ -156,7 +156,12 @@ class RecordFragment : Fragment() {
         // Keep the mark count badge in sync with the service.
         viewLifecycleOwner.lifecycleScope.launch {
             svc.pendingMarkCount.collect { count ->
-                binding.btnDropMark.text = if (count > 0) "📍 Mark ($count)" else "📍 Mark"
+                if (count > 0) {
+                    binding.tvMarkCount.text = "$count ${if (count == 1) "mark" else "marks"}"
+                    binding.tvMarkCount.visibility = View.VISIBLE
+                } else {
+                    binding.tvMarkCount.visibility = View.GONE
+                }
             }
         }
     }
@@ -164,7 +169,7 @@ class RecordFragment : Fragment() {
     private fun observeLock() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isLocked.collect { locked ->
-                binding.fabLock.alpha = if (locked) 0.3f else 1f
+                binding.btnLockScreen.alpha = if (locked) 0.3f else 1f
             }
         }
     }

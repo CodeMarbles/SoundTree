@@ -121,12 +121,107 @@
                 android:backgroundTint="#1E7D45"
                 app:cornerRadius="26dp" />
 
-            <com.google.android.material.button.MaterialButton
+        </LinearLayout>
+
+        <!-- ── Lock / Mark button row (shown while recording) ────────── -->
+        <!--
+            Lock is narrow (weight 1, ~25%) on the left — infrequent press.
+            Mark is wide (weight 3, ~75%) on the right — frequent press.
+            Both match the card/corner style of the Cancel and Stop & Save row.
+        -->
+        <LinearLayout
+            android:id="@+id/markLockContainer"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- ── Lock Screen button (narrow, left, mild yellow) ──── -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnLockScreen"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#3A3000"
+                app:cardCornerRadius="26dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_lock"
+                        app:tint="#F5C842"
+                        android:layout_marginBottom="3dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lock\nScreen"
+                        android:textColor="#F5C842"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.1" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ── Mark button (wide, right) ────────────────────────── -->
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnDropMark"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📍 Mark"
-                android:visibility="gone" />
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="3"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="26dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/surface_light"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📍  Mark"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvMarkCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0 marks"
+                        android:textColor="@color/text_dim"
+                        android:textSize="11sp"
+                        android:layout_marginTop="3dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 
@@ -141,7 +236,7 @@
             android:textAllCaps="true"
             android:letterSpacing="0.1"
             android:layout_marginTop="24dp"
-            app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
+            app:layout_constraintTop_toBottomOf="@id/markLockContainer"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
@@ -159,20 +254,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintVertical_bias="0"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="72dp" />
-
-        <!-- ── Lock FAB (bottom-right, above bottom nav) ──────────── -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabLock"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_nav_settings"
-            android:contentDescription="Lock screen"
-            app:backgroundTint="@color/surface_light"
-            app:tint="@color/text_dim"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:layout_marginTop="8dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
