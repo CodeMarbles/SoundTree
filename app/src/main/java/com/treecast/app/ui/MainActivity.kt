@@ -2,7 +2,6 @@ package com.treecast.app.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.MotionEvent
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -289,11 +288,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.lockOverlay.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_UP) {
-                viewModel.setLocked(false)
-            }
-            true
+        binding.lockOverlay.setOnClickListener {
+            viewModel.setLocked(false)
         }
     }
 
