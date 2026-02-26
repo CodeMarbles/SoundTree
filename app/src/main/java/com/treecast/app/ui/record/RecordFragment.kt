@@ -234,7 +234,6 @@ class RecordFragment : Fragment() {
             binding.topicPicker.collapse()
 
             val topicIdForNav = selectedTopicId
-            selectedTopicId = null
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {
