@@ -52,37 +52,107 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="20dp" />
 
-        <!-- ── Stop & save button ─────────────────────────────────── -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnStop"
+        <!-- ── Cancel / Stop & Save button row (shown while recording) ── -->
+        <!--
+            Replaces the old single btnStop. Hidden until recording starts.
+            Cancel is on the left (red, double-tap required).
+            Stop & Save is on the right (green).
+        -->
+        <LinearLayout
+            android:id="@+id/stopSaveContainer"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:text="■  Stop &amp; Save"
-            android:textSize="15sp"
-            android:textColor="@color/text_primary"
-            android:backgroundTint="@color/surface_light"
-            app:cornerRadius="26dp"
+            android:layout_height="72dp"
+            android:orientation="horizontal"
             android:visibility="gone"
+            android:layout_marginTop="12dp"
             app:layout_constraintTop_toBottomOf="@id/btnRecord"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="12dp" />
+            app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ── Topic picker (reusable widget) ──────────────────── -->
+            <!-- ── Cancel button (double-tap required) ──────────────── -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnCancel"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#CC2222"
+                app:cardCornerRadius="26dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✕  Cancel"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Double Tap to Cancel"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ── Stop & Save button ───────────────────────────────── -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStopSave"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="💾  Stop &amp; Save"
+                android:textSize="15sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#1E7D45"
+                app:cornerRadius="26dp" />
+
+        </LinearLayout>
+
+        <!-- ── "Recording Topic" label ─────────────────────────────── -->
+        <TextView
+            android:id="@+id/tvRecordingTopicLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Recording Topic"
+            android:textColor="@color/text_dim"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:layout_marginTop="24dp"
+            app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Topic picker (reusable widget) ──────────────────────── -->
         <!--
-            Positioned below the stop button, above the lock FAB.
+            Positioned below the Recording Topic label, above the lock FAB.
             User can browse the tree here while recording.
         -->
         <com.treecast.app.ui.common.TopicPickerView
             android:id="@+id/topicPicker"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@id/btnStop"
+            app:layout_constraintTop_toBottomOf="@id/tvRecordingTopicLabel"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintVertical_bias="0"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="72dp" />
 
         <!-- ── Lock FAB (bottom-right, above bottom nav) ──────────── -->

@@ -35,6 +35,10 @@ class RecordFragment : Fragment() {
 
     private var selectedTopicId: Long? = null
 
+    // ── Double-tap cancel tracking ────────────────────────────────────
+    private var lastCancelTapMs: Long = 0L
+    private val doubleTapWindowMs = 500L
+
     // ── Recording service ─────────────────────────────────────────────
     private var recordingService: RecordingService? = null
     private var isBound = false
@@ -104,12 +108,25 @@ class RecordFragment : Fragment() {
                 null -> checkPermissionAndRecord()
             }
         }
-        binding.btnStop.setOnClickListener { stopAndSave() }
+
+        binding.btnStopSave.setOnClickListener { stopAndSave() }
+
+        // Cancel requires a double-tap to prevent accidental presses.
+        binding.btnCancel.setOnClickListener {
+            val now = System.currentTimeMillis()
+            if (now - lastCancelTapMs <= doubleTapWindowMs) {
+                cancelRecording()
+            } else {
+                lastCancelTapMs = now
+                Toast.makeText(requireContext(), "Tap again to cancel", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         binding.fabLock.setOnClickListener { viewModel.setLocked(true) }
     }
 
     private fun setupTopicPicker() {
-        // fragment_record.xml: id topicPicker (renamed from categoryPicker in step-3 XML edit)
+        // fragment_record.xml: id topicPicker
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allTopics.collect { topics ->
                 binding.topicPicker.setTopics(topics)
@@ -148,7 +165,8 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.text = "● REC"
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.rec_red)
-                binding.btnStop.visibility = View.GONE
+                binding.stopSaveContainer.visibility = View.GONE
+                lastCancelTapMs = 0L   // reset double-tap state on idle
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
                 binding.topicPicker.collapse()
@@ -157,13 +175,13 @@ class RecordFragment : Fragment() {
                 binding.btnRecord.text = "⏸  Pause"
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(android.R.color.holo_orange_light)
-                binding.btnStop.visibility = View.VISIBLE
+                binding.stopSaveContainer.visibility = View.VISIBLE
             }
             RecordingService.State.PAUSED -> {
                 binding.btnRecord.text = "▶  Resume"
                 binding.btnRecord.backgroundTintList =
                     requireContext().getColorStateList(com.treecast.app.R.color.accent)
-                binding.btnStop.visibility = View.VISIBLE
+                binding.stopSaveContainer.visibility = View.VISIBLE
             }
         }
     }
@@ -229,6 +247,18 @@ class RecordFragment : Fragment() {
         } else {
             Toast.makeText(requireContext(), "Nothing recorded", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun cancelRecording() {
+        val svc = recordingService ?: return
+        val (filePath, _) = svc.stopRecording()
+        // Delete the audio file — nothing is saved
+        if (filePath != null) {
+            File(filePath).delete()
+        }
+        selectedTopicId = null
+        lastCancelTapMs = 0L
+        Toast.makeText(requireContext(), "Recording cancelled", Toast.LENGTH_SHORT).show()
     }
 
     private fun formatDuration(ms: Long): String {
