@@ -28,6 +28,11 @@
     <attr name="colorRecordActive"      format="color" />
     <attr name="colorDestructive"       format="color" />
 
+    <!-- Buttons -->
+    <attr name="colorActionCancel" format="color" />
+    <attr name="colorActionSave"   format="color" />
+    <attr name="colorActionLockScreen" format="color" />
+
     <!-- Marks -->
     <attr name="colorMarkDefault"       format="color" />
     <attr name="colorMarkSelected"      format="color" />

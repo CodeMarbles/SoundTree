@@ -18,6 +18,8 @@
 
     <!-- Red / pink -->
     <color name="red_500">#FF3B3B</color>
+    <color name="red_700">#D32F2F</color>
+    <color name="red_800">#CC2222</color>
     <color name="pink_700">#C2185B</color>
     <color name="pink_900">#880E4F</color>
 
@@ -30,16 +32,35 @@
     <color name="grey_900">#1A1A25</color>
     <color name="grey_800">#252535</color>
 
+    <!-- Light surface scale (for light theme) -->
+    <color name="grey_50">#F5F5FA</color>
+    <color name="grey_100">#EDEDF4</color>
+    <color name="grey_200">#DDDDE8</color>
+
+    <!-- Dark text (for light theme) -->
+    <color name="navy_900">#1A1A2E</color>
+    <color name="slate_500">#6B6B8A</color>
+
+    <!-- Warm light tray (mirrors brown_950 for light theme) -->
+    <color name="cream_100">#F0EDE8</color>
+
+    <!-- Light mark surface (mirrors grey_910 for light theme) -->
+    <color name="pink_50">#F8E8EF</color>
+
     <!-- Brown (warm dark) -->
     <color name="brown_950">#231A14</color>
 
     <!-- Yellows / ambers -->
     <color name="yellow_600">#F5C842</color>
+    <color name="amber_100">#FFF3CD</color>
     <color name="amber_800">#B8860B</color>
+    <color name="amber_950">#3A3000</color>
 
     <!-- Status greens / oranges -->
     <color name="green_500">#4CAF50</color>
     <color name="orange_600">#FFA726</color>
+    <color name="green_800">#2E7D32</color>
+    <color name="green_900">#1E7D45</color>
 
     <!-- Absolute -->
     <color name="white">#FFFFFFFF</color>

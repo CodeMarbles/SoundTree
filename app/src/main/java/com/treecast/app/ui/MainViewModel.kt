@@ -46,6 +46,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
         private const val TAG = "MainViewModel"
+        private const val PREF_THEME_MODE = "theme_mode"
         private const val PREF_AUTO_NAVIGATE      = "auto_navigate_to_listen"
         private const val PREF_SCRUB_BACK_SECS    = "scrub_back_secs"
         private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
@@ -323,6 +324,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setJumpToLibraryOnSave(enabled: Boolean) {
         _jumpToLibraryOnSave.value = enabled
         prefs.edit().putBoolean(PREF_JUMP_TO_LIBRARY, enabled).apply()
+    }
+
+    // ── Theme mode ────────────────────────────────────────────────────
+    private val _themeMode =
+        MutableStateFlow(prefs.getString(PREF_THEME_MODE, "system") ?: "system")
+    val themeMode: StateFlow<String> = _themeMode
+    fun setThemeMode(mode: String) {
+        _themeMode.value = mode
+        prefs.edit().putString(PREF_THEME_MODE, mode).apply()
     }
 
     // ── Selected recording ────────────────────────────────────────────

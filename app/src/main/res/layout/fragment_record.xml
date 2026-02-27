@@ -83,7 +83,7 @@
                     android:layout_marginEnd="8dp"
                     android:clickable="true"
                     android:focusable="true"
-                    app:cardBackgroundColor="#CC2222"
+                    app:cardBackgroundColor="?attr/colorActionCancel"
                     app:cardCornerRadius="26dp"
                     app:cardElevation="0dp">
 
@@ -123,7 +123,7 @@
                     android:text="💾  Stop &amp; Save"
                     android:textSize="15sp"
                     android:textColor="#FFFFFF"
-                    android:backgroundTint="#1E7D45"
+                    android:backgroundTint="?attr/colorActionSave"
                     app:cornerRadius="26dp" />
 
             </LinearLayout>
@@ -173,7 +173,6 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <!-- ── Lock Screen button (narrow, left) ───────────────────── -->
-        <!-- #3A3000: dark amber card bg for lock screen — no palette entry yet -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/btnLockScreen"
             android:layout_width="0dp"
@@ -182,7 +181,7 @@
             android:layout_marginEnd="8dp"
             android:clickable="true"
             android:focusable="true"
-            app:cardBackgroundColor="#3A3000"
+            app:cardBackgroundColor="?attr/colorActionLockScreen"
             app:cardCornerRadius="26dp"
             app:cardElevation="0dp">
 
@@ -222,11 +221,9 @@
             android:layout_marginStart="8dp"
             android:clickable="true"
             android:focusable="true"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardBackgroundColor="?attr/colorMarkAction"
             app:cardCornerRadius="26dp"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/colorSurfaceElevated"
-            app:strokeWidth="1dp">
+            app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -238,7 +235,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="📍  Mark"
-                    android:textColor="?attr/colorTextPrimary"
+                    android:textColor="#FFFFFF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 

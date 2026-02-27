@@ -30,6 +30,105 @@
             android:textSize="13sp"
             android:layout_marginBottom="32dp" />
 
+        <!-- ── Appearance ──────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="APPEARANCE"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:paddingHorizontal="4dp"
+            android:paddingBottom="8dp" />
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Theme"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Follow system, or lock to light or dark"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <!-- Three-way toggle: System / Light / Dark -->
+                <LinearLayout
+                    android:id="@+id/themeToggleGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:orientation="horizontal"
+                    android:background="@drawable/bg_picker"
+                    android:padding="3dp">
+
+                    <TextView
+                        android:id="@+id/btnThemeSystem"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="Auto"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnThemeLight"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="Light"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnThemeDark"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="Dark"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
         <!-- ── Playback section ─────────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"

@@ -4,14 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 class SettingsFragment : Fragment() {
@@ -30,6 +31,7 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupTheme()
         setupPlaybackSettings()
         loadStats()
     }
@@ -37,6 +39,45 @@ class SettingsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupTheme() {
+        fun updateToggleVisuals(selected: String) {
+            val activeText   = requireContext().themeColor(R.attr.colorTextPrimary)
+            val inactiveText = requireContext().themeColor(R.attr.colorTextSecondary)
+            val activeBg     = requireContext().themeColor(R.attr.colorSurfaceElevated)
+
+            listOf(
+                binding.btnThemeSystem to "system",
+                binding.btnThemeLight  to "light",
+                binding.btnThemeDark   to "dark"
+            ).forEach { (btn, mode) ->
+                val isActive = mode == selected
+                btn.setTextColor(if (isActive) activeText else inactiveText)
+                btn.setTypeface(null, if (isActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+                btn.setBackgroundColor(
+                    if (isActive) activeBg else android.graphics.Color.TRANSPARENT
+                )
+            }
+        }
+
+        updateToggleVisuals(viewModel.themeMode.value)
+
+        fun select(mode: String) {
+            viewModel.setThemeMode(mode)
+            AppCompatDelegate.setDefaultNightMode(
+                when (mode) {
+                    "light" -> AppCompatDelegate.MODE_NIGHT_NO
+                    "dark"  -> AppCompatDelegate.MODE_NIGHT_YES
+                    else    -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                }
+            )
+            // Activity recreates automatically — no manual call needed.
+        }
+
+        binding.btnThemeSystem.setOnClickListener { select("system") }
+        binding.btnThemeLight.setOnClickListener  { select("light")  }
+        binding.btnThemeDark.setOnClickListener   { select("dark")   }
     }
 
     private fun setupPlaybackSettings() {

@@ -33,8 +33,7 @@ class PlaybackWaveformView @JvmOverloads constructor(
     private val playedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF_FFFFFF.toInt()   // absolute white — fine as literal
-        strokeWidth = 2 * density
+        strokeWidth = 3 * density
         style = Paint.Style.STROKE
     }
     private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -47,9 +46,18 @@ class PlaybackWaveformView @JvmOverloads constructor(
     }
 
     init {
-        unplayedPaint.color  = context.themeColor(R.attr.colorWaveformUnplayed)
+        //unplayedPaint.color  = context.themeColor(R.attr.colorWaveformUnplayed)
+        val base = context.themeColor(R.attr.colorWaveformUnplayed)
+        unplayedPaint.color = android.graphics.Color.argb(
+            0x88,
+            android.graphics.Color.red(base),
+            android.graphics.Color.green(base),
+            android.graphics.Color.blue(base)
+        )
+
         markPaint.color      = context.themeColor(R.attr.colorMarkDefault)
         markPaintSelected.color = context.themeColor(R.attr.colorMarkSelected)
+        playheadPaint.color = context.themeColor(R.attr.colorPlayhead)
     }
 
     private val barWidthDp = 3f
