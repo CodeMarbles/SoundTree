@@ -21,7 +21,6 @@
         android:gravity="center_vertical"
         android:paddingEnd="16dp">
 
-        <!-- Inline play/pause — start margin applied by adapter for indentation -->
         <ImageView
             android:id="@+id/btnInlinePlay"
             android:layout_width="36dp"
@@ -32,9 +31,8 @@
             android:clickable="true"
             android:focusable="true"
             android:layout_marginStart="8dp"
-            app:tint="@color/accent" />
+            app:tint="?attr/colorAccent" />
 
-        <!-- Unlistened dot -->
         <View
             android:id="@+id/dotListened"
             android:layout_width="6dp"
@@ -43,49 +41,46 @@
             android:layout_marginStart="6dp"
             android:layout_marginEnd="8dp" />
 
-        <!-- Title + duration/date -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center_vertical">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tvTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/colorTextPrimary"
                 android:textSize="14sp"
                 android:ellipsize="end"
                 android:maxLines="1" />
 
             <TextView
                 android:id="@+id/tvDuration"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_dim"
-                android:textSize="12sp"
-                android:layout_marginTop="2dp" />
-
-            <TextView
-                android:id="@+id/tvDate"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_dim"
-                android:textSize="11sp" />
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
 
         </LinearLayout>
 
-        <!-- Expand chevron -->
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp" />
+
         <ImageView
             android:id="@+id/ivChevron"
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_chevron_down"
             android:rotation="-90"
-            app:tint="@color/text_dim"
-            android:layout_marginStart="8dp" />
+            app:tint="?attr/colorTextSecondary"
+            android:layout_marginStart="4dp" />
 
     </LinearLayout>
 
@@ -98,12 +93,12 @@
         android:visibility="gone"
         android:paddingEnd="16dp"
         android:paddingBottom="8dp"
-        android:background="@color/controls_bg">
+        android:background="?attr/colorControlsTray">
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="@color/surface_light"
+            android:background="?attr/colorSurfaceElevated"
             android:layout_marginBottom="4dp" />
 
         <LinearLayout
@@ -119,10 +114,10 @@
                 android:layout_weight="1"
                 android:text="Rename"
                 android:textSize="11sp"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/colorTextPrimary"
                 app:icon="@drawable/ic_rename"
                 app:iconSize="16dp"
-                app:iconTint="@color/text_primary"
+                app:iconTint="?attr/colorTextPrimary"
                 app:iconGravity="textStart"
                 app:cornerRadius="8dp" />
 
@@ -134,10 +129,10 @@
                 android:layout_weight="1"
                 android:text="Move"
                 android:textSize="11sp"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/colorTextPrimary"
                 app:icon="@drawable/ic_move"
                 app:iconSize="16dp"
-                app:iconTint="@color/text_primary"
+                app:iconTint="?attr/colorTextPrimary"
                 app:iconGravity="textStart"
                 app:cornerRadius="8dp" />
 
@@ -149,10 +144,10 @@
                 android:layout_weight="1"
                 android:text="Delete"
                 android:textSize="11sp"
-                android:textColor="#FF5252"
+                android:textColor="?attr/colorDestructive"
                 app:icon="@drawable/ic_delete"
                 app:iconSize="16dp"
-                app:iconTint="#FF5252"
+                app:iconTint="?attr/colorDestructive"
                 app:iconGravity="textStart"
                 app:cornerRadius="8dp" />
 

@@ -24,7 +24,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textColor="@color/text_primary"
+        android:textColor="?attr/colorTextPrimary"
         android:textSize="14sp"
         android:ellipsize="end"
         android:maxLines="1"
@@ -35,6 +35,6 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:src="@drawable/ic_chevron_down"
-        app:tint="@color/text_dim" />
+        app:tint="?attr/colorTextSecondary" />
 
 </LinearLayout>

@@ -20,6 +20,6 @@
         android:layout_margin="16dp"
         android:src="@drawable/ic_add"
         android:contentDescription="Add root topic"
-        app:backgroundTint="@color/accent" />
+        app:backgroundTint="?attr/colorAccent" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -10,7 +10,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="64dp"
-    android:background="@color/surface"
+    android:background="?attr/colorSurfaceBase"
     android:elevation="4dp"
     android:clickable="true"
     android:focusable="true">
@@ -20,12 +20,12 @@
         android:id="@+id/accentLine"
         android:layout_width="0dp"
         android:layout_height="2dp"
-        android:background="@color/accent"
+        android:background="?attr/colorAccent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Skip back 15 -->
+    <!-- Skip back -->
     <ImageView
         android:id="@+id/btnMiniSkipBack"
         android:layout_width="36dp"
@@ -36,7 +36,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
         android:focusable="true"
-        app:tint="@color/text_primary"
+        app:tint="?attr/colorTextPrimary"
         app:layout_constraintTop_toBottomOf="@id/accentLine"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -51,12 +51,12 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
         android:focusable="true"
-        app:tint="@color/accent"
+        app:tint="?attr/colorAccent"
         app:layout_constraintTop_toBottomOf="@id/accentLine"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/btnMiniSkipBack" />
 
-    <!-- Skip forward 15 -->
+    <!-- Skip forward -->
     <ImageView
         android:id="@+id/btnMiniSkipForward"
         android:layout_width="36dp"
@@ -67,7 +67,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
         android:focusable="true"
-        app:tint="@color/text_primary"
+        app:tint="?attr/colorTextPrimary"
         app:layout_constraintTop_toBottomOf="@id/accentLine"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/btnMiniPlayPause" />
@@ -89,20 +89,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Recording title"
-            android:textColor="@color/text_primary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="13sp"
             android:ellipsize="end"
             android:maxLines="1" />
 
-        <!-- Thin progress line -->
         <ProgressBar
             android:id="@+id/miniProgressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="3dp"
             android:layout_marginTop="5dp"
-            android:progressTint="@color/accent"
-            android:progressBackgroundTint="@color/surface_light"
+            android:progressTint="?attr/colorAccent"
+            android:progressBackgroundTint="?attr/colorSurfaceElevated"
             android:max="1000"
             android:progress="0" />
 
@@ -111,7 +110,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="0:00 / 0:00"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             android:layout_marginTop="3dp" />
 

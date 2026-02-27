@@ -9,6 +9,8 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
+import com.treecast.app.R
+import com.treecast.app.util.themeColor
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -29,29 +31,25 @@ class PlaybackWaveformView @JvmOverloads constructor(
     private val density = resources.displayMetrics.density
 
     private val playedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x44_7878A0.toInt(); style = Paint.Style.FILL
-    }
+    private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF_FFFFFF.toInt()
+        color = 0xFF_FFFFFF.toInt()   // absolute white — fine as literal
         strokeWidth = 2 * density
         style = Paint.Style.STROKE
     }
-
-    // Normal mark: dark pink (same colour used for last-passed chip background)
-    private val MARK_COLOR          = 0xFF_C2185B.toInt()   // material pink 700
-    // Selected mark: teal — visually distinct from the pink marks
-    private val MARK_COLOR_SELECTED = 0xFF_00BFA5.toInt()   // material teal A700
-
     private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = MARK_COLOR
         strokeWidth = 1.5f * density
         style = Paint.Style.FILL_AND_STROKE
     }
     private val markPaintSelected = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = MARK_COLOR_SELECTED
-        strokeWidth = 2f * density          // slightly thicker so teal stands out
+        strokeWidth = 2f * density
         style = Paint.Style.FILL_AND_STROKE
+    }
+
+    init {
+        unplayedPaint.color  = context.themeColor(R.attr.colorWaveformUnplayed)
+        markPaint.color      = context.themeColor(R.attr.colorMarkDefault)
+        markPaintSelected.color = context.themeColor(R.attr.colorMarkSelected)
     }
 
     private val barWidthDp = 3f
@@ -81,7 +79,11 @@ class PlaybackWaveformView @JvmOverloads constructor(
         if (w > 0 && h > 0) {
             playedPaint.shader = LinearGradient(
                 0f, 0f, w.toFloat(), 0f,
-                intArrayOf(0xFF_4F48CC.toInt(), 0xFF_6C63FF.toInt(), 0xFF_9D96FF.toInt()),
+                intArrayOf(
+                    context.themeColor(R.attr.colorWaveformGradientStart),
+                    context.themeColor(R.attr.colorWaveformGradientMid),
+                    context.themeColor(R.attr.colorWaveformGradientEnd)
+                ),
                 null, Shader.TileMode.CLAMP
             )
         }

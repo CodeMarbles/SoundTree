@@ -1,50 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand palette -->
-    <color name="accent">#6C63FF</color>
-    <color name="accent_dark">#4F48CC</color>
-    <color name="rec_red">#FF3B3B</color>
 
-    <!-- Dark background system -->
-    <color name="bg_dark">#0F0F14</color>
-    <color name="surface">#1A1A25</color>
-    <color name="surface_light">#252535</color>
+    <!-- ══════════════════════════════════════════════════════════════
+         TreeCast raw color palette.
 
-    <!--
-      Expanded-controls panel background.
-      Similar luminance to surface_light but warm/brown rather than
-      blue-grey — gives the controls tray a distinct feel without
-      jumping out of the overall dark palette.
-    -->
-    <color name="controls_bg">#231A14</color>
+         These are value-only definitions — no UI meaning is encoded
+         in these names. All semantic roles are assigned in themes.xml
+         via the custom attributes declared in attrs.xml.
 
-    <!-- Text -->
-    <color name="text_primary">#EEEEFF</color>
-    <color name="text_dim">#7878A0</color>
+         Nothing outside of themes.xml should reference these directly.
+         ══════════════════════════════════════════════════════════════ -->
 
-    <!-- Status -->
-    <color name="success">#4CAF50</color>
-    <color name="warning">#FFA726</color>
+    <!-- Purple / brand -->
+    <color name="purple_300">#9D96FF</color>
+    <color name="purple_500">#6C63FF</color>
+    <color name="purple_600">#4F48CC</color>
 
-    <!-- Marks -->
-    <color name="mark_teal">#00BFA5</color>
-    <color name="mark_pink">#C2185B</color>
-    <color name="mark_pink_bg">#C2185B</color>
-    <color name="marks_panel_bg">#111118</color>
-    <color name="mark_btn_bg">#880E4F</color>
+    <!-- Red / pink -->
+    <color name="red_500">#FF3B3B</color>
+    <color name="pink_700">#C2185B</color>
+    <color name="pink_900">#880E4F</color>
 
-    <!-- Uncategorised label on Listen page -->
-    <color name="uncategorized_label">#B8860B</color>
+    <!-- Teal -->
+    <color name="teal_a700">#00BFA5</color>
 
-    <!-- Material required -->
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
+    <!-- Greys (blue-tinted dark scale) -->
+    <color name="grey_950">#0F0F14</color>
+    <color name="grey_910">#111118</color>
+    <color name="grey_900">#1A1A25</color>
+    <color name="grey_800">#252535</color>
+
+    <!-- Brown (warm dark) -->
+    <color name="brown_950">#231A14</color>
+
+    <!-- Yellows / ambers -->
+    <color name="yellow_600">#F5C842</color>
+    <color name="amber_800">#B8860B</color>
+
+    <!-- Status greens / oranges -->
+    <color name="green_500">#4CAF50</color>
+    <color name="orange_600">#FFA726</color>
+
+    <!-- Absolute -->
     <color name="white">#FFFFFFFF</color>
-
-    <!-- Required for icon picker -->
+    <color name="black">#FF000000</color>
     <color name="transparent">#00000000</color>
+
 </resources>

@@ -4,14 +4,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark">
+    android:background="?attr/colorBackground">
 
     <TextView
         android:id="@+id/tvHeader"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="📥 Uncategorized"
-        android:textColor="@color/text_primary"
+        android:textColor="?attr/colorTextPrimary"
         android:textSize="20sp"
         android:textStyle="bold"
         android:padding="20dp"
@@ -23,7 +23,7 @@
         android:id="@+id/tvCount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/colorTextSecondary"
         android:textSize="13sp"
         android:paddingHorizontal="20dp"
         app:layout_constraintTop_toBottomOf="@id/tvHeader"
@@ -33,7 +33,7 @@
         android:id="@+id/divider"
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="@color/surface_light"
+        android:background="?attr/colorSurfaceElevated"
         android:layout_marginTop="8dp"
         app:layout_constraintTop_toBottomOf="@id/tvCount"
         app:layout_constraintStart_toStartOf="parent"
@@ -55,7 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Your unsorted recordings appear here.\nRecord something first!"
-        android:textColor="@color/text_dim"
+        android:textColor="?attr/colorTextSecondary"
         android:textSize="14sp"
         android:textAlignment="center"
         android:lineSpacingMultiplier="1.5"

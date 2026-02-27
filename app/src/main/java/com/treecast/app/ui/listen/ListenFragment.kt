@@ -19,6 +19,9 @@ import com.treecast.app.ui.NowPlayingState
 import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
 
+import com.treecast.app.util.themeColor
+
+
 class ListenFragment : Fragment() {
 
     private var _binding: FragmentListenBinding? = null
@@ -89,12 +92,12 @@ class ListenFragment : Fragment() {
     private fun selectTab(tab: Int) {
         selectedTab = tab
         binding.tabCategorize.setTextColor(
-            if (tab == 0) requireContext().getColor(R.color.text_primary)
-            else requireContext().getColor(R.color.text_dim)
+            if (tab == 0) requireContext().themeColor(R.attr.colorTextPrimary)
+            else requireContext().themeColor(R.attr.colorTextSecondary)
         )
         binding.tabMarks.setTextColor(
-            if (tab == 1) requireContext().getColor(R.color.text_primary)
-            else requireContext().getColor(R.color.text_dim)
+            if (tab == 1) requireContext().themeColor(R.attr.colorTextPrimary)
+            else requireContext().themeColor(R.attr.colorTextSecondary)
         )
 
         val indicator = binding.tabIndicator
@@ -182,7 +185,7 @@ class ListenFragment : Fragment() {
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = 12 * density
-                    setColor(0xFF_2A2A3E.toInt())
+                    setColor(context.themeColor(R.attr.colorSurfaceElevated))
                 }
                 layoutParams = ViewGroup.MarginLayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -211,14 +214,15 @@ class ListenFragment : Fragment() {
         markChips.forEach { (markId, chip) ->
             val isSelected   = markId == selectedId
             val isLastPassed = markId == lastPassedMarkId
+            val ctx = requireContext()
             (chip.background as? GradientDrawable)?.setColor(when {
-                isSelected   -> 0xFF_00BFA5.toInt()
-                isLastPassed -> 0xFF_C2185B.toInt()
-                else         -> 0xFF_2A2A3E.toInt()
+                isSelected   -> ctx.themeColor(R.attr.colorMarkSelected)
+                isLastPassed -> ctx.themeColor(R.attr.colorMarkDefault)
+                else         -> ctx.themeColor(R.attr.colorSurfaceElevated)
             })
             chip.setTextColor(
                 if (isSelected || isLastPassed) 0xFF_FFFFFF.toInt()
-                else requireContext().getColor(R.color.text_dim)
+                else ctx.themeColor(R.attr.colorTextSecondary)
             )
         }
     }

@@ -21,6 +21,7 @@ import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.ui.common.TopicPickerView
 import com.treecast.app.util.Icons
+import com.treecast.app.util.themeColor
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -94,7 +95,7 @@ class RecordingsAdapter(
             // Tint the row background when this recording is the loaded/playing one.
             val isSelected = rec.id == selectedRecordingId
             itemView.setBackgroundColor(
-                if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
+                if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
                 else android.graphics.Color.TRANSPARENT
             )
 

@@ -24,6 +24,7 @@ import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.data.repository.TreeNode
 import com.treecast.app.ui.common.TopicPickerView
 import com.treecast.app.util.Icons
+import com.treecast.app.util.themeColor
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -278,8 +279,8 @@ class TopicItemAdapter(
             // The ripple lives on foreground (item_tree_leaf.xml) so this is safe.
             val isSelected    = rec.id == selectedRecordingId || rec.id == nowPlayingId
             itemView.setBackgroundColor(
-                if (isSelected) ContextCompat.getColor(itemView.context, R.color.surface_light)
-                else Color.TRANSPARENT
+                if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
+                else android.graphics.Color.TRANSPARENT
             )
 
             val isThisPlaying = rec.id == nowPlayingId && isPlaying

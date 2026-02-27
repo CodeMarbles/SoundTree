@@ -6,7 +6,6 @@ import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
@@ -15,6 +14,7 @@ import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
 import com.treecast.app.ui.settings.SettingsFragment
+import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -199,8 +199,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateBottomNavSelection(position: Int) {
-        val accent = ContextCompat.getColor(this, R.color.accent)
-        val dim    = ContextCompat.getColor(this, R.color.text_dim)
+        val accent = themeColor(R.attr.colorAccent)
+        val dim    = themeColor(R.attr.colorTextSecondary)
 
         fun icon(iv: android.widget.ImageView, label: android.widget.TextView?, active: Boolean) {
             iv.setColorFilter(if (active) accent else dim)

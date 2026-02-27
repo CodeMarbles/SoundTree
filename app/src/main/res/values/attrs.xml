@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TreeCast custom theme attributes.
+
+         All UI color references in layouts, drawables, and Kotlin code
+         should point to these attributes (via ?attr/...) rather than
+         to @color/ resources directly. The theme resolves each attribute
+         to the appropriate raw color for the current mode (dark/light).
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Brand -->
+    <attr name="colorAccent"            format="color" />
+    <attr name="colorAccentDark"        format="color" />
+
+    <!-- Backgrounds & surfaces -->
+    <attr name="colorBackground"        format="color" />
+    <attr name="colorSurfaceBase"       format="color" />
+    <attr name="colorSurfaceElevated"   format="color" />
+    <attr name="colorControlsTray"      format="color" />
+
+    <!-- Text -->
+    <attr name="colorTextPrimary"       format="color" />
+    <attr name="colorTextSecondary"     format="color" />
+
+    <!-- Recording -->
+    <attr name="colorRecordActive"      format="color" />
+    <attr name="colorDestructive"       format="color" />
+
+    <!-- Marks -->
+    <attr name="colorMarkDefault"       format="color" />
+    <attr name="colorMarkSelected"      format="color" />
+    <attr name="colorMarkAction"        format="color" />
+    <attr name="colorMarkSurface"       format="color" />
+
+    <!-- Waveform -->
+    <attr name="colorWaveformUnplayed"      format="color" />
+    <attr name="colorWaveformGradientStart" format="color" />
+    <attr name="colorWaveformGradientMid"   format="color" />
+    <attr name="colorWaveformGradientEnd"   format="color" />
+    <attr name="colorPlayhead"              format="color" />
+
+    <!-- Status & labels -->
+    <attr name="colorStatusSuccess"         format="color" />
+    <attr name="colorStatusWarning"         format="color" />
+    <attr name="colorStatusLockScreen"      format="color" />
+    <attr name="colorStatusRecordingLabel"  format="color" />
+
+</resources>

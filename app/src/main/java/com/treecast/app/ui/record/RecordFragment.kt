@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.IBinder
 import android.view.LayoutInflater
@@ -17,11 +18,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import com.treecast.app.R
 import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.util.Icons
+import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -207,7 +210,7 @@ class RecordFragment : Fragment() {
             RecordingService.State.IDLE -> {
                 binding.btnRecord.text = "● REC"
                 binding.btnRecord.backgroundTintList =
-                    requireContext().getColorStateList(com.treecast.app.R.color.rec_red)
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
                 binding.stopSaveContainer.visibility = View.GONE
                 binding.markLockContainer.visibility = View.GONE
                 lastCancelTapMs = 0L
@@ -225,7 +228,7 @@ class RecordFragment : Fragment() {
             RecordingService.State.PAUSED -> {
                 binding.btnRecord.text = "▶  Resume"
                 binding.btnRecord.backgroundTintList =
-                    requireContext().getColorStateList(com.treecast.app.R.color.accent)
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorAccent))
                 binding.stopSaveContainer.visibility = View.VISIBLE
                 binding.markLockContainer.visibility = View.VISIBLE
             }

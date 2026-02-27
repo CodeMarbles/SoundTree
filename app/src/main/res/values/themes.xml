@@ -1,44 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- ══════════════════════════════════════════════════════════════
+         TreeCast theme — dark (default).
+
+         Resolves all custom attrs.xml attributes to their dark-mode
+         raw color values from colors.xml.
+
+         A res/values-night/ variant will be added when light theme
+         is implemented. Until then, the app is dark-only regardless
+         of system setting.
+         ══════════════════════════════════════════════════════════════ -->
+
     <style name="Theme.TreeCast" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/accent</item>
-        <item name="colorPrimaryVariant">@color/accent_dark</item>
+
+        <!-- Material required slots (drive Material components) -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_600</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorSecondaryVariant">@color/accent_dark</item>
+        <item name="colorSecondary">@color/purple_500</item>
+        <item name="colorSecondaryVariant">@color/purple_600</item>
         <item name="colorOnSecondary">@color/white</item>
-        <item name="android:statusBarColor">@color/bg_dark</item>
-        <item name="android:navigationBarColor">@color/bg_dark</item>
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurface">@color/grey_900</item>
+        <item name="colorOnSurface">#EEEEFF</item>
+        <item name="android:statusBarColor">@color/grey_950</item>
+        <item name="android:navigationBarColor">@color/grey_950</item>
+        <item name="android:windowBackground">@color/grey_950</item>
+
+        <!-- Brand -->
+        <item name="colorAccent">@color/purple_500</item>
+        <item name="colorAccentDark">@color/purple_600</item>
+
+        <!-- Backgrounds & surfaces -->
+        <item name="colorBackground">@color/grey_950</item>
+        <item name="colorSurfaceBase">@color/grey_900</item>
+        <item name="colorSurfaceElevated">@color/grey_800</item>
+        <item name="colorControlsTray">@color/brown_950</item>
+
+        <!-- Text -->
+        <item name="colorTextPrimary">#EEEEFF</item>
+        <item name="colorTextSecondary">#7878A0</item>
+
+        <!-- Recording -->
+        <item name="colorRecordActive">@color/red_500</item>
+        <item name="colorDestructive">@color/red_500</item>
+
+        <!-- Marks -->
+        <item name="colorMarkDefault">@color/pink_700</item>
+        <item name="colorMarkSelected">@color/teal_a700</item>
+        <item name="colorMarkAction">@color/pink_900</item>
+        <item name="colorMarkSurface">@color/grey_910</item>
+
+        <!-- Waveform -->
+        <item name="colorWaveformUnplayed">@color/grey_800</item>
+        <item name="colorWaveformGradientStart">@color/purple_600</item>
+        <item name="colorWaveformGradientMid">@color/purple_500</item>
+        <item name="colorWaveformGradientEnd">@color/purple_300</item>
+        <item name="colorPlayhead">@color/white</item>
+
+        <!-- Status & labels -->
+        <item name="colorStatusSuccess">@color/green_500</item>
+        <item name="colorStatusWarning">@color/orange_600</item>
+        <item name="colorStatusLockScreen">@color/yellow_600</item>
+        <item name="colorStatusRecordingLabel">@color/amber_800</item>
+
     </style>
 
     <style name="Theme.TreeCast.Splash" parent="Theme.TreeCast">
-        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/grey_950</item>
         <item name="android:windowFullscreen">false</item>
     </style>
 
-    <!--
-      Dark theme for BottomSheetDialogFragments.
-
-      The default BottomSheetDialog theme is light — colorSurface and
-      colorOnSurface come from a light Material theme, which is why the
-      EmojiPickerView category icons render black. By inheriting from
-      Theme.MaterialComponents.BottomSheetDialog and re-applying our
-      dark colour tokens we get white icons and a matching background.
-    -->
     <style name="Theme.TreeCast.BottomSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
-        <item name="colorPrimary">@color/accent</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorSurface">@color/grey_900</item>
+        <item name="colorOnSurface">#EEEEFF</item>
         <item name="android:windowBackground">@color/transparent</item>
         <item name="bottomSheetStyle">@style/Widget.TreeCast.BottomSheet</item>
     </style>
 
     <style name="Widget.TreeCast.BottomSheet" parent="Widget.MaterialComponents.BottomSheet">
-        <item name="backgroundTint">@color/surface</item>
+        <item name="backgroundTint">@color/grey_900</item>
     </style>
 
 </resources>

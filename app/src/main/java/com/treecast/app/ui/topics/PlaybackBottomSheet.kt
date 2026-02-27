@@ -46,14 +46,14 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
         binding.btnRewind.setOnClickListener    { viewModel.skipBack() }
         binding.btnForward.setOnClickListener   { viewModel.skipForward() }
 
-        binding.btnFavourite.apply {
-            text = if (recording.isFavourite) "💔  Unfavourite" else "❤️  Add to Favourites"
-            setOnClickListener {
-                val newFav = viewModel.nowPlaying.value?.recording?.isFavourite?.not() ?: true
-                viewModel.setFavourite(recordingId, newFav)
-                text = if (newFav) "💔  Unfavourite" else "❤️  Add to Favourites"
-            }
-        }
+//        binding.btnFavourite.apply {
+//            text = if (recording.isFavourite) "💔  Unfavourite" else "❤️  Add to Favourites"
+//            setOnClickListener {
+//                val newFav = viewModel.nowPlaying.value?.recording?.isFavourite?.not() ?: true
+//                viewModel.setFavourite(recordingId, newFav)
+//                text = if (newFav) "💔  Unfavourite" else "❤️  Add to Favourites"
+//            }
+//        }
 
         // bottom_sheet_playback.xml: id topicPicker (renamed from categoryPicker in step-3 XML edit)
         viewLifecycleOwner.lifecycleScope.launch {

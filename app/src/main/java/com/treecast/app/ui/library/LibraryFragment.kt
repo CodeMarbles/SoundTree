@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.viewpager2.widget.ViewPager2
@@ -12,6 +11,7 @@ import com.treecast.app.R
 import com.treecast.app.databinding.FragmentLibraryBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.themeColor
 
 /**
  * Library tab.
@@ -102,7 +102,7 @@ class LibraryFragment : Fragment() {
     }
 
     private fun updateSubNavSelection(position: Int) {
-        val selectedBg = ContextCompat.getColor(requireContext(), R.color.surface_light)
+        val selectedBg = requireContext().themeColor(R.attr.colorSurfaceElevated)
         val defaultBg  = android.graphics.Color.TRANSPARENT
 
         binding.subNavTopics.setBackgroundColor(if (position == PAGE_TOPICS) selectedBg else defaultBg)

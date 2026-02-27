@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark">
+    android:background="?attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,7 +19,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingHorizontal="20dp"
-            android:background="@color/surface">
+            android:background="?attr/colorSurfaceBase">
 
             <TextView
                 android:id="@+id/tvTopTitle"
@@ -27,7 +27,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Record"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/colorTextPrimary"
                 android:textSize="17sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.03" />
@@ -37,7 +37,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="@color/surface_light" />
+            android:background="?attr/colorSurfaceElevated" />
 
         <!-- ── Page content ───────────────────────────────────────── -->
         <androidx.viewpager2.widget.ViewPager2
@@ -64,7 +64,7 @@
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:orientation="horizontal"
-            android:background="@color/surface"
+            android:background="?attr/colorSurfaceBase"
             android:elevation="8dp">
 
             <!-- Settings -->
@@ -85,7 +85,7 @@
                     android:layout_height="26dp"
                     android:src="@drawable/ic_nav_settings"
                     android:alpha="0.45"
-                    app:tint="@color/text_primary" />
+                    app:tint="?attr/colorTextPrimary" />
 
                 <TextView
                     android:id="@+id/tvSettingsLabel"
@@ -93,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:text="Settings"
                     android:textSize="10sp"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/colorTextSecondary"
                     android:layout_marginTop="2dp" />
 
             </LinearLayout>
@@ -115,8 +115,8 @@
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:src="@drawable/ic_nav_record"
-                    android:alpha="1.0"
-                    app:tint="@color/accent" />
+                    android:alpha="0.45"
+                    app:tint="?attr/colorTextPrimary" />
 
                 <TextView
                     android:id="@+id/tvRecordLabel"
@@ -124,7 +124,7 @@
                     android:layout_height="wrap_content"
                     android:text="Record"
                     android:textSize="10sp"
-                    android:textColor="@color/accent"
+                    android:textColor="?attr/colorTextSecondary"
                     android:layout_marginTop="2dp" />
 
             </LinearLayout>
@@ -147,7 +147,7 @@
                     android:layout_height="26dp"
                     android:src="@drawable/ic_nav_library"
                     android:alpha="0.45"
-                    app:tint="@color/text_primary" />
+                    app:tint="?attr/colorTextPrimary" />
 
                 <TextView
                     android:id="@+id/tvLibraryLabel"
@@ -155,7 +155,7 @@
                     android:layout_height="wrap_content"
                     android:text="Library"
                     android:textSize="10sp"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/colorTextSecondary"
                     android:layout_marginTop="2dp" />
 
             </LinearLayout>
@@ -178,7 +178,7 @@
                     android:layout_height="26dp"
                     android:src="@drawable/ic_nav_listen"
                     android:alpha="0.45"
-                    app:tint="@color/text_primary" />
+                    app:tint="?attr/colorTextPrimary" />
 
                 <TextView
                     android:id="@+id/tvListenLabel"
@@ -186,7 +186,7 @@
                     android:layout_height="wrap_content"
                     android:text="Listen"
                     android:textSize="10sp"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/colorTextSecondary"
                     android:layout_marginTop="2dp" />
 
             </LinearLayout>
@@ -220,7 +220,7 @@
             android:text="Unlock"
             android:textSize="16sp"
             app:cornerRadius="28dp"
-            android:backgroundTint="@color/accent" />
+            android:backgroundTint="?attr/colorAccent" />
 
     </FrameLayout>
 

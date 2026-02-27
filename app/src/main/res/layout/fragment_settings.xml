@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark">
+    android:background="?attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🌳  TreeCast"
-            android:textColor="@color/text_primary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="28sp"
             android:textStyle="bold"
             android:layout_marginBottom="4dp" />
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Personal podcast · voice journal"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="13sp"
             android:layout_marginBottom="32dp" />
 
@@ -35,7 +35,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="PLAYBACK"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.1"
@@ -45,7 +45,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
             app:cardElevation="0dp"
             android:layout_marginBottom="24dp">
 
@@ -55,7 +55,7 @@
                 android:orientation="vertical"
                 android:padding="4dp">
 
-                <!-- ── Auto-navigate to Listen toggle ─────────── -->
+                <!-- ── Switch to Listen on play ───────────────── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -74,14 +74,14 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Switch to Listen on play"
-                            android:textColor="@color/text_primary"
+                            android:textColor="?attr/colorTextPrimary"
                             android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Automatically open the Listen tab when playback starts"
-                            android:textColor="@color/text_dim"
+                            android:textColor="?attr/colorTextSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
 
@@ -98,7 +98,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/surface_light"
+                    android:background="?attr/colorSurfaceElevated"
                     android:layout_marginHorizontal="16dp" />
 
                 <!-- ── Jump to Library on save toggle ──────────── -->
@@ -120,14 +120,14 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Jump to recording after saving"
-                            android:textColor="@color/text_primary"
+                            android:textColor="?attr/colorTextPrimary"
                             android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Open Library and select the recording when you finish saving"
-                            android:textColor="@color/text_dim"
+                            android:textColor="?attr/colorTextSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
 
@@ -144,7 +144,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/surface_light"
+                    android:background="?attr/colorSurfaceElevated"
                     android:layout_marginHorizontal="16dp" />
 
                 <!-- ── Scrub Back length ───────────────────────── -->
@@ -166,20 +166,19 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Scrub Back"
-                            android:textColor="@color/text_primary"
+                            android:textColor="?attr/colorTextPrimary"
                             android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Seconds to jump back when ⏪ is tapped"
-                            android:textColor="@color/text_dim"
+                            android:textColor="?attr/colorTextSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
-                    <!-- Minus button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnScrubBackMinus"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -187,25 +186,23 @@
                         android:layout_height="36dp"
                         android:text="−"
                         android:textSize="18sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:padding="0dp"
-                        app:strokeColor="@color/surface_light"
+                        app:strokeColor="?attr/colorSurfaceElevated"
                         app:cornerRadius="18dp" />
 
-                    <!-- Value field -->
                     <TextView
                         android:id="@+id/tvScrubBackSecs"
                         android:layout_width="48dp"
                         android:layout_height="36dp"
                         android:gravity="center"
                         android:text="15"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
-                    <!-- Plus button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnScrubBackPlus"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -213,11 +210,11 @@
                         android:layout_height="36dp"
                         android:text="+"
                         android:textSize="18sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:padding="0dp"
-                        app:strokeColor="@color/surface_light"
+                        app:strokeColor="?attr/colorSurfaceElevated"
                         app:cornerRadius="18dp" />
 
                 </LinearLayout>
@@ -225,7 +222,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/surface_light"
+                    android:background="?attr/colorSurfaceElevated"
                     android:layout_marginHorizontal="16dp" />
 
                 <!-- ── Scrub Forward length ────────────────────── -->
@@ -247,20 +244,19 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Scrub Forward"
-                            android:textColor="@color/text_primary"
+                            android:textColor="?attr/colorTextPrimary"
                             android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Seconds to jump forward when ⏩ is tapped"
-                            android:textColor="@color/text_dim"
+                            android:textColor="?attr/colorTextSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
-                    <!-- Minus button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnScrubForwardMinus"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -268,25 +264,23 @@
                         android:layout_height="36dp"
                         android:text="−"
                         android:textSize="18sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:padding="0dp"
-                        app:strokeColor="@color/surface_light"
+                        app:strokeColor="?attr/colorSurfaceElevated"
                         app:cornerRadius="18dp" />
 
-                    <!-- Value field -->
                     <TextView
                         android:id="@+id/tvScrubForwardSecs"
                         android:layout_width="48dp"
                         android:layout_height="36dp"
                         android:gravity="center"
                         android:text="15"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
-                    <!-- Plus button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnScrubForwardPlus"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -294,11 +288,11 @@
                         android:layout_height="36dp"
                         android:text="+"
                         android:textSize="18sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="?attr/colorTextPrimary"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:padding="0dp"
-                        app:strokeColor="@color/surface_light"
+                        app:strokeColor="?attr/colorSurfaceElevated"
                         app:cornerRadius="18dp" />
 
                 </LinearLayout>
@@ -312,7 +306,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="STATS"
-            android:textColor="@color/text_dim"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.1"
@@ -322,7 +316,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
             app:cardElevation="0dp">
 
             <LinearLayout
@@ -336,7 +330,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Last session: —"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/colorTextSecondary"
                     android:textSize="13sp"
                     android:layout_marginBottom="6dp" />
 
@@ -345,7 +339,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Total recordings: —"
-                    android:textColor="@color/text_dim"
+                    android:textColor="?attr/colorTextSecondary"
                     android:textSize="13sp" />
 
             </LinearLayout>
