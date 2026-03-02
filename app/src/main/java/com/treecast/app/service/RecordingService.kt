@@ -7,9 +7,11 @@ import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.treecast.app.TreeCastApp
+import com.treecast.app.service.RecordingService.StopResult
 import com.treecast.app.ui.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -118,6 +120,9 @@ class RecordingService : Service() {
     // lifetime of the service; cancelled in onDestroy.
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Used to allow Notification Controls to be visible on the lock screen
+    private var mediaSessionCompat: MediaSessionCompat? = null
+
     private val amplitudeRunnable = object : Runnable {
         override fun run() {
             if (_state.value == State.RECORDING) {
@@ -136,6 +141,9 @@ class RecordingService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        mediaSessionCompat = MediaSessionCompat(this, "TreeCastRecording").also {
+            it.isActive = true
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -164,6 +172,10 @@ class RecordingService : Service() {
     override fun onDestroy() {
         stopRecording()
         serviceScope.cancel()
+
+        mediaSessionCompat?.release()
+        mediaSessionCompat = null
+
         super.onDestroy()
     }
 
@@ -446,6 +458,10 @@ class RecordingService : Service() {
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(openAppPi)
             .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                .setMediaSession(mediaSessionCompat!!.sessionToken)
+                .setShowActionsInCompactView(0, 1, 2))
             .addAction(toggleAction)
             .addAction(saveAction)
             .addAction(markAction)
