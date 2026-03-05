@@ -76,6 +76,7 @@ class SettingsFragment : Fragment() {
 
         fun select(mode: String) {
             viewModel.setThemeMode(mode)
+            updateToggleVisuals(mode)
             AppCompatDelegate.setDefaultNightMode(
                 when (mode) {
                     "light" -> AppCompatDelegate.MODE_NIGHT_NO
@@ -258,7 +259,7 @@ class SettingsFragment : Fragment() {
 
             // Divider between rows (not after last)
             if (volume != volumes.last()) {
-                val divider = android.view.View(requireContext()).apply {
+                val divider = View(requireContext()).apply {
                     layoutParams = android.widget.LinearLayout.LayoutParams(
                         android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1
                     ).also { lp ->
