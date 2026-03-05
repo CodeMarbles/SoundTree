@@ -10,7 +10,9 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.databinding.FragmentListenBinding
@@ -121,8 +123,12 @@ class ListenFragment : Fragment() {
     // ── Topic picker ───────────────────────────────────────────────────
     private fun setupTopicPicker() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics ->
-                binding.topicPicker.setTopics(topics)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allTopics.collect { topics ->
+                        binding.topicPicker.setTopics(topics)
+                    }
+                }
             }
         }
         binding.topicPicker.onTopicSelected = { topicId ->

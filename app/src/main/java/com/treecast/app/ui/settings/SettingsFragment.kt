@@ -7,7 +7,9 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
@@ -125,14 +127,18 @@ class SettingsFragment : Fragment() {
 
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val lastSession = viewModel.getLastSession()
-            binding.tvLastOpened.text = if (lastSession?.closedAt != null) {
-                "Last session: ${formatGap(System.currentTimeMillis() - lastSession.closedAt)} ago"
-            } else {
-                "Last session: this session"
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    val lastSession = viewModel.getLastSession()
+                    binding.tvLastOpened.text = if (lastSession?.closedAt != null) {
+                        "Last session: ${formatGap(System.currentTimeMillis() - lastSession.closedAt)} ago"
+                    } else {
+                        "Last session: this session"
+                    }
+                    binding.tvTotalRecordings.text =
+                        "Total recordings: ${viewModel.allRecordings.value.size}"
+                }
             }
-            binding.tvTotalRecordings.text =
-                "Total recordings: ${viewModel.allRecordings.value.size}"
         }
     }
 

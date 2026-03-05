@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentTopicsBinding
 import com.treecast.app.ui.MainActivity
@@ -73,23 +75,24 @@ class TopicsFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics -> topicItemAdapter.topics = topics }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.treeItems.collect { items -> topicItemAdapter.submitList(items) }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.nowPlaying.collect { state ->
-                topicItemAdapter.nowPlayingId = state?.recording?.id ?: -1L
-                topicItemAdapter.isPlaying    = state?.isPlaying ?: false
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.selectedRecordingId.collect { id ->
-                topicItemAdapter.selectedRecordingId = id
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allTopics.collect { topics -> topicItemAdapter.topics = topics }
+                }
+                launch {
+                    viewModel.treeItems.collect { items -> topicItemAdapter.submitList(items) }
+                }
+                launch {
+                    viewModel.nowPlaying.collect { state ->
+                        topicItemAdapter.nowPlayingId = state?.recording?.id ?: -1L
+                        topicItemAdapter.isPlaying = state?.isPlaying ?: false
+                    }
+                }
+                launch {
+                    viewModel.selectedRecordingId.collect { id ->
+                        topicItemAdapter.selectedRecordingId = id
+                    }
+                }
             }
         }
     }

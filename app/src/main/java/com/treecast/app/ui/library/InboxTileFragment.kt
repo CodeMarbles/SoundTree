@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle                    // ← new import
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle            // ← new import
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentInboxTileBinding
 import com.treecast.app.ui.MainActivity
@@ -56,27 +58,30 @@ class InboxTileFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics -> adapter.topics = topics }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.nowPlaying.collect { state ->
-                adapter.nowPlayingId = state?.recording?.id ?: -1L
-                adapter.isPlaying    = state?.isPlaying ?: false
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.selectedRecordingId.collect { id ->
-                adapter.selectedRecordingId = id
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.inbox.collect { recs ->
-                adapter.submitList(recs)
-                binding.tvEmpty.visibility = if (recs.isEmpty()) View.VISIBLE else View.GONE
-                binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allTopics.collect { topics ->
+                        adapter.topics = topics
+                    }
+                }
+                launch {
+                    viewModel.nowPlaying.collect { state ->
+                        adapter.nowPlayingId = state?.recording?.id ?: -1L
+                        adapter.isPlaying    = state?.isPlaying ?: false
+                    }
+                }
+                launch {
+                    viewModel.selectedRecordingId.collect { id ->
+                        adapter.selectedRecordingId = id
+                    }
+                }
+                launch {
+                    viewModel.inbox.collect { recs ->
+                        adapter.submitList(recs)
+                        binding.tvEmpty.visibility = if (recs.isEmpty()) View.VISIBLE else View.GONE
+                        binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
+                    }
+                }
             }
         }
     }

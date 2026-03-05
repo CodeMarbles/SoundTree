@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,7 +18,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
@@ -50,6 +53,7 @@ class RecordFragment : Fragment() {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            Log.d("TC_DEBUG", "RecordFragment: onServiceConnected")
             recordingService = (binder as RecordingService.RecordingBinder).getService()
             isBound = true
             observeServiceState()
@@ -59,6 +63,7 @@ class RecordFragment : Fragment() {
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
+            Log.w("TC_DEBUG", "RecordFragment: onServiceDisconnected")
             isBound = false
             recordingService = null
         }
@@ -137,14 +142,18 @@ class RecordFragment : Fragment() {
 
     private fun setupTopicPicker() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics ->
-                binding.topicPicker.setTopics(topics)
-                // If the selected topic was deleted by the user, reset the picker
-                // and the service back to Uncategorised (null) automatically.
-                if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
-                    selectedTopicId = null
-                    binding.topicPicker.setSelectedTopic(null, "Uncategorised", Icons.INBOX)
-                    recordingService?.setTopic(null)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allTopics.collect { topics ->
+                        binding.topicPicker.setTopics(topics)
+                        // If the selected topic was deleted by the user, reset the picker
+                        // and the service back to Uncategorised (null) automatically.
+                        if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
+                            selectedTopicId = null
+                            binding.topicPicker.setSelectedTopic(null, "Uncategorised", Icons.INBOX)
+                            recordingService?.setTopic(null)
+                        }
+                    }
                 }
             }
         }
@@ -157,40 +166,48 @@ class RecordFragment : Fragment() {
         }
     }
 
+
     private fun observeServiceState() {
         val svc = recordingService ?: return
 
         viewLifecycleOwner.lifecycleScope.launch {
-            svc.state.collect { updateUiForState(it) }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            svc.elapsedMs.collect { ms -> binding.tvTimer.text = formatDuration(ms) }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            svc.amplitude.collect { amp -> binding.waveformView.pushAmplitude(amp) }
-        }
-        // Keep the mark count badge in sync with the service.
-        viewLifecycleOwner.lifecycleScope.launch {
-            svc.pendingMarkCount.collect { count ->
-                if (count > 0) {
-                    binding.tvMarkCount.text = "$count ${if (count == 1) "mark" else "marks"}"
-                    binding.tvMarkCount.visibility = View.VISIBLE
-                } else {
-                    binding.tvMarkCount.visibility = View.GONE
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    svc.state.collect { updateUiForState(it) }
                 }
-            }
-        }
-        // Observe saves that were triggered from the notification action button.
-        // The service has already written to the database by the time this
-        // emits, so we only need to handle post-save navigation here — no
-        // second DB write should occur.
-        viewLifecycleOwner.lifecycleScope.launch {
-            svc.notificationSaveEvent.collect { saved ->
-                binding.topicPicker.collapse()
-                if (viewModel.jumpToLibraryOnSave.value) {
-                    viewModel.selectRecording(saved.recordingId)
-                    (requireActivity() as? MainActivity)
-                        ?.navigateToLibraryForRecording(saved.topicId)
+                launch {
+                    svc.elapsedMs.collect { ms ->
+                        binding.tvTimer.text = formatDuration(ms)
+                    }
+                }
+                launch {
+                    svc.amplitude.collect { amp ->
+                        binding.waveformView.pushAmplitude(amp)
+                    }
+                }
+                launch {
+                    svc.pendingMarkCount.collect { count ->
+                        if (count > 0) {
+                            binding.tvMarkCount.text = "$count ${if (count == 1) "mark" else "marks"}"
+                            binding.tvMarkCount.visibility = View.VISIBLE
+                        } else {
+                            binding.tvMarkCount.visibility = View.GONE
+                        }
+                    }
+                }
+                launch {
+                    // Observe saves that were triggered from the notification action button.
+                    // The service has already written to the database by the time this
+                    // emits, so we only need to handle post-save navigation here — no
+                    // second DB write should occur.
+                    svc.notificationSaveEvent.collect { saved ->
+                        binding.topicPicker.collapse()
+                        if (viewModel.jumpToLibraryOnSave.value) {
+                            viewModel.selectRecording(saved.recordingId)
+                            (requireActivity() as? MainActivity)
+                                ?.navigateToLibraryForRecording(saved.topicId)
+                        }
+                    }
                 }
             }
         }
@@ -198,8 +215,12 @@ class RecordFragment : Fragment() {
 
     private fun observeLock() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.isLocked.collect { locked ->
-                binding.btnLockScreen.alpha = if (locked) 0.3f else 1f
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isLocked.collect { locked ->
+                        binding.btnLockScreen.alpha = if (locked) 0.3f else 1f
+                    }
+                }
             }
         }
     }
@@ -251,11 +272,18 @@ class RecordFragment : Fragment() {
     }
 
     private fun startRecording() {
+        // Always explicitly start the service, not just when the binder isn't
+        // ready. A bound-only service can be destroyed when its last client
+        // unbinds (e.g. during activity recreation on theme change). Calling
+        // startForegroundService() here promotes it to a started service, so
+        // Android won't destroy it just because RecordFragment temporarily
+        // unbound during a configuration change.
+        ContextCompat.startForegroundService(
+            requireContext(),
+            Intent(requireContext(), RecordingService::class.java)
+        )
+
         val svc = recordingService ?: run {
-            ContextCompat.startForegroundService(
-                requireContext(),
-                Intent(requireContext(), RecordingService::class.java)
-            )
             bindRecordingService()
             pendingQuickRecord = true
             return

@@ -84,8 +84,9 @@ class LibraryFragment : Fragment() {
 
     /** Called by MainActivity back handler — returns true if we consumed the event. */
     fun handleBackPress(): Boolean {
-        return if (binding.tilePager.currentItem == PAGE_INBOX) {
-            binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+        val b = _binding ?: return false
+        return if (b.tilePager.currentItem == PAGE_INBOX) {
+            b.tilePager.setCurrentItem(PAGE_TOPICS, true)
             true
         } else {
             false
@@ -98,7 +99,7 @@ class LibraryFragment : Fragment() {
      */
     fun jumpToSubPageForRecording(topicId: Long?) {
         val target = if (topicId == null) PAGE_INBOX else PAGE_TOPICS
-        binding.tilePager.setCurrentItem(target, false)
+        _binding?.tilePager?.setCurrentItem(target, false)
     }
 
     private fun updateSubNavSelection(position: Int) {

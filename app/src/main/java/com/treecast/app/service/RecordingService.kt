@@ -136,7 +136,10 @@ class RecordingService : Service() {
 
     private val mainHandler by lazy { android.os.Handler(mainLooper) }
 
-    override fun onBind(intent: Intent?): IBinder = binder
+    override fun onBind(intent: Intent?): IBinder {
+        Log.d("TC_DEBUG", "RecordingService.onBind()")
+        return binder
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -147,6 +150,7 @@ class RecordingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("TC_DEBUG", "RecordingService.onStartCommand() action=${intent?.action}")
         when (intent?.action) {
             ACTION_START -> {
                 // Accept the currently selected topic so the service can save
@@ -170,6 +174,7 @@ class RecordingService : Service() {
     }
 
     override fun onDestroy() {
+        Log.w("TC_DEBUG", "RecordingService.onDestroy() called — state was ${_state.value}")
         stopRecording()
         serviceScope.cancel()
 
@@ -254,6 +259,9 @@ class RecordingService : Service() {
         _amplitude.tryEmit(0)
         _elapsedMs.value = 0L
         stopForeground(STOP_FOREGROUND_REMOVE)
+
+        // otherwise the service will linger as a started service forever after the first recording.
+        stopSelf()
 
         val path = currentFilePath
         currentFilePath = null

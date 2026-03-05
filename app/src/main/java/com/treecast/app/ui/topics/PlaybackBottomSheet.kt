@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
@@ -46,25 +48,17 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
         binding.btnRewind.setOnClickListener    { viewModel.skipBack() }
         binding.btnForward.setOnClickListener   { viewModel.skipForward() }
 
-//        binding.btnFavourite.apply {
-//            text = if (recording.isFavourite) "💔  Unfavourite" else "❤️  Add to Favourites"
-//            setOnClickListener {
-//                val newFav = viewModel.nowPlaying.value?.recording?.isFavourite?.not() ?: true
-//                viewModel.setFavourite(recordingId, newFav)
-//                text = if (newFav) "💔  Unfavourite" else "❤️  Add to Favourites"
-//            }
-//        }
-
-        // bottom_sheet_playback.xml: id topicPicker (renamed from categoryPicker in step-3 XML edit)
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.allTopics.collect { topics ->
-                binding.topicPicker.setTopics(topics)
-                val topic = recording.topicId?.let { id -> topics.find { it.id == id } }
-                binding.topicPicker.setSelectedTopic(
-                    recording.topicId,
-                    topic?.name ?: "Uncategorised",
-                    topic?.icon ?: Icons.INBOX
-                )
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.allTopics.collect { topics ->
+                    binding.topicPicker.setTopics(topics)
+                    val topic = recording.topicId?.let { id -> topics.find { it.id == id } }
+                    binding.topicPicker.setSelectedTopic(
+                        recording.topicId,
+                        topic?.name ?: "Uncategorised",
+                        topic?.icon ?: Icons.INBOX
+                    )
+                }
             }
         }
         binding.topicPicker.onTopicSelected = { topicId ->
