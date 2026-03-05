@@ -67,7 +67,8 @@ class RecordingService : Service() {
     data class StopResult(
         val filePath: String?,
         val durationMs: Long,
-        val markTimestamps: List<Long>   // elapsed-ms values, not wall-clock
+        val markTimestamps: List<Long>,   // elapsed-ms values, not wall-clock
+        val storageVolumeUuid: String
     )
 
     /**
@@ -284,6 +285,7 @@ class RecordingService : Service() {
         val path = currentFilePath
         currentFilePath = null
 
+        val uuid = outputVolumeUuid
         outputDir = null
         outputVolumeUuid = StorageVolumeHelper.UUID_PRIMARY
 
@@ -295,7 +297,8 @@ class RecordingService : Service() {
         return StopResult(
             filePath       = path,
             durationMs     = duration,
-            markTimestamps = marks
+            markTimestamps = marks,
+            storageVolumeUuid = uuid
         )
     }
 
@@ -419,7 +422,7 @@ class RecordingService : Service() {
                 title          = title,
                 topicId        = resolvedTopicId,
                 markTimestamps = marks,
-                storageVolumeUuid = outputVolumeUuid
+                storageVolumeUuid = result.storageVolumeUuid
             )
 
             _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))

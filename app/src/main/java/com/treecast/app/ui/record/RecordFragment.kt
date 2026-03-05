@@ -352,8 +352,7 @@ class RecordFragment : Fragment() {
                 title          = "Recording – $stamp",
                 topicId        = resolvedTopicId,
                 markTimestamps = result.markTimestamps,
-                storageVolumeUuid = recordingService?.getOutputVolumeUuid()
-                              ?: StorageVolumeHelper.UUID_PRIMARY
+                storageVolumeUuid = result.storageVolumeUuid
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
             binding.topicPicker.collapse()
