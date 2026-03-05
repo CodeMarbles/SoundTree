@@ -93,8 +93,18 @@ class TopicsFragment : Fragment() {
                         topicItemAdapter.selectedRecordingId = id
                     }
                 }
+                launch {
+                    viewModel.orphanVolumeUuids.collect { uuids ->
+                        topicItemAdapter.orphanVolumeUuids = uuids
+                    }
+                }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshStorageVolumes()
     }
 
     override fun onDestroyView() {

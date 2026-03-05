@@ -1,6 +1,7 @@
 package com.treecast.app.ui.topics
 
 import android.app.AlertDialog
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.GestureDetector
 import android.view.LayoutInflater
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.treecast.app.R
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
@@ -66,6 +68,8 @@ class TopicItemAdapter(
     var nowPlayingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
     var isPlaying: Boolean = false
+        set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
+    var orphanVolumeUuids: Set<String> = emptySet()
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
 
     var selectedRecordingId: Long = -1L
@@ -283,10 +287,30 @@ class TopicItemAdapter(
                 else android.graphics.Color.TRANSPARENT
             )
 
-            val isThisPlaying = rec.id == nowPlayingId && isPlaying
-            btnInlinePlay.setImageResource(
-                if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
-            btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+            val isOrphan = rec.storageVolumeUuid in orphanVolumeUuids
+
+            if (isOrphan) {
+                btnInlinePlay.setImageResource(R.drawable.ic_storage_offline)
+                btnInlinePlay.imageTintList = ColorStateList.valueOf(
+                    itemView.context.themeColor(R.attr.colorTextSecondary))
+                itemView.alpha = 0.5f
+                btnInlinePlay.setOnClickListener {
+                    Snackbar.make(
+                        itemView,
+                        "Storage device not connected",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
+                val isThisPlaying = rec.id == nowPlayingId && isPlaying
+                btnInlinePlay.setImageResource(
+                    if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+                btnInlinePlay.imageTintList = ColorStateList.valueOf(
+                    itemView.context.themeColor(R.attr.colorAccent))
+                itemView.alpha = 1f
+                btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+            }
+
 
             val isExpanded = rec.id == expandedRecordingId
             expandedControls.visibility = if (isExpanded) View.VISIBLE else View.GONE

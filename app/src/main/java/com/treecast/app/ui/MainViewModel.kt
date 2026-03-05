@@ -459,6 +459,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     /**
+     * UUIDs of storage volumes that have recordings in the DB but are not
+     * currently mounted (e.g. an SD card that has been ejected).
+     *
+     * Derived reactively from [storageVolumes] and [storageUsageByVolume],
+     * so it updates automatically whenever either changes — including when
+     * [refreshStorageVolumes] is called from a fragment's onResume().
+     *
+     * Consumed by both [RecordingsAdapter] and [TopicItemAdapter] to show
+     * the offline-storage warning on affected recording rows.
+     */
+    val orphanVolumeUuids: StateFlow<Set<String>> = combine(
+        storageVolumes,
+        storageUsageByVolume
+    ) { volumes, usageMap ->
+        val mountedUuids = volumes.map { it.uuid }.toSet()
+        // A UUID is orphaned if recordings exist on it but its volume isn't mounted.
+        usageMap.keys.filter { it !in mountedUuids }.toSet()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+
+    /**
      * Re-queries [StorageVolumeHelper] and updates [storageVolumes].
      * Call from SettingsFragment.onResume() and after the user changes
      * the default storage, so the volume list and free-space stats stay fresh.

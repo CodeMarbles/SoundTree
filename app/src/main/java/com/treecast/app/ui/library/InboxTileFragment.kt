@@ -82,8 +82,18 @@ class InboxTileFragment : Fragment() {
                         binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
                     }
                 }
+                launch {
+                    viewModel.orphanVolumeUuids.collect { uuids ->
+                        adapter.orphanVolumeUuids = uuids
+                    }
+                }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshStorageVolumes()
     }
 
     override fun onDestroyView() {
