@@ -1,6 +1,7 @@
 package com.treecast.app.ui
 
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.View
 import androidx.activity.OnBackPressedCallback
@@ -14,6 +15,7 @@ import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
 import com.treecast.app.ui.settings.SettingsFragment
+import com.treecast.app.util.StorageEjectReceiver
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
@@ -52,6 +54,8 @@ class MainActivity : AppCompatActivity() {
         PAGE_LIBRARY  to "Library",
         PAGE_LISTEN   to "Listen"
     )
+
+    private var storageEjectReceiver: StorageEjectReceiver? = null
 
     // ── Back-stack navigation ─────────────────────────────────────────
     //
@@ -92,6 +96,29 @@ class MainActivity : AppCompatActivity() {
             intent.getBooleanExtra(EXTRA_QUICK_RECORD, false) ->
                 binding.viewPager.currentItem = PAGE_RECORD
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        storageEjectReceiver = StorageEjectReceiver {
+            // Called on the main thread — safe to update ViewModel directly.
+            viewModel.refreshStorageVolumes()
+        }.also { receiver ->
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_MEDIA_REMOVED)
+                addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+                addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+                // Storage broadcasts require a data scheme to be delivered.
+                addDataScheme("file")
+            }
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        storageEjectReceiver?.let { unregisterReceiver(it) }
+        storageEjectReceiver = null
     }
 
     /**
