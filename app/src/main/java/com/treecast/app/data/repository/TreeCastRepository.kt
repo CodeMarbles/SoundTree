@@ -1,11 +1,13 @@
 package com.treecast.app.data.repository
 
 import android.content.Context
+import com.treecast.app.data.dao.VolumeUsage
 import com.treecast.app.data.db.AppDatabase
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.SessionEntity
 import com.treecast.app.data.entities.TopicEntity
+import com.treecast.app.util.StorageVolumeHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -63,6 +65,21 @@ class TreeCastRepository(context: Context) {
     )
 
     /**
+     * Per-volume storage usage, live from the DB.
+     * Delegated directly to [RecordingDao.getStorageUsageByVolume].
+     * The ViewModel turns this into a [StateFlow<Map<String, Long>>].
+     */
+    fun getStorageUsageByVolume(): Flow<List<VolumeUsage>> =
+        recordingDao.getStorageUsageByVolume()
+
+    /**
+     * All recordings on a given storage volume.
+     * Used to identify orphaned recordings when a volume is unmounted.
+     */
+    fun getRecordingsByVolume(uuid: String): Flow<List<RecordingEntity>> =
+        recordingDao.getByVolume(uuid)
+
+    /**
      * Saves a recording and atomically flushes any marks dropped during
      * that recording session. The recording row is inserted first to
      * obtain its ID, then all mark timestamps are inserted in bulk.
@@ -74,9 +91,19 @@ class TreeCastRepository(context: Context) {
         fileSizeBytes: Long,
         title: String,
         topicId: Long? = null,
-        markTimestamps: List<Long>
+        markTimestamps: List<Long>,
+        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
     ): Long {
-        val recordingId = saveRecording(filePath, durationMs, fileSizeBytes, title, topicId)
+        val recordingId = recordingDao.insert(
+            RecordingEntity(
+                filePath          = filePath,
+                durationMs        = durationMs,
+                fileSizeBytes     = fileSizeBytes,
+                title             = title,
+                topicId           = topicId,
+                storageVolumeUuid = storageVolumeUuid
+            )
+        )
         if (markTimestamps.isNotEmpty()) {
             saveMarks(recordingId, markTimestamps)
         }

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioButton
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -13,7 +14,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.AppVolume
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -36,12 +39,18 @@ class SettingsFragment : Fragment() {
         setupTheme()
         setupPlaybackSettings()
         loadStats()
+        setupStorageSection()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
+   override fun onResume() {
+       super.onResume()
+       viewModel.refreshStorageVolumes()   // refresh free-space numbers
+   }
 
     private fun setupTheme() {
         fun updateToggleVisuals(selected: String) {
@@ -123,6 +132,151 @@ class SettingsFragment : Fragment() {
             viewModel.setScrubForwardSecs(newVal)
             binding.tvScrubForwardSecs.text = newVal.toString()
         }
+    }
+
+    private fun setupStorageSection() {
+        // Observe the live volume list and usage stats together.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Combine volumes + DB usage stats into a single emission.
+                combine(
+                    viewModel.storageVolumes,
+                    viewModel.storageUsageByVolume,
+                    viewModel.defaultStorageUuid
+                ) { volumes, usageMap, selectedUuid ->
+                    Triple(volumes, usageMap, selectedUuid)
+                }.collect { (volumes, usageMap, selectedUuid) ->
+                    renderStorageVolumes(volumes, usageMap, selectedUuid)
+                    renderTotalUsed(usageMap)
+                }
+            }
+        }
+    }
+
+    /**
+     * Inflates one radio-button row per available storage volume into
+     * [storageVolumeContainer]. Clears previous rows on each update so the
+     * list stays in sync if volumes change while the Settings tab is open.
+     */
+    private fun renderStorageVolumes(
+        volumes: List<AppVolume>,
+        usageMap: Map<String, Long>,
+        selectedUuid: String
+    ) {
+        val container = binding.storageVolumeContainer
+        container.removeAllViews()
+
+        if (volumes.isEmpty()) {
+            // Edge case: no volumes found yet (first render before refresh completes).
+            val placeholder = android.widget.TextView(requireContext()).apply {
+                text = "Detecting storage…"
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                textSize = 13f
+                setPadding(64, 12, 64, 12)
+            }
+            container.addView(placeholder)
+            return
+        }
+
+        volumes.forEach { volume ->
+            val usedBytes = usageMap[volume.uuid] ?: 0L
+            val isSelected = volume.uuid == selectedUuid
+
+            // Root row
+            val row = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(64, 20, 64, 20)
+                isClickable = true
+                isFocusable = true
+                background = with(android.util.TypedValue()) {
+                    requireContext().theme.resolveAttribute(
+                        android.R.attr.selectableItemBackground, this, true
+                    )
+                    android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+                        .also { /* use ripple from background attr via setBackgroundResource */ }
+                }
+                setBackgroundResource(android.R.attr.selectableItemBackground.let {
+                    android.util.TypedValue().also { tv ->
+                        requireContext().theme.resolveAttribute(it, tv, true)
+                    }.resourceId
+                })
+            }
+
+            // Radio button (decorative — row click toggles it)
+            val radio = RadioButton(requireContext()).apply {
+                isChecked = isSelected
+                isClickable = false
+                isFocusable = false
+            }
+
+            // Text block: label + usage annotation
+            val textBlock = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                )
+            }
+
+            val tvLabel = android.widget.TextView(requireContext()).apply {
+                text = if (volume.isMounted) volume.label else "${volume.label} (unavailable)"
+                setTextColor(
+                    if (volume.isMounted)
+                        requireContext().themeColor(R.attr.colorTextPrimary)
+                    else
+                        requireContext().themeColor(R.attr.colorTextSecondary)
+                )
+                textSize = 14f
+                if (isSelected) setTypeface(null, android.graphics.Typeface.BOLD)
+            }
+
+            val tvUsage = android.widget.TextView(requireContext()).apply {
+                val usedLabel = AppVolume.formatBytes(usedBytes)
+                text = if (volume.isMounted) {
+                    "$usedLabel used  ·  ${volume.freeLabel()}"
+                } else {
+                    "$usedLabel used  ·  offline"
+                }
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                textSize = 12f
+                setPadding(0, 2, 0, 0)
+            }
+
+            textBlock.addView(tvLabel)
+            textBlock.addView(tvUsage)
+            row.addView(radio)
+            row.addView(textBlock)
+
+            // Only allow selecting mounted volumes.
+            if (volume.isMounted) {
+                row.setOnClickListener {
+                    viewModel.setDefaultStorageUuid(volume.uuid)
+                }
+            }
+
+            container.addView(row)
+
+            // Divider between rows (not after last)
+            if (volume != volumes.last()) {
+                val divider = android.view.View(requireContext()).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1
+                    ).also { lp ->
+                        lp.marginStart = 64
+                        lp.marginEnd = 64
+                    }
+                    setBackgroundColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
+                }
+                container.addView(divider)
+            }
+        }
+    }
+
+    /** Updates the "Total used by TreeCast" summary line. */
+    private fun renderTotalUsed(usageMap: Map<String, Long>) {
+        val totalBytes = usageMap.values.sum()
+        binding.tvTotalUsed.text = if (totalBytes == 0L) "—"
+        else AppVolume.formatBytes(totalBytes)
     }
 
     private fun loadStats() {

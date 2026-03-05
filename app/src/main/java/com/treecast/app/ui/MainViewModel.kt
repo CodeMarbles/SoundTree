@@ -24,6 +24,8 @@ import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.service.PlaybackService
+import com.treecast.app.util.AppVolume
+import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
 import kotlinx.coroutines.*
@@ -51,6 +53,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_SCRUB_BACK_SECS    = "scrub_back_secs"
         private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
         private const val PREF_JUMP_TO_LIBRARY    = "jump_to_library_on_save"
+        private const val PREF_DEFAULT_STORAGE_UUID = "default_storage_uuid"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -259,11 +262,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * If [markTimestamps] is empty the behaviour is identical to [saveRecording].
      */
     fun saveRecordingWithMarks(
-        filePath: String, durationMs: Long, fileSizeBytes: Long,
-        title: String, topicId: Long? = null,
-        markTimestamps: List<Long>
+        filePath: String,
+        durationMs: Long,
+        fileSizeBytes: Long,
+        title: String,
+        topicId: Long? = null,
+        markTimestamps: List<Long>,
+        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY    // ← new param
     ): Deferred<Long> = viewModelScope.async {
-        repo.saveRecordingWithMarks(filePath, durationMs, fileSizeBytes, title, topicId, markTimestamps)
+        repo.saveRecordingWithMarks(
+            filePath          = filePath,
+            durationMs        = durationMs,
+            fileSizeBytes     = fileSizeBytes,
+            title             = title,
+            topicId           = topicId,
+            markTimestamps    = markTimestamps,
+            storageVolumeUuid = storageVolumeUuid                       // ← forwarded
+        )
     }
 
     fun deleteRecording(r: RecordingEntity) = viewModelScope.launch {
@@ -349,21 +364,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var marksJob: Job? = null
 
-    // ── Waveform ──────────────────────────────────────────────────────
-    private val waveformCache = WaveformCache(app)
-
-    /**
-     * Emits (recordingId, amplitudes) whenever a real waveform finishes
-     * loading (from cache or freshly extracted). The fragment observes this
-     * and passes the array to [PlaybackWaveformView.setAmplitudes].
-     *
-     * Null means "no waveform loaded yet / loading in progress".
-     */
-    private val _waveformState = MutableStateFlow<Pair<Long, FloatArray>?>(null)
-    val waveformState: StateFlow<Pair<Long, FloatArray>?> = _waveformState.asStateFlow()
-
-    private var waveformJob: Job? = null
-
     private fun startObservingMarks(recordingId: Long) {
         marksJob?.cancel()
         marksJob = viewModelScope.launch {
@@ -388,6 +388,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _selectedMarkId.value = null
         }
     }
+
+    // ── Waveform ──────────────────────────────────────────────────────
+    private val waveformCache = WaveformCache(app)
+
+    /**
+     * Emits (recordingId, amplitudes) whenever a real waveform finishes
+     * loading (from cache or freshly extracted). The fragment observes this
+     * and passes the array to [PlaybackWaveformView.setAmplitudes].
+     *
+     * Null means "no waveform loaded yet / loading in progress".
+     */
+    private val _waveformState = MutableStateFlow<Pair<Long, FloatArray>?>(null)
+    val waveformState: StateFlow<Pair<Long, FloatArray>?> = _waveformState.asStateFlow()
+
+    private var waveformJob: Job? = null
 
     /**
      * Kicks off waveform loading for [recordingId] / [filePath].
@@ -417,5 +432,58 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             waveformCache.save(recordingId, amps)
             _waveformState.value = recordingId to amps
         }
+    }
+
+    // ── Storage State ─────────────────────────────────────────────────
+
+    //  Default storage volume UUID — persisted in SharedPreferences.
+    //  Null means "use whatever getVolumes() returns first" (== primary external).
+    private val _defaultStorageUuid = MutableStateFlow(
+        prefs.getString(PREF_DEFAULT_STORAGE_UUID, StorageVolumeHelper.UUID_PRIMARY)
+            ?: StorageVolumeHelper.UUID_PRIMARY
+    )
+    val defaultStorageUuid: StateFlow<String> = _defaultStorageUuid
+
+    //  Live list of available volumes, refreshed every time the UI asks.
+    //  Stored as StateFlow so Settings observes it reactively.
+    private val _storageVolumes = MutableStateFlow(
+        StorageVolumeHelper.getVolumes(getApplication())
+    )
+    val storageVolumes: StateFlow<List<AppVolume>> = _storageVolumes
+
+    //  Per-volume used bytes, derived from the DB via a Flow.
+    //  Keyed by volume UUID.
+    val storageUsageByVolume: StateFlow<Map<String, Long>> =
+        repo.getStorageUsageByVolume()                         // Flow<List<VolumeUsage>>
+            .map { list -> list.associate { it.storageVolumeUuid to it.totalBytes } }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    /**
+     * Re-queries [StorageVolumeHelper] and updates [storageVolumes].
+     * Call from SettingsFragment.onResume() and after the user changes
+     * the default storage, so the volume list and free-space stats stay fresh.
+     */
+    fun refreshStorageVolumes() {
+        _storageVolumes.value = StorageVolumeHelper.getVolumes(getApplication())
+    }
+
+    /**
+     * Persists the user's preferred storage volume.
+     * [RecordFragment] reads [defaultStorageUuid] before starting a recording
+     * to resolve the output directory.
+     */
+    fun setDefaultStorageUuid(uuid: String) {
+        _defaultStorageUuid.value = uuid
+        prefs.edit().putString(PREF_DEFAULT_STORAGE_UUID, uuid).apply()
+    }
+
+    /**
+     * Resolves the [AppVolume] the next recording should be written to.
+     * Falls back gracefully if the preferred volume is currently unmounted.
+     */
+    fun resolveRecordingVolume(): AppVolume {
+        val preferred = _defaultStorageUuid.value
+        return StorageVolumeHelper.getVolumeByUuid(getApplication(), preferred)
+            ?: StorageVolumeHelper.getDefaultVolume(getApplication())
     }
 }

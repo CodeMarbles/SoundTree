@@ -5,10 +5,21 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.treecast.app.util.StorageVolumeHelper
 
 /**
  * A single recorded audio episode (leaf node in the podcast tree).
  * Belongs to a topic (nullable = uncategorised / Inbox).
+ *
+ * DB version 4 adds [storageVolumeUuid] to track which storage device holds
+ * the audio file. This allows:
+ *   - Per-device used-storage stats without parsing file paths
+ *   - Identifying orphaned recordings when a volume is ejected
+ *   - Correctly routing new recordings to the user's preferred device
+ *
+ * Existing rows receive DEFAULT 'primary' via the Room migration, which
+ * matches [StorageVolumeHelper.UUID_PRIMARY] — correct for all recordings
+ * saved before this feature was added (they all went to getExternalFilesDir).
  */
 @Entity(
     tableName = "recordings",
@@ -59,5 +70,17 @@ data class RecordingEntity(
      * Comma-separated tags, e.g. "idea,morning,important"
      * Simple storage — app splits/joins on ","
      */
-    @ColumnInfo(name = "tags") val tags: String = ""
+    @ColumnInfo(name = "tags") val tags: String = "",
+
+    /**
+     * UUID of the storage volume that holds [filePath].
+     * Matches [StorageVolumeHelper.UUID_PRIMARY] ("primary") for the default
+     * primary-external volume, or the removable-volume UUID (e.g. "1A2B-3C4D")
+     * for SD cards. Never null — existing rows migrated to "primary".
+     *
+     * Use this rather than parsing [filePath] to identify the volume, as path
+     * prefixes can theoretically change between OS versions.
+     */
+    @ColumnInfo(name = "storage_volume_uuid")
+    val storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
 )

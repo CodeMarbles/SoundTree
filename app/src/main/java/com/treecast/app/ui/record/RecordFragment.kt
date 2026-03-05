@@ -21,12 +21,15 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
+import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 import java.io.File
@@ -272,6 +275,9 @@ class RecordFragment : Fragment() {
     }
 
     private fun startRecording() {
+        // Resolve the target volume before touching the service.
+        val volume = viewModel.resolveRecordingVolume()
+
         // Always explicitly start the service, not just when the binder isn't
         // ready. A bound-only service can be destroyed when its last client
         // unbinds (e.g. during activity recreation on theme change). Calling
@@ -288,8 +294,37 @@ class RecordFragment : Fragment() {
             pendingQuickRecord = true
             return
         }
-        // Pass the currently selected topic so the service has it from the
-        // first moment of recording, without needing a separate SET_TOPIC call.
+        // Wire the volume — must happen before startRecording() opens the file.
+        svc.setStorageDir(volume.rootDir, volume.uuid)
+
+        // Free-space check: warn but don't block.
+        if (!svc.hasSufficientFreeSpace()) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Low Storage")
+                .setMessage(
+                    "Only ${AppVolume.formatBytes(volume.freeBytes)} free on " +
+                            "\"${volume.label}\". The recording may be cut short.\n\n" +
+                            "Continue anyway?"
+                )
+                .setPositiveButton("Continue") { _, _ ->
+                    doStartRecording(svc)
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    // Reset the service dir so a later recording to a different
+                    // volume isn't accidentally routed here.
+                    svc.setStorageDir(
+                        StorageVolumeHelper.getDefaultVolume(requireContext()).rootDir,
+                        StorageVolumeHelper.UUID_PRIMARY
+                    )
+                }
+                .show()
+        } else {
+            doStartRecording(svc)
+        }
+    }
+
+    /** Calls through to the service after all pre-flight checks pass. */
+    private fun doStartRecording(svc: RecordingService) {
         svc.startRecording(topicId = selectedTopicId)
     }
 
@@ -316,19 +351,19 @@ class RecordFragment : Fragment() {
                 fileSizeBytes  = File(result.filePath).length(),
                 title          = "Recording – $stamp",
                 topicId        = resolvedTopicId,
-                markTimestamps = result.markTimestamps
+                markTimestamps = result.markTimestamps,
+                storageVolumeUuid = recordingService?.getOutputVolumeUuid()
+                              ?: StorageVolumeHelper.UUID_PRIMARY
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
             binding.topicPicker.collapse()
-
-            val topicIdForNav = resolvedTopicId
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {
                     val newId = savedDeferred.await()
                     viewModel.selectRecording(newId)
                     (requireActivity() as? MainActivity)
-                        ?.navigateToLibraryForRecording(topicIdForNav)
+                        ?.navigateToLibraryForRecording(resolvedTopicId)
                 }
             }
         } else {

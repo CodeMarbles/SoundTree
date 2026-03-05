@@ -7,12 +7,14 @@ import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.StatFs
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.treecast.app.TreeCastApp
 import com.treecast.app.service.RecordingService.StopResult
 import com.treecast.app.ui.MainActivity
+import com.treecast.app.util.StorageVolumeHelper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -114,6 +116,22 @@ class RecordingService : Service() {
     // and ACTION_SET_TOPIC. Used when saving from the notification so the
     // recording lands in the correct topic even if the UI is not alive.
     private var pendingTopicId: Long? = null
+
+    // ── Storage ───────────────────────────────────────────────────────
+    /**
+     * The directory that the next recording file will be written to.
+     * Set by [RecordFragment] via [setStorageDir] before [startRecording] is
+     * called. Falls back to getExternalFilesDir(null) if never set, preserving
+     * the pre-storage-feature behaviour.
+     */
+    private var outputDir: File? = null
+
+    /**
+     * UUID of the volume that [outputDir] belongs to. Written into the DB row
+     * alongside the file path so we can do per-volume stats and orphan detection
+     * without parsing paths.
+     */
+    private var outputVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
 
     // ── Coroutine scope ───────────────────────────────────────────────
     // Used for DB writes triggered by notification actions. Lives for the
@@ -266,6 +284,9 @@ class RecordingService : Service() {
         val path = currentFilePath
         currentFilePath = null
 
+        outputDir = null
+        outputVolumeUuid = StorageVolumeHelper.UUID_PRIMARY
+
         // Snapshot and clear the pending marks list before returning.
         val marks = pendingMarks.toList()
         pendingMarks.clear()
@@ -314,6 +335,38 @@ class RecordingService : Service() {
     }
 
     fun getCurrentFilePath(): String? = currentFilePath
+
+    /**
+     * Called by [RecordFragment] (via Binder) immediately before [startRecording].
+     * Binds this recording session to a specific storage volume.
+     */
+    fun setStorageDir(dir: File, volumeUuid: String) {
+        outputDir = dir
+        outputVolumeUuid = volumeUuid
+    }
+
+    /**
+     * Returns true if there is enough free space on [outputDir]'s volume to
+     * safely start a recording, false if the user should be warned.
+     * Always returns true if the volume can't be stat'd (fail-open).
+     */
+    fun hasSufficientFreeSpace(): Boolean {
+        val dir = outputDir ?: getExternalFilesDir(null) ?: return true
+        return runCatching {
+            StatFs(dir.path).availableBytes >= StorageVolumeHelper.WARN_FREE_BYTES
+        }.getOrDefault(true)
+    }
+
+    /**
+     * Returns the volume UUID for the storage directory that is currently
+     * configured for recording output. Called by [RecordFragment.stopAndSave]
+     * so the correct UUID is written into the DB row alongside the file path.
+     *
+     * Returns [StorageVolumeHelper.UUID_PRIMARY] if no volume has been
+     * explicitly set (i.e. the service is using the default output directory).
+     */
+    fun getOutputVolumeUuid(): String = outputVolumeUuid
+
 
     // ── Notification save ─────────────────────────────────────────────
 
@@ -365,7 +418,8 @@ class RecordingService : Service() {
                 fileSizeBytes  = fileSizeBytes,
                 title          = title,
                 topicId        = resolvedTopicId,
-                markTimestamps = marks
+                markTimestamps = marks,
+                storageVolumeUuid = outputVolumeUuid
             )
 
             _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))
@@ -382,9 +436,11 @@ class RecordingService : Service() {
     }
 
     private fun createOutputFile(): File {
-        val dir = File(getExternalFilesDir(null), "recordings").also { it.mkdirs() }
+        val base = outputDir
+            ?: File(getExternalFilesDir(null), "recordings")
+        base.mkdirs()
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        return File(dir, "TC_$stamp.m4a")
+        return File(base, "TC_$stamp.m4a")
     }
 
     // ── Notification ──────────────────────────────────────────────────

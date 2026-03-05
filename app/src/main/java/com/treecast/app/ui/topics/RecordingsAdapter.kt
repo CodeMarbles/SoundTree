@@ -30,7 +30,7 @@ class RecordingsAdapter(
     private val onRename:    (id: Long, newTitle: String) -> Unit,
     private val onMove:      (id: Long, topicId: Long?) -> Unit,
     private val onDelete:    (RecordingEntity) -> Unit,
-    private val onSelect:    (Long) -> Unit = {},   // ← new, defaulted so call sites compile
+    private val onSelect:    (Long) -> Unit = {},
 ) : ListAdapter<RecordingEntity, RecordingsAdapter.VH>(DIFF) {
 
     companion object {
