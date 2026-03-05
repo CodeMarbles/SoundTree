@@ -146,26 +146,33 @@ class ListenFragment : Fragment() {
 
     private fun observeMarks() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.marks.collect { marks -> renderMarkTimestamps(marks) }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.selectedMarkId.collect { selectedId ->
-                binding.waveformView.setSelectedMark(selectedId)
-                val hasSelection = selectedId != null
-                binding.btnDeleteMark.isEnabled = hasSelection
-                binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
-                updateMarkChipStyles()
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.marks.collect { marks -> renderMarkTimestamps(marks) }
+                }
+                launch {
+                    viewModel.selectedMarkId.collect { selectedId ->
+                        binding.waveformView.setSelectedMark(selectedId)
+                        val hasSelection = selectedId != null
+                        binding.btnDeleteMark.isEnabled = hasSelection
+                        binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
+                        updateMarkChipStyles()
+                    }
+                }
             }
         }
     }
 
     private fun observeWaveform() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.waveformState.collect { pair ->
-                val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
-                if (pair != null && pair.first == currentId) {
-                    // Real data arrived — replace the fake seed-based waveform
-                    binding.waveformView.setAmplitudes(pair.second)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.waveformState.collect { pair ->
+                        val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
+                        if (pair != null && pair.first == currentId) {
+                            binding.waveformView.setAmplitudes(pair.second)
+                        }
+                    }
                 }
             }
         }
@@ -236,9 +243,14 @@ class ListenFragment : Fragment() {
     // ── Now Playing observer ───────────────────────────────────────────
     private fun observeNowPlaying() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.nowPlaying.collect { state -> updateUi(state) }
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.nowPlaying.collect { state -> updateUi(state) }
+                }
+            }
         }
     }
+
 
     private fun updateUi(state: NowPlayingState?) {
         // ── Show/hide empty state vs player ──────────────────────────────
