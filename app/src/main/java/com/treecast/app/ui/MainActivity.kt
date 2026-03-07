@@ -7,6 +7,8 @@ import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
@@ -17,6 +19,7 @@ import com.treecast.app.ui.record.RecordFragment
 import com.treecast.app.ui.settings.SettingsFragment
 import com.treecast.app.util.StorageEjectReceiver
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -86,6 +89,8 @@ class MainActivity : AppCompatActivity() {
         setupBackNavigation()
         observeLockState()
         observeTopTitle()
+        applyLayoutOrder()
+        observeLayoutOrder()
 
         when {
             // A save completed in the notification while the app was away —
@@ -154,6 +159,112 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectRecording(recordingId)
         navigateToLibraryForRecording(topicId)
+    }
+
+    // ── Layout order ──────────────────────────────────────────────────
+
+    /**
+     * Rebuilds the root vertical stack from the saved element order.
+     *
+     * Called once in onCreate() (synchronously, before first draw) and again
+     * whenever the user taps Apply in Settings.
+     *
+     * Each LayoutElement maps to a View already inflated from activity_main.xml:
+     *   TITLE_BAR  → binding.titleBarContainer  (topBar + its divider, wrapped)
+     *   CONTENT    → binding.viewPager
+     *   MINI_PLAYER→ binding.miniPlayer.root
+     *   NAV        → binding.bottomNav
+     *
+     * The CONTENT view always gets weight=1 / height=0dp so it fills remaining
+     * space regardless of position.  All other views keep their fixed heights.
+     */
+    private fun applyLayoutOrder() {
+        val order     = viewModel.layoutOrder.value
+        val showTitle = viewModel.showTitleBar.value
+
+        val viewMap = mapOf(
+            LayoutElement.TITLE_BAR   to binding.titleBarContainer,
+            LayoutElement.CONTENT     to binding.viewPager,
+            LayoutElement.MINI_PLAYER to binding.miniPlayer.root,
+            LayoutElement.NAV         to binding.bottomNav
+        )
+
+        binding.rootStack.removeAllViews()
+
+        val dp = resources.displayMetrics.density
+
+        for (element in order) {
+            val view = viewMap[element] ?: continue
+            if (element == LayoutElement.TITLE_BAR && !showTitle) continue
+            if (element == LayoutElement.CONTENT) {
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+                )
+                binding.rootStack.addView(view, lp)
+            } else {
+                val heightPx = when (element) {
+                    LayoutElement.MINI_PLAYER -> (64 * dp).toInt()
+                    LayoutElement.NAV         -> (64 * dp).toInt()
+                    LayoutElement.TITLE_BAR   -> (53 * dp).toInt() // 52dp bar + 1dp divider
+                    else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                }
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, heightPx
+                )
+                binding.rootStack.addView(view, lp)
+            }
+        }
+
+        // Flip the mini-player accent line to always face toward Content
+        updateMiniPlayerAccentLine(order)
+    }
+
+    /**
+     * Observes [MainViewModel.layoutOrder] and [MainViewModel.showTitleBar]
+     * together, re-applying the layout whenever the user commits a change.
+     *
+     * Uses [combine] so a single Apply that updates both simultaneously only
+     * triggers one re-layout pass.
+     */
+    private fun observeLayoutOrder() {
+        lifecycleScope.launch {
+            combine(viewModel.layoutOrder, viewModel.showTitleBar) { order, showTitle ->
+                order to showTitle
+            }.collect {
+                applyLayoutOrder()
+            }
+        }
+    }
+
+    /**
+     * Positions the mini-player accent line so it always borders the edge
+     * that faces the Content view — top edge if Content is below, bottom
+     * edge if Content is above.
+     */
+    private fun updateMiniPlayerAccentLine(order: List<LayoutElement>) {
+        val miniIdx    = order.indexOf(LayoutElement.MINI_PLAYER)
+        val contentIdx = order.indexOf(LayoutElement.CONTENT)
+        if (miniIdx == -1 || contentIdx == -1) return
+
+        val contentIsBelow = contentIdx > miniIdx
+
+        val miniPlayerRoot = binding.miniPlayer.root as? ConstraintLayout ?: return
+        val accentLine     = binding.miniPlayer.accentLine
+
+        val cs = ConstraintSet()
+        cs.clone(miniPlayerRoot)
+
+        if (contentIsBelow) {
+            // Default: accent line at top
+            cs.connect(accentLine.id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            cs.clear(accentLine.id, ConstraintSet.BOTTOM)
+        } else {
+            // Content is above: flip line to bottom
+            cs.connect(accentLine.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            cs.clear(accentLine.id, ConstraintSet.TOP)
+        }
+
+        cs.applyTo(miniPlayerRoot)
     }
 
     // ── ViewPager ─────────────────────────────────────────────────────

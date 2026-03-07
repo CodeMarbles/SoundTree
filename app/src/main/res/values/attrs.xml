@@ -26,6 +26,7 @@
 
     <!-- Recording -->
     <attr name="colorRecordActive"      format="color" />
+    <attr name="colorRecordPause"       format="color" />
     <attr name="colorDestructive"       format="color" />
 
     <!-- Buttons -->

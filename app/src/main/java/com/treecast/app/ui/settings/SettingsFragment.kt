@@ -38,8 +38,9 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupTheme()
         setupPlaybackSettings()
-        loadStats()
         setupStorageSection()
+        loadStats()
+        setupLayoutSection()
     }
 
     override fun onDestroyView() {
@@ -51,6 +52,62 @@ class SettingsFragment : Fragment() {
        super.onResume()
        viewModel.refreshStorageVolumes()   // refresh free-space numbers
    }
+
+    private fun setupLayoutSection() {
+        val widget   = binding.layoutReorderWidget
+        val btnEdit  = binding.btnEditLayout
+        val toggle   = binding.switchShowTitleBar
+
+        // ── Initialise widget from current ViewModel state ────────────
+        widget.setOrder(viewModel.layoutOrder.value)
+        widget.showTitleBar = viewModel.showTitleBar.value
+        toggle.isChecked    = viewModel.showTitleBar.value
+
+        // ── Title bar toggle ──────────────────────────────────────────
+        toggle.setOnCheckedChangeListener { _, isChecked ->
+            widget.showTitleBar = isChecked
+
+            // If we aren't in edit mode show the title bar immediately
+            if (!widget.isInEditMode) {
+                viewModel.setShowTitleBar(isChecked)
+                viewModel.setLayoutOrder(widget.getOrder())
+            }
+        }
+
+        // ── Edit / Apply button ───────────────────────────────────────
+        fun enterEditMode() {
+            widget.setEditing(true)
+            btnEdit.text = getString(R.string.layout_btn_apply)
+        }
+
+        fun applyAndLock() {
+            viewModel.setLayoutOrder(widget.getOrder())
+            viewModel.setShowTitleBar(widget.showTitleBar)
+            widget.setEditing(false)
+            btnEdit.text = getString(R.string.layout_btn_edit)
+        }
+
+        btnEdit.setOnClickListener {
+            if (widget.editing) applyAndLock() else enterEditMode()
+        }
+
+        // ── Keep widget in sync if another screen changes prefs ───────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    viewModel.layoutOrder,
+                    viewModel.showTitleBar
+                ) { order, show -> order to show }
+                    .collect { (order, show) ->
+                        if (!widget.editing) {
+                            widget.setOrder(order)
+                            widget.showTitleBar = show
+                            toggle.isChecked = show
+                        }
+                    }
+            }
+        }
+    }
 
     private fun setupTheme() {
         fun updateToggleVisuals(selected: String) {

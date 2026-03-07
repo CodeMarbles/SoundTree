@@ -245,7 +245,8 @@ class RecordFragment : Fragment() {
             RecordingService.State.RECORDING -> {
                 binding.btnRecord.text = "⏸  Pause"
                 binding.btnRecord.backgroundTintList =
-                    requireContext().getColorStateList(android.R.color.holo_orange_light)
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
+                //requireContext().getColorStateList(android.R.color.holo_orange_light)
                 binding.stopSaveContainer.visibility = View.VISIBLE
                 binding.markLockContainer.visibility = View.VISIBLE
             }

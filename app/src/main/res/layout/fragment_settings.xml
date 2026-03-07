@@ -30,7 +30,7 @@
             android:textSize="13sp"
             android:layout_marginBottom="32dp" />
 
-        <!-- ── Appearance ──────────────────────────────────────────────── -->
+        <!-- ── Appearance card ──────────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -42,94 +42,206 @@
             android:paddingHorizontal="4dp"
             android:paddingBottom="8dp" />
 
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
             app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="@dimen/settings_card_corner_radius"
             app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="14dp">
+                android:orientation="vertical"
+                android:padding="4dp">
 
+                <!-- ── Theme ───────────────── -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Theme"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Follow system, or lock to light or dark"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
-
-                </LinearLayout>
-
-                <!-- Three-way toggle: System / Light / Dark -->
-                <LinearLayout
-                    android:id="@+id/themeToggleGroup"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
                     android:orientation="horizontal"
-                    android:background="@drawable/bg_picker"
-                    android:padding="3dp">
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
 
-                    <TextView
-                        android:id="@+id/btnThemeSystem"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:text="Auto"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:paddingHorizontal="10dp"
-                        android:clickable="true"
-                        android:focusable="true" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/btnThemeLight"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:text="Light"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:paddingHorizontal="10dp"
-                        android:clickable="true"
-                        android:focusable="true" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Theme"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="15sp" />
 
-                    <TextView
-                        android:id="@+id/btnThemeDark"
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Follow system, or lock to light or dark"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <!-- Three-way toggle: System / Light / Dark -->
+                    <LinearLayout
+                        android:id="@+id/themeToggleGroup"
                         android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:text="Dark"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:paddingHorizontal="10dp"
-                        android:clickable="true"
-                        android:focusable="true" />
+                        android:layout_height="36dp"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_picker"
+                        android:padding="3dp">
+
+                        <TextView
+                            android:id="@+id/btnThemeSystem"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="Auto"
+                            android:textSize="12sp"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/btnThemeLight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="Light"
+                            android:textSize="12sp"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/btnThemeDark"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:text="Dark"
+                            android:textSize="12sp"
+                            android:gravity="center"
+                            android:paddingHorizontal="10dp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- ── UI Layout ───────────────── -->
+                <LinearLayout
+                    android:id="@+id/cardLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="?attr/colorSurfaceBase"
+                    android:layout_marginBottom="12dp">
+
+                    <!-- Section header row -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginStart="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Layout"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="15sp" />
+
+                        <!-- Show title bar toggle (inline with header) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Title bar"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="12sp"
+                                android:layout_marginEnd="6dp" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/switchShowTitleBar"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true" />
+
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Widget + Edit/Apply button row -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceElevated"
+                        app:cardCornerRadius="6dp"
+                        app:cardElevation="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="16dp">
+
+                            <!-- Edit layout / Apply button -->
+                            <TextView
+                                android:id="@+id/btnEditLayout"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Edit layout"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorAccent"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="8dp"
+                                android:background="?attr/selectableItemBackground"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                            <!-- Spacer -->
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
+
+                            <!-- The reorder widget — fixed 170dp wide -->
+                            <com.treecast.app.ui.settings.LayoutReorderWidget
+                                android:id="@+id/layoutReorderWidget"
+                                android:layout_width="170dp"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
             </LinearLayout>
 
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
-        <!-- ── Playback section ─────────────────────────────────── -->
+        <!-- ── Playback card ─────────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -143,10 +255,10 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
+            android:layout_marginBottom="24dp"
             app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardElevation="0dp"
-            android:layout_marginBottom="24dp">
+            app:cardCornerRadius="@dimen/settings_card_corner_radius"
+            app:cardElevation="0dp" >
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -401,40 +513,29 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ── Storage card ──────────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="STORAGE"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="24dp"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="@dimen/settings_card_corner_radius"
+            app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <!-- Section header -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="16dp"
-                    android:paddingBottom="4dp"
-                    android:text="Storage"
-                    android:textColor="?attr/colorAccent"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.08"
-                    android:textAllCaps="true" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginBottom="4dp" />
+                android:orientation="vertical"
+                android:padding="4dp">
 
                 <!-- Label row -->
                 <LinearLayout
@@ -516,7 +617,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-
         <!-- ── Stats section ────────────────────────────────────── -->
         <TextView
             android:layout_width="wrap_content"
@@ -531,8 +631,9 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
+            android:layout_marginBottom="24dp"
             app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="@dimen/settings_card_corner_radius"
             app:cardElevation="0dp">
 
             <LinearLayout

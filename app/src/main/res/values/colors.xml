@@ -57,8 +57,9 @@
     <color name="amber_950">#3A3000</color>
 
     <!-- Status greens / oranges -->
-    <color name="green_500">#4CAF50</color>
     <color name="orange_600">#FFA726</color>
+    <color name="orange_holo">#ffffbb33</color>
+    <color name="green_500">#4CAF50</color>
     <color name="green_800">#2E7D32</color>
     <color name="green_900">#1E7D45</color>
 

@@ -7,37 +7,44 @@
     android:background="?attr/colorBackground">
 
     <LinearLayout
+        android:id="@+id/rootStack"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
 
         <!-- ── Top title bar ──────────────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/topBar"
+            android:id="@+id/titleBarContainer"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="20dp"
-            android:background="?attr/colorSurfaceBase">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <LinearLayout
+                android:id="@+id/topBar"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:background="?attr/colorSurfaceBase">
 
-            <TextView
-                android:id="@+id/tvTopTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Record"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.03" />
+                <TextView
+                    android:id="@+id/tvTopTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Record"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.03" />
 
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated" />
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?attr/colorSurfaceElevated" />
 
         <!-- ── Page content ───────────────────────────────────────── -->
         <androidx.viewpager2.widget.ViewPager2

@@ -11,4 +11,6 @@
     <string name="empty_tree">No topics yet.\nTap 💭 + Topic to get started.</string>
     <string name="empty_inbox">Your unsorted recordings appear here.</string>
     <string name="uncategorised">💭 Uncategorised</string>
+    <string name="layout_btn_edit">Edit layout</string>
+    <string name="layout_btn_apply">Apply</string>
 </resources>

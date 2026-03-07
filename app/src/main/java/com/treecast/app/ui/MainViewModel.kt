@@ -5,9 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -54,6 +52,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
         private const val PREF_JUMP_TO_LIBRARY    = "jump_to_library_on_save"
         private const val PREF_DEFAULT_STORAGE_UUID = "default_storage_uuid"
+        private const val PREF_LAYOUT_ORDER    = "layout_element_order"
+        private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -339,6 +339,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setJumpToLibraryOnSave(enabled: Boolean) {
         _jumpToLibraryOnSave.value = enabled
         prefs.edit().putBoolean(PREF_JUMP_TO_LIBRARY, enabled).apply()
+    }
+
+    // ── Layout order ──────────────────────────────────────────────────
+    //
+    // Stores the ordered list of chrome elements (Title Bar, Content,
+    // Mini Player, Nav) so MainActivity can reconstruct the view stack
+    // from SharedPreferences on startup and after the user taps Apply
+    // in the Settings layout widget.
+    private val _layoutOrder = MutableStateFlow(
+        LayoutElement.parseOrder(
+            prefs.getString(PREF_LAYOUT_ORDER, null)
+                ?: LayoutElement.toOrderString(LayoutElement.DEFAULT_ORDER)
+        )
+    )
+    val layoutOrder: StateFlow<List<LayoutElement>> = _layoutOrder
+
+    fun setLayoutOrder(order: List<LayoutElement>) {
+        _layoutOrder.value = order
+        prefs.edit().putString(PREF_LAYOUT_ORDER, LayoutElement.toOrderString(order)).apply()
+    }
+
+    private val _showTitleBar = MutableStateFlow(
+        prefs.getBoolean(PREF_SHOW_TITLE_BAR, true)
+    )
+    val showTitleBar: StateFlow<Boolean> = _showTitleBar
+
+    fun setShowTitleBar(show: Boolean) {
+        _showTitleBar.value = show
+        prefs.edit().putBoolean(PREF_SHOW_TITLE_BAR, show).apply()
     }
 
     // ── Theme mode ────────────────────────────────────────────────────
