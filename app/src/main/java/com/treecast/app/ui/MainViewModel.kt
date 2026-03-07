@@ -66,6 +66,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun getLastSession() = repo.getLastSession()
+    suspend fun getLastClosedSession() = repo.getLastClosedSession()
+    suspend fun getTotalRecordingTime() = repo.getTotalRecordingTime()
 
     // ── Top title ─────────────────────────────────────────────────────
     private val _topTitle = MutableStateFlow("Record")

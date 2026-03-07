@@ -197,7 +197,8 @@
                         android:layout_marginBottom="6dp"
                         app:cardBackgroundColor="?attr/colorSurfaceElevated"
                         app:cardCornerRadius="6dp"
-                        app:cardElevation="0dp">
+                        app:cardElevation="0dp"
+                        android:paddingHorizontal="16dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -640,24 +641,166 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="4dp">
 
-                <TextView
-                    android:id="@+id/tvLastOpened"
+                <!-- Total recorded time -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Last session: —"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="13sp"
-                    android:layout_marginBottom="6dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
 
-                <TextView
-                    android:id="@+id/tvTotalRecordings"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total recorded time"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvTotalRecordedTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Last session -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Total recordings: —"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="13sp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Last session"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvLastOpened"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Listened count -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Recordings listened"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvListenedCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Number of topics -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Topics"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvTopicCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Total storage used -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total storage used"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatsTotalStorage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 

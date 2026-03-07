@@ -340,15 +340,45 @@ class SettingsFragment : Fragment() {
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+
+                // Total recorded time + last session (one-shot suspends)
                 launch {
-                    val lastSession = viewModel.getLastSession()
-                    binding.tvLastOpened.text = if (lastSession?.closedAt != null) {
-                        "Last session: ${formatGap(System.currentTimeMillis() - lastSession.closedAt)} ago"
+                    val totalMs = viewModel.getTotalRecordingTime()
+                    binding.tvTotalRecordedTime.text = if (totalMs > 0) formatGap(totalMs) else "—"
+
+                    val lastSession = viewModel.getLastClosedSession()
+                    binding.tvLastOpened.text = if (lastSession != null) {
+                        "${formatGap(System.currentTimeMillis() - lastSession.openedAt)} ago"
                     } else {
-                        "Last session: this session"
+                        "First use"
                     }
-                    binding.tvTotalRecordings.text =
-                        "Total recordings: ${viewModel.allRecordings.value.size}"
+                }
+
+                // Listened count + total recordings — reactive, updates if user
+                // listens to something while Settings is open
+                launch {
+                    viewModel.allRecordings.collect { recordings ->
+                        val listened = recordings.count { it.isListened }
+                        val total    = recordings.size
+                        binding.tvListenedCount.text = "$listened / $total"
+                    }
+                }
+
+                // Topic count — reactive
+                launch {
+                    viewModel.allTopics.collect { topics ->
+                        binding.tvTopicCount.text = topics.size.toString()
+                    }
+                }
+
+                // Total storage — reactive, reuses the same flow that drives
+                // the per-volume rows in the Storage card above
+                launch {
+                    viewModel.storageUsageByVolume.collect { usageMap ->
+                        val totalBytes = usageMap.values.sum()
+                        binding.tvStatsTotalStorage.text = if (totalBytes > 0)
+                            AppVolume.formatBytes(totalBytes) else "—"
+                    }
                 }
             }
         }

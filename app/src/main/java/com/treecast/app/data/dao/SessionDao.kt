@@ -33,7 +33,11 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE opened_at >= :since ORDER BY opened_at ASC")
     suspend fun getSessionsSince(since: Long): List<SessionEntity>
 
-    /** Total time recorded across all sessions (ms) */
+    /** The most recently completed (closed) session — excludes the active one */
+    @Query("SELECT * FROM sessions WHERE closed_at IS NOT NULL ORDER BY opened_at DESC LIMIT 1")
+    suspend fun getLastClosedSession(): SessionEntity?
+
+    /** Total recording time across all sessions in ms */
     @Query("SELECT COALESCE(SUM(duration_ms), 0) FROM sessions WHERE closed_at IS NOT NULL AND session_type = 'RECORD'")
     suspend fun getTotalRecordingTime(): Long
 

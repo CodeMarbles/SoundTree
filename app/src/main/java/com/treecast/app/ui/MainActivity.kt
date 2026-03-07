@@ -249,19 +249,35 @@ class MainActivity : AppCompatActivity() {
         val contentIsBelow = contentIdx > miniIdx
 
         val miniPlayerRoot = binding.miniPlayer.root as? ConstraintLayout ?: return
-        val accentLine     = binding.miniPlayer.accentLine
-
         val cs = ConstraintSet()
         cs.clone(miniPlayerRoot)
 
+        val controlIds = listOf(
+            binding.miniPlayer.btnMiniSkipBack.id,
+            binding.miniPlayer.btnMiniPlayPause.id,
+            binding.miniPlayer.btnMiniSkipForward.id,
+            binding.miniPlayer.tvMiniTitle.id,
+            binding.miniPlayer.tvMiniTime.id,
+            binding.miniPlayer.miniProgressBar.id
+        )
+
         if (contentIsBelow) {
-            // Default: accent line at top
-            cs.connect(accentLine.id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
-            cs.clear(accentLine.id, ConstraintSet.BOTTOM)
+            // Accent line at top, controls anchored below it (original layout)
+            cs.connect(binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            cs.clear(binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM)
+            controlIds.forEach { id ->
+                cs.connect(id, ConstraintSet.TOP, binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM)
+                cs.clear(id, ConstraintSet.BOTTOM)
+                cs.connect(id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            }
         } else {
-            // Content is above: flip line to bottom
-            cs.connect(accentLine.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-            cs.clear(accentLine.id, ConstraintSet.TOP)
+            // Accent line at bottom, controls anchored to parent top instead
+            cs.connect(binding.miniPlayer.accentLine.id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            cs.clear(binding.miniPlayer.accentLine.id, ConstraintSet.TOP)
+            controlIds.forEach { id ->
+                cs.connect(id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+                cs.connect(id, ConstraintSet.BOTTOM, binding.miniPlayer.accentLine.id, ConstraintSet.TOP)
+            }
         }
 
         cs.applyTo(miniPlayerRoot)
