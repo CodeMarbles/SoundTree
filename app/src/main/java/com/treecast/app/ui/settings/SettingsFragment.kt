@@ -4,16 +4,20 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.RadioButton
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.work.WorkInfo
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.ProcessingStatus
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
@@ -36,6 +40,7 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupProcessingSection()
         setupTheme()
         setupPlaybackSettings()
         setupStorageSection()
@@ -52,6 +57,105 @@ class SettingsFragment : Fragment() {
        super.onResume()
        viewModel.refreshStorageVolumes()   // refresh free-space numbers
    }
+
+    private fun setupProcessingSection() {
+        // Button: regenerate all waveforms from scratch.
+        binding.btnReprocessWaveforms.setOnClickListener {
+            viewModel.reprocessAllWaveforms()
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.processingStatus.collect { status ->
+                    renderProcessingStatus(status)
+                }
+            }
+        }
+    }
+
+    private fun renderProcessingStatus(status: ProcessingStatus) {
+        val hasActive  = status.active != null
+        val hasPending = status.pending.isNotEmpty()
+        val hasRecent  = status.recent.isNotEmpty()
+        val isIdle     = !hasActive && !hasPending && !hasRecent
+
+        binding.processingSpinner.visibility = if (hasActive) View.VISIBLE else View.GONE
+        binding.tvProcessingIdle.visibility  = if (isIdle) View.VISIBLE else View.GONE
+
+        // ── Active job ────────────────────────────────────────────────
+        binding.rowActiveJob.visibility = if (hasActive) View.VISIBLE else View.GONE
+        status.active?.let { binding.tvActiveJobTitle.text = viewModel.labelForJob(it) }
+
+        // ── Pending jobs ──────────────────────────────────────────────
+        binding.containerPending.visibility = if (hasPending) View.VISIBLE else View.GONE
+        if (hasPending) {
+            binding.listPendingJobs.removeAllViews()
+            status.pending.forEach { job ->
+                addJobRow(binding.listPendingJobs, viewModel.labelForJob(job), isDone = false, failed = false)
+            }
+        }
+
+        // ── Recent jobs ───────────────────────────────────────────────
+        binding.containerRecent.visibility = if (hasRecent) View.VISIBLE else View.GONE
+        if (hasRecent) {
+            binding.listRecentJobs.removeAllViews()
+            status.recent.forEach { job ->
+                addJobRow(
+                    container = binding.listRecentJobs,
+                    label     = viewModel.labelForJob(job),
+                    isDone    = true,
+                    failed    = job.state == WorkInfo.State.FAILED
+                )
+            }
+        }
+    }
+
+    private fun addJobRow(
+        container: LinearLayout,
+        label: String,
+        isDone: Boolean,
+        failed: Boolean
+    ) {
+        val density = resources.displayMetrics.density
+        val hPad = (16 * density).toInt()
+        val vPad = (6 * density).toInt()
+
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(hPad, vPad, hPad, vPad)
+        }
+
+        val tvLabel = TextView(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            text = label
+            textSize = 13f
+            setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+
+        val tvStatus = TextView(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            text = when {
+                !isDone -> "⏳"
+                failed  -> "✗"
+                else    -> "✓"
+            }
+            textSize = 13f
+            setTextColor(
+                requireContext().themeColor(
+                    if (failed) R.attr.colorTextSecondary else R.attr.colorAccent
+                )
+            )
+        }
+
+        row.addView(tvLabel)
+        row.addView(tvStatus)
+        container.addView(row)
+    }
 
     private fun setupLayoutSection() {
         val widget   = binding.layoutReorderWidget

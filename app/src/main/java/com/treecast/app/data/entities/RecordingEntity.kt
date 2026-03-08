@@ -6,20 +6,19 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.treecast.app.util.StorageVolumeHelper
+import com.treecast.app.util.WaveformStatus
 
 /**
  * A single recorded audio episode (leaf node in the podcast tree).
  * Belongs to a topic (nullable = uncategorised / Inbox).
  *
  * DB version 4 adds [storageVolumeUuid] to track which storage device holds
- * the audio file. This allows:
- *   - Per-device used-storage stats without parsing file paths
- *   - Identifying orphaned recordings when a volume is ejected
- *   - Correctly routing new recordings to the user's preferred device
+ * the audio file.
  *
- * Existing rows receive DEFAULT 'primary' via the Room migration, which
- * matches [StorageVolumeHelper.UUID_PRIMARY] — correct for all recordings
- * saved before this feature was added (they all went to getExternalFilesDir).
+ * DB version 5 adds [waveformStatus] to track background waveform generation.
+ * Existing rows are migrated to [WaveformStatus.PENDING] so they get picked
+ * up by [com.treecast.app.worker.WaveformWorker] on the first launch after
+ * the update.
  */
 @Entity(
     tableName = "recordings",
@@ -82,5 +81,21 @@ data class RecordingEntity(
      * prefixes can theoretically change between OS versions.
      */
     @ColumnInfo(name = "storage_volume_uuid")
-    val storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
+    val storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
+
+    /**
+     * Background waveform generation state. One of [WaveformStatus.PENDING],
+     * [WaveformStatus.IN_PROGRESS], [WaveformStatus.DONE], or
+     * [WaveformStatus.FAILED].
+     *
+     * New recordings start as PENDING and are immediately enqueued in
+     * [com.treecast.app.worker.WaveformWorker]. The worker transitions this
+     * to IN_PROGRESS → DONE (or FAILED). Once DONE, [WaveformCache] holds the
+     * amplitude array and this column is never updated again.
+     *
+     * Default is PENDING so all rows created before this column existed get
+     * processed after the v4→v5 migration.
+     */
+    @ColumnInfo(name = "waveform_status")
+    val waveformStatus: Int = WaveformStatus.PENDING
 )

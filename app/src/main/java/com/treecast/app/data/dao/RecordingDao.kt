@@ -2,14 +2,11 @@ package com.treecast.app.data.dao
 
 import androidx.room.*
 import com.treecast.app.data.entities.RecordingEntity
+import com.treecast.app.util.WaveformStatus
 import kotlinx.coroutines.flow.Flow
 
 // ── Storage stats projection ──────────────────────────────────────────────────
 
-/**
- * Per-volume aggregated storage usage, returned by [RecordingDao.getStorageUsageByVolume].
- * Room maps this from the GROUP BY query automatically.
- */
 data class VolumeUsage(
     @ColumnInfo(name = "storage_volume_uuid") val storageVolumeUuid: String,
     @ColumnInfo(name = "total_bytes")         val totalBytes: Long
@@ -32,23 +29,18 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id")
     suspend fun getById(id: Long): RecordingEntity?
 
-    /** All recordings in a topic, newest first */
     @Query("SELECT * FROM recordings WHERE topic_id = :topicId ORDER BY created_at DESC")
     fun getByTopic(topicId: Long): Flow<List<RecordingEntity>>
 
-    /** Inbox: recordings with no topic assigned */
     @Query("SELECT * FROM recordings WHERE topic_id IS NULL ORDER BY created_at DESC")
     fun getInbox(): Flow<List<RecordingEntity>>
 
-    /** All recordings flat list, newest first */
     @Query("SELECT * FROM recordings ORDER BY created_at DESC")
     fun getAll(): Flow<List<RecordingEntity>>
 
-    /** Favourites */
     @Query("SELECT * FROM recordings WHERE is_favourite = 1 ORDER BY created_at DESC")
     fun getFavourites(): Flow<List<RecordingEntity>>
 
-    /** Search by title or tags */
     @Query("SELECT * FROM recordings WHERE title LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' ORDER BY created_at DESC")
     fun search(query: String): Flow<List<RecordingEntity>>
 
@@ -72,14 +64,6 @@ interface RecordingDao {
 
     // ── Storage ───────────────────────────────────────────────────────────────
 
-    /**
-     * Returns used bytes grouped by storage volume. Collectors can join this
-     * with the live volume list from [StorageVolumeHelper] to populate the
-     * per-device usage annotation in Settings.
-     *
-     * Returns a [Flow] so the Settings UI re-renders automatically when the
-     * user deletes a recording and the used-storage number changes.
-     */
     @Query("""
         SELECT storage_volume_uuid, 
                COALESCE(SUM(file_size_bytes), 0) AS total_bytes
@@ -88,10 +72,33 @@ interface RecordingDao {
     """)
     fun getStorageUsageByVolume(): Flow<List<VolumeUsage>>
 
-    /**
-     * All recordings stored on a specific volume. Used to flag orphaned
-     * recordings when a volume is detected as unmounted.
-     */
     @Query("SELECT * FROM recordings WHERE storage_volume_uuid = :uuid ORDER BY created_at DESC")
     fun getByVolume(uuid: String): Flow<List<RecordingEntity>>
+
+    // ── Waveform ──────────────────────────────────────────────────────────────
+
+    @Query("UPDATE recordings SET waveform_status = :status WHERE id = :id")
+    suspend fun updateWaveformStatus(id: Long, status: Int)
+
+    /**
+     * Resets every recording's waveform status back to PENDING.
+     * Called by the "Regenerate all waveforms" action in Settings, after the
+     * cache files have been deleted, so every recording gets re-decoded.
+     */
+    @Query("UPDATE recordings SET waveform_status = ${WaveformStatus.PENDING}")
+    suspend fun resetAllWaveformStatuses()
+
+    /**
+     * Returns recordings whose waveform has not yet been successfully generated.
+     * Includes IN_PROGRESS rows to recover from an app kill mid-worker.
+     */
+    @Query("SELECT * FROM recordings WHERE waveform_status IN (:pending, :inProgress)")
+    suspend fun getPendingWaveformRecordings(
+        pending: Int = WaveformStatus.PENDING,
+        inProgress: Int = WaveformStatus.IN_PROGRESS
+    ): List<RecordingEntity>
+
+    /** Returns every recording, used for bulk re-enqueue after a full reset. */
+    @Query("SELECT * FROM recordings ORDER BY created_at ASC")
+    suspend fun getAllOnce(): List<RecordingEntity>
 }

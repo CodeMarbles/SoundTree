@@ -4,6 +4,11 @@ import android.app.Application
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import com.treecast.app.data.repository.TreeCastRepository
+import com.treecast.app.worker.WaveformWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class TreeCastApp : Application() {
 
@@ -11,9 +16,12 @@ class TreeCastApp : Application() {
         TreeCastRepository.getInstance(this)
     }
 
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         applyThemeFromPrefs()
+        enqueuePendingWaveformJobs()
     }
 
     private fun applyThemeFromPrefs() {
@@ -26,5 +34,25 @@ class TreeCastApp : Application() {
                 else    -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             }
         )
+    }
+
+    /**
+     * On every launch, find recordings whose waveform is PENDING or stuck
+     * IN_PROGRESS and enqueue a WaveformWorker job for each.
+     * WaveformWorker.enqueue uses ExistingWorkPolicy.KEEP so already-queued
+     * jobs are left untouched.
+     */
+    private fun enqueuePendingWaveformJobs() {
+        appScope.launch {
+            runCatching {
+                repository.getPendingWaveformRecordings().forEach { recording ->
+                    WaveformWorker.enqueue(
+                        context     = this@TreeCastApp,
+                        recordingId = recording.id,
+                        filePath    = recording.filePath
+                    )
+                }
+            }
+        }
     }
 }

@@ -15,6 +15,7 @@ import com.treecast.app.TreeCastApp
 import com.treecast.app.service.RecordingService.StopResult
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.util.StorageVolumeHelper
+import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -416,16 +417,24 @@ class RecordingService : Service() {
             val resolvedTopicId = if (topicId != null && repo.topicExists(topicId)) topicId else null
 
             val recordingId = repo.saveRecordingWithMarks(
-                filePath       = filePath,
-                durationMs     = durationMs,
-                fileSizeBytes  = fileSizeBytes,
-                title          = title,
-                topicId        = resolvedTopicId,
-                markTimestamps = marks,
+                filePath          = filePath,
+                durationMs        = durationMs,
+                fileSizeBytes     = fileSizeBytes,
+                title             = title,
+                topicId           = resolvedTopicId,
+                markTimestamps    = marks,
                 storageVolumeUuid = result.storageVolumeUuid
             )
 
+            // Enqueue background waveform generation, mirroring the in-app save path.
+            WaveformWorker.enqueue(
+                context     = applicationContext,
+                recordingId = recordingId,
+                filePath    = filePath
+            )
+
             _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))
+
 
             if (jumpToLibrary) {
                 val navIntent = Intent(applicationContext, MainActivity::class.java).apply {

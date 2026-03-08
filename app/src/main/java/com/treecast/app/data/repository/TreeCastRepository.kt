@@ -113,16 +113,26 @@ class TreeCastRepository(context: Context) {
     }
 
     /**
-     * Bulk-inserts mark timestamps for a given recording.
-     * Called by [saveRecordingWithMarks]; can also be called independently
-     * if marks need to be added to an existing recording in bulk.
+     * Returns recordings whose waveform is PENDING or stuck IN_PROGRESS.
+     * Called by TreeCastApp on startup to enqueue jobs.
      */
-    suspend fun saveMarks(recordingId: Long, timestamps: List<Long>) {
-        val entities = timestamps.map { positionMs ->
-            MarkEntity(recordingId = recordingId, positionMs = positionMs)
-        }
-        markDao.insertAll(entities)
-    }
+    suspend fun getPendingWaveformRecordings(): List<RecordingEntity> =
+        recordingDao.getPendingWaveformRecordings()
+
+    /**
+     * Resets every recording's waveform status to PENDING.
+     * Called by the "Regenerate all waveforms" action after cache files
+     * have been deleted.
+     */
+    suspend fun resetAllWaveformStatuses() =
+        recordingDao.resetAllWaveformStatuses()
+
+    /**
+     * Returns every recording in the database (oldest first).
+     * Used for bulk re-enqueue after a full waveform reset.
+     */
+    suspend fun getAllRecordingsOnce(): List<RecordingEntity> =
+        recordingDao.getAllOnce()
 
     suspend fun updateRecording(recording: RecordingEntity) = recordingDao.update(recording)
     suspend fun deleteRecording(recording: RecordingEntity) = recordingDao.delete(recording)
@@ -146,6 +156,18 @@ class TreeCastRepository(context: Context) {
     }
 
     // ── Marks ──────────────────────────────────────────────────────────
+    /**
+     * Bulk-inserts mark timestamps for a given recording.
+     * Called by [saveRecordingWithMarks]; can also be called independently
+     * if marks need to be added to an existing recording in bulk.
+     */
+    suspend fun saveMarks(recordingId: Long, timestamps: List<Long>) {
+        val entities = timestamps.map { positionMs ->
+            MarkEntity(recordingId = recordingId, positionMs = positionMs)
+        }
+        markDao.insertAll(entities)
+    }
+
     fun getMarksForRecording(recordingId: Long) = markDao.getMarksForRecording(recordingId)
     suspend fun addMark(recordingId: Long, positionMs: Long) =
         markDao.insert(MarkEntity(recordingId = recordingId, positionMs = positionMs))

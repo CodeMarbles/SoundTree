@@ -22,7 +22,7 @@ import com.treecast.app.data.entities.TopicEntity
         RecordingEntity::class,
         MarkEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,15 +37,26 @@ abstract class AppDatabase : RoomDatabase() {
 
         /**
          * v3 → v4: Add storage_volume_uuid column to recordings.
-         *
-         * All pre-existing recordings were saved to the primary external volume
-         * (getExternalFilesDir), so DEFAULT 'primary' is correct for every
-         * migrated row — no data backfill is needed beyond the ALTER TABLE.
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE recordings ADD COLUMN storage_volume_uuid TEXT NOT NULL DEFAULT 'primary'"
+                )
+            }
+        }
+
+        /**
+         * v4 → v5: Add waveform_status column to recordings.
+         *
+         * DEFAULT 0 = WaveformStatus.PENDING — all existing recordings will be
+         * picked up and processed by WaveformWorker on the first launch after
+         * this migration runs.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE recordings ADD COLUMN waveform_status INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
@@ -57,9 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "treecast.db"
                 )
-                    .addMigrations(MIGRATION_3_4)
-                    // Keep destructive fallback only for schema jumps not covered by
-                    // explicit migrations (e.g. dev builds with incomplete history).
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

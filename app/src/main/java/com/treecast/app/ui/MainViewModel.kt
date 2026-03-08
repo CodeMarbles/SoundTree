@@ -12,6 +12,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.treecast.app.TreeCastApp
@@ -26,6 +28,7 @@ import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
+import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.io.File
@@ -36,6 +39,28 @@ data class NowPlayingState(
     val positionMs: Long    = 0L,
     val durationMs: Long    = 0L
 )
+
+/** Summary of a single waveform processing job for display in the Settings tab. */
+data class ProcessingJobInfo(
+    val id: java.util.UUID,
+    val recordingId: Long,
+    val state: WorkInfo.State
+)
+
+/** Snapshot of the waveform processing queue shown in the Settings tab. */
+data class ProcessingStatus(
+    val active: ProcessingJobInfo?,
+    val pending: List<ProcessingJobInfo>,
+    /**
+     * All completed/failed jobs since the last app launch. Memory-only —
+     * cleared on process restart. No size cap while in testing mode.
+     */
+    val recent: List<ProcessingJobInfo>
+) {
+    companion object {
+        val IDLE = ProcessingStatus(null, emptyList(), emptyList())
+    }
+}
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -296,17 +321,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         title: String,
         topicId: Long? = null,
         markTimestamps: List<Long>,
-        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY    // ← new param
+        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
     ): Deferred<Long> = viewModelScope.async {
-        repo.saveRecordingWithMarks(
+        val recordingId = repo.saveRecordingWithMarks(
             filePath          = filePath,
             durationMs        = durationMs,
             fileSizeBytes     = fileSizeBytes,
             title             = title,
             topicId           = topicId,
             markTimestamps    = markTimestamps,
-            storageVolumeUuid = storageVolumeUuid                       // ← forwarded
+            storageVolumeUuid = storageVolumeUuid
         )
+        WaveformWorker.enqueue(
+            context     = getApplication(),
+            recordingId = recordingId,
+            filePath    = filePath
+        )
+        recordingId
     }
 
     fun deleteRecording(r: RecordingEntity) = viewModelScope.launch {
@@ -488,6 +519,101 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val amps = WaveformExtractor.extract(filePath)
             waveformCache.save(recordingId, amps)
             _waveformState.value = recordingId to amps
+        }
+    }
+
+    // ── Processing status (for Settings tab) ──────────────────────────────────
+
+    private val recentlyCompletedJobs = mutableListOf<ProcessingJobInfo>()
+
+    /**
+     * Live snapshot of the waveform processing queue.
+     *
+     * Combines WorkManager's WorkInfo flow with allRecordings and allTopics so
+     * each row can be labelled with the recording's topic emoji and title.
+     * WorkInfo.inputData is not accessible to observers, so we embed the
+     * recording ID as a tag ("rid:<id>") and cross-reference from there.
+     */
+    val processingStatus: StateFlow<ProcessingStatus> =
+        WorkManager.getInstance(getApplication<Application>())
+            .getWorkInfosByTagFlow(WaveformWorker.TAG)
+            .combine(allRecordings) { workInfos, recordings -> workInfos to recordings }
+            .combine(allTopics)     { (workInfos, recordings), topics ->
+                val recordingById = recordings.associateBy { it.id }
+                val topicById     = topics.associateBy { it.id }
+
+                fun infoFor(wi: WorkInfo) = ProcessingJobInfo(
+                    id          = wi.id,
+                    recordingId = WaveformWorker.recordingIdFromTags(wi.tags) ?: -1L,
+                    state       = wi.state
+                )
+
+                // Accumulate newly-finished jobs — no cap, show everything.
+                workInfos
+                    .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
+                    .forEach { wi ->
+                        if (recentlyCompletedJobs.none { it.id == wi.id }) {
+                            recentlyCompletedJobs.add(infoFor(wi))
+                        }
+                    }
+
+                ProcessingStatus(
+                    active  = workInfos.firstOrNull { it.state == WorkInfo.State.RUNNING  }?.let(::infoFor),
+                    pending = workInfos.filter      { it.state == WorkInfo.State.ENQUEUED }.map(::infoFor),
+                    recent  = recentlyCompletedJobs.toList().reversed()
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, ProcessingStatus.IDLE)
+
+    /**
+     * Returns a display label for [job] in the form "$topicIcon $title".
+     * Falls back to "📥 $title" for inbox recordings and "Recording" if the
+     * recording can no longer be found (e.g. deleted mid-job).
+     */
+    fun labelForJob(job: ProcessingJobInfo): String {
+        val recording = allRecordings.value.firstOrNull { it.id == job.recordingId }
+            ?: return "Recording"
+        val icon = recording.topicId
+            ?.let { allTopics.value.firstOrNull { t -> t.id == it }?.icon }
+            ?: "📥"
+        return "$icon ${recording.title}"
+    }
+
+    /**
+     * Cancels all queued waveform jobs, deletes all cached .wfm files, resets
+     * every recording's status to PENDING in the DB, clears the in-memory
+     * completed-jobs list, then re-enqueues a fresh job for every recording.
+     *
+     * Safe to call from the UI thread — all heavy work runs on IO dispatcher
+     * inside the viewModelScope coroutine.
+     */
+    fun reprocessAllWaveforms() {
+        viewModelScope.launch {
+            // 1. Cancel whatever WorkManager currently has queued.
+            WorkManager.getInstance(getApplication<Application>())
+                .cancelAllWorkByTag(WaveformWorker.TAG)
+
+            withContext(Dispatchers.IO) {
+                // 2. Delete all cached .wfm files.
+                waveformCache.deleteAll()
+
+                // 3. Reset every row in the DB to PENDING.
+                repo.resetAllWaveformStatuses()
+            }
+
+            // 4. Clear the in-memory completed log.
+            recentlyCompletedJobs.clear()
+
+            // 5. Re-enqueue a fresh job for every recording.
+            withContext(Dispatchers.IO) {
+                repo.getAllRecordingsOnce().forEach { recording ->
+                    WaveformWorker.enqueue(
+                        context     = getApplication(),
+                        recordingId = recording.id,
+                        filePath    = recording.filePath
+                    )
+                }
+            }
         }
     }
 

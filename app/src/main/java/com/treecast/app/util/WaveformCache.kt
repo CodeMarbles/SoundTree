@@ -51,6 +51,16 @@ class WaveformCache(context: Context) {
         runCatching { fileFor(recordingId).delete() }
     }
 
+    /**
+     * Deletes ALL cached waveform files. Used by the "Regenerate all waveforms"
+     * action in Settings so that every recording is re-decoded from scratch.
+     */
+    fun deleteAll() {
+        runCatching {
+            cacheDir.listFiles()?.forEach { it.delete() }
+        }
+    }
+
     /** Returns true if a cache entry already exists for [recordingId]. */
     fun exists(recordingId: Long): Boolean = fileFor(recordingId).exists()
 
