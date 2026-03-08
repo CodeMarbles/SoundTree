@@ -11,6 +11,7 @@ import com.treecast.app.data.db.AppDatabase
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
 import com.treecast.app.util.WaveformStatus
+import kotlinx.coroutines.delay
 
 /**
  * WorkManager worker that generates a real PCM-decoded waveform for a single
@@ -85,6 +86,9 @@ class WaveformWorker(
         val recordingId = inputData.getLong(KEY_RECORDING_ID, -1L)
         val filePath    = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
         if (recordingId < 0L) return Result.failure()
+
+        // ── Testing delay — remove when no longer needed ──────────────────────
+        delay(500L)
 
         val db    = AppDatabase.getInstance(applicationContext)
         val cache = WaveformCache(applicationContext)

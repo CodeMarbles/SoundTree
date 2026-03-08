@@ -100,21 +100,24 @@ class SettingsFragment : Fragment() {
         if (hasRecent) {
             binding.listRecentJobs.removeAllViews()
             status.recent.forEach { job ->
-                addJobRow(
-                    container = binding.listRecentJobs,
-                    label     = viewModel.labelForJob(job),
-                    isDone    = true,
-                    failed    = job.state == WorkInfo.State.FAILED
-                )
+                val failed    = job.state == WorkInfo.State.FAILED
+                val timeLabel = job.completedAt?.let { formatCompletionTime(it) } ?: ""
+                addJobRow(binding.listRecentJobs, viewModel.labelForJob(job), isDone = true, failed = failed, timeLabel = timeLabel)
             }
         }
+    }
+
+    private fun formatCompletionTime(epochMs: Long): String {
+        val fmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+        return fmt.format(java.util.Date(epochMs))
     }
 
     private fun addJobRow(
         container: LinearLayout,
         label: String,
         isDone: Boolean,
-        failed: Boolean
+        failed: Boolean,
+        timeLabel: String = ""
     ) {
         val density = resources.displayMetrics.density
         val hPad = (16 * density).toInt()
@@ -123,6 +126,7 @@ class SettingsFragment : Fragment() {
         val row = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(hPad, vPad, hPad, vPad)
+            gravity = android.view.Gravity.CENTER_VERTICAL
         }
 
         val tvLabel = TextView(requireContext()).apply {
@@ -132,6 +136,17 @@ class SettingsFragment : Fragment() {
             setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+
+        val tvTime = TextView(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.marginEnd = (8 * density).toInt() }
+            text = timeLabel
+            textSize = 11f
+            setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+            visibility = if (isDone && timeLabel.isNotEmpty()) View.VISIBLE else View.GONE
         }
 
         val tvStatus = TextView(requireContext()).apply {
@@ -153,6 +168,7 @@ class SettingsFragment : Fragment() {
         }
 
         row.addView(tvLabel)
+        row.addView(tvTime)
         row.addView(tvStatus)
         container.addView(row)
     }

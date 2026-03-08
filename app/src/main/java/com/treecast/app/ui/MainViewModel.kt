@@ -44,7 +44,8 @@ data class NowPlayingState(
 data class ProcessingJobInfo(
     val id: java.util.UUID,
     val recordingId: Long,
-    val state: WorkInfo.State
+    val state: WorkInfo.State,
+    val completedAt: Long? = null
 )
 
 /** Snapshot of the waveform processing queue shown in the Settings tab. */
@@ -553,7 +554,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
                     .forEach { wi ->
                         if (recentlyCompletedJobs.none { it.id == wi.id }) {
-                            recentlyCompletedJobs.add(infoFor(wi))
+                            recentlyCompletedJobs.add(
+                                infoFor(wi).copy(completedAt = System.currentTimeMillis())
+                            )
                         }
                     }
 
