@@ -4,12 +4,14 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Vertical line -->
+    <!-- Stem -->
     <path
         android:fillColor="@android:color/white"
-        android:pathData="M11,7 L13,7 L13,20 L11,20 Z"/>
-    <!-- Downward triangle / flag head -->
+        android:pathData="M11,13 L13,13 L13,22
+    Q13,23 12,23 Q11,23 11,22 Z"/>
+    <!-- Diamond -->
     <path
         android:fillColor="@android:color/white"
-        android:pathData="M12,3 L18,9 L12,9 Z"/>
+        android:pathData="M12,2 L18,8 L12,14
+    L6,8 Z"/>
 </vector>
