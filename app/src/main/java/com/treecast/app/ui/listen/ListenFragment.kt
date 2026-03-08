@@ -2,12 +2,15 @@ package com.treecast.app.ui.listen
 
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.GestureDetector
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -209,9 +212,21 @@ class ListenFragment : Fragment() {
                     val m = (4 * density).toInt()
                     setMargins(m, m, m, m)
                 }
-                setOnClickListener {
-                    viewModel.seekTo(mark.positionMs)
-                    viewModel.selectMark(mark.id)
+                val gd = GestureDetectorCompat(requireContext(),
+                    object : GestureDetector.SimpleOnGestureListener() {
+                        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                            viewModel.selectMark(mark.id)
+                            return true
+                        }
+                        override fun onDoubleTap(e: MotionEvent): Boolean {
+                            viewModel.seekTo(mark.positionMs)
+                            viewModel.selectMark(mark.id)
+                            return true
+                        }
+                    })
+                setOnTouchListener { _, event ->
+                    gd.onTouchEvent(event)
+                    true
                 }
             }
             markChips[mark.id] = chip
@@ -226,19 +241,35 @@ class ListenFragment : Fragment() {
 
     private fun updateMarkChipStyles() {
         val selectedId = viewModel.selectedMarkId.value
+        val density    = resources.displayMetrics.density
         markChips.forEach { (markId, chip) ->
             val isSelected   = markId == selectedId
             val isLastPassed = markId == lastPassedMarkId
             val ctx = requireContext()
-            (chip.background as? GradientDrawable)?.setColor(when {
-                isSelected   -> ctx.themeColor(R.attr.colorMarkSelected)
+
+            val bg = chip.background as? GradientDrawable ?: return@forEach
+
+            // Fill reflects playback progress (unchanged from before)
+            bg.setColor(when {
                 isLastPassed -> ctx.themeColor(R.attr.colorMarkDefault)
                 else         -> ctx.themeColor(R.attr.colorSurfaceElevated)
             })
+
+            // Text colour follows fill
             chip.setTextColor(
-                if (isSelected || isLastPassed) 0xFF_FFFFFF.toInt()
+                if (isLastPassed) 0xFF_FFFFFF.toInt()
                 else ctx.themeColor(R.attr.colorTextSecondary)
             )
+
+            // Selection = accent stroke, not fill
+            if (isSelected) {
+                bg.setStroke(
+                    (2.5f * density).toInt(),
+                    ctx.themeColor(R.attr.colorMarkSelected)
+                )
+            } else {
+                bg.setStroke(0, 0)
+            }
         }
     }
 
@@ -302,6 +333,14 @@ class ListenFragment : Fragment() {
                 topic?.name ?: "Uncategorised",
                 topic?.icon ?: Icons.INBOX
             )
+
+            // Show prominent topic icon + name header
+            val topicHeaderVisible = state.recording.topicId != null
+            binding.topicHeader.visibility = if (topicHeaderVisible) View.VISIBLE else View.GONE
+            if (topicHeaderVisible && topic != null) {
+                binding.tvTopicIcon.text = topic.icon
+                binding.tvCategory.text  = topic.name
+            }
         }
 
         // Highlight the last-passed mark
