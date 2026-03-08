@@ -526,6 +526,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ── Processing status (for Settings tab) ──────────────────────────────────
 
     private val recentlyCompletedJobs = mutableListOf<ProcessingJobInfo>()
+    private val startupTerminalIds = mutableSetOf<java.util.UUID>()
+    private var processingStatusInitialized = false
 
     /**
      * Live snapshot of the waveform processing queue.
@@ -550,15 +552,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
                 // Accumulate newly-finished jobs — no cap, show everything.
-                workInfos
-                    .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
-                    .forEach { wi ->
-                        if (recentlyCompletedJobs.none { it.id == wi.id }) {
-                            recentlyCompletedJobs.add(
-                                infoFor(wi).copy(completedAt = System.currentTimeMillis())
-                            )
+                if (!processingStatusInitialized) {
+                    // First emission — record all already-terminal jobs so we don't display them
+                    workInfos
+                        .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
+                        .forEach { startupTerminalIds.add(it.id) }
+                    processingStatusInitialized = true
+                } else {
+                    // Subsequent emissions — only accumulate jobs that transitioned this session
+                    workInfos
+                        .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
+                        .filter { it.id !in startupTerminalIds }
+                        .forEach { wi ->
+                            if (recentlyCompletedJobs.none { it.id == wi.id }) {
+                                recentlyCompletedJobs.add(
+                                    infoFor(wi).copy(completedAt = System.currentTimeMillis())
+                                )
+                            }
                         }
-                    }
+                }
 
                 ProcessingStatus(
                     active  = workInfos.firstOrNull { it.state == WorkInfo.State.RUNNING  }?.let(::infoFor),

@@ -88,7 +88,7 @@ class WaveformWorker(
         if (recordingId < 0L) return Result.failure()
 
         // ── Testing delay — remove when no longer needed ──────────────────────
-        delay(500L)
+        //delay(500L)
 
         val db    = AppDatabase.getInstance(applicationContext)
         val cache = WaveformCache(applicationContext)
