@@ -1,10 +1,14 @@
+@file:UnstableApi @file:OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.treecast.app.service
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
@@ -15,12 +19,14 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.treecast.app.R
 import com.treecast.app.TreeCastApp
+import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.repository.TreeCastRepository
+import com.treecast.app.service.PlaybackService.MarkAwarePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,15 +42,18 @@ import kotlinx.coroutines.withContext
  *
  * Mark-aware transport:
  *   ExoPlayer wraps in [MarkAwarePlayer], a ForwardingPlayer that intercepts
- *   seekToPrevious / seekToNext — the standard commands wired to the lock screen
- *   and notification prev/next buttons on all Android versions — and routes them
- *   to mark-jumping logic instead of the default queue-navigation behaviour.
- *   This also ensures those buttons are always available (un-greyed) regardless
- *   of queue position.
+ *   seekToPrevious / seekToNext and routes them to mark-jumping logic.
+ *   COMMAND_SEEK_TO_PREVIOUS is always available (falls back to position 0).
+ *   COMMAND_SEEK_TO_NEXT is only reported available when a forward mark exists,
+ *   which greys out the lock screen / notification next button appropriately.
+ *
+ * [cachedMarks] is kept in sync with the DB via a coroutine Flow observer.
+ * Whenever it changes, [ForwardingPlayer.invalidateState] is called so Media3
+ * re-queries [getAvailableCommands] and updates the notification / lock screen.
  *
  * Custom session commands ([PlaybackCommands]):
- *   JUMP_PREV_MARK / JUMP_NEXT_MARK and ADD_MARK are additionally available as
- *   explicit custom commands (e.g. from the in-app UI via MediaController).
+ *   JUMP_PREV_MARK / JUMP_NEXT_MARK and ADD_MARK are also available as explicit
+ *   custom commands for in-app UI use via MediaController.sendCustomCommand.
  */
 class PlaybackService : MediaSessionService() {
 
@@ -54,27 +63,39 @@ class PlaybackService : MediaSessionService() {
     // Coroutine scope for async mark DB operations triggered from outside the app.
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    // Cached marks for the currently loaded recording. Updated reactively via
+    // a Flow observer started in the Player.Listener below. MarkAwarePlayer
+    // reads this synchronously in getAvailableCommands().
+    private var cachedMarks: List<MarkEntity> = emptyList()
+    private var marksJob: Job? = null
+
     // ── Mark-aware ForwardingPlayer ───────────────────────────────────
 
     /**
      * Wraps ExoPlayer so that the standard SEEK_TO_PREVIOUS / SEEK_TO_NEXT
-     * transport commands — exposed by the lock screen and notification controls
-     * on every Android version via the Media3 → MediaSessionCompat bridge —
+     * commands — wired to lock screen and notification prev/next buttons on
+     * all Android versions via the Media3 → MediaSessionCompat bridge —
      * perform mark-jumping instead of playlist navigation.
      *
-     * Reporting both commands as always available un-greys the lock screen
-     * buttons regardless of queue position.
+     * SEEK_TO_PREVIOUS: always available (fallback = position 0).
+     * SEEK_TO_NEXT: available only when a mark exists ahead of current position,
+     *               which causes the lock screen next button to grey out correctly.
      */
-    private inner class MarkAwarePlayer(player: Player) : androidx.media3.common.ForwardingPlayer(player) {
+    private inner class MarkAwarePlayer(player: Player) : ForwardingPlayer(player) {
 
-        override fun getAvailableCommands(): Player.Commands =
-            super.getAvailableCommands().buildUpon()
+        override fun getAvailableCommands(): Player.Commands {
+            val hasNextMark = cachedMarks.any { it.positionMs > currentPosition + 500L }
+            return super.getAvailableCommands().buildUpon()
                 .add(COMMAND_SEEK_TO_PREVIOUS)
-                .add(COMMAND_SEEK_TO_NEXT)
+                .apply { if (hasNextMark) add(COMMAND_SEEK_TO_NEXT) }
                 .build()
+        }
 
         override fun isCommandAvailable(command: @Player.Command Int): Boolean {
-            if (command == COMMAND_SEEK_TO_PREVIOUS || command == COMMAND_SEEK_TO_NEXT) return true
+            if (command == COMMAND_SEEK_TO_PREVIOUS) return true
+            if (command == COMMAND_SEEK_TO_NEXT) {
+                return cachedMarks.any { it.positionMs > currentPosition + 500L }
+            }
             return super.isCommandAvailable(command)
         }
 
@@ -87,6 +108,27 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    // ── Player listener — restarts marks observer on track change ─────
+
+    private val playerListener = object : Player.Listener {
+        override fun onMediaItemTransition(
+            mediaItem: androidx.media3.common.MediaItem?,
+            reason: Int
+        ) {
+            val recordingId = mediaItem?.mediaId?.toLongOrNull()
+            marksJob?.cancel()
+            if (recordingId == null) {
+                cachedMarks = emptyList()
+                return
+            }
+            marksJob = serviceScope.launch {
+                repo.getMarksForRecording(recordingId).collect { marks ->
+                    cachedMarks = marks
+                }
+            }
+        }
+    }
+
     // ── Shared mark logic ─────────────────────────────────────────────
 
     /**
@@ -95,28 +137,22 @@ class PlaybackService : MediaSessionService() {
      *
      * A 500 ms dead-zone prevents getting stuck when positioned exactly on a mark.
      *
-     * Jump-previous falls back to position 0 when no earlier mark exists,
-     * giving an implicit "start of recording" marker (the equivalent of a
-     * standard media prev button restart).
-     *
-     * Jump-next does nothing when no later mark exists — no wrap-around.
-     *
-     * All DB access runs on [Dispatchers.IO]; seeks are dispatched back to Main.
+     * Jump-previous falls back to position 0 when no earlier mark exists
+     * (implicit start-of-recording marker).
+     * Jump-next does nothing when no later mark exists.
      */
     private suspend fun jumpMark(forward: Boolean) {
-        val session     = mediaSession ?: return
-        val player      = session.player
-        val recordingId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
-        val currentPos  = withContext(Dispatchers.Main) { player.currentPosition }
-
-        val marks = withContext(Dispatchers.IO) {
-            repo.getMarksForRecording(recordingId).first()
-        }
+        val player     = mediaSession?.player ?: return
+        val currentPos = withContext(Dispatchers.Main) { player.currentPosition }
 
         val targetMs: Long? = if (forward) {
-            marks.filter { it.positionMs > currentPos + 500L }.minByOrNull { it.positionMs }?.positionMs
+            cachedMarks
+                .filter { it.positionMs > currentPos + 500L }
+                .minByOrNull { it.positionMs }?.positionMs
         } else {
-            marks.filter { it.positionMs < currentPos - 500L }.maxByOrNull { it.positionMs }?.positionMs
+            cachedMarks
+                .filter { it.positionMs < currentPos - 500L }
+                .maxByOrNull { it.positionMs }?.positionMs
                 ?: 0L  // implicit 0-mark: fall back to start of recording
         }
 
@@ -127,9 +163,9 @@ class PlaybackService : MediaSessionService() {
 
     /** Inserts a new mark at the current playback position. */
     private suspend fun addMark() {
-        val session     = mediaSession ?: return
-        val recordingId = session.player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
-        val posMs       = withContext(Dispatchers.Main) { session.player.currentPosition }
+        val player      = mediaSession?.player ?: return
+        val recordingId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        val posMs       = withContext(Dispatchers.Main) { player.currentPosition }
         withContext(Dispatchers.IO) { repo.addMark(recordingId, posMs) }
     }
 
@@ -189,13 +225,15 @@ class PlaybackService : MediaSessionService() {
         // Wrap in MarkAwarePlayer so lock screen prev/next trigger mark-jumping.
         val markAwarePlayer = MarkAwarePlayer(exoPlayer)
 
+        // Watch for track changes so we can restart the marks Flow observer.
+        markAwarePlayer.addListener(playerListener)
+
         mediaSession = MediaSession.Builder(this, markAwarePlayer)
             .setCallback(SessionCallback())
             .build()
 
         // Advertise jump-prev, jump-next, and add-mark as extra buttons in the
-        // expanded media notification. Media3 inserts these alongside the
-        // standard transport controls.
+        // expanded media notification.
         mediaSession?.setCustomLayout(
             listOf(
                 CommandButton.Builder()
@@ -227,8 +265,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        marksJob?.cancel()
         serviceScope.cancel()
         mediaSession?.run {
+            player.removeListener(playerListener)
             player.release()
             release()
             mediaSession = null
