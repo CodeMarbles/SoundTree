@@ -21,7 +21,6 @@ import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.repository.TreeCastRepository
-import com.treecast.app.service.PlaybackService.MarkAwarePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,13 +46,18 @@ import kotlinx.coroutines.withContext
  *   COMMAND_SEEK_TO_NEXT is only reported available when a forward mark exists,
  *   which greys out the lock screen / notification next button appropriately.
  *
- * [cachedMarks] is kept in sync with the DB via a coroutine Flow observer.
- * Whenever it changes, [ForwardingPlayer.invalidateState] is called so Media3
- * re-queries [getAvailableCommands] and updates the notification / lock screen.
+ * [cachedMarks] is kept in sync with the DB via a coroutine Flow observer that
+ * restarts whenever the current media item changes. Media3 queries
+ * [getAvailableCommands] on every natural state change (play, pause, seek,
+ * track transition), so the notification reflects the correct state at all
+ * meaningful moments.
  *
  * Custom session commands ([PlaybackCommands]):
- *   JUMP_PREV_MARK / JUMP_NEXT_MARK and ADD_MARK are also available as explicit
- *   custom commands for in-app UI use via MediaController.sendCustomCommand.
+ *   JUMP_PREV_MARK / JUMP_NEXT_MARK and ADD_MARK remain registered in the
+ *   session callback for potential future in-app use via sendCustomCommand.
+ *   Only ADD_MARK is advertised in the notification custom layout — jump-prev
+ *   and jump-next are redundant there since the standard prev/next buttons
+ *   already perform mark-jumping via MarkAwarePlayer.
  */
 class PlaybackService : MediaSessionService() {
 
@@ -64,8 +68,8 @@ class PlaybackService : MediaSessionService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // Cached marks for the currently loaded recording. Updated reactively via
-    // a Flow observer started in the Player.Listener below. MarkAwarePlayer
-    // reads this synchronously in getAvailableCommands().
+    // a Flow observer started in playerListener. MarkAwarePlayer reads this
+    // synchronously in getAvailableCommands() / isCommandAvailable().
     private var cachedMarks: List<MarkEntity> = emptyList()
     private var marksJob: Job? = null
 
@@ -78,8 +82,7 @@ class PlaybackService : MediaSessionService() {
      * perform mark-jumping instead of playlist navigation.
      *
      * SEEK_TO_PREVIOUS: always available (fallback = position 0).
-     * SEEK_TO_NEXT: available only when a mark exists ahead of current position,
-     *               which causes the lock screen next button to grey out correctly.
+     * SEEK_TO_NEXT: available only when a mark exists ahead of current position.
      */
     private inner class MarkAwarePlayer(player: Player) : ForwardingPlayer(player) {
 
@@ -136,9 +139,7 @@ class PlaybackService : MediaSessionService() {
      * the current playback position.
      *
      * A 500 ms dead-zone prevents getting stuck when positioned exactly on a mark.
-     *
-     * Jump-previous falls back to position 0 when no earlier mark exists
-     * (implicit start-of-recording marker).
+     * Jump-previous falls back to position 0 when no earlier mark exists.
      * Jump-next does nothing when no later mark exists.
      */
     private suspend fun jumpMark(forward: Boolean) {
@@ -232,20 +233,12 @@ class PlaybackService : MediaSessionService() {
             .setCallback(SessionCallback())
             .build()
 
-        // Advertise jump-prev, jump-next, and add-mark as extra buttons in the
-        // expanded media notification.
+        // Only Add Mark is advertised as a custom notification button.
+        // Jump-prev and jump-next are handled by the standard prev/next transport
+        // buttons via MarkAwarePlayer, so adding them here would be redundant and
+        // would crowd out Add Mark from the visible notification action slots.
         mediaSession?.setCustomLayout(
             listOf(
-                CommandButton.Builder()
-                    .setDisplayName("Jump to previous mark")
-                    .setIconResId(R.drawable.ic_jump_prev_mark)
-                    .setSessionCommand(SessionCommand(PlaybackCommands.JUMP_PREV_MARK, Bundle.EMPTY))
-                    .build(),
-                CommandButton.Builder()
-                    .setDisplayName("Jump to next mark")
-                    .setIconResId(R.drawable.ic_jump_next_mark)
-                    .setSessionCommand(SessionCommand(PlaybackCommands.JUMP_NEXT_MARK, Bundle.EMPTY))
-                    .build(),
                 CommandButton.Builder()
                     .setDisplayName("Add mark")
                     .setIconResId(R.drawable.ic_mark)
