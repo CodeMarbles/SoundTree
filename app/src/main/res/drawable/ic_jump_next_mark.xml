@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jump to next mark icon.
+  Right-pointing triangle (skip forward) + right vertical bar (mark indicator).
+  Tinted at the call site via app:tint.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Right-pointing triangle (jump forward toward the mark) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M6,5.5 L16,12 L6,18.5 Z" />
+
+    <!-- Mark line (right side) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M17,5 L19,5 L19,19 L17,19 Z" />
+
+</vector>

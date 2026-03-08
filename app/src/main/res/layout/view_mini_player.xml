@@ -1,21 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Mini Player bar — persistent strip above the bottom nav.
-  Tapping anywhere navigates to the Listen tab.
-  The play/pause button is the only interactive control here;
-  everything else is handled on the Listen tab.
+
+  80dp two-row layout:
+    Row 1 (~44dp): skip-back | jump-prev | play/pause | jump-next | skip-forward | add-mark
+    Row 2 (~34dp): recording title (flexible) + playback time (fixed, right) + progress bar
+
+  Tapping the root navigates to the Listen tab.
+
+  The accentLine sits at the top by default. MainActivity's
+  updateMiniPlayerAccentLine() repositions both accentLine and miniContent
+  so the accent always faces the Content view.
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="64dp"
+    android:layout_height="80dp"
     android:background="?attr/colorSurfaceBase"
     android:elevation="4dp"
     android:clickable="true"
     android:focusable="true">
 
-    <!-- Thin accent line across the top edge -->
+    <!-- Accent line — repositioned by MainActivity for layout order -->
     <View
         android:id="@+id/accentLine"
         android:layout_width="0dp"
@@ -25,94 +32,171 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Skip back -->
-    <ImageView
-        android:id="@+id/btnMiniSkipBack"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginStart="12dp"
-        android:src="@drawable/ic_skip_back"
-        android:padding="6dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:clickable="true"
-        android:focusable="true"
-        app:tint="?attr/colorTextPrimary"
-        app:layout_constraintTop_toBottomOf="@id/accentLine"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Play / Pause -->
-    <ImageView
-        android:id="@+id/btnMiniPlayPause"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="4dp"
-        android:src="@drawable/ic_play"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:clickable="true"
-        android:focusable="true"
-        app:tint="?attr/colorAccent"
-        app:layout_constraintTop_toBottomOf="@id/accentLine"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btnMiniSkipBack" />
-
-    <!-- Skip forward -->
-    <ImageView
-        android:id="@+id/btnMiniSkipForward"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginStart="4dp"
-        android:src="@drawable/ic_skip_forward"
-        android:padding="6dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:clickable="true"
-        android:focusable="true"
-        app:tint="?attr/colorTextPrimary"
-        app:layout_constraintTop_toBottomOf="@id/accentLine"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btnMiniPlayPause" />
-
-    <!-- Title + progress bar stacked vertically -->
+    <!--
+      Inner content — fills between accent line and far edge.
+      Default (accent-at-top): top pinned to accentLine bottom, bottom to parent.
+      updateMiniPlayerAccentLine() swaps these when accent flips to the other edge.
+    -->
     <LinearLayout
-        android:id="@+id/miniInfo"
+        android:id="@+id/miniContent"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:orientation="vertical"
-        android:layout_marginHorizontal="10dp"
         app:layout_constraintTop_toBottomOf="@id/accentLine"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btnMiniSkipForward"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
-            android:id="@+id/tvMiniTitle"
+        <!-- ── Row 1: Transport + mark controls ──────────────────── -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Recording title"
-            android:textColor="?attr/colorTextPrimary"
-            android:textSize="13sp"
-            android:ellipsize="end"
-            android:maxLines="1" />
+            android:layout_height="0dp"
+            android:layout_weight="44"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
 
-        <ProgressBar
-            android:id="@+id/miniProgressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="3dp"
-            android:layout_marginTop="5dp"
-            android:progressTint="?attr/colorAccent"
-            android:progressBackgroundTint="?attr/colorSurfaceElevated"
-            android:max="1000"
-            android:progress="0" />
+            <!-- Skip back (fixed scrub interval) -->
+            <ImageView
+                android:id="@+id/btnMiniSkipBack"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:src="@drawable/ic_skip_back"
+                android:padding="5dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Skip back"
+                app:tint="?attr/colorTextPrimary" />
 
-        <TextView
-            android:id="@+id/tvMiniTime"
+            <!-- Jump to previous mark -->
+            <ImageView
+                android:id="@+id/btnMiniJumpPrev"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:src="@drawable/ic_jump_prev_mark"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Jump to previous mark"
+                app:tint="?attr/colorMarkDefault" />
+
+            <!-- Play / Pause (accent coloured) -->
+            <ImageView
+                android:id="@+id/btnMiniPlayPause"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginHorizontal="6dp"
+                android:src="@drawable/ic_play"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Play / Pause"
+                app:tint="?attr/colorAccent" />
+
+            <!-- Jump to next mark -->
+            <ImageView
+                android:id="@+id/btnMiniJumpNext"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="6dp"
+                android:src="@drawable/ic_jump_next_mark"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Jump to next mark"
+                app:tint="?attr/colorMarkDefault" />
+
+            <!-- Skip forward (fixed scrub interval) -->
+            <ImageView
+                android:id="@+id/btnMiniSkipForward"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:src="@drawable/ic_skip_forward"
+                android:padding="5dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Skip forward"
+                app:tint="?attr/colorTextPrimary" />
+
+            <!-- Flexible spacer pushes add-mark to the right -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Add mark at current playback position -->
+            <ImageView
+                android:id="@+id/btnMiniAddMark"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/ic_mark"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Add mark"
+                app:tint="?attr/colorMarkAction" />
+
+        </LinearLayout>
+
+        <!-- ── Row 2: Title + time + progress bar ────────────────── -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="0:00 / 0:00"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="10sp"
-            android:layout_marginTop="3dp" />
+            android:layout_height="0dp"
+            android:layout_weight="34"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingBottom="7dp"
+            android:gravity="center_vertical">
+
+            <!-- Title (left, stretches) + time (right, fixed width) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvMiniTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Recording title"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="12sp"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/tvMiniTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="0:00 / 0:00"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="10sp"
+                    android:maxLines="1" />
+
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/miniProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_marginTop="5dp"
+                android:progressTint="?attr/colorAccent"
+                android:progressBackgroundTint="?attr/colorSurfaceElevated"
+                android:max="1000"
+                android:progress="0" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

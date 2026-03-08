@@ -66,6 +66,8 @@ class ListenFragment : Fragment() {
         binding.btnPlayPause.setOnClickListener   { viewModel.togglePlayPause() }
         binding.btnSkipBack.setOnClickListener    { viewModel.skipBack() }
         binding.btnSkipForward.setOnClickListener { viewModel.skipForward() }
+        binding.btnJumpPrev.setOnClickListener { viewModel.jumpToPrevMark() }
+        binding.btnJumpNext.setOnClickListener { viewModel.jumpToNextMark() }
 
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) { isSeeking = true }

@@ -137,7 +137,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         stopProgressPolling()
 
         val uri = Uri.fromFile(File(recording.filePath))
-        controller.setMediaItem(MediaItem.fromUri(uri))
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaId(recording.id.toString())   // used by PlaybackService for mark commands
+            .build()
+        controller.setMediaItem(mediaItem)
         controller.prepare()
 
         if (recording.playbackPositionMs > 0L) {
@@ -181,6 +185,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: return
         val target = (currentPos + scrubForwardSecs.value * 1000L).coerceAtMost(dur)
         seekTo(target)
+    }
+
+    fun jumpToPrevMark() {
+        val currentPos = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs
+            ?: return
+        val target = _marks.value
+            .filter { it.positionMs < currentPos - 500L }
+            .maxByOrNull { it.positionMs }
+        // Implicit 0-mark: if no earlier mark exists, go to start of recording.
+        seekTo(target?.positionMs ?: 0L)
+    }
+
+    fun jumpToNextMark() {
+        val currentPos = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs
+            ?: return
+        val target = _marks.value
+            .filter { it.positionMs > currentPos + 500L }
+            .minByOrNull { it.positionMs }
+            ?: return
+        seekTo(target.positionMs)
     }
 
     // ── Position polling ──────────────────────────────────────────────

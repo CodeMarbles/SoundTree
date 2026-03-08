@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                 binding.rootStack.addView(view, lp)
             } else {
                 val heightPx = when (element) {
-                    LayoutElement.MINI_PLAYER -> (64 * dp).toInt()
+                    LayoutElement.MINI_PLAYER -> (80 * dp).toInt()
                     LayoutElement.NAV         -> (64 * dp).toInt()
                     LayoutElement.TITLE_BAR   -> (53 * dp).toInt() // 52dp bar + 1dp divider
                     else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
@@ -249,35 +249,33 @@ class MainActivity : AppCompatActivity() {
         val contentIsBelow = contentIdx > miniIdx
 
         val miniPlayerRoot = binding.miniPlayer.root as? ConstraintLayout ?: return
+        val accentLine     = binding.miniPlayer.accentLine
+        val miniContent    = binding.miniPlayer.miniContent
+
         val cs = ConstraintSet()
         cs.clone(miniPlayerRoot)
 
-        val controlIds = listOf(
-            binding.miniPlayer.btnMiniSkipBack.id,
-            binding.miniPlayer.btnMiniPlayPause.id,
-            binding.miniPlayer.btnMiniSkipForward.id,
-            binding.miniPlayer.tvMiniTitle.id,
-            binding.miniPlayer.tvMiniTime.id,
-            binding.miniPlayer.miniProgressBar.id
-        )
-
         if (contentIsBelow) {
-            // Accent line at top, controls anchored below it (original layout)
-            cs.connect(binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-            cs.clear(binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM)
-            controlIds.forEach { id ->
-                cs.connect(id, ConstraintSet.TOP, binding.miniPlayer.accentLine.id, ConstraintSet.BOTTOM)
-                cs.clear(id, ConstraintSet.BOTTOM)
-                cs.connect(id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-            }
+            // Miniplayer is ABOVE content → accent should be on the BOTTOM edge
+            // (the edge facing the content below it).
+            cs.clear(accentLine.id, ConstraintSet.TOP)
+            cs.connect(accentLine.id, ConstraintSet.BOTTOM,
+                ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            // Content fills the space above the accent line.
+            cs.connect(miniContent.id, ConstraintSet.TOP,
+                ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            cs.connect(miniContent.id, ConstraintSet.BOTTOM,
+                accentLine.id, ConstraintSet.TOP)
         } else {
-            // Accent line at bottom, controls anchored to parent top instead
-            cs.connect(binding.miniPlayer.accentLine.id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
-            cs.clear(binding.miniPlayer.accentLine.id, ConstraintSet.TOP)
-            controlIds.forEach { id ->
-                cs.connect(id, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
-                cs.connect(id, ConstraintSet.BOTTOM, binding.miniPlayer.accentLine.id, ConstraintSet.TOP)
-            }
+            // Miniplayer is BELOW content → accent should be on the TOP edge.
+            cs.clear(accentLine.id, ConstraintSet.BOTTOM)
+            cs.connect(accentLine.id, ConstraintSet.TOP,
+                ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            // Content fills the space below the accent line.
+            cs.connect(miniContent.id, ConstraintSet.TOP,
+                accentLine.id, ConstraintSet.BOTTOM)
+            cs.connect(miniContent.id, ConstraintSet.BOTTOM,
+                ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
         }
 
         cs.applyTo(miniPlayerRoot)
@@ -408,21 +406,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.miniPlayer.root.setOnClickListener {
-            navigateTo(PAGE_LISTEN)
-        }
+        binding.miniPlayer.root.setOnClickListener { navigateTo(PAGE_LISTEN) }
 
-        binding.miniPlayer.btnMiniPlayPause.setOnClickListener {
-            viewModel.togglePlayPause()
-        }
-
-        binding.miniPlayer.btnMiniSkipBack.setOnClickListener {
-            viewModel.skipBack()
-        }
-
-        binding.miniPlayer.btnMiniSkipForward.setOnClickListener {
-            viewModel.skipForward()
-        }
+        binding.miniPlayer.btnMiniPlayPause.setOnClickListener  { viewModel.togglePlayPause() }
+        binding.miniPlayer.btnMiniSkipBack.setOnClickListener   { viewModel.skipBack() }
+        binding.miniPlayer.btnMiniSkipForward.setOnClickListener { viewModel.skipForward() }
+        binding.miniPlayer.btnMiniJumpPrev.setOnClickListener   { viewModel.jumpToPrevMark() }
+        binding.miniPlayer.btnMiniJumpNext.setOnClickListener   { viewModel.jumpToNextMark() }
+        binding.miniPlayer.btnMiniAddMark.setOnClickListener    { viewModel.addMark() }
     }
 
     // ── Top title ─────────────────────────────────────────────────────
