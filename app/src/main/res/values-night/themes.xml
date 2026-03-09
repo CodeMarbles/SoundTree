@@ -24,6 +24,8 @@
         <item name="colorSurface">@color/grey_900</item>
         <item name="colorOnSurface">#EEEEFF</item>
         <item name="android:statusBarColor">@color/grey_950</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:navigationBarColor">@color/grey_950</item>
         <item name="android:windowBackground">@color/grey_950</item>
 

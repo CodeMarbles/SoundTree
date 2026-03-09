@@ -115,6 +115,21 @@ class LayoutReorderWidget @JvmOverloads constructor(
         rebuildDisplayItems()
     }
 
+    // ── Measurement ───────────────────────────────────────────────
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val dp = context.resources.displayMetrics.density
+        val itemMarginPx = (2 * dp).toInt() * 2  // 2dp top + 2dp bottom per item
+
+        val totalHeightPx = displayItems.sumOf { element ->
+            val itemHeightDp = if (element == LayoutElement.CONTENT) 80 else 34
+            (itemHeightDp * dp).toInt() + itemMarginPx
+        }
+
+        val exactHeightSpec = MeasureSpec.makeMeasureSpec(totalHeightPx, MeasureSpec.EXACTLY)
+        super.onMeasure(widthMeasureSpec, exactHeightSpec)
+    }
+
     // ── Public API ────────────────────────────────────────────────────
 
     /**
@@ -142,6 +157,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
             else fullOrder.filter { it != LayoutElement.TITLE_BAR }
         )
         adapter.notifyDataSetChanged()
+        requestLayout()
     }
 
     private fun onItemMoved(from: Int, to: Int) {

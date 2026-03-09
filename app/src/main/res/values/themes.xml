@@ -11,6 +11,8 @@
 
     <style name="Theme.TreeCast" parent="Theme.MaterialComponents.DayNight.NoActionBar">
 
+
+
         <!-- Material required slots -->
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorPrimaryVariant">@color/purple_600</item>
@@ -21,6 +23,8 @@
         <item name="colorSurface">@color/grey_100</item>
         <item name="colorOnSurface">@color/navy_900</item>
         <item name="android:statusBarColor">@color/grey_50</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:navigationBarColor">@color/grey_50</item>
         <item name="android:windowBackground">@color/grey_50</item>
 
