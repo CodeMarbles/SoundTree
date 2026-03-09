@@ -60,12 +60,17 @@ class EmojiPickerBottomSheet(
         val sheet = dialog as? BottomSheetDialog ?: return
         val behavior = sheet.behavior
 
-        // Expand immediately — no peek / half-expanded state.
+        // Expand immediately with no drag-to-collapse gesture.
+        // isDraggable = false is the key: without it BottomSheetBehavior
+        // intercepts vertical touches to track sheet drags, which prevents
+        // the EmojiPickerView's internal RecyclerView from scrolling except
+        // in a narrow band near the top. Dismiss via back press or scrim tap.
         behavior.state = BottomSheetBehavior.STATE_EXPANDED
 
         // skipCollapsed: dragging down dismisses instead of collapsing to
         // a half-height peek. This means all upward scroll events reach
         // the EmojiPickerView's RecyclerView unobstructed.
         behavior.skipCollapsed = true
+        behavior.isDraggable = false
     }
 }
