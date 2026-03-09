@@ -23,7 +23,6 @@ import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.NowPlayingState
 import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
-
 import com.treecast.app.util.themeColor
 
 
@@ -335,11 +334,15 @@ class ListenFragment : Fragment() {
             )
 
             // Show prominent topic icon + name header
-            val topicHeaderVisible = state.recording.topicId != null
-            binding.topicHeader.visibility = if (topicHeaderVisible) View.VISIBLE else View.GONE
-            if (topicHeaderVisible && topic != null) {
+            binding.topicHeader.visibility = View.VISIBLE
+            if (topic != null) {
                 binding.tvTopicIcon.text = topic.icon
                 binding.tvCategory.text  = topic.name
+                binding.tvCategory.setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+            } else {
+                binding.tvTopicIcon.text = Icons.INBOX
+                binding.tvCategory.text  = "Uncategorized"
+                binding.tvCategory.setTextColor(requireContext().themeColor(R.attr.colorStatusRecordingLabel))
             }
         }
 

@@ -62,11 +62,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!--
-                Category label above the recording title.
-                Shown in colorTextSecondary when categorised;
-                in colorStatusRecordingLabel (muted amber) when in Inbox.
-            -->
             <LinearLayout
                 android:id="@+id/topicHeader"
                 android:layout_width="match_parent"
@@ -74,7 +69,7 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:layout_marginBottom="8dp"
-                android:visibility="gone">
+                android:visibility="visible">
 
                 <TextView
                     android:id="@+id/tvTopicIcon"
@@ -85,31 +80,35 @@
                     android:layout_marginEnd="12dp"
                     android:includeFontPadding="false" />
 
-                <TextView
-                    android:id="@+id/tvCategory"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:layout_gravity="bottom"
-                    android:ellipsize="end"
-                    android:maxLines="1" />
+                    android:orientation="vertical"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:ellipsize="end"
+                        android:maxLines="1" />
+
+                    <TextView
+                        android:id="@+id/tvTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:ellipsize="end"
+                        android:maxLines="2" />
+
+                </LinearLayout>
 
             </LinearLayout>
-
-            <!-- Recording title -->
-            <TextView
-                android:id="@+id/tvTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:layout_marginBottom="4dp" />
 
             <!-- Waveform -->
             <com.treecast.app.ui.listen.PlaybackWaveformView
