@@ -310,6 +310,22 @@ class SettingsFragment : Fragment() {
             viewModel.setScrubForwardSecs(newVal)
             binding.tvScrubForwardSecs.text = newVal.toString()
         }
+
+        // ── Mark Rewind Threshold ─────────────────────────────────────────
+        fun Float.toDisplayString() = if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
+
+        binding.tvMarkRewindSecs.text = viewModel.markRewindThresholdSecs.value.toDisplayString()
+
+        binding.btnMarkRewindMinus.setOnClickListener {
+            val newVal = (viewModel.markRewindThresholdSecs.value - 0.5f).coerceAtLeast(0.5f)
+            viewModel.setMarkRewindThresholdSecs(newVal)
+            binding.tvMarkRewindSecs.text = newVal.toDisplayString()
+        }
+        binding.btnMarkRewindPlus.setOnClickListener {
+            val newVal = (viewModel.markRewindThresholdSecs.value + 0.5f).coerceAtMost(5.0f)
+            viewModel.setMarkRewindThresholdSecs(newVal)
+            binding.tvMarkRewindSecs.text = newVal.toDisplayString()
+        }
     }
 
     private fun setupStorageSection() {

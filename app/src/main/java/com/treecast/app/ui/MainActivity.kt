@@ -391,12 +391,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
                 binding.miniPlayer.root.visibility = if (state != null) View.VISIBLE else View.GONE
-
                 if (state != null) {
                     binding.miniPlayer.tvMiniTitle.text = state.recording.title
                     val frac = if (state.durationMs > 0)
                         (state.positionMs * 1000 / state.durationMs).toInt() else 0
-                    binding.miniPlayer.miniProgressBar.progress = frac
+                    binding.miniPlayer.miniProgressBar.setProgress(frac)   // ← was .progress =
                     binding.miniPlayer.tvMiniTime.text =
                         "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
                     binding.miniPlayer.btnMiniPlayPause.setImageResource(
@@ -406,10 +405,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.miniPlayer.root.setOnClickListener { navigateTo(PAGE_LISTEN) }
+        // Feed mark dot positions to the progress view
+        lifecycleScope.launch {
+            viewModel.marks.collect { marks ->
+                val dur = viewModel.nowPlaying.value?.durationMs ?: return@collect
+                if (dur <= 0) return@collect
+                val fracs = marks.map { it.positionMs.toFloat() / dur.toFloat() }
+                binding.miniPlayer.miniProgressBar.setMarkFractions(fracs)
+            }
+        }
 
-        binding.miniPlayer.btnMiniPlayPause.setOnClickListener  { viewModel.togglePlayPause() }
-        binding.miniPlayer.btnMiniSkipBack.setOnClickListener   { viewModel.skipBack() }
+        binding.miniPlayer.root.setOnClickListener { navigateTo(PAGE_LISTEN) }
+        binding.miniPlayer.btnMiniPlayPause.setOnClickListener { viewModel.togglePlayPause() }
+        binding.miniPlayer.btnMiniSkipBack.setOnClickListener { viewModel.skipBack() }
         binding.miniPlayer.btnMiniSkipForward.setOnClickListener { viewModel.skipForward() }
         binding.miniPlayer.btnMiniJumpPrev.setOnClickListener   { viewModel.jumpToPrevMark() }
         binding.miniPlayer.btnMiniJumpNext.setOnClickListener   { viewModel.jumpToNextMark() }

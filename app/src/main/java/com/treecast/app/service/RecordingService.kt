@@ -157,7 +157,7 @@ class RecordingService : Service() {
     private val mainHandler by lazy { android.os.Handler(mainLooper) }
 
     override fun onBind(intent: Intent?): IBinder {
-        Log.d("TC_DEBUG", "RecordingService.onBind()")
+//        Log.d("TC_DEBUG", "RecordingService.onBind()")
         return binder
     }
 
@@ -170,7 +170,7 @@ class RecordingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d("TC_DEBUG", "RecordingService.onStartCommand() action=${intent?.action}")
+//        Log.d("TC_DEBUG", "RecordingService.onStartCommand() action=${intent?.action}")
         when (intent?.action) {
             ACTION_START -> {
                 // Accept the currently selected topic so the service can save
@@ -194,7 +194,7 @@ class RecordingService : Service() {
     }
 
     override fun onDestroy() {
-        Log.w("TC_DEBUG", "RecordingService.onDestroy() called — state was ${_state.value}")
+//        Log.w("TC_DEBUG", "RecordingService.onDestroy() called — state was ${_state.value}")
         stopRecording()
         serviceScope.cancel()
 

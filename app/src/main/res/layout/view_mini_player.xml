@@ -131,17 +131,36 @@
                 android:layout_weight="1" />
 
             <!-- Add mark at current playback position -->
-            <ImageView
+            <LinearLayout
                 android:id="@+id/btnMiniAddMark"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:src="@drawable/ic_mark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Add mark"
-                app:tint="?attr/colorMarkAction" />
+                android:contentDescription="Add mark">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_mark"
+                    app:tint="?attr/colorMarkAction" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mark"
+                    android:textColor="?attr/colorMarkAction"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.12"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -185,16 +204,11 @@
 
             </LinearLayout>
 
-            <ProgressBar
+            <com.treecast.app.ui.widget.MiniMarkProgressView
                 android:id="@+id/miniProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="3dp"
-                android:layout_marginTop="5dp"
-                android:progressTint="?attr/colorAccent"
-                android:progressBackgroundTint="?attr/colorSurfaceElevated"
-                android:max="1000"
-                android:progress="0" />
+                android:layout_marginTop="5dp" />
 
         </LinearLayout>
 

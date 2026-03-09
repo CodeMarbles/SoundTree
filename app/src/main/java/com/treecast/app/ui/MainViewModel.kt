@@ -5,12 +5,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -23,6 +25,7 @@ import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeItem
+import com.treecast.app.service.PlaybackCommands
 import com.treecast.app.service.PlaybackService
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
@@ -80,6 +83,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_DEFAULT_STORAGE_UUID = "default_storage_uuid"
         private const val PREF_LAYOUT_ORDER    = "layout_element_order"
         private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
+        private const val PREF_MARK_REWIND_THRESHOLD = "mark_rewind_threshold_secs"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -214,25 +218,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun jumpToPrevMark() {
-        val currentPos = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs
-            ?: return
-        val target = _marks.value
-            .filter { it.positionMs < currentPos - 500L }
-            .maxByOrNull { it.positionMs }
-        // Implicit 0-mark: if no earlier mark exists, go to start of recording.
-        seekTo(target?.positionMs ?: 0L)
+        mediaController?.sendCustomCommand(
+            SessionCommand(PlaybackCommands.JUMP_PREV_MARK, Bundle.EMPTY),
+            Bundle.EMPTY
+        )
     }
 
     fun jumpToNextMark() {
-        val currentPos = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs
-            ?: return
-        val target = _marks.value
-            .filter { it.positionMs > currentPos + 500L }
-            .minByOrNull { it.positionMs }
-            ?: return
-        seekTo(target.positionMs)
+        mediaController?.sendCustomCommand(
+            SessionCommand(PlaybackCommands.JUMP_NEXT_MARK, Bundle.EMPTY),
+            Bundle.EMPTY
+        )
     }
 
     // ── Position polling ──────────────────────────────────────────────
@@ -390,6 +386,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val v = secs.coerceAtLeast(5)
         _scrubForwardSecs.value = v
         prefs.edit().putInt(PREF_SCRUB_FORWARD_SECS, v).apply()
+    }
+
+    private val _markRewindThresholdSecs =
+        MutableStateFlow(prefs.getFloat(PREF_MARK_REWIND_THRESHOLD, 1.5f))
+    val markRewindThresholdSecs: StateFlow<Float> = _markRewindThresholdSecs
+    fun setMarkRewindThresholdSecs(secs: Float) {
+        val v = secs.coerceIn(0.5f, 5.0f)
+        _markRewindThresholdSecs.value = v
+        prefs.edit().putFloat(PREF_MARK_REWIND_THRESHOLD, v).apply()
     }
 
     // ── Jump to Library on save ───────────────────────────────────────

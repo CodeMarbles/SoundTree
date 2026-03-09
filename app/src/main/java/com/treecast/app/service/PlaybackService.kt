@@ -4,6 +4,7 @@ package com.treecast.app.service
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
@@ -63,6 +64,7 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private lateinit var repo: TreeCastRepository
+    private lateinit var prefs: android.content.SharedPreferences
 
     // Coroutine scope for async mark DB operations triggered from outside the app.
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -138,24 +140,28 @@ class PlaybackService : MediaSessionService() {
      * Seeks to the nearest mark before (forward=false) or after (forward=true)
      * the current playback position.
      *
-     * A 500 ms dead-zone prevents getting stuck when positioned exactly on a mark.
+     * A modifiable dead-zone (default 500ms) prevents getting stuck when positioned exactly on a mark.
      * Jump-previous falls back to position 0 when no earlier mark exists.
      * Jump-next does nothing when no later mark exists.
      */
     private suspend fun jumpMark(forward: Boolean) {
         val player     = mediaSession?.player ?: return
         val currentPos = withContext(Dispatchers.Main) { player.currentPosition }
+        val thresholdMs = (prefs.getFloat("mark_rewind_threshold_secs", 1.5f) * 1000f).toLong()
 
         val targetMs: Long? = if (forward) {
             cachedMarks
-                .filter { it.positionMs > currentPos + 500L }
+                .filter { it.positionMs > currentPos + 500L }   // forward keeps 500ms
                 .minByOrNull { it.positionMs }?.positionMs
         } else {
+            Log.d("TC_DEBUG", "currentPos: " + currentPos.toString() + ", thresholdMs" + thresholdMs.toString())
             cachedMarks
-                .filter { it.positionMs < currentPos - 500L }
+                .filter { it.positionMs < currentPos - thresholdMs }
                 .maxByOrNull { it.positionMs }?.positionMs
-                ?: 0L  // implicit 0-mark: fall back to start of recording
+                ?: 0L
         }
+
+        Log.d("TC_DEBUG", "targetMs:" + targetMs.toString())
 
         if (targetMs != null) {
             withContext(Dispatchers.Main) { player.seekTo(targetMs) }
@@ -210,6 +216,7 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
+        prefs = getSharedPreferences("treecast_settings", android.content.Context.MODE_PRIVATE)
         repo = (application as TreeCastApp).repository
 
         val exoPlayer = ExoPlayer.Builder(this)

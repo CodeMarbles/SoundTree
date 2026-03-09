@@ -56,7 +56,7 @@ class RecordFragment : Fragment() {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            Log.d("TC_DEBUG", "RecordFragment: onServiceConnected")
+//            Log.d("TC_DEBUG", "RecordFragment: onServiceConnected")
             recordingService = (binder as RecordingService.RecordingBinder).getService()
             isBound = true
             observeServiceState()
@@ -66,7 +66,7 @@ class RecordFragment : Fragment() {
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
-            Log.w("TC_DEBUG", "RecordFragment: onServiceDisconnected")
+//            Log.w("TC_DEBUG", "RecordFragment: onServiceDisconnected")
             isBound = false
             recordingService = null
         }
