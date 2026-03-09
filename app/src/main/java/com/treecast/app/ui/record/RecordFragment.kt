@@ -127,6 +127,7 @@ class RecordFragment : Fragment() {
         // Delegates directly to the service via Binder.
         binding.btnDropMark.setOnClickListener {
             recordingService?.dropMark()
+            binding.waveformView.pushMark()
         }
 
         // Cancel requires a double-tap to prevent accidental presses.
