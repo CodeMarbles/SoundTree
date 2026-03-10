@@ -545,7 +545,52 @@ class MainActivity : AppCompatActivity() {
 
         // ── Record/Pause button action — actually toggles pause/resume ─────
         recorderBinding.btnMiniRecPause.setOnClickListener {
-            viewModel.requestToggleRecordingPause()
+            when (viewModel.recordingState.value) {
+                RecordingService.State.IDLE ->
+                    // triggerQuickRecord() handles mic permission + service-binding race.
+                    recordFragment.triggerQuickRecord()
+                RecordingService.State.RECORDING,
+                RecordingService.State.PAUSED ->
+                    viewModel.requestToggleRecordingPause()
+            }
+        }
+
+        // ── Dim / disable non-record controls when IDLE ────────────────────
+        //
+        // IDLE:               save, mark cluster, and timeline are inert.
+        //                     Elapsed text is near-invisible (alpha 0.15).
+        // RECORDING / PAUSED: everything is fully live.
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                val active = state != RecordingService.State.IDLE
+
+                // Controls that make no sense before a recording has started
+                val inertViews = listOf(
+                    recorderBinding.btnMiniRecSave,
+                    recorderBinding.btnMiniMark,
+                    recorderBinding.btnMiniNudgeBack,
+                    recorderBinding.btnMiniNudgeForward,
+                    recorderBinding.btnMiniNudgeCommit,
+                    recorderBinding.miniRecTimeline
+                )
+                for (v in inertViews) {
+                    v.isEnabled = active
+                    v.alpha     = if (active) 1f else 0.25f
+                }
+
+                // Elapsed timer: nearly invisible when IDLE (it just says 0:00)
+                recorderBinding.tvMiniRecElapsed.alpha = when (state) {
+                    RecordingService.State.IDLE      -> 0.15f
+                    RecordingService.State.PAUSED    -> 0.6f
+                    RecordingService.State.RECORDING -> 1f
+                }
+
+                // Note: the nudge cluster's own enabled/alpha logic (which
+                // accounts for marks + lock state) runs in a separate observer.
+                // That observer's alpha writes only fire when active=true because
+                // marks will be empty while IDLE, so the 0.25f set above won't
+                // be overridden to 1f while the service is stopped.
+            }
         }
 
         // ── Save button ────────────────────────────────────────────────────

@@ -227,11 +227,10 @@ class RecordFragment : Fragment() {
                 // ── Bridge toggle-pause events from Mini Recorder button ───
                 launch {
                     viewModel.toggleRecordingPauseEvent.collect {
-                        val svc = recordingService ?: return@collect
-                        when (svc.state.value) {
+                        when (recordingService?.state?.value) {
                             RecordingService.State.RECORDING -> pauseRecording()
                             RecordingService.State.PAUSED    -> resumeRecording()
-                            RecordingService.State.IDLE      -> { /* no-op */ }
+                            else -> { /* IDLE is handled in MainActivity via triggerQuickRecord() */ }
                         }
                     }
                 }

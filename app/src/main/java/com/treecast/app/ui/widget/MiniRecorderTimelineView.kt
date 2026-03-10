@@ -184,12 +184,11 @@ class MiniRecorderTimelineView @JvmOverloads constructor(
         dotCxList.clear()
 
         // Resolve which index is "active" (teal). Explicit selection wins;
-        // otherwise fall back to last mark.
-        val activeIndex = when {
-            selectedMarkIndex >= 0 && selectedMarkIndex < markTimestamps.size -> selectedMarkIndex
-            markTimestamps.isNotEmpty() -> markTimestamps.lastIndex
-            else -> -1
-        }
+        val activeIndex =
+            if (selectedMarkIndex >= 0 && selectedMarkIndex < markTimestamps.size)
+                selectedMarkIndex
+            else
+                -1
 
         for (i in markTimestamps.indices) {
             val ts   = markTimestamps[i]
