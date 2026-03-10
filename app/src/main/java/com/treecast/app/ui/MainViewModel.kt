@@ -27,6 +27,7 @@ import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.service.PlaybackCommands
 import com.treecast.app.service.PlaybackService
+import com.treecast.app.service.RecordingService
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
@@ -84,6 +85,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_LAYOUT_ORDER    = "layout_element_order"
         private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
         private const val PREF_MARK_REWIND_THRESHOLD = "mark_rewind_threshold_secs"
+        private const val PREF_SHOW_MINI_RECORDER         = "show_mini_recorder"
+        private const val PREF_SHOW_RECORD_MARK_TIMESTAMP = "show_record_mark_timestamp"
+        private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -112,6 +116,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val controllerFuture: ListenableFuture<MediaController>
     private var mediaController: MediaController? = null
     private var progressJob: Job? = null
+
+    // ── Recording State ───────────────────────────────────────────────────────
+
+    // Current state of RecordingService — pushed by RecordFragment.
+    private val _recordingState =
+        MutableStateFlow(RecordingService.State.IDLE)
+    val recordingState: StateFlow<RecordingService.State> = _recordingState
+
+    fun setRecordingState(state: RecordingService.State) {
+        _recordingState.value = state
+        // When a new recording starts, reset the nudge lock.
+        if (state == RecordingService.State.IDLE) {
+            _markNudgeLocked.value = false
+        }
+    }
+
+    // Current elapsed recording time in ms — pushed by RecordFragment.
+    private val _recordingElapsedMs = MutableStateFlow(0L)
+    val recordingElapsedMs: StateFlow<Long> = _recordingElapsedMs
+    fun setRecordingElapsedMs(ms: Long) { _recordingElapsedMs.value = ms }
 
     init {
         val token = SessionToken(
@@ -406,6 +430,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_JUMP_TO_LIBRARY, enabled).apply()
     }
 
+    // ── Theme mode ────────────────────────────────────────────────────
+    private val _themeMode =
+        MutableStateFlow(prefs.getString(PREF_THEME_MODE, "system") ?: "system")
+    val themeMode: StateFlow<String> = _themeMode
+    fun setThemeMode(mode: String) {
+        _themeMode.value = mode
+        prefs.edit().putString(PREF_THEME_MODE, mode).apply()
+    }
+
     // ── Layout order ──────────────────────────────────────────────────
     //
     // Stores the ordered list of chrome elements (Title Bar, Content,
@@ -435,13 +468,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_SHOW_TITLE_BAR, show).apply()
     }
 
-    // ── Theme mode ────────────────────────────────────────────────────
-    private val _themeMode =
-        MutableStateFlow(prefs.getString(PREF_THEME_MODE, "system") ?: "system")
-    val themeMode: StateFlow<String> = _themeMode
-    fun setThemeMode(mode: String) {
-        _themeMode.value = mode
-        prefs.edit().putString(PREF_THEME_MODE, mode).apply()
+    // ── Always-show Mini Recorder setting ────────────────────────────────────
+
+    private val _showMiniRecorder =
+        MutableStateFlow(prefs.getBoolean(PREF_SHOW_MINI_RECORDER, false))
+    val showMiniRecorder: StateFlow<Boolean> = _showMiniRecorder
+
+    fun setShowMiniRecorder(show: Boolean) {
+        _showMiniRecorder.value = show
+        prefs.edit().putBoolean(PREF_SHOW_MINI_RECORDER, show).apply()
+    }
+
+    // ── Show last-mark timestamp in timeline ─────────────────────────────────
+
+    private val _showRecordMarkTimestamp =
+        MutableStateFlow(prefs.getBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, false))
+    val showRecordMarkTimestamp: StateFlow<Boolean> = _showRecordMarkTimestamp
+
+    fun setShowRecordMarkTimestamp(show: Boolean) {
+        _showRecordMarkTimestamp.value = show
+        prefs.edit().putBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, show).apply()
     }
 
     // ── Selected recording ────────────────────────────────────────────
@@ -483,8 +529,73 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // Current pending mark timestamps — pushed by RecordFragment.
+    private val _recordingMarks = MutableStateFlow<List<Long>>(emptyList())
+    val recordingMarks: StateFlow<List<Long>> = _recordingMarks
+
+    fun setRecordingMarks(marks: List<Long>) {
+        _recordingMarks.value = marks
+        // A newly dropped mark resets the nudge lock so the user can
+        // nudge the new mark even if the previous one was committed.
+        if (marks.isNotEmpty()) {
+            _markNudgeLocked.value = false
+        }
+    }
+
+    private val _dropMarkEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val dropMarkEvent: SharedFlow<Unit> = _dropMarkEvent
+    fun requestDropMark() { _dropMarkEvent.tryEmit(Unit) }
+
+    // ── Mark nudge settings ───────────────────────────────────────────────────
+
+    private val _markNudgeSecs =
+        MutableStateFlow(prefs.getFloat(PREF_MARK_NUDGE_SECS, 5f))
+    val markNudgeSecs: StateFlow<Float> = _markNudgeSecs
+
+    fun setMarkNudgeSecs(secs: Float) {
+        val v = secs.coerceIn(1f, 30f)
+        _markNudgeSecs.value = v
+        prefs.edit().putFloat(PREF_MARK_NUDGE_SECS, v).apply()
+    }
+
+    // ── Mark nudge lock ───────────────────────────────────────────────────────
+
+    private val _markNudgeLocked = MutableStateFlow(false)
+    val markNudgeLocked: StateFlow<Boolean> = _markNudgeLocked
+
+    /** Commits the current last-mark position, disabling further nudges until next mark. */
+    fun commitMarkNudge() { _markNudgeLocked.value = true }
+
+    /** Called by RecordFragment on service re-connect or IDLE state to reset lock. */
+    fun resetMarkNudgeLock() { _markNudgeLocked.value = false }
+
+    // ── Nudge events (observed by RecordFragment to forward to the service) ───
+
+    // extraBufferCapacity=1 so tryEmit never drops while RecordFragment is briefly
+    // away (e.g. configuration change mid-recording).
+    private val _nudgeBackEvent    = MutableSharedFlow<Float>(extraBufferCapacity = 1)
+    private val _nudgeForwardEvent = MutableSharedFlow<Float>(extraBufferCapacity = 1)
+
+
     // ── Waveform ──────────────────────────────────────────────────────
     private val waveformCache = WaveformCache(app)
+
+    val nudgeBackEvent:    SharedFlow<Float> = _nudgeBackEvent
+    val nudgeForwardEvent: SharedFlow<Float> = _nudgeForwardEvent
+
+    /** Emits a nudge-back request to RecordFragment. No-op if nudge is locked. */
+    fun requestNudgeBack() {
+        if (_markNudgeLocked.value) return
+        if (_recordingMarks.value.isEmpty()) return
+        _nudgeBackEvent.tryEmit(_markNudgeSecs.value)
+    }
+
+    /** Emits a nudge-forward request to RecordFragment. No-op if nudge is locked. */
+    fun requestNudgeForward() {
+        if (_markNudgeLocked.value) return
+        if (_recordingMarks.value.isEmpty()) return
+        _nudgeForwardEvent.tryEmit(_markNudgeSecs.value)
+    }
 
     /**
      * Emits (recordingId, amplitudes) whenever a real waveform finishes

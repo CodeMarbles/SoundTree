@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Record circle — the universal "record" button symbol: a solid filled circle.
+
+  Intentionally simple. Color is applied entirely via imageTintList in code
+  (red = colorRecordActive when idle, accent = colorAccent when paused), so
+  the fill here is white and acts purely as the shape mask for tinting.
+
+  Used in view_mini_recorder.xml btnMiniRecPause.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2 C6.477,2 2,6.477 2,12 C2,17.523 6.477,22 12,22 C17.523,22 22,17.523 22,12 C22,6.477 17.523,2 12,2 Z" />
+
+</vector>

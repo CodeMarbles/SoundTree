@@ -65,6 +65,16 @@
             android:layout_height="wrap_content"
             android:visibility="gone" />
 
+        <!-- ── Mini Recorder bar (hidden until recording starts, or always
+        shown when "Always show Mini Recorder" is enabled in Settings) ─ -->
+        <include
+            android:id="@+id/miniRecorder"
+            layout="@layout/view_mini_recorder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+
         <!-- ── Bottom navigation ─────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/bottomNav"

@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,7 +33,8 @@ import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class RecordFragment : Fragment() {
 
@@ -108,6 +108,14 @@ class RecordFragment : Fragment() {
     fun triggerQuickRecord() {
         if (isBound && recordingService != null) startRecording()
         else pendingQuickRecord = true
+    }
+
+    /**
+    * Called by MainActivity when the Mini Recorder's save button is tapped
+    * from outside the Record tab. Delegates to the existing stopAndSave() path.
+    */
+    fun triggerSaveFromExternal() {
+        stopAndSave()
     }
 
     // ── Setup ─────────────────────────────────────────────────────────
@@ -199,6 +207,50 @@ class RecordFragment : Fragment() {
                         }
                     }
                 }
+
+                // ── Push recording state to ViewModel ─────────────────
+                launch {
+                    svc.state.collect { state ->
+                        viewModel.setRecordingState(state)
+                        updateUiForState(state)
+                        if (state == RecordingService.State.IDLE) {
+                            viewModel.setRecordingElapsedMs(0L)
+                            viewModel.setRecordingMarks(emptyList())
+                            viewModel.resetMarkNudgeLock()
+                        }
+                    }
+                }
+
+                // ── Push elapsed time to ViewModel ────────────────────
+                launch {
+                    svc.elapsedMs.collect { ms ->
+                        viewModel.setRecordingElapsedMs(ms)
+                        // Update timer display (existing behaviour)
+                        binding.tvTimer.text = formatDuration(ms)
+                    }
+                }
+
+                // ── Push pending marks list to ViewModel ──────────────
+                launch {
+                    svc.pendingMarksFlow.collect { marks ->
+                        viewModel.setRecordingMarks(marks)
+                    }
+                }
+
+                // ── Bridge nudge-back events to the service ───────────
+                launch {
+                    viewModel.nudgeBackEvent.collect { secs ->
+                        svc.nudgeLastMarkBack(secs)
+                    }
+                }
+
+                // ── Bridge nudge-forward events to the service ────────
+                launch {
+                    viewModel.nudgeForwardEvent.collect { secs ->
+                        svc.nudgeLastMarkForward(secs)
+                    }
+                }
+
                 launch {
                     // Observe saves that were triggered from the notification action button.
                     // The service has already written to the database by the time this
@@ -212,6 +264,13 @@ class RecordFragment : Fragment() {
                                 ?.navigateToLibraryForRecording(saved.topicId)
                         }
                     }
+                }
+
+                launch {
+                   viewModel.dropMarkEvent.collect {
+                       recordingService?.dropMark()
+                       binding.waveformView.pushMark()
+                   }
                 }
             }
         }

@@ -17,11 +17,13 @@
     <color name="purple_600">#4F48CC</color>
 
     <!-- Red / pink -->
+    <color name="red_50">#FCEAEA</color>
     <color name="red_500">#FF3B3B</color>
     <color name="red_700">#D32F2F</color>
     <color name="red_800">#CC2222</color>
     <color name="pink_700">#C2185B</color>
     <color name="pink_900">#880E4F</color>
+    <color name="red_950">#1A0808</color>
 
     <!-- Teal -->
     <color name="teal_a700">#00BFA5</color>

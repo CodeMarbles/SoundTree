@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
 import com.treecast.app.databinding.ActivityMainBinding
+import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
@@ -76,6 +77,9 @@ class MainActivity : AppCompatActivity() {
     // we pop our own back stack.
     private lateinit var libraryFragment: LibraryFragment
 
+    // Direct reference to the Record fragment so we can
+    private lateinit var recordFragment: RecordFragment
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -86,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         setupViewPager()
         setupBottomNav()
         setupMiniPlayer()
+        setupMiniRecorder()
         setupBackNavigation()
         observeLockState()
         observeTopTitle()
@@ -170,10 +175,11 @@ class MainActivity : AppCompatActivity() {
      * whenever the user taps Apply in Settings.
      *
      * Each LayoutElement maps to a View already inflated from activity_main.xml:
-     *   TITLE_BAR  → binding.titleBarContainer  (topBar + its divider, wrapped)
-     *   CONTENT    → binding.viewPager
-     *   MINI_PLAYER→ binding.miniPlayer.root
-     *   NAV        → binding.bottomNav
+     *   TITLE_BAR     → binding.titleBarContainer  (topBar + its divider, wrapped)
+     *   CONTENT       → binding.viewPager
+     *   MINI_PLAYER   → binding.miniPlayer.root
+     *   MINI_RECORDER → binding.miniRecorder.root
+     *   NAV           → binding.bottomNav
      *
      * The CONTENT view always gets weight=1 / height=0dp so it fills remaining
      * space regardless of position.  All other views keep their fixed heights.
@@ -183,10 +189,11 @@ class MainActivity : AppCompatActivity() {
         val showTitle = viewModel.showTitleBar.value
 
         val viewMap = mapOf(
-            LayoutElement.TITLE_BAR   to binding.titleBarContainer,
-            LayoutElement.CONTENT     to binding.viewPager,
-            LayoutElement.MINI_PLAYER to binding.miniPlayer.root,
-            LayoutElement.NAV         to binding.bottomNav
+            LayoutElement.TITLE_BAR    to binding.titleBarContainer,
+            LayoutElement.CONTENT      to binding.viewPager,
+            LayoutElement.MINI_PLAYER  to binding.miniPlayer.root,
+            LayoutElement.MINI_RECORDER to binding.miniRecorder.root,   // ← new
+            LayoutElement.NAV          to binding.bottomNav
         )
 
         binding.rootStack.removeAllViews()
@@ -203,9 +210,10 @@ class MainActivity : AppCompatActivity() {
                 binding.rootStack.addView(view, lp)
             } else {
                 val heightPx = when (element) {
-                    LayoutElement.MINI_PLAYER -> (80 * dp).toInt()
-                    LayoutElement.NAV         -> (64 * dp).toInt()
-                    LayoutElement.TITLE_BAR   -> (53 * dp).toInt() // 52dp bar + 1dp divider
+                    LayoutElement.MINI_PLAYER   -> (80 * dp).toInt()
+                    LayoutElement.MINI_RECORDER -> (96 * dp).toInt()
+                    LayoutElement.NAV           -> (64 * dp).toInt()
+                    LayoutElement.TITLE_BAR     -> (53 * dp).toInt()
                     else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 }
                 val lp = android.widget.LinearLayout.LayoutParams(
@@ -215,8 +223,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Flip the mini-player accent line to always face toward Content
         updateMiniPlayerAccentLine(order)
+        updateMiniRecorderAccentLine(order)  // ← new
     }
 
     /**
@@ -281,13 +289,55 @@ class MainActivity : AppCompatActivity() {
         cs.applyTo(miniPlayerRoot)
     }
 
+    /**
+     * Mirrors [updateMiniPlayerAccentLine] for the Mini Recorder.
+     * Positions the red accent line on the edge facing the Content view.
+     */
+    private fun updateMiniRecorderAccentLine(order: List<LayoutElement>) {
+        val recIdx     = order.indexOf(LayoutElement.MINI_RECORDER)
+        val contentIdx = order.indexOf(LayoutElement.CONTENT)
+        if (recIdx == -1 || contentIdx == -1) return
+
+        val contentIsBelow = contentIdx > recIdx
+
+        val recRoot     = binding.miniRecorder.root as? ConstraintLayout ?: return
+        val accentLine  = binding.miniRecorder.recAccentLine
+        val recContent  = binding.miniRecorder.recContent
+
+        val cs = ConstraintSet()
+        cs.clone(recRoot)
+
+        if (contentIsBelow) {
+            // Recorder ABOVE content → accent on BOTTOM edge
+            cs.clear(accentLine.id, ConstraintSet.TOP)
+            cs.connect(accentLine.id, ConstraintSet.BOTTOM,
+                ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            cs.connect(recContent.id, ConstraintSet.TOP,
+                ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            cs.connect(recContent.id, ConstraintSet.BOTTOM,
+                accentLine.id, ConstraintSet.TOP)
+        } else {
+            // Recorder BELOW content → accent on TOP edge
+            cs.clear(accentLine.id, ConstraintSet.BOTTOM)
+            cs.connect(accentLine.id, ConstraintSet.TOP,
+                ConstraintSet.PARENT_ID, ConstraintSet.TOP)
+            cs.connect(recContent.id, ConstraintSet.TOP,
+                accentLine.id, ConstraintSet.BOTTOM)
+            cs.connect(recContent.id, ConstraintSet.BOTTOM,
+                ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+        }
+
+        cs.applyTo(recRoot)
+    }
+
     // ── ViewPager ─────────────────────────────────────────────────────
     private fun setupViewPager() {
         libraryFragment = LibraryFragment()
+        recordFragment = RecordFragment()
 
         val adapter = MainPagerAdapter(this).apply {
             addFragment(SettingsFragment(), "Settings")
-            addFragment(RecordFragment(),   "Record")
+            addFragment(recordFragment,   "Record")
             addFragment(libraryFragment,    "Library")
             addFragment(ListenFragment(),   "Listen")
         }
@@ -422,6 +472,153 @@ class MainActivity : AppCompatActivity() {
         binding.miniPlayer.btnMiniJumpPrev.setOnClickListener   { viewModel.jumpToPrevMark() }
         binding.miniPlayer.btnMiniJumpNext.setOnClickListener   { viewModel.jumpToNextMark() }
         binding.miniPlayer.btnMiniAddMark.setOnClickListener    { viewModel.addMark() }
+    }
+
+    // ── Mini Recorder ───────────────────────────────────────────────────
+    private fun setupMiniRecorder() {
+        val recorderBinding = binding.miniRecorder
+
+        // ── Visibility driven by recording state + "always show" pref ─────
+        lifecycleScope.launch {
+            combine(
+                viewModel.recordingState,
+                viewModel.showMiniRecorder
+            ) { state, alwaysShow ->
+                state to alwaysShow
+            }.collect { (state, alwaysShow) ->
+                val isActive = state != RecordingService.State.IDLE
+                recorderBinding.root.visibility =
+                    if (isActive || alwaysShow) View.VISIBLE else View.GONE
+            }
+        }
+
+        // ── Background color: transitions on recording state ───────────────
+        val surfaceColor  = themeColor(R.attr.colorSurfaceBase)
+        val activeColor   = themeColor(R.attr.colorMiniRecorderActive)
+
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                val targetColor = if (state == RecordingService.State.IDLE)
+                    surfaceColor else activeColor
+
+                android.animation.ValueAnimator.ofArgb(
+                    (recorderBinding.root.background as? android.graphics.drawable.ColorDrawable)
+                        ?.color ?: surfaceColor,
+                    targetColor
+                ).apply {
+                    duration = 300L
+                    addUpdateListener { recorderBinding.root.setBackgroundColor(it.animatedValue as Int) }
+                    start()
+                }
+            }
+        }
+
+        // ── Timeline updates ───────────────────────────────────────────────
+        lifecycleScope.launch {
+            viewModel.showRecordMarkTimestamp.collect { show ->
+                recorderBinding.miniRecTimeline.showLastMarkTimestamp = show
+            }
+        }
+        lifecycleScope.launch {
+            combine(
+                viewModel.recordingElapsedMs,
+                viewModel.recordingMarks
+            ) { elapsed, marks -> elapsed to marks }
+                .collect { (elapsed, marks) ->
+                    recorderBinding.miniRecTimeline.update(elapsed, marks)
+                    recorderBinding.tvMiniRecElapsed.text = formatMs(elapsed)
+                }
+        }
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                recorderBinding.miniRecTimeline.isRecording =
+                    state == RecordingService.State.RECORDING
+            }
+        }
+
+        // ── Record/Pause button ────────────────────────────────────────────
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                recorderBinding.btnMiniRecPause.setImageResource(
+                    when (state) {
+                        RecordingService.State.RECORDING -> R.drawable.ic_pause
+                        RecordingService.State.PAUSED    -> R.drawable.ic_record_circle
+                        RecordingService.State.IDLE      -> R.drawable.ic_record_circle
+                    }
+                )
+                // Tint: red when recording (implies pause), accent when paused (implies resume)
+                val tintAttr = when (state) {
+                    RecordingService.State.RECORDING -> R.attr.colorRecordActive
+                    RecordingService.State.PAUSED    -> R.attr.colorAccent
+                    RecordingService.State.IDLE      -> R.attr.colorRecordActive
+                }
+                recorderBinding.btnMiniRecPause.imageTintList =
+                    android.content.res.ColorStateList.valueOf(themeColor(tintAttr))
+            }
+        }
+        recorderBinding.btnMiniRecPause.setOnClickListener {
+            // Navigate to Record tab — RecordFragment owns the actual toggle logic.
+            navigateTo(PAGE_RECORD)
+        }
+
+        // ── Save button ────────────────────────────────────────────────────
+        recorderBinding.btnMiniRecSave.setOnClickListener {
+            // Navigate to Record tab — RecordFragment's stopAndSave() handles the rest.
+            navigateTo(PAGE_RECORD)
+            // Post a brief delay so RecordFragment is visible, then trigger save.
+            // RecordFragment exposes triggerSaveFromExternal() — see RecordFragment additions.
+            binding.root.postDelayed({
+                recordFragment.triggerSaveFromExternal()
+            }, 80L)
+        }
+
+        // ── Mark button ────────────────────────────────────────────────────
+        recorderBinding.btnMiniMark.setOnClickListener {
+            // Let RecordFragment handle the actual dropMark() — navigate there
+            // and fire an event via the ViewModel.
+            viewModel.requestDropMark()   // see requestDropMark() addition below
+        }
+
+        // ── Nudge back ─────────────────────────────────────────────────────
+        recorderBinding.btnMiniNudgeBack.setOnClickListener {
+            viewModel.requestNudgeBack()
+        }
+
+        // ── Nudge forward ──────────────────────────────────────────────────
+        recorderBinding.btnMiniNudgeForward.setOnClickListener {
+            viewModel.requestNudgeForward()
+        }
+
+        // ── Commit nudge ───────────────────────────────────────────────────
+        recorderBinding.btnMiniNudgeCommit.setOnClickListener {
+            viewModel.commitMarkNudge()
+        }
+
+        // ── Enable/disable nudge cluster based on marks + lock state ──────
+        lifecycleScope.launch {
+            combine(
+                viewModel.recordingMarks,
+                viewModel.markNudgeLocked
+            ) { marks, locked -> marks to locked }
+                .collect { (marks, locked) ->
+                    val hasMarks  = marks.isNotEmpty()
+                    val canNudge  = hasMarks && !locked
+
+                    recorderBinding.btnMiniNudgeBack.isEnabled    = canNudge
+                    recorderBinding.btnMiniNudgeForward.isEnabled = canNudge
+                    recorderBinding.btnMiniNudgeCommit.isEnabled  = canNudge
+
+                    val nudgeAlpha  = if (canNudge)   1f else 0.3f
+                    val commitAlpha = if (hasMarks && !locked) 1f else 0.3f
+
+                    recorderBinding.btnMiniNudgeBack.alpha    = nudgeAlpha
+                    recorderBinding.btnMiniNudgeForward.alpha = nudgeAlpha
+                    recorderBinding.btnMiniNudgeCommit.alpha  = commitAlpha
+                }
+        }
+
+        // ── Tap root → navigate to Record tab ─────────────────────────────
+        recorderBinding.root.setOnClickListener { navigateTo(PAGE_RECORD) }
     }
 
     // ── Top title ─────────────────────────────────────────────────────

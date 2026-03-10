@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mini Recorder bar — persistent strip shown during recording (or always
+  when "Always show Mini Recorder" is enabled in Settings).
+
+  96dp two-row layout:
+    Row 1 (~56dp): rec/pause | save | [growing timeline — fills remaining width]
+    Row 2 (~40dp): elapsed time (left) | ← nudge | MARK | nudge → | ✓ commit (right)
+
+  Tapping the root navigates to the Record tab.
+
+  Background transitions from colorSurfaceBase (idle) to colorMiniRecorderActive
+  (recording/paused) in code — see MainActivity.setupMiniRecorder().
+
+  The accentLine is repositioned by MainActivity.updateMiniRecorderAccentLine()
+  to always face toward the Content view, mirroring the Mini Player behaviour.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="96dp"
+    android:background="?attr/colorSurfaceBase"
+    android:elevation="4dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Accent line — repositioned by MainActivity for layout order -->
+    <View
+        android:id="@+id/recAccentLine"
+        android:layout_width="0dp"
+        android:layout_height="2dp"
+        android:background="?attr/colorRecordActive"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!--
+      Inner content — fills between accent line and far edge.
+      Default (accent at top): top pinned to accentLine bottom, bottom to parent.
+      updateMiniRecorderAccentLine() swaps these when accent flips to bottom.
+    -->
+    <LinearLayout
+        android:id="@+id/recContent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@id/recAccentLine"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- ── Row 1: Rec/Pause + Save + Timeline ────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="56"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+
+            <!-- Record / Pause toggle — filled red circle -->
+            <ImageView
+                android:id="@+id/btnMiniRecPause"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_record_circle"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Record / Pause" />
+
+            <!-- Save button -->
+            <ImageView
+                android:id="@+id/btnMiniRecSave"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:src="@drawable/ic_save"
+                android:padding="3dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Save recording"
+                app:tint="?attr/colorActionSave" />
+
+            <!-- Growing timeline — fills the rest of Row 1 -->
+            <com.treecast.app.ui.widget.MiniRecorderTimelineView
+                android:id="@+id/miniRecTimeline"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="4dp" />
+
+        </LinearLayout>
+
+        <!-- ── Row 2: Elapsed time (left) + Mark cluster (right) ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="40"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp">
+
+            <!-- Elapsed time — left aligned -->
+            <TextView
+                android:id="@+id/tvMiniRecElapsed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+
+            <!-- Spacer -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Nudge last mark back  ←📍 -->
+            <ImageView
+                android:id="@+id/btnMiniNudgeBack"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="2dp"
+                android:src="@drawable/ic_mark_nudge_back"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:enabled="false"
+                android:alpha="0.3"
+                android:contentDescription="Nudge mark back"
+                app:tint="?attr/colorMarkSelected" />
+
+            <!-- MARK button — only button with a text label -->
+            <LinearLayout
+                android:id="@+id/btnMiniMark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Drop mark">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_mark"
+                    app:tint="?attr/colorMarkAction" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MARK"
+                    android:textColor="?attr/colorMarkAction"
+                    android:textSize="8sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.12"
+                    android:layout_marginTop="1dp" />
+
+            </LinearLayout>
+
+            <!-- Nudge last mark forward  📍→ -->
+            <ImageView
+                android:id="@+id/btnMiniNudgeForward"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
+                android:src="@drawable/ic_mark_nudge_forward"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:enabled="false"
+                android:alpha="0.3"
+                android:contentDescription="Nudge mark forward"
+                app:tint="?attr/colorMarkSelected" />
+
+            <!-- Commit / lock nudge — teal checkmark -->
+            <ImageView
+                android:id="@+id/btnMiniNudgeCommit"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="2dp"
+                android:src="@drawable/ic_mark_nudge_commit"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:enabled="false"
+                android:alpha="0.3"
+                android:contentDescription="Commit mark position"
+                app:tint="?attr/colorMarkSelected" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -97,9 +97,13 @@ class RecordingService : Service() {
     // silently discarded on cancel.
     private val pendingMarks = mutableListOf<Long>()
 
-    // Expose the count so the UI can show a badge / indicator if desired.
+    // Expose count and full list so the UI can display mark indicators.
     private val _pendingMarkCount = MutableStateFlow(0)
     val pendingMarkCount: StateFlow<Int> = _pendingMarkCount
+
+    // Full list exposed for the Mini Recorder timeline.
+    private val _pendingMarksFlow = MutableStateFlow<List<Long>>(emptyList())
+    val pendingMarksFlow: StateFlow<List<Long>> = _pendingMarksFlow
 
     // ── Notification save event ───────────────────────────────────────
     // replay=1 so RecordFragment catches the event even if it subscribes
@@ -219,6 +223,7 @@ class RecordingService : Service() {
         currentFilePath = file.absolutePath
         pendingMarks.clear()
         _pendingMarkCount.value = 0
+        _pendingMarksFlow.value = emptyList()
 
         mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
@@ -294,6 +299,7 @@ class RecordingService : Service() {
         val marks = pendingMarks.toList()
         pendingMarks.clear()
         _pendingMarkCount.value = 0
+        _pendingMarksFlow.value = emptyList()
 
         return StopResult(
             filePath       = path,
@@ -329,6 +335,7 @@ class RecordingService : Service() {
         val posMs = _elapsedMs.value
         pendingMarks.add(posMs)
         _pendingMarkCount.value = pendingMarks.size
+        _pendingMarksFlow.value = pendingMarks.toList()
         // Briefly flash the notification text to give the user feedback
         // that the mark was registered, then restore the normal status.
         updateNotification("Mark dropped at ${formatMs(posMs)}")
@@ -336,6 +343,34 @@ class RecordingService : Service() {
             val statusText = if (_state.value == State.RECORDING) "Recording…" else "Paused"
             updateNotification(statusText)
         }, 1500)
+    }
+
+    /**
+     * Moves the most recently dropped mark backwards by [secs] seconds.
+     * Floors at 0 — cannot move before the start of the recording.
+     * No-op if no marks have been dropped yet.
+     */
+    fun nudgeLastMarkBack(secs: Float) {
+        if (pendingMarks.isEmpty()) return
+        val nudgeMs = (secs * 1000L).toLong()
+        pendingMarks[pendingMarks.lastIndex] =
+            (pendingMarks.last() - nudgeMs).coerceAtLeast(0L)
+        _pendingMarksFlow.value = pendingMarks.toList()
+        // No change to count — just a timestamp shift.
+    }
+
+    /**
+     * Moves the most recently dropped mark forwards by [secs] seconds.
+     * Caps at the current elapsed recording time — cannot exceed "now".
+     * No-op if no marks have been dropped yet.
+     */
+    fun nudgeLastMarkForward(secs: Float) {
+        if (pendingMarks.isEmpty()) return
+        val nudgeMs = (secs * 1000L).toLong()
+        val cap = _elapsedMs.value
+        pendingMarks[pendingMarks.lastIndex] =
+            (pendingMarks.last() + nudgeMs).coerceAtMost(cap)
+        _pendingMarksFlow.value = pendingMarks.toList()
     }
 
     fun getCurrentFilePath(): String? = currentFilePath

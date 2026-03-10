@@ -229,6 +229,57 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    private fun setupRecordingWidgetSection() {
+        // ── Always show toggle ────────────────────────────────────────────
+        binding.switchShowMiniRecorder.isChecked = viewModel.showMiniRecorder.value
+        binding.switchShowMiniRecorder.setOnCheckedChangeListener { _, checked ->
+            viewModel.setShowMiniRecorder(checked)
+        }
+
+        // ── Show mark timestamp toggle ────────────────────────────────────
+        binding.switchShowRecordMarkTimestamp.isChecked =
+            viewModel.showRecordMarkTimestamp.value
+        binding.switchShowRecordMarkTimestamp.setOnCheckedChangeListener { _, checked ->
+            viewModel.setShowRecordMarkTimestamp(checked)
+        }
+
+        // ── Mark nudge seconds ────────────────────────────────────────────
+        fun Float.toNudgeDisplay() =
+            if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
+
+        binding.tvMarkNudgeSecs.text = viewModel.markNudgeSecs.value.toNudgeDisplay()
+
+        binding.btnMarkNudgeMinus.setOnClickListener {
+            val newVal = (viewModel.markNudgeSecs.value - 1f).coerceAtLeast(1f)
+            viewModel.setMarkNudgeSecs(newVal)
+            binding.tvMarkNudgeSecs.text = newVal.toNudgeDisplay()
+        }
+        binding.btnMarkNudgePlus.setOnClickListener {
+            val newVal = (viewModel.markNudgeSecs.value + 1f).coerceAtMost(30f)
+            viewModel.setMarkNudgeSecs(newVal)
+            binding.tvMarkNudgeSecs.text = newVal.toNudgeDisplay()
+        }
+
+        // ── Keep toggles in sync if another screen changes prefs ─────────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.showMiniRecorder.collect { show ->
+                        if (binding.switchShowMiniRecorder.isChecked != show)
+                            binding.switchShowMiniRecorder.isChecked = show
+                    }
+                }
+                launch {
+                    viewModel.showRecordMarkTimestamp.collect { show ->
+                        if (binding.switchShowRecordMarkTimestamp.isChecked != show)
+                            binding.switchShowRecordMarkTimestamp.isChecked = show
+                    }
+                }
+            }
+        }
+    }
+
+
     private fun setupTheme() {
         fun updateToggleVisuals(selected: String) {
             val activeText   = requireContext().themeColor(R.attr.colorTextPrimary)
