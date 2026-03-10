@@ -120,15 +120,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ── Recording State ───────────────────────────────────────────────────────
 
     // Current state of RecordingService — pushed by RecordFragment.
-    private val _recordingState =
-        MutableStateFlow(RecordingService.State.IDLE)
+    private val _recordingState = MutableStateFlow(RecordingService.State.IDLE)
     val recordingState: StateFlow<RecordingService.State> = _recordingState
 
     fun setRecordingState(state: RecordingService.State) {
         _recordingState.value = state
-        // When a new recording starts, reset the nudge lock.
         if (state == RecordingService.State.IDLE) {
             _markNudgeLocked.value = false
+            _selectedRecordingMarkIndex.value = -1
         }
     }
 
@@ -136,6 +135,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _recordingElapsedMs = MutableStateFlow(0L)
     val recordingElapsedMs: StateFlow<Long> = _recordingElapsedMs
     fun setRecordingElapsedMs(ms: Long) { _recordingElapsedMs.value = ms }
+
+    // Current pending mark timestamps — pushed by RecordFragment.
+    private val _recordingMarks = MutableStateFlow<List<Long>>(emptyList())
+    val recordingMarks: StateFlow<List<Long>> = _recordingMarks
+
+    fun setRecordingMarks(marks: List<Long>) {
+        val prev = _recordingMarks.value
+        _recordingMarks.value = marks
+        // When a new mark is dropped (list grew), select the new last mark
+        // and reset the nudge lock so it can be nudged immediately.
+        if (marks.size > prev.size) {
+            _selectedRecordingMarkIndex.value = marks.lastIndex
+            _markNudgeLocked.value = false
+        }
+    }
+
+    /** Index into recordingMarks of the mark currently targeted by nudge controls.
+     *  -1 means no explicit selection (UI falls back to displaying last mark as teal
+     *  but nudge buttons remain in their locked/unlocked state independently). */
+    private val _selectedRecordingMarkIndex = MutableStateFlow(-1)
+    val selectedRecordingMarkIndex: StateFlow<Int> = _selectedRecordingMarkIndex
+
+    fun selectRecordingMark(index: Int) {
+        val marks = _recordingMarks.value
+        if (index < 0 || index >= marks.size) return
+        _selectedRecordingMarkIndex.value = index
+        // Selecting a mark unlocks nudging (user is clearly intending to refine it)
+        _markNudgeLocked.value = false
+    }
 
     init {
         val token = SessionToken(
@@ -218,6 +246,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val controller = mediaController ?: return
         if (controller.isPlaying) controller.pause() else controller.play()
     }
+
+    private val _toggleRecordingPauseEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val toggleRecordingPauseEvent: SharedFlow<Unit> = _toggleRecordingPauseEvent
+
+    fun requestToggleRecordingPause() {
+        _toggleRecordingPauseEvent.tryEmit(Unit)
+    }
+
 
     fun seekTo(posMs: Long) {
         mediaController?.seekTo(posMs)
@@ -473,7 +509,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _showMiniRecorder =
         MutableStateFlow(prefs.getBoolean(PREF_SHOW_MINI_RECORDER, false))
     val showMiniRecorder: StateFlow<Boolean> = _showMiniRecorder
-
     fun setShowMiniRecorder(show: Boolean) {
         _showMiniRecorder.value = show
         prefs.edit().putBoolean(PREF_SHOW_MINI_RECORDER, show).apply()
@@ -484,7 +519,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _showRecordMarkTimestamp =
         MutableStateFlow(prefs.getBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, false))
     val showRecordMarkTimestamp: StateFlow<Boolean> = _showRecordMarkTimestamp
-
     fun setShowRecordMarkTimestamp(show: Boolean) {
         _showRecordMarkTimestamp.value = show
         prefs.edit().putBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, show).apply()
@@ -529,27 +563,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Current pending mark timestamps — pushed by RecordFragment.
-    private val _recordingMarks = MutableStateFlow<List<Long>>(emptyList())
-    val recordingMarks: StateFlow<List<Long>> = _recordingMarks
-
-    fun setRecordingMarks(marks: List<Long>) {
-        _recordingMarks.value = marks
-        // A newly dropped mark resets the nudge lock so the user can
-        // nudge the new mark even if the previous one was committed.
-        if (marks.isNotEmpty()) {
-            _markNudgeLocked.value = false
-        }
-    }
-
     private val _dropMarkEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val dropMarkEvent: SharedFlow<Unit> = _dropMarkEvent
     fun requestDropMark() { _dropMarkEvent.tryEmit(Unit) }
 
     // ── Mark nudge settings ───────────────────────────────────────────────────
 
-    private val _markNudgeSecs =
-        MutableStateFlow(prefs.getFloat(PREF_MARK_NUDGE_SECS, 5f))
+    private val _markNudgeSecs = MutableStateFlow(prefs.getFloat(PREF_MARK_NUDGE_SECS, 5f))
     val markNudgeSecs: StateFlow<Float> = _markNudgeSecs
 
     fun setMarkNudgeSecs(secs: Float) {
@@ -563,40 +583,46 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _markNudgeLocked = MutableStateFlow(false)
     val markNudgeLocked: StateFlow<Boolean> = _markNudgeLocked
 
-    /** Commits the current last-mark position, disabling further nudges until next mark. */
-    fun commitMarkNudge() { _markNudgeLocked.value = true }
+    /** Commits the current mark position. Clears selection and locks nudging. */
+    fun commitMarkNudge() {
+        _markNudgeLocked.value = true
+        _selectedRecordingMarkIndex.value = -1
+    }
 
-    /** Called by RecordFragment on service re-connect or IDLE state to reset lock. */
-    fun resetMarkNudgeLock() { _markNudgeLocked.value = false }
+    fun resetMarkNudgeLock() {
+        _markNudgeLocked.value = false
+        _selectedRecordingMarkIndex.value = -1
+    }
 
     // ── Nudge events (observed by RecordFragment to forward to the service) ───
 
+    data class NudgeEvent(val secs: Float, val markIndex: Int)
+
     // extraBufferCapacity=1 so tryEmit never drops while RecordFragment is briefly
     // away (e.g. configuration change mid-recording).
-    private val _nudgeBackEvent    = MutableSharedFlow<Float>(extraBufferCapacity = 1)
-    private val _nudgeForwardEvent = MutableSharedFlow<Float>(extraBufferCapacity = 1)
+    private val _nudgeBackEvent    = MutableSharedFlow<NudgeEvent>(extraBufferCapacity = 1)
+    private val _nudgeForwardEvent = MutableSharedFlow<NudgeEvent>(extraBufferCapacity = 1)
+    val nudgeBackEvent:    SharedFlow<NudgeEvent> = _nudgeBackEvent
+    val nudgeForwardEvent: SharedFlow<NudgeEvent> = _nudgeForwardEvent
 
+    fun requestNudgeBack() {
+        if (_markNudgeLocked.value) return
+        val marks = _recordingMarks.value
+        if (marks.isEmpty()) return
+        val idx = _selectedRecordingMarkIndex.value.takeIf { it >= 0 } ?: marks.lastIndex
+        _nudgeBackEvent.tryEmit(NudgeEvent(_markNudgeSecs.value, idx))
+    }
+
+    fun requestNudgeForward() {
+        if (_markNudgeLocked.value) return
+        val marks = _recordingMarks.value
+        if (marks.isEmpty()) return
+        val idx = _selectedRecordingMarkIndex.value.takeIf { it >= 0 } ?: marks.lastIndex
+        _nudgeForwardEvent.tryEmit(NudgeEvent(_markNudgeSecs.value, idx))
+    }
 
     // ── Waveform ──────────────────────────────────────────────────────
     private val waveformCache = WaveformCache(app)
-
-    val nudgeBackEvent:    SharedFlow<Float> = _nudgeBackEvent
-    val nudgeForwardEvent: SharedFlow<Float> = _nudgeForwardEvent
-
-    /** Emits a nudge-back request to RecordFragment. No-op if nudge is locked. */
-    fun requestNudgeBack() {
-        if (_markNudgeLocked.value) return
-        if (_recordingMarks.value.isEmpty()) return
-        _nudgeBackEvent.tryEmit(_markNudgeSecs.value)
-    }
-
-    /** Emits a nudge-forward request to RecordFragment. No-op if nudge is locked. */
-    fun requestNudgeForward() {
-        if (_markNudgeLocked.value) return
-        if (_recordingMarks.value.isEmpty()) return
-        _nudgeForwardEvent.tryEmit(_markNudgeSecs.value)
-    }
-
     /**
      * Emits (recordingId, amplitudes) whenever a real waveform finishes
      * loading (from cache or freshly extracted). The fragment observes this

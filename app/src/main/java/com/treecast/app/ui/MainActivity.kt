@@ -478,42 +478,83 @@ class MainActivity : AppCompatActivity() {
     private fun setupMiniRecorder() {
         val recorderBinding = binding.miniRecorder
 
-        // ── Visibility driven by recording state + "always show" pref ─────
+        // ── Visibility ────────────────────────────────────────────────────
         lifecycleScope.launch {
             combine(
                 viewModel.recordingState,
                 viewModel.showMiniRecorder
-            ) { state, alwaysShow ->
-                state to alwaysShow
-            }.collect { (state, alwaysShow) ->
-                val isActive = state != RecordingService.State.IDLE
-                recorderBinding.root.visibility =
-                    if (isActive || alwaysShow) View.VISIBLE else View.GONE
-            }
+            ) { state, alwaysShow -> state to alwaysShow }
+                .collect { (state, alwaysShow) ->
+                    val isActive = state != RecordingService.State.IDLE
+                    recorderBinding.root.visibility =
+                        if (isActive || alwaysShow) View.VISIBLE else View.GONE
+                }
         }
 
-        // ── Background color: transitions on recording state ───────────────
-        val surfaceColor  = themeColor(R.attr.colorSurfaceBase)
-        val activeColor   = themeColor(R.attr.colorMiniRecorderActive)
+        // ── Background color: 3-state ──────────────────────────────────────
+        val surfaceColor = themeColor(R.attr.colorSurfaceBase)
+        val recordingColor = themeColor(R.attr.colorMiniRecorderActive)   // dark/light red
+        val pausedColor = themeColor(R.attr.colorMiniRecorderPaused)      // dark/light yellow
+
+        var lastBgColor = surfaceColor
 
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
-                val targetColor = if (state == RecordingService.State.IDLE)
-                    surfaceColor else activeColor
-
-                android.animation.ValueAnimator.ofArgb(
-                    (recorderBinding.root.background as? android.graphics.drawable.ColorDrawable)
-                        ?.color ?: surfaceColor,
-                    targetColor
-                ).apply {
+                val targetColor = when (state) {
+                    RecordingService.State.IDLE      -> surfaceColor
+                    RecordingService.State.RECORDING -> recordingColor
+                    RecordingService.State.PAUSED    -> pausedColor
+                }
+                android.animation.ValueAnimator.ofArgb(lastBgColor, targetColor).apply {
                     duration = 300L
-                    addUpdateListener { recorderBinding.root.setBackgroundColor(it.animatedValue as Int) }
+                    addUpdateListener {
+                        val c = it.animatedValue as Int
+                        recorderBinding.root.setBackgroundColor(c)
+                        lastBgColor = c
+                    }
                     start()
                 }
             }
         }
 
-        // ── Timeline updates ───────────────────────────────────────────────
+        // ── Record/Pause button icon + tint ────────────────────────────────
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                recorderBinding.btnMiniRecPause.setImageResource(
+                    when (state) {
+                        RecordingService.State.RECORDING -> R.drawable.ic_pause
+                        RecordingService.State.PAUSED    -> R.drawable.ic_record_circle
+                        RecordingService.State.IDLE      -> R.drawable.ic_record_circle
+                    }
+                )
+                val tintColor = when (state) {
+                    // RECORDING: red circle means "tap to pause"
+                    RecordingService.State.RECORDING ->
+                        themeColor(R.attr.colorRecordActive)
+                    // PAUSED: yellow/orange means "tap to resume"
+                    RecordingService.State.PAUSED ->
+                        themeColor(R.attr.colorRecordPause)
+                    // IDLE: red dot (not recording yet / stopped)
+                    RecordingService.State.IDLE ->
+                        themeColor(R.attr.colorRecordActive)
+                }
+                recorderBinding.btnMiniRecPause.imageTintList =
+                    android.content.res.ColorStateList.valueOf(tintColor)
+            }
+        }
+
+        // ── Record/Pause button action — actually toggles pause/resume ─────
+        recorderBinding.btnMiniRecPause.setOnClickListener {
+            viewModel.requestToggleRecordingPause()
+        }
+
+        // ── Save button ────────────────────────────────────────────────────
+        recorderBinding.btnMiniRecSave.setOnClickListener {
+            navigateTo(PAGE_RECORD)
+            binding.root.postDelayed({ recordFragment.triggerSaveFromExternal() }, 80L)
+        }
+
+        // ── Timeline: update with marks + selected index ───────────────────
         lifecycleScope.launch {
             viewModel.showRecordMarkTimestamp.collect { show ->
                 recorderBinding.miniRecTimeline.showLastMarkTimestamp = show
@@ -522,10 +563,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             combine(
                 viewModel.recordingElapsedMs,
-                viewModel.recordingMarks
-            ) { elapsed, marks -> elapsed to marks }
-                .collect { (elapsed, marks) ->
-                    recorderBinding.miniRecTimeline.update(elapsed, marks)
+                viewModel.recordingMarks,
+                viewModel.selectedRecordingMarkIndex
+            ) { elapsed, marks, selectedIdx -> Triple(elapsed, marks, selectedIdx) }
+                .collect { (elapsed, marks, selectedIdx) ->
+                    recorderBinding.miniRecTimeline.update(elapsed, marks, selectedIdx)
                     recorderBinding.tvMiniRecElapsed.text = formatMs(elapsed)
                 }
         }
@@ -536,47 +578,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ── Record/Pause button ────────────────────────────────────────────
-        lifecycleScope.launch {
-            viewModel.recordingState.collect { state ->
-                recorderBinding.btnMiniRecPause.setImageResource(
-                    when (state) {
-                        RecordingService.State.RECORDING -> R.drawable.ic_pause
-                        RecordingService.State.PAUSED    -> R.drawable.ic_record_circle
-                        RecordingService.State.IDLE      -> R.drawable.ic_record_circle
-                    }
-                )
-                // Tint: red when recording (implies pause), accent when paused (implies resume)
-                val tintAttr = when (state) {
-                    RecordingService.State.RECORDING -> R.attr.colorRecordActive
-                    RecordingService.State.PAUSED    -> R.attr.colorAccent
-                    RecordingService.State.IDLE      -> R.attr.colorRecordActive
-                }
-                recorderBinding.btnMiniRecPause.imageTintList =
-                    android.content.res.ColorStateList.valueOf(themeColor(tintAttr))
-            }
+        // ── Timeline mark tap → select that mark ──────────────────────────
+        recorderBinding.miniRecTimeline.onMarkTapped = { index ->
+            viewModel.selectRecordingMark(index)
         }
-        recorderBinding.btnMiniRecPause.setOnClickListener {
-            // Navigate to Record tab — RecordFragment owns the actual toggle logic.
-            navigateTo(PAGE_RECORD)
-        }
-
-        // ── Save button ────────────────────────────────────────────────────
-        recorderBinding.btnMiniRecSave.setOnClickListener {
-            // Navigate to Record tab — RecordFragment's stopAndSave() handles the rest.
-            navigateTo(PAGE_RECORD)
-            // Post a brief delay so RecordFragment is visible, then trigger save.
-            // RecordFragment exposes triggerSaveFromExternal() — see RecordFragment additions.
-            binding.root.postDelayed({
-                recordFragment.triggerSaveFromExternal()
-            }, 80L)
-        }
+        // Timeline needs to be clickable to receive touch events
+        recorderBinding.miniRecTimeline.isClickable = true
 
         // ── Mark button ────────────────────────────────────────────────────
         recorderBinding.btnMiniMark.setOnClickListener {
-            // Let RecordFragment handle the actual dropMark() — navigate there
-            // and fire an event via the ViewModel.
-            viewModel.requestDropMark()   // see requestDropMark() addition below
+            viewModel.requestDropMark()
         }
 
         // ── Nudge back ─────────────────────────────────────────────────────
@@ -594,32 +605,32 @@ class MainActivity : AppCompatActivity() {
             viewModel.commitMarkNudge()
         }
 
-        // ── Enable/disable nudge cluster based on marks + lock state ──────
+        // ── Enable/disable nudge cluster ───────────────────────────────────
         lifecycleScope.launch {
             combine(
                 viewModel.recordingMarks,
-                viewModel.markNudgeLocked
-            ) { marks, locked -> marks to locked }
-                .collect { (marks, locked) ->
-                    val hasMarks  = marks.isNotEmpty()
-                    val canNudge  = hasMarks && !locked
+                viewModel.markNudgeLocked,
+                viewModel.selectedRecordingMarkIndex
+            ) { marks, locked, selectedIdx -> Triple(marks, locked, selectedIdx) }
+                .collect { (marks, locked, selectedIdx) ->
+                    val hasActiveSelection = marks.isNotEmpty() &&
+                            (selectedIdx >= 0 || marks.isNotEmpty())  // last mark counts
+                    val canNudge = hasActiveSelection && !locked
 
                     recorderBinding.btnMiniNudgeBack.isEnabled    = canNudge
                     recorderBinding.btnMiniNudgeForward.isEnabled = canNudge
                     recorderBinding.btnMiniNudgeCommit.isEnabled  = canNudge
 
-                    val nudgeAlpha  = if (canNudge)   1f else 0.3f
-                    val commitAlpha = if (hasMarks && !locked) 1f else 0.3f
-
-                    recorderBinding.btnMiniNudgeBack.alpha    = nudgeAlpha
-                    recorderBinding.btnMiniNudgeForward.alpha = nudgeAlpha
-                    recorderBinding.btnMiniNudgeCommit.alpha  = commitAlpha
+                    recorderBinding.btnMiniNudgeBack.alpha    = if (canNudge) 1f else 0.3f
+                    recorderBinding.btnMiniNudgeForward.alpha = if (canNudge) 1f else 0.3f
+                    recorderBinding.btnMiniNudgeCommit.alpha  = if (canNudge) 1f else 0.3f
                 }
         }
 
-        // ── Tap root → navigate to Record tab ─────────────────────────────
+        // ── Tap root (not on buttons) → navigate to Record tab ────────────
         recorderBinding.root.setOnClickListener { navigateTo(PAGE_RECORD) }
     }
+
 
     // ── Top title ─────────────────────────────────────────────────────
     private fun observeTopTitle() {

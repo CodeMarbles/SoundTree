@@ -49,9 +49,12 @@
 
         <!-- Recording -->
         <item name="colorRecordActive">@color/red_500</item>
-        <item name="colorRecordPause">@color/orange_holo</item>
+        <item name="colorRecordPause">@color/amber_500</item>
         <item name="colorDestructive">@color/red_500</item>
         <item name="colorMiniRecorderActive">@color/red_50</item>
+
+        <!-- Mini Recorder -->
+        <item name="colorMiniRecorderPaused">@color/yellow_50</item>
 
         <!-- Marks -->
         <item name="colorMarkDefault">@color/pink_700</item>

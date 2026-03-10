@@ -208,19 +208,6 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                // ── Push recording state to ViewModel ─────────────────
-                launch {
-                    svc.state.collect { state ->
-                        viewModel.setRecordingState(state)
-                        updateUiForState(state)
-                        if (state == RecordingService.State.IDLE) {
-                            viewModel.setRecordingElapsedMs(0L)
-                            viewModel.setRecordingMarks(emptyList())
-                            viewModel.resetMarkNudgeLock()
-                        }
-                    }
-                }
-
                 // ── Push elapsed time to ViewModel ────────────────────
                 launch {
                     svc.elapsedMs.collect { ms ->
@@ -237,17 +224,29 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                // ── Bridge nudge-back events to the service ───────────
+                // ── Bridge toggle-pause events from Mini Recorder button ───
                 launch {
-                    viewModel.nudgeBackEvent.collect { secs ->
-                        svc.nudgeLastMarkBack(secs)
+                    viewModel.toggleRecordingPauseEvent.collect {
+                        val svc = recordingService ?: return@collect
+                        when (svc.state.value) {
+                            RecordingService.State.RECORDING -> pauseRecording()
+                            RecordingService.State.PAUSED    -> resumeRecording()
+                            RecordingService.State.IDLE      -> { /* no-op */ }
+                        }
                     }
                 }
 
-                // ── Bridge nudge-forward events to the service ────────
+                // ── Bridge nudge-back events (v2: carries target index) ───
                 launch {
-                    viewModel.nudgeForwardEvent.collect { secs ->
-                        svc.nudgeLastMarkForward(secs)
+                    viewModel.nudgeBackEvent.collect { event ->
+                        recordingService?.nudgeMarkBack(event.secs, event.markIndex)
+                    }
+                }
+
+                // ── Bridge nudge-forward events (v2: carries target index) ─
+                launch {
+                    viewModel.nudgeForwardEvent.collect { event ->
+                        recordingService?.nudgeMarkForward(event.secs, event.markIndex)
                     }
                 }
 

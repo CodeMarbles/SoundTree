@@ -346,30 +346,31 @@ class RecordingService : Service() {
     }
 
     /**
-     * Moves the most recently dropped mark backwards by [secs] seconds.
-     * Floors at 0 — cannot move before the start of the recording.
-     * No-op if no marks have been dropped yet.
+     * Moves the mark at [markIndex] backwards by [secs] seconds.
+     * Floors at 0. No-op if index is out of range.
+     * Pass [markIndex] = -1 to target the last mark (convenience default).
      */
-    fun nudgeLastMarkBack(secs: Float) {
+    fun nudgeMarkBack(secs: Float, markIndex: Int = -1) {
         if (pendingMarks.isEmpty()) return
+        val idx = if (markIndex < 0) pendingMarks.lastIndex else markIndex
+        if (idx !in pendingMarks.indices) return
         val nudgeMs = (secs * 1000L).toLong()
-        pendingMarks[pendingMarks.lastIndex] =
-            (pendingMarks.last() - nudgeMs).coerceAtLeast(0L)
+        pendingMarks[idx] = (pendingMarks[idx] - nudgeMs).coerceAtLeast(0L)
         _pendingMarksFlow.value = pendingMarks.toList()
-        // No change to count — just a timestamp shift.
     }
 
     /**
-     * Moves the most recently dropped mark forwards by [secs] seconds.
-     * Caps at the current elapsed recording time — cannot exceed "now".
-     * No-op if no marks have been dropped yet.
+     * Moves the mark at [markIndex] forwards by [secs] seconds.
+     * Caps at current elapsed recording time. No-op if index is out of range.
+     * Pass [markIndex] = -1 to target the last mark.
      */
-    fun nudgeLastMarkForward(secs: Float) {
+    fun nudgeMarkForward(secs: Float, markIndex: Int = -1) {
         if (pendingMarks.isEmpty()) return
+        val idx = if (markIndex < 0) pendingMarks.lastIndex else markIndex
+        if (idx !in pendingMarks.indices) return
         val nudgeMs = (secs * 1000L).toLong()
         val cap = _elapsedMs.value
-        pendingMarks[pendingMarks.lastIndex] =
-            (pendingMarks.last() + nudgeMs).coerceAtMost(cap)
+        pendingMarks[idx] = (pendingMarks[idx] + nudgeMs).coerceAtMost(cap)
         _pendingMarksFlow.value = pendingMarks.toList()
     }
 

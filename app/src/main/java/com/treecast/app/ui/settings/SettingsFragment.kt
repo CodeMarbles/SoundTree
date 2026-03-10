@@ -46,6 +46,7 @@ class SettingsFragment : Fragment() {
         setupStorageSection()
         loadStats()
         setupLayoutSection()
+        setupRecordingWidgetSection()
     }
 
     override fun onDestroyView() {

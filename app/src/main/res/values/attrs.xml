@@ -28,7 +28,10 @@
     <attr name="colorRecordActive"      format="color" />
     <attr name="colorRecordPause"       format="color" />
     <attr name="colorDestructive"       format="color" />
+
+    <!-- Mini Recorder -->
     <attr name="colorMiniRecorderActive" format="color" />
+    <attr name="colorMiniRecorderPaused" format="color" />
 
     <!-- Buttons -->
     <attr name="colorActionCancel" format="color" />
