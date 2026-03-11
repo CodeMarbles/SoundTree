@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Single topic row for the Topics Management tab.
-  No recording expansion — this view is purely for managing the topic tree.
-
-  Layout: [colorBar][icon][name weight=1][chevron?][DETAILS button]
-  Indent is applied programmatically via start padding based on depth.
+  Styled to match TopicPickerView: icon → name → ·count → chevron → move → DETAILS
+  Depth-based indentation is applied programmatically (20dp per level).
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -48,15 +46,30 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/tvIcon"
+        app:layout_constraintEnd_toStartOf="@id/tvCount" />
+
+    <!-- Recording count ·N (hidden when 0) -->
+    <TextView
+        android:id="@+id/tvCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="12sp"
+        android:layout_marginEnd="2dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/ivChevron" />
 
-    <!-- Collapse/expand chevron (only shown when topic has children) -->
+    <!-- Collapse/expand chevron (only shown when topic has child topics) -->
     <ImageView
         android:id="@+id/ivChevron"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:src="@drawable/ic_chevron_down"
-        android:layout_marginEnd="4dp"
+        android:padding="9dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackgroundBorderless"
         app:tint="?attr/colorTextSecondary"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -65,13 +78,12 @@
     <!-- Move/reparent icon button -->
     <ImageButton
         android:id="@+id/btnMove"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:src="@drawable/ic_move"
-        android:padding="6dp"
+        android:padding="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Move topic"
-        android:layout_marginEnd="2dp"
         app:tint="?attr/colorTextSecondary"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"

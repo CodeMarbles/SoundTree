@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Single row in the topic ancestry/hierarchy map.
-  Shows: [connector "└"][icon][name]
-  Connector is hidden for the root-level item (depth 0).
+  Single row in the topic hierarchy map on the Details page.
+  Shows: [connector "└"][icon][name (weight=1)][chevron?]
+
   Indent is set programmatically based on depth.
+  Chevron is shown only for descendant rows that have child topics.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="36dp"
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:foreground="?attr/selectableItemBackground">
 
-    <!-- Tree connector (hidden for root) -->
+    <!-- Tree connector (hidden for root/depth-0 items) -->
     <TextView
         android:id="@+id/tvConnector"
         android:layout_width="wrap_content"
@@ -32,15 +34,29 @@
         android:gravity="center"
         android:textSize="15sp" />
 
-    <!-- Topic name -->
+    <!-- Topic name — takes remaining space -->
     <TextView
         android:id="@+id/tvHierarchyName"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_weight="1"
         android:textColor="?attr/colorTextPrimary"
         android:textSize="14sp"
         android:layout_marginStart="8dp"
         android:ellipsize="end"
         android:maxLines="1" />
+
+    <!-- Chevron — only visible on descendant rows that have child topics -->
+    <ImageView
+        android:id="@+id/ivHierarchyChevron"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@drawable/ic_chevron_down"
+        android:padding="10dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:visibility="gone"
+        app:tint="?attr/colorTextSecondary" />
 
 </LinearLayout>

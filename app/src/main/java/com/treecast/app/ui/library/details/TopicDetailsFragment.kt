@@ -1,7 +1,5 @@
 package com.treecast.app.ui.library.details
 
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,9 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.R
-import com.treecast.app.databinding.FragmentTopicDetailsBinding
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
+import com.treecast.app.databinding.FragmentTopicDetailsBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
@@ -51,6 +49,9 @@ class TopicDetailsFragment : Fragment() {
     private var isEditing = false
     private var currentTopic: TopicEntity? = null
     private var newestFirst = true
+
+    /** Local collapse state for the hierarchy widget — independent of the main tree. */
+    private val hierarchyCollapsedIds = mutableSetOf<Long>()
 
     companion object {
         private const val REQUEST_REPARENT = "TopicDetails_reparent"
@@ -120,6 +121,10 @@ class TopicDetailsFragment : Fragment() {
     private fun renderForTopic(topicId: Long?, allTopics: List<TopicEntity>) {
         if (topicId == null) return
         val topic = allTopics.find { it.id == topicId } ?: return
+
+        // Reset hierarchy collapse state when the selected topic changes
+        if (topic.id != currentTopic?.id) hierarchyCollapsedIds.clear()
+
         currentTopic = topic
 
         // Header
@@ -138,51 +143,111 @@ class TopicDetailsFragment : Fragment() {
     }
 
     private fun buildHierarchyMap(topicId: Long, allTopics: List<TopicEntity>) {
-        // Build ancestor chain: walk parentId up to root
-        val chain = mutableListOf<TopicEntity>()
-        var cursor = allTopics.find { it.id == topicId }
+        binding.hierarchyContainer.removeAllViews()
+
+        // ── 1. Ancestor chain: walk parentId up to root ───────────────
+        val ancestors = mutableListOf<TopicEntity>()
+        var cursor = allTopics.find { it.id == topicId }?.parentId
+            ?.let { pid -> allTopics.find { it.id == pid } }
         while (cursor != null) {
-            chain.add(0, cursor) // prepend so root is first
+            ancestors.add(0, cursor)
             cursor = cursor.parentId?.let { pid -> allTopics.find { it.id == pid } }
         }
 
-        binding.hierarchyContainer.removeAllViews()
+        if (ancestors.isEmpty()) {
+            // Root-level topic — show a root sentinel row
+            addHierarchyRow(icon = "🌳", name = "Root", depth = 0,
+                topicId = null, isCurrent = false, hasChildren = false)
+        }
 
-        if (chain.size <= 1) {
-            // Root-level topic — show a "Root" label
+        ancestors.forEachIndexed { index, topic ->
             addHierarchyRow(
-                icon    = "🌳",
-                name    = "Root",
-                depth   = 0,
-                topicId = null,
-                isCurrent = false
+                icon = topic.icon, name = topic.name,
+                depth = index, topicId = topic.id,
+                isCurrent = false, hasChildren = false
             )
         }
 
-        chain.forEachIndexed { index, topic ->
-            val isCurrent = topic.id == topicId
+        // ── 2. Current topic row ──────────────────────────────────────
+        val currentDepth = ancestors.size
+        val currentNode = allTopics.find { it.id == topicId } ?: return
+        val directChildren = allTopics.filter { it.parentId == topicId }
+
+        addHierarchyRow(
+            icon = currentNode.icon, name = currentNode.name,
+            depth = currentDepth, topicId = null,
+            isCurrent = true, hasChildren = directChildren.isNotEmpty(),
+            isCollapsed = topicId in hierarchyCollapsedIds,
+            onChevronClick = {
+                if (topicId in hierarchyCollapsedIds) hierarchyCollapsedIds.remove(topicId)
+                else hierarchyCollapsedIds.add(topicId)
+                buildHierarchyMap(topicId, viewModel.allTopics.value)
+            }
+        )
+
+        // ── 3. Descendant subtree — start collapsed ───────────────────
+        // Seed collapse state: all children start collapsed unless already opened
+        if (!hierarchyCollapsedIds.contains(topicId) && directChildren.isNotEmpty()) {
+            // Use the topicId as a "gate" so children are hidden initially.
+            // We represent "children of X are collapsed" by putting X in the set.
+            hierarchyCollapsedIds.add(topicId)
+        }
+
+        if (topicId !in hierarchyCollapsedIds) {
+            addDescendantRows(topicId, currentDepth + 1, allTopics)
+        }
+    }
+
+    /**
+     * Recursively adds descendant topic rows to hierarchyContainer.
+     * Each row that has children gets a chevron; collapsed state is tracked
+     * in [hierarchyCollapsedIds] by the *parent* topic's ID.
+     */
+    private fun addDescendantRows(parentId: Long, depth: Int, allTopics: List<TopicEntity>) {
+        val children = allTopics.filter { it.parentId == parentId }
+        children.forEach { child ->
+            val grandchildren = allTopics.filter { it.parentId == child.id }
+            val isCollapsed = child.id in hierarchyCollapsedIds
+
             addHierarchyRow(
-                icon      = topic.icon,
-                name      = topic.name,
-                depth     = index,
-                topicId   = if (isCurrent) null else topic.id, // current row not clickable
-                isCurrent = isCurrent
+                icon = child.icon, name = child.name,
+                depth = depth, topicId = child.id,
+                isCurrent = false, hasChildren = grandchildren.isNotEmpty(),
+                isCollapsed = isCollapsed,
+                onChevronClick = {
+                    if (isCollapsed) hierarchyCollapsedIds.remove(child.id)
+                    else             hierarchyCollapsedIds.add(child.id)
+                    val topicId = viewModel.libraryDetailsTopicId.value ?: return@addHierarchyRow
+                    buildHierarchyMap(topicId, viewModel.allTopics.value)
+                }
             )
+
+            if (!isCollapsed) {
+                addDescendantRows(child.id, depth + 1, allTopics)
+            }
         }
     }
 
     private fun addHierarchyRow(
-        icon: String, name: String, depth: Int,
-        topicId: Long?, isCurrent: Boolean
+        icon: String,
+        name: String,
+        depth: Int,
+        topicId: Long?,
+        isCurrent: Boolean,
+        hasChildren: Boolean,
+        isCollapsed: Boolean = false,
+        onChevronClick: (() -> Unit)? = null
     ) {
         val density = resources.displayMetrics.density
-        val indentPx = (depth * 20 * density).toInt()
+        val indentPx = (depth * 16 * density).toInt()
 
-        val row = layoutInflater.inflate(R.layout.item_hierarchy_row, binding.hierarchyContainer, false)
+        val row = layoutInflater.inflate(
+            R.layout.item_hierarchy_row, binding.hierarchyContainer, false)
 
         val tvConnector = row.findViewById<android.widget.TextView>(R.id.tvConnector)
         val tvIcon      = row.findViewById<android.widget.TextView>(R.id.tvHierarchyIcon)
         val tvName      = row.findViewById<android.widget.TextView>(R.id.tvHierarchyName)
+        val ivChevron   = row.findViewById<android.widget.ImageView>(R.id.ivHierarchyChevron)
 
         row.setPaddingRelative(indentPx, 0, 0, 0)
 
@@ -190,20 +255,36 @@ class TopicDetailsFragment : Fragment() {
         tvIcon.text = icon
         tvName.text = name
 
-        if (isCurrent) {
-            tvName.setTypeface(null, Typeface.BOLD)
-            tvName.setTextColor(requireContext().themeColor(R.attr.colorAccent))
-            row.isClickable = false
-        } else {
-            tvName.setTypeface(null, Typeface.NORMAL)
-            tvName.setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
-            if (topicId != null) {
+        when {
+            isCurrent -> {
+                tvName.setTypeface(null, android.graphics.Typeface.BOLD)
+                tvName.setTextColor(requireContext().themeColor(R.attr.colorAccent))
+                row.isClickable = false
+            }
+            topicId != null -> {
+                tvName.setTypeface(null, android.graphics.Typeface.NORMAL)
+                tvName.setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
                 row.isClickable = true
                 row.isFocusable = true
                 row.setOnClickListener {
                     (requireParentFragment() as? LibraryFragment)?.navigateToTopicDetails(topicId)
                 }
             }
+            else -> {
+                // Sentinel row (e.g. "🌳 Root") — not clickable
+                tvName.setTypeface(null, android.graphics.Typeface.NORMAL)
+                tvName.setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                row.isClickable = false
+            }
+        }
+
+        // Chevron for expandable descendant rows
+        if (hasChildren && onChevronClick != null) {
+            ivChevron.visibility = View.VISIBLE
+            ivChevron.rotation = if (isCollapsed) -90f else 0f
+            ivChevron.setOnClickListener { onChevronClick() }
+        } else {
+            ivChevron.visibility = View.GONE
         }
 
         binding.hierarchyContainer.addView(row)

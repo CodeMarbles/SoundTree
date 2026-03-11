@@ -61,17 +61,18 @@ class TopicsManageAdapter(
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
         private val colorBar:   View           = v.findViewById(R.id.colorBar)
-        private val tvIcon:     TextView        = v.findViewById(R.id.tvIcon)
-        private val tvName:     TextView        = v.findViewById(R.id.tvName)
-        private val ivChevron:  ImageView       = v.findViewById(R.id.ivChevron)
+        private val tvIcon:     TextView       = v.findViewById(R.id.tvIcon)
+        private val tvName:     TextView       = v.findViewById(R.id.tvName)
+        private val tvCount:    TextView       = v.findViewById(R.id.tvCount)
+        private val ivChevron:  ImageView      = v.findViewById(R.id.ivChevron)
         private val btnMove:    android.widget.ImageButton = v.findViewById(R.id.btnMove)
-        private val btnDetails: MaterialButton  = v.findViewById(R.id.btnDetails)
+        private val btnDetails: MaterialButton = v.findViewById(R.id.btnDetails)
 
         fun bind(item: TreeItem.Node) {
             val topic = item.treeNode.topic
             val density = itemView.resources.displayMetrics.density
 
-            // ── Indentation (start padding scales with depth) ─────────
+            // ── Indentation (20dp per level, matching picker style) ───
             val indentPx = ((BASE_PADDING_DP + item.depth * DEPTH_INDENT_DP) * density).toInt()
             itemView.setPaddingRelative(indentPx, 0, itemView.paddingEnd, 0)
 
@@ -79,31 +80,39 @@ class TopicsManageAdapter(
             try {
                 colorBar.setBackgroundColor(Color.parseColor(topic.color))
             } catch (_: Exception) {
-                colorBar.setBackgroundColor(itemView.context.themeColor(com.treecast.app.R.attr.colorAccent))
+                colorBar.setBackgroundColor(itemView.context.themeColor(R.attr.colorAccent))
             }
 
             // ── Icon + name ───────────────────────────────────────────
             tvIcon.text = topic.icon
             tvName.text = topic.name
 
+            // ── Recording count ·N (hidden when 0) ────────────────────
+            val count = item.treeNode.recordings.size
+            if (count > 0) {
+                tvCount.visibility = View.VISIBLE
+                tvCount.text = "·$count"
+            } else {
+                tvCount.visibility = View.GONE
+            }
+
             // ── Selection highlight ───────────────────────────────────
             val isSelected = topic.id == selectedTopicId
             itemView.setBackgroundColor(
-                if (isSelected) itemView.context.themeColor(com.treecast.app.R.attr.colorSurfaceElevated)
+                if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
                 else Color.TRANSPARENT
             )
             tvName.setTextColor(
-                if (isSelected) itemView.context.themeColor(com.treecast.app.R.attr.colorAccent)
-                else itemView.context.themeColor(com.treecast.app.R.attr.colorTextPrimary)
+                if (isSelected) itemView.context.themeColor(R.attr.colorAccent)
+                else itemView.context.themeColor(R.attr.colorTextPrimary)
             )
 
-            // ── Chevron ───────────────────────────────────────────────
-            if (item.hasChildren) {
+            // ── Chevron: only for topics with child topics (not recordings) ──
+            val hasChildTopics = item.treeNode.children.isNotEmpty()
+            if (hasChildTopics) {
                 ivChevron.visibility = View.VISIBLE
                 ivChevron.rotation = if (item.isCollapsed) -90f else 0f
-                ivChevron.setOnClickListener {
-                    onCollapseToggle(topic.id, item.isCollapsed)
-                }
+                ivChevron.setOnClickListener { onCollapseToggle(topic.id, item.isCollapsed) }
             } else {
                 ivChevron.visibility = View.INVISIBLE
                 ivChevron.setOnClickListener(null)
@@ -117,14 +126,10 @@ class TopicsManageAdapter(
             }
 
             // ── Move button ───────────────────────────────────────────
-            btnMove.setOnClickListener {
-                onMoveClick(topic.id)
-            }
+            btnMove.setOnClickListener { onMoveClick(topic.id) }
 
             // ── DETAILS button ────────────────────────────────────────
-            btnDetails.setOnClickListener {
-                onDetailsClick(topic.id)
-            }
+            btnDetails.setOnClickListener { onDetailsClick(topic.id) }
         }
     }
 }
