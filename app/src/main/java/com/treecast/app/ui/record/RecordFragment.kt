@@ -187,6 +187,17 @@ class RecordFragment : Fragment() {
                 launch {
                     svc.state.collect { updateUiForState(it) }
                 }
+                // ── Push recording state to ViewModel (drives Mini Recorder) ─
+                launch {
+                    svc.state.collect { state ->
+                        viewModel.setRecordingState(state)
+                        if (state == RecordingService.State.IDLE) {
+                            viewModel.setRecordingElapsedMs(0L)
+                            viewModel.setRecordingMarks(emptyList())
+                            viewModel.resetMarkNudgeLock()
+                        }
+                    }
+                }
                 launch {
                     svc.elapsedMs.collect { ms ->
                         binding.tvTimer.text = formatDuration(ms)

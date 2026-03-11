@@ -523,17 +523,17 @@ class MainActivity : AppCompatActivity() {
                 recorderBinding.btnMiniRecPause.setImageResource(
                     when (state) {
                         RecordingService.State.RECORDING -> R.drawable.ic_pause
-                        RecordingService.State.PAUSED    -> R.drawable.ic_record_circle
+                        RecordingService.State.PAUSED    -> R.drawable.ic_resume_circle
                         RecordingService.State.IDLE      -> R.drawable.ic_record_circle
                     }
                 )
                 val tintColor = when (state) {
                     // RECORDING: red circle means "tap to pause"
                     RecordingService.State.RECORDING ->
-                        themeColor(R.attr.colorRecordActive)
+                        themeColor(R.attr.colorRecordPause)
                     // PAUSED: yellow/orange means "tap to resume"
                     RecordingService.State.PAUSED ->
-                        themeColor(R.attr.colorRecordPause)
+                        themeColor(R.attr.colorRecordActive)
                     // IDLE: red dot (not recording yet / stopped)
                     RecordingService.State.IDLE ->
                         themeColor(R.attr.colorRecordActive)
