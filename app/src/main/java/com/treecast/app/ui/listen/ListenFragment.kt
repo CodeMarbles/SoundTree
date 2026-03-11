@@ -25,6 +25,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.flow.combine
 
 
 class ListenFragment : Fragment() {
@@ -108,6 +109,9 @@ class ListenFragment : Fragment() {
     private fun setupMarksPanel() {
         binding.btnAddMark.setOnClickListener    { viewModel.addMark() }
         binding.btnDeleteMark.setOnClickListener { viewModel.deleteSelectedMark() }
+        binding.btnMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
+        binding.btnMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
+        binding.btnMarkCommit.setOnClickListener       { viewModel.commitPlaybackMarkNudge() }
     }
 
     private fun observeMarks() {
@@ -124,6 +128,24 @@ class ListenFragment : Fragment() {
                         binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
                         updateMarkChipStyles()
                     }
+                }
+                // ── Enable/disable nudge cluster ───────────────────────
+                launch {
+                    combine(
+                        viewModel.selectedMarkId,
+                        viewModel.playbackMarkNudgeLocked
+                    ) { selectedId, locked -> Pair(selectedId, locked) }
+                        .collect { (selectedId, locked) ->
+                            val canNudge = selectedId != null && !locked
+                            for (v in listOf(
+                                binding.btnMarkNudgeBack,
+                                binding.btnMarkNudgeForward,
+                                binding.btnMarkCommit
+                            )) {
+                                v.isEnabled = canNudge
+                                v.alpha = if (canNudge) 1f else 0.3f
+                            }
+                        }
                 }
             }
         }

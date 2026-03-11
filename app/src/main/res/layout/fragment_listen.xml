@@ -313,13 +313,61 @@
                         app:iconGravity="textStart"
                         app:cornerRadius="8dp" />
 
+                    <!-- Nudge back ← -->
+                    <ImageView
+                        android:id="@+id/btnMarkNudgeBack"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="4dp"
+                        android:src="@drawable/ic_mark_nudge_back"
+                        android:padding="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:enabled="false"
+                        android:alpha="0.3"
+                        android:contentDescription="Move mark back"
+                        app:tint="?attr/colorMarkSelected" />
+
+                    <!-- Commit ✓ -->
+                    <ImageView
+                        android:id="@+id/btnMarkCommit"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="2dp"
+                        android:src="@drawable/ic_mark_nudge_commit"
+                        android:padding="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:enabled="false"
+                        android:alpha="0.3"
+                        android:contentDescription="Confirm mark position"
+                        app:tint="?attr/colorMarkSelected" />
+
                     <!-- Spacer pushes Mark button to the right -->
                     <View
                         android:layout_width="0dp"
                         android:layout_height="1dp"
                         android:layout_weight="1" />
 
-                    <!-- Mark — prominent filled dark-pink button -->
+                    <!-- Nudge forward → -->
+                    <ImageView
+                        android:id="@+id/btnMarkNudgeForward"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="2dp"
+                        android:src="@drawable/ic_mark_nudge_forward"
+                        android:padding="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:enabled="false"
+                        android:alpha="0.3"
+                        android:contentDescription="Move mark forward"
+                        app:tint="?attr/colorMarkSelected" />
+
+                    <!-- Mark — prominent filled pill -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAddMark"
                         android:layout_width="wrap_content"
