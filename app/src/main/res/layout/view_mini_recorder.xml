@@ -136,7 +136,27 @@
                 android:textSize="12sp"
                 android:fontFamily="monospace" />
 
-            <!-- Spacer -->
+            <!-- Spacer left -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Topic icon button -->
+            <TextView
+                android:id="@+id/btnMiniRecTopic"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="📥"
+                android:textSize="18sp"
+                android:includeFontPadding="false"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Change recording topic" />
+
+            <!-- Spacer right -->
             <Space
                 android:layout_width="0dp"
                 android:layout_height="1dp"

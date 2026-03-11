@@ -130,7 +130,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (state == RecordingService.State.IDLE) {
             _markNudgeLocked.value = false
             _selectedRecordingMarkIndex.value = -1
+            _recordingTopicId.value = null
         }
+    }
+
+    // Add alongside the other recording state fields (_recordingState, etc.):
+
+    private val _recordingTopicId = MutableStateFlow<Long?>(null)
+    val recordingTopicId: StateFlow<Long?> = _recordingTopicId
+
+    fun setRecordingTopicId(topicId: Long?) {
+        _recordingTopicId.value = topicId
     }
 
     // Current elapsed recording time in ms — pushed by RecordFragment.

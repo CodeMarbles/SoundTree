@@ -813,6 +813,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        recorderBinding.btnMiniRecTopic.setOnClickListener {
+            val topics = viewModel.allTopics.value
+            val currentTopicId = viewModel.recordingTopicId.value
+            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
+                viewModel.setRecordingTopicId(topicId)
+                // Immediate icon update; the observer below will also fire shortly
+                val topic = topics.firstOrNull { it.id == topicId }
+                recorderBinding.btnMiniRecTopic.text = topic?.icon ?: Icons.INBOX
+            }.show(supportFragmentManager, "mini_rec_topic_picker")
+        }
+
         // ── Tap root (not on buttons) → navigate to Record tab ────────────
         recorderBinding.root.setOnClickListener { navigateTo(PAGE_RECORD) }
     }

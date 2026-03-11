@@ -171,11 +171,28 @@ class RecordFragment : Fragment() {
         // Watch for topic deletions and auto-reset if the selected topic disappears.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.allTopics.collect { topics ->
-                    if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
-                        selectedTopicId = null
-                        updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
-                        recordingService?.setTopic(null)
+                launch {
+                    viewModel.recordingTopicId.collect { topicId ->
+                        selectedTopicId = topicId
+                        val svc = recordingService
+                        if (svc != null && svc.state.value != RecordingService.State.IDLE) {
+                            svc.setTopic(topicId)
+                        }
+                        val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+                        updateRecordTopicHeader(
+                            topicId,
+                            topic?.name ?: "Uncategorised",
+                            topic?.icon ?: Icons.INBOX
+                        )
+                    }
+                }
+                launch {
+                    viewModel.allTopics.collect { topics ->
+                        if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
+                            selectedTopicId = null
+                            updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
+                            recordingService?.setTopic(null)
+                        }
                     }
                 }
             }
@@ -185,6 +202,7 @@ class RecordFragment : Fragment() {
             val topics = viewModel.allTopics.value
             TopicPickerBottomSheet(topics, selectedTopicId) { topicId ->
                 selectedTopicId = topicId
+                viewModel.setRecordingTopicId(topicId)
                 val topic = topics.firstOrNull { it.id == topicId }
                 updateRecordTopicHeader(
                     topicId,
