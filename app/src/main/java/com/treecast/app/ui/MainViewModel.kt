@@ -90,6 +90,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_HIDE_PLAYER_ON_LISTEN_TAB   = "hide_player_on_listen_tab"
         private const val PREF_SHOW_RECORD_MARK_TIMESTAMP = "show_record_mark_timestamp"
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
+        private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -339,16 +340,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Tree ──────────────────────────────────────────────────────────
-    private val _collapsedIds = MutableStateFlow<Set<Long>>(emptySet())
+    // Collapse state is UI-only — persisted in SharedPreferences, never in the DB.
+    // Stored as a comma-separated string of Long IDs, e.g. "1,4,17".
+    private val _collapsedIds = MutableStateFlow<Set<Long>>(
+        prefs.getString(PREF_COLLAPSED_TOPIC_IDS, "")
+            ?.split(",")
+            ?.mapNotNull { it.toLongOrNull() }
+            ?.toSet()
+            ?: emptySet()
+    )
 
     val treeItems: StateFlow<List<TreeItem>> = repo.getTreeFlow()
         .combine(_collapsedIds) { roots, collapsed -> TreeBuilder.flatten(roots, collapsed) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun toggleCollapse(topicId: Long, currentlyCollapsed: Boolean) {
-        _collapsedIds.value = if (currentlyCollapsed)
+        val updated = if (currentlyCollapsed)
             _collapsedIds.value - topicId else _collapsedIds.value + topicId
-        viewModelScope.launch { repo.toggleCollapse(topicId, !currentlyCollapsed) }
+        _collapsedIds.value = updated
+        prefs.edit()
+            .putString(PREF_COLLAPSED_TOPIC_IDS, updated.joinToString(","))
+            .apply()
     }
 
     // ── Recordings ────────────────────────────────────────────────────

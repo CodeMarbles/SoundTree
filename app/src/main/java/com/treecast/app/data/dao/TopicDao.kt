@@ -34,9 +34,6 @@ interface TopicDao {
     @Query("SELECT * FROM topics WHERE parent_id IS NULL ORDER BY sort_order ASC, name ASC")
     fun getRoots(): Flow<List<TopicEntity>>
 
-    @Query("UPDATE topics SET is_collapsed = :collapsed WHERE id = :id")
-    suspend fun setCollapsed(id: Long, collapsed: Boolean)
-
     @Query("UPDATE topics SET updated_at = :time WHERE id = :id")
     suspend fun touch(id: Long, time: Long = System.currentTimeMillis())
 }

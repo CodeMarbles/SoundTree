@@ -45,7 +45,6 @@ class TreeCastRepository(context: Context) {
 
     suspend fun updateTopic(topic: TopicEntity) = topicDao.update(topic)
     suspend fun deleteTopic(topic: TopicEntity) = topicDao.delete(topic)
-    suspend fun toggleCollapse(id: Long, collapsed: Boolean) = topicDao.setCollapsed(id, collapsed)
     fun getAllTopics(): Flow<List<TopicEntity>> = topicDao.getAllTopics()
     suspend fun topicExists(id: Long): Boolean = topicDao.getById(id) != null
 

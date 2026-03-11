@@ -7,12 +7,18 @@ import com.treecast.app.data.entities.TopicEntity
 // Domain models used by the UI layer
 // ─────────────────────────────────────────────────────────
 
-/** A node in the in-memory podcast tree */
+/**
+ * A node in the in-memory topic tree.
+ *
+ * All collections and fields are immutable — this object is a read-only
+ * snapshot emitted by [TreeBuilder] into the ViewModel's StateFlow.
+ * Never mutate it directly; a new snapshot will arrive on the next DB emission.
+ */
 data class TreeNode(
     val topic: TopicEntity,
-    val children: MutableList<TreeNode> = mutableListOf(),
-    val recordings: MutableList<RecordingEntity> = mutableListOf(),
-    var depth: Int = 0
+    val children: List<TreeNode> = emptyList(),
+    val recordings: List<RecordingEntity> = emptyList(),
+    val depth: Int = 0
 )
 
 /** Flat item sealed class for the RecyclerView tree adapter */
@@ -37,22 +43,24 @@ object TreeBuilder {
 
     /**
      * Build a forest (list of root TreeNodes) from flat DB lists.
-     * Recordings without a topicId go to [inbox].
+     * Recordings without a topicId are ignored here (they live in the Inbox).
+     *
+     * Construction uses private [MutableNode] intermediaries so the final
+     * [TreeNode] objects handed to the UI are fully immutable.
      */
     fun build(
         topics: List<TopicEntity>,
         recordings: List<RecordingEntity>
     ): List<TreeNode> {
-        val nodeMap = topics.associate { it.id to TreeNode(topic = it) }
+        // ── 1. Build mutable intermediaries ──────────────────────────
+        val nodeMap = topics.associate { it.id to MutableNode(topic = it) }
 
-        // Assign recordings to their topic nodes
         for (rec in recordings) {
             val topicId = rec.topicId ?: continue
             nodeMap[topicId]?.recordings?.add(rec)
         }
 
-        // Wire parent-child relationships
-        val roots = mutableListOf<TreeNode>()
+        val roots = mutableListOf<MutableNode>()
         for (t in topics) {
             val node = nodeMap[t.id] ?: continue
             val parentId = t.parentId
@@ -72,14 +80,15 @@ object TreeBuilder {
             }
         }
 
-        // Sort each level
+        // ── 2. Sort each level ────────────────────────────────────────
         roots.sortBy { it.topic.sortOrder }
         nodeMap.values.forEach { node ->
             node.children.sortBy { it.topic.sortOrder }
             node.recordings.sortBy { it.sortOrder }
         }
 
-        return roots
+        // ── 3. Freeze into immutable TreeNodes ────────────────────────
+        return roots.map { it.freeze() }
     }
 
     /**
@@ -110,5 +119,22 @@ object TreeBuilder {
         }
         roots.forEach { visit(it) }
         return result
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Private mutable intermediary — never escapes this object
+    // ─────────────────────────────────────────────────────
+
+    private class MutableNode(val topic: TopicEntity) {
+        val children: MutableList<MutableNode> = mutableListOf()
+        val recordings: MutableList<RecordingEntity> = mutableListOf()
+        var depth: Int = 0
+
+        fun freeze(): TreeNode = TreeNode(
+            topic      = topic,
+            children   = children.map { it.freeze() },
+            recordings = recordings.toList(),
+            depth      = depth
+        )
     }
 }

@@ -7,11 +7,17 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Represents a node (folder) in the podcast tree.
+ * Represents a node (folder) in the topic tree.
  * parentId == null means this is a root-level topic.
  *
- * The full tree is reconstructed in-memory from a flat list of TopicEntities.
+ * The full tree is reconstructed in-memory from a flat list of TopicEntities
+ * by [com.treecast.app.data.repository.TreeBuilder].
+ *
  * Depth is unlimited — the only constraint is that cycles must not be created.
+ *
+ * NOTE: sort_order is a property of this node's position among its siblings
+ * under its current single parent. When the data model is migrated to a
+ * DAG (multi-parent) structure, sort_order will move to the edge table.
  */
 @Entity(
     tableName = "topics",
@@ -41,13 +47,13 @@ data class TopicEntity(
     /** UI color accent hex string e.g. "#FF6B6B" */
     @ColumnInfo(name = "color") val color: String = "#6C63FF",
 
-    /** Display order among siblings */
+    /** Display order among siblings under the same parent */
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
 
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
 
-    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 
-    /** Whether this node is collapsed in the tree view */
-    @ColumnInfo(name = "is_collapsed") val isCollapsed: Boolean = false
+    // isCollapsed removed in DB v6 — collapse state is now UI-only,
+    // held in MainViewModel._collapsedIds and persisted via SharedPreferences.
 )
