@@ -2,6 +2,7 @@ package com.treecast.app.ui
 
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import androidx.activity.OnBackPressedCallback
@@ -674,12 +675,6 @@ class MainActivity : AppCompatActivity() {
             binding.root.postDelayed({ recordFragment.triggerSaveFromExternal() }, 80L)
         }
 
-        // ── Timeline: update with marks + selected index ───────────────────
-//        lifecycleScope.launch {
-//            viewModel.showRecordMarkTimestamp.collect { show ->
-//                recorderBinding.miniRecTimeline.showLastMarkTimestamp = show
-//            }
-//        }
         lifecycleScope.launch {
             combine(
                 viewModel.recordingElapsedMs,
@@ -734,25 +729,32 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             combine(
                 viewModel.recordingMarks,
-                viewModel.markNudgeLocked,
-                viewModel.selectedRecordingMarkIndex
-            ) { marks, locked, selectedIdx -> Triple(marks, locked, selectedIdx) }
-                .collect { (marks, locked, selectedIdx) ->
-                    val hasActiveSelection = marks.isNotEmpty() &&
-                            (selectedIdx >= 0 || marks.isNotEmpty())  // last mark counts
-                    val canNudge = hasActiveSelection && !locked
-                    val hasSelection = marks.isNotEmpty() && selectedIdx >= 0
+                viewModel.selectedRecordingMarkIndex,
+                viewModel.markNudgeLocked
+            ) { marks, selectedIdx, locked ->
+                Triple(marks, selectedIdx, locked)
+            }.collect { (marks, selectedIdx, locked) ->
+                val hasSelection = marks.isNotEmpty() && selectedIdx >= 0
+                val canNudge     = hasSelection && !locked
 
-                    recorderBinding.btnMiniRecDeleteMark.isEnabled = hasSelection
-                    recorderBinding.btnMiniRecDeleteMark.alpha     = if (hasSelection) 1f else 0.3f
-                    recorderBinding.btnMiniNudgeBack.isEnabled    = canNudge
-                    recorderBinding.btnMiniNudgeForward.isEnabled = canNudge
-                    recorderBinding.btnMiniNudgeCommit.isEnabled  = canNudge
+                val tealColor = themeColor(R.attr.colorMarkSelected)
+                val greyColor = themeColor(R.attr.colorTextSecondary)
 
-                    recorderBinding.btnMiniNudgeBack.alpha    = if (canNudge) 1f else 0.3f
-                    recorderBinding.btnMiniNudgeForward.alpha = if (canNudge) 1f else 0.3f
-                    recorderBinding.btnMiniNudgeCommit.alpha  = if (canNudge) 1f else 0.3f
+                // Delete — teal when a mark is selected, grey when not
+                recorderBinding.btnMiniRecDeleteMark.isEnabled = hasSelection
+                recorderBinding.btnMiniRecDeleteMark.imageTintList =
+                    ColorStateList.valueOf(if (hasSelection) tealColor else greyColor)
+
+                // Nudge / commit — teal when nudgeable, grey when not
+                for (v in listOf(
+                    recorderBinding.btnMiniNudgeBack,
+                    recorderBinding.btnMiniNudgeForward,
+                    recorderBinding.btnMiniNudgeCommit
+                )) {
+                    v.isEnabled = canNudge
+                    v.imageTintList = ColorStateList.valueOf(if (canNudge) tealColor else greyColor)
                 }
+            }
         }
 
         // ── Tap root (not on buttons) → navigate to Record tab ────────────

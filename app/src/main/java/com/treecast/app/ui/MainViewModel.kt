@@ -569,18 +569,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteSelectedRecordingMark() {
         val idx = _selectedRecordingMarkIndex.value.takeIf { it >= 0 } ?: return
+        _deleteMarkEvent.tryEmit(idx)
+        // Optimistically update ViewModel state immediately
         val marks = _recordingMarks.value.toMutableList()
         if (idx !in marks.indices) return
         marks.removeAt(idx)
         _recordingMarks.value = marks
         _selectedRecordingMarkIndex.value = -1
-        // Re-lock nudge since selection is gone
         resetMarkNudgeLock()
     }
 
     private val _dropMarkEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val dropMarkEvent: SharedFlow<Unit> = _dropMarkEvent
     fun requestDropMark() { _dropMarkEvent.tryEmit(Unit) }
+
+    private val _deleteMarkEvent = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val deleteMarkEvent: SharedFlow<Int> = _deleteMarkEvent
 
     // ── Mark nudge settings ───────────────────────────────────────────────────
 

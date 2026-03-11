@@ -345,6 +345,13 @@ class RecordingService : Service() {
         }, 1500)
     }
 
+    fun removeMarkAt(index: Int) {
+        if (index !in pendingMarks.indices) return
+        pendingMarks.removeAt(index)
+        _pendingMarkCount.value = pendingMarks.size
+        _pendingMarksFlow.value = pendingMarks.toList()
+    }
+
     /**
      * Moves the mark at [markIndex] backwards by [secs] seconds.
      * Floors at 0. No-op if index is out of range.

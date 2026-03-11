@@ -281,6 +281,12 @@ class RecordFragment : Fragment() {
                        binding.waveformView.pushMark()
                    }
                 }
+
+                launch {
+                    viewModel.deleteMarkEvent.collect { index ->
+                        recordingService?.removeMarkAt(index)
+                    }
+                }
             }
         }
     }
