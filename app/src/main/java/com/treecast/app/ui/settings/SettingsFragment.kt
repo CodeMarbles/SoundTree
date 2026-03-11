@@ -238,11 +238,11 @@ class SettingsFragment : Fragment() {
         }
 
         // ── Show mark timestamp toggle ────────────────────────────────────
-        binding.switchShowRecordMarkTimestamp.isChecked =
-            viewModel.showRecordMarkTimestamp.value
-        binding.switchShowRecordMarkTimestamp.setOnCheckedChangeListener { _, checked ->
-            viewModel.setShowRecordMarkTimestamp(checked)
-        }
+//        binding.switchShowRecordMarkTimestamp.isChecked =
+//            viewModel.showRecordMarkTimestamp.value
+//        binding.switchShowRecordMarkTimestamp.setOnCheckedChangeListener { _, checked ->
+//            viewModel.setShowRecordMarkTimestamp(checked)
+//        }
 
         // ── Mark nudge seconds ────────────────────────────────────────────
         fun Float.toNudgeDisplay() =
@@ -270,12 +270,12 @@ class SettingsFragment : Fragment() {
                             binding.switchShowMiniRecorder.isChecked = show
                     }
                 }
-                launch {
-                    viewModel.showRecordMarkTimestamp.collect { show ->
-                        if (binding.switchShowRecordMarkTimestamp.isChecked != show)
-                            binding.switchShowRecordMarkTimestamp.isChecked = show
-                    }
-                }
+//                launch {
+//                    viewModel.showRecordMarkTimestamp.collect { show ->
+//                        if (binding.switchShowRecordMarkTimestamp.isChecked != show)
+//                            binding.switchShowRecordMarkTimestamp.isChecked = show
+//                    }
+//                }
             }
         }
     }

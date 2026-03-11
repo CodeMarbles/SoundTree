@@ -460,15 +460,15 @@ class MainActivity : AppCompatActivity() {
         p.btnMiniDeleteMark.setOnClickListener       { viewModel.deleteSelectedMark() }
 
         // ── Timeline: seek on empty-area tap ─────────────────────────────
-        p.miniPlayerTimeline.onSeekRequested = { fraction ->
-            val dur = viewModel.nowPlaying.value?.durationMs ?: return@onSeekRequested
+        p.miniPlayerTimeline.onSeekRequested = seek@{ fraction ->
+            val dur = viewModel.nowPlaying.value?.durationMs ?: return@seek
             viewModel.seekTo((fraction * dur).toLong())
         }
 
         // ── Timeline: mark tap → select mark + seek to it ────────────────
-        p.miniPlayerTimeline.onMarkTapped = { markId ->
+        p.miniPlayerTimeline.onMarkTapped = tap@{ markId ->
             val mark = viewModel.marks.value.firstOrNull { it.id == markId }
-                ?: return@onMarkTapped
+                ?: return@tap
             viewModel.selectMark(markId)
             viewModel.seekTo(mark.positionMs)
             // Selecting via tap unlocks nudging (mirrors jump-and-select behaviour)
