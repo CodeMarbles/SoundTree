@@ -119,29 +119,38 @@ class RecordingsAdapter(
                     ).show()
                 }
             } else {
-                val isOrphan = rec.storageVolumeUuid in orphanVolumeUuids
+                val isThisPlaying = rec.id == nowPlayingId && isPlaying
+                btnInlinePlay.setImageResource(
+                    if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+                btnInlinePlay.imageTintList = ColorStateList.valueOf(
+                    itemView.context.themeColor(R.attr.colorAccent))
+                itemView.alpha = 1f
+                btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+            }
 
-                if (isOrphan) {
-                    // Show warning icon, mute the row, block playback.
-                    btnInlinePlay.setImageResource(R.drawable.ic_storage_offline)
-                    btnInlinePlay.imageTintList = ColorStateList.valueOf(
-                        itemView.context.themeColor(R.attr.colorTextSecondary))
-                    itemView.alpha = 0.5f
-                    btnInlinePlay.setOnClickListener {
-                        Snackbar.make(
-                            itemView,
-                            "Storage device not connected",
-                            Snackbar.LENGTH_SHORT
-                        ).show()
+            // ── Expand / collapse controls tray ──────────────────────────────
+            val isExpanded = rec.id == expandedId
+            expandedControls.visibility = if (isExpanded) View.VISIBLE else View.GONE
+            ivChevron.rotation = if (isExpanded) 0f else -90f
+
+            btnRename.setOnClickListener { showRenameDialog(rec) }
+            btnDelete.setOnClickListener { showDeleteDialog(rec) }
+            btnMove.setOnClickListener {
+                val showing = picker.visibility == View.VISIBLE
+                picker.visibility = if (showing) View.GONE else View.VISIBLE
+                if (!showing) {
+                    picker.setTopics(topics)
+                    val topic = rec.topicId?.let { id -> topics.find { it.id == id } }
+                    picker.setSelectedTopic(
+                        rec.topicId,
+                        topic?.name ?: "Uncategorised",
+                        topic?.icon ?: Icons.INBOX
+                    )
+                    picker.onTopicSelected = { topicId ->
+                        onMove(rec.id, topicId)
+                        picker.visibility = View.GONE
+                        collapseItem(rec.id)
                     }
-                } else {
-                    val isThisPlaying = rec.id == nowPlayingId && isPlaying
-                    btnInlinePlay.setImageResource(
-                        if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
-                    btnInlinePlay.imageTintList = ColorStateList.valueOf(
-                        itemView.context.themeColor(R.attr.colorAccent))
-                    itemView.alpha = 1f
-                    btnInlinePlay.setOnClickListener { onPlayPause(rec) }
                 }
             }
         }
