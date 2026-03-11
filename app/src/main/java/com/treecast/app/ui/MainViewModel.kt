@@ -403,7 +403,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.deleteRecording(r)
         waveformCache.delete(r.id)
     }
-    fun moveRecording(id: Long, topicId: Long?) = viewModelScope.launch { repo.moveRecording(id, topicId) }
+    fun moveRecording(id: Long, topicId: Long?) = viewModelScope.launch {
+        repo.moveRecording(id, topicId)
+        // Keep nowPlaying in sync so observers (Listen tab header, mini player)
+        // see the new topic immediately without waiting for a DB re-query
+        if (_nowPlaying.value?.recording?.id == id) {
+            _nowPlaying.value = _nowPlaying.value?.copy(
+                recording = _nowPlaying.value!!.recording.copy(topicId = topicId)
+            )
+        }
+    }
     fun setFavourite(id: Long, fav: Boolean)    = viewModelScope.launch { repo.setFavourite(id, fav) }
     fun renameRecording(id: Long, title: String)= viewModelScope.launch { repo.renameRecording(id, title) }
     fun updatePlayback(id: Long, posMs: Long, listened: Boolean) =
