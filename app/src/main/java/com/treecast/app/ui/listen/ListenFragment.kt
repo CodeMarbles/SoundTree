@@ -121,30 +121,37 @@ class ListenFragment : Fragment() {
                     viewModel.marks.collect { marks -> renderMarkTimestamps(marks) }
                 }
                 launch {
-                    viewModel.selectedMarkId.collect { selectedId ->
-                        binding.waveformView.setSelectedMark(selectedId)
-                        val hasSelection = selectedId != null
-                        binding.btnDeleteMark.isEnabled = hasSelection
-                        binding.btnDeleteMark.alpha = if (hasSelection) 1f else 0.4f
-                        updateMarkChipStyles()
-                    }
-                }
-                // ── Enable/disable nudge cluster ───────────────────────
-                launch {
                     combine(
                         viewModel.selectedMarkId,
                         viewModel.playbackMarkNudgeLocked
                     ) { selectedId, locked -> Pair(selectedId, locked) }
                         .collect { (selectedId, locked) ->
-                            val canNudge = selectedId != null && !locked
-                            for (v in listOf(
+                            val hasSelection = selectedId != null
+                            val canNudge     = hasSelection && !locked
+
+                            val teal = requireContext().themeColor(R.attr.colorMarkSelected)
+                            val grey = requireContext().themeColor(R.attr.colorTextSecondary)
+
+                            val nudgeColor = if (canNudge) teal else grey
+
+                            // Delete
+                            binding.btnDeleteMark.isEnabled = hasSelection
+                            binding.btnDeleteMark.setTextColor(nudgeColor)
+                            binding.btnDeleteMark.iconTint = android.content.res.ColorStateList.valueOf(nudgeColor)
+                            binding.btnDeleteMark.jumpDrawablesToCurrentState()
+
+                            // Nudge cluster
+                            listOf(
                                 binding.btnMarkNudgeBack,
                                 binding.btnMarkNudgeForward,
                                 binding.btnMarkCommit
-                            )) {
+                            ).forEach { v ->
                                 v.isEnabled = canNudge
-                                v.alpha = if (canNudge) 1f else 0.3f
+                                v.imageTintList = android.content.res.ColorStateList.valueOf(nudgeColor)
+                                v.jumpDrawablesToCurrentState()
                             }
+
+                            updateMarkChipStyles()
                         }
                 }
             }
@@ -199,11 +206,13 @@ class ListenFragment : Fragment() {
                     object : GestureDetector.SimpleOnGestureListener() {
                         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                             viewModel.selectMark(mark.id)
+                            viewModel.unlockPlaybackMarkNudge()
                             return true
                         }
                         override fun onDoubleTap(e: MotionEvent): Boolean {
                             viewModel.seekTo(mark.positionMs)
                             viewModel.selectMark(mark.id)
+                            viewModel.unlockPlaybackMarkNudge()
                             return true
                         }
                     })

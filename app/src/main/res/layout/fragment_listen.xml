@@ -304,12 +304,11 @@
                         android:layout_height="wrap_content"
                         android:text="Delete"
                         android:textSize="13sp"
-                        android:textColor="?attr/colorDestructive"
+                        android:textColor="?attr/colorTextSecondary"
                         android:enabled="false"
-                        android:alpha="0.4"
                         app:icon="@drawable/ic_delete"
                         app:iconSize="16dp"
-                        app:iconTint="?attr/colorDestructive"
+                        app:iconTint="?attr/colorTextSecondary"
                         app:iconGravity="textStart"
                         app:cornerRadius="8dp" />
 
@@ -325,7 +324,6 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:enabled="false"
-                        android:alpha="0.3"
                         android:contentDescription="Move mark back"
                         app:tint="?attr/colorMarkSelected" />
 
@@ -341,7 +339,6 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:enabled="false"
-                        android:alpha="0.3"
                         android:contentDescription="Confirm mark position"
                         app:tint="?attr/colorMarkSelected" />
 
@@ -363,9 +360,14 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:enabled="false"
-                        android:alpha="0.3"
                         android:contentDescription="Move mark forward"
                         app:tint="?attr/colorMarkSelected" />
+
+                    <!-- Spacer pushes Mark button to the right -->
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
 
                     <!-- Mark — prominent filled pill -->
                     <com.google.android.material.button.MaterialButton
