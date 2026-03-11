@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerTopicsManage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="120dp"
+        android:overScrollMode="never" />
+
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/tvEmptyTopics"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="No topics yet.\nTap + TOPIC to get started."
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- ── Dual FABs — bottom right ──────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp">
+
+        <!-- + SUBTOPIC — disabled until a topic is selected -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fabAddSubtopic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+ SUBTOPIC"
+            android:textSize="12sp"
+            android:textColor="?attr/colorTextPrimary"
+            android:enabled="false"
+            android:alpha="0.4"
+            app:backgroundTint="?attr/colorSurfaceElevated"
+            app:elevation="4dp" />
+
+        <!-- + TOPIC — always enabled -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fabAddTopic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="+ TOPIC"
+            android:textSize="12sp"
+            android:textColor="@color/white"
+            app:backgroundTint="?attr/colorAccent"
+            app:elevation="4dp" />
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

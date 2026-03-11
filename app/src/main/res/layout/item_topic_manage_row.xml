@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Single topic row for the Topics Management tab.
+  No recording expansion — this view is purely for managing the topic tree.
+
+  Layout: [colorBar][icon][name weight=1][chevron?][DETAILS button]
+  Indent is applied programmatically via start padding based on depth.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="52dp"
+    android:paddingEnd="8dp"
+    android:foreground="?attr/selectableItemBackground">
+
+    <!-- Left color accent bar -->
+    <View
+        android:id="@+id/colorBar"
+        android:layout_width="4dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Topic icon (emoji) -->
+    <TextView
+        android:id="@+id/tvIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:gravity="center"
+        android:textSize="18sp"
+        android:layout_marginStart="12dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/colorBar" />
+
+    <!-- Topic name -->
+    <TextView
+        android:id="@+id/tvName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorTextPrimary"
+        android:textSize="15sp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:layout_marginStart="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/tvIcon"
+        app:layout_constraintEnd_toStartOf="@id/ivChevron" />
+
+    <!-- Collapse/expand chevron (only shown when topic has children) -->
+    <ImageView
+        android:id="@+id/ivChevron"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_chevron_down"
+        android:layout_marginEnd="4dp"
+        app:tint="?attr/colorTextSecondary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnDetails" />
+
+    <!-- DETAILS button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDetails"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:text="DETAILS"
+        android:textSize="10sp"
+        android:textColor="?attr/colorAccent"
+        android:letterSpacing="0.05"
+        android:minWidth="0dp"
+        android:paddingHorizontal="8dp"
+        app:cornerRadius="6dp"
+        app:strokeColor="?attr/colorAccent"
+        app:strokeWidth="1dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

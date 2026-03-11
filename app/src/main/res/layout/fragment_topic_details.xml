@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- ── Header: icon + name + edit button ─────────────────── -->
+        <LinearLayout
+            android:id="@+id/headerLayout"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:background="?attr/colorSurfaceBase">
+
+            <!-- Topic icon — tappable in edit mode to open emoji picker -->
+            <TextView
+                android:id="@+id/tvTopicIcon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:gravity="center"
+                android:textSize="28sp"
+                android:background="@android:color/transparent" />
+
+            <!-- Topic name (display mode) -->
+            <TextView
+                android:id="@+id/tvTopicName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Topic name (edit mode) — hidden by default -->
+            <EditText
+                android:id="@+id/etTopicName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:inputType="text"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone"
+                android:background="@null"
+                android:imeOptions="actionDone" />
+
+            <!-- Edit / Confirm button (pencil → checkmark in edit mode) -->
+            <ImageButton
+                android:id="@+id/btnEditToggle"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_rename"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Edit topic name"
+                app:tint="?attr/colorTextSecondary" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ── Hierarchy section ──────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="HIERARCHY"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Populated programmatically in TopicDetailsFragment -->
+            <LinearLayout
+                android:id="@+id/hierarchyContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ── Recordings section ─────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="RECORDINGS IN THIS TOPIC"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.08" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSortRecordings"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:text="↓ NEWEST FIRST"
+                android:textSize="10sp"
+                android:textColor="?attr/colorAccent"
+                android:letterSpacing="0.03"
+                android:minWidth="0dp"
+                android:paddingHorizontal="8dp"
+                app:cornerRadius="14dp"
+                app:strokeColor="?attr/colorAccent"
+                app:strokeWidth="1dp" />
+
+        </LinearLayout>
+
+        <!-- Recordings list (non-scrolling — lives inside NestedScrollView) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerTopicRecordings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never" />
+
+        <TextView
+            android:id="@+id/tvNoRecordings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingVertical="24dp"
+            android:text="No recordings in this topic yet."
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <!-- Bottom padding -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="32dp" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

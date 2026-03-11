@@ -284,7 +284,7 @@
                 android:id="@+id/btnMiniMarkCommit"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:src="@drawable/ic_mark_nudge_commit"
+                android:src="@drawable/ic_check"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Single row in the topic ancestry/hierarchy map.
+  Shows: [connector "└"][icon][name]
+  Connector is hidden for the root-level item (depth 0).
+  Indent is set programmatically based on depth.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="36dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:foreground="?attr/selectableItemBackground">
+
+    <!-- Tree connector (hidden for root) -->
+    <TextView
+        android:id="@+id/tvConnector"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="└ "
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:layout_marginEnd="4dp" />
+
+    <!-- Topic icon -->
+    <TextView
+        android:id="@+id/tvHierarchyIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:gravity="center"
+        android:textSize="15sp" />
+
+    <!-- Topic name -->
+    <TextView
+        android:id="@+id/tvHierarchyName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorTextPrimary"
+        android:textSize="14sp"
+        android:layout_marginStart="8dp"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+</LinearLayout>

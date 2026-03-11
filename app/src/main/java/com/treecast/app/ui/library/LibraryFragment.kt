@@ -1,27 +1,37 @@
 package com.treecast.app.ui.library
 
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentLibraryBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.launch
+
 
 /**
- * Library tab.
+ * Library tab — hosts 5 sub-pages via an internal ViewPager2.
  *
- * Contains two sub-views managed by an internal ViewPager2:
- *   [0] TopicsFragment     — 🌳 Topics tree
- *   [1] InboxTileFragment  — 📥 Inbox (recordings with no topic)
+ *   [0] ALL          — Flat chronological list of all recordings
+ *   [1] UNSORTED     — Recordings with no topic (Inbox)
+ *   [2] TOPICS       — Topic tree management (no recordings inline)
+ *   [3] RECORDINGS   — Full topic+recording tree (original Topics view)
+ *   [4] DETAILS      — Details page for a selected topic
  *
- * Swipe navigation between the sub-views is DISABLED. The user
- * navigates via the sub-nav bar at the bottom of this fragment.
+ * Swipe between sub-pages is DISABLED — the outer ViewPager2 owns horizontal swipe.
+ * The DETAILS tab is greyed out and non-navigable until a topic has been selected
+ * via [openTopicDetails].
  */
 class LibraryFragment : Fragment() {
 
@@ -31,8 +41,13 @@ class LibraryFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var tileAdapter: LibraryTilesAdapter
 
-    private val PAGE_TOPICS      = 0
-    private val PAGE_INBOX       = 1
+    companion object {
+        const val PAGE_ALL        = 0
+        const val PAGE_UNSORTED   = 1
+        const val PAGE_TOPICS     = 2
+        const val PAGE_RECORDINGS = 3
+        const val PAGE_DETAILS    = 4
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,69 +62,129 @@ class LibraryFragment : Fragment() {
 
         tileAdapter = LibraryTilesAdapter(this)
         binding.tilePager.adapter = tileAdapter
-        binding.tilePager.offscreenPageLimit = 2
-
-        // Disable swipe inside the Library — outer ViewPager2 owns horizontal swipe.
+        binding.tilePager.offscreenPageLimit = 4
         binding.tilePager.isUserInputEnabled = false
 
-        // ── Sub-nav button clicks ─────────────────────────────────────
+        // ── Sub-nav clicks ────────────────────────────────────────────
+        binding.subNavAll.setOnClickListener {
+            binding.tilePager.setCurrentItem(PAGE_ALL, true)
+        }
+        binding.subNavUnsorted.setOnClickListener {
+            binding.tilePager.setCurrentItem(PAGE_UNSORTED, true)
+        }
         binding.subNavTopics.setOnClickListener {
             binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
         }
-        binding.subNavInbox.setOnClickListener {
-            binding.tilePager.setCurrentItem(PAGE_INBOX, true)
+        binding.subNavRecordings.setOnClickListener {
+            binding.tilePager.setCurrentItem(PAGE_RECORDINGS, true)
+        }
+        binding.subNavDetails.setOnClickListener {
+            if (viewModel.libraryDetailsTopicId.value != null) {
+                binding.tilePager.setCurrentItem(PAGE_DETAILS, true)
+            }
         }
 
-        // ── Sync sub-nav selection with pager position ────────────────
+        // ── Page change callback ──────────────────────────────────────
         binding.tilePager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 updateSubNavSelection(position)
-                // Always show "Library" in the top bar regardless of which sub-page is active.
                 (requireActivity() as? MainActivity)?.setTopTitle("Library")
             }
         })
 
+        // ── React to Details topic changing (enables the tab) ─────────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.libraryDetailsTopicId.collect {
+                    updateSubNavSelection(binding.tilePager.currentItem)
+                }
+            }
+        }
+
         // Start on Topics page.
-        // Set title immediately here too — onPageSelected may not fire when the
-        // initial position is already 0.
         binding.tilePager.setCurrentItem(PAGE_TOPICS, false)
         updateSubNavSelection(PAGE_TOPICS)
         (requireActivity() as? MainActivity)?.setTopTitle("Library")
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
+    // ── Public API ────────────────────────────────────────────────────
 
-    /** Called by MainActivity back handler — returns true if we consumed the event. */
-    fun handleBackPress(): Boolean {
-        val b = _binding ?: return false
-        return if (b.tilePager.currentItem == PAGE_INBOX) {
-            b.tilePager.setCurrentItem(PAGE_TOPICS, true)
-            true
-        } else {
-            false
-        }
+    /**
+     * Called by TopicsManageFragment when the user taps DETAILS on a topic row.
+     * Sets the selected topic in the ViewModel, enables the Details tab,
+     * and navigates to it.
+     */
+    fun openTopicDetails(topicId: Long) {
+        viewModel.setLibraryDetailsTopic(topicId)
+        binding.tilePager.setCurrentItem(PAGE_DETAILS, true)
     }
 
     /**
-     * Called after a recording is saved and the app jumps to Library.
-     * Routes to Inbox (topicId == null) or Topics (topicId != null).
+     * Called from TopicDetailsFragment when the user taps an ancestor in the
+     * hierarchy map — navigates to that topic's details without going back
+     * through the Topics tab.
      */
-    fun jumpToSubPageForRecording(topicId: Long?) {
-        val target = if (topicId == null) PAGE_INBOX else PAGE_TOPICS
-        _binding?.tilePager?.setCurrentItem(target, false)
+    fun navigateToTopicDetails(topicId: Long) {
+        viewModel.setLibraryDetailsTopic(topicId)
+        // Stay on PAGE_DETAILS; TopicDetailsFragment observes the ID and re-renders.
     }
 
+    /**
+     * Called from MainActivity after saving a recording. Navigates to whichever
+     * sub-page is most relevant.
+     */
+    fun jumpToSubPageForRecording(topicId: Long?) {
+        val page = if (topicId != null) PAGE_RECORDINGS else PAGE_UNSORTED
+        binding.tilePager.setCurrentItem(page, true)
+    }
+
+    /**
+     * Android back-press handler. Returns true if this fragment consumed the press.
+     */
+    fun handleBackPress(): Boolean {
+        return when (binding.tilePager.currentItem) {
+            PAGE_DETAILS -> {
+                binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+                true
+            }
+            PAGE_UNSORTED, PAGE_ALL, PAGE_RECORDINGS -> {
+                binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+                true
+            }
+            else -> false
+        }
+    }
+
+    // ── Internal helpers ──────────────────────────────────────────────
+
     private fun updateSubNavSelection(position: Int) {
-        val selectedBg = requireContext().themeColor(R.attr.colorSurfaceElevated)
-        val defaultBg  = android.graphics.Color.TRANSPARENT
+        val accent    = requireContext().themeColor(R.attr.colorAccent)
+        val dim       = requireContext().themeColor(R.attr.colorTextSecondary)
+        val detailsOk = viewModel.libraryDetailsTopicId.value != null
 
-        binding.subNavTopics.setBackgroundColor(if (position == PAGE_TOPICS) selectedBg else defaultBg)
-        binding.subNavInbox.setBackgroundColor(if (position == PAGE_INBOX)  selectedBg else defaultBg)
+        data class Entry(val tab: TextView, val page: Int, val enabled: Boolean = true)
 
-        binding.subNavTopics.isSelected = (position == PAGE_TOPICS)
-        binding.subNavInbox.isSelected  = (position == PAGE_INBOX)
+        listOf(
+            Entry(binding.subNavAll,        PAGE_ALL),
+            Entry(binding.subNavUnsorted,   PAGE_UNSORTED),
+            Entry(binding.subNavTopics,     PAGE_TOPICS),
+            Entry(binding.subNavRecordings, PAGE_RECORDINGS),
+            Entry(binding.subNavDetails,    PAGE_DETAILS, enabled = detailsOk)
+        ).forEach { (tab, page, enabled) ->
+            val isActive = page == position
+            tab.setTextColor(if (isActive) accent else dim)
+            tab.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
+            tab.alpha = when {
+                isActive  -> 1f
+                !enabled  -> 0.35f
+                else      -> 1f
+            }
+            tab.isEnabled = enabled
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

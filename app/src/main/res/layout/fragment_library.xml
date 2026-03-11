@@ -25,10 +25,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- ── Compact 5-tab sub-nav ─────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/librarySubNav"
         android:layout_width="0dp"
-        android:layout_height="64dp"
+        android:layout_height="40dp"
         android:orientation="horizontal"
         android:background="?attr/colorSurfaceBase"
         android:elevation="8dp"
@@ -36,64 +37,96 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
-            android:id="@+id/subNavInbox"
+        <TextView
+            android:id="@+id/subNavAll"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:orientation="vertical"
             android:gravity="center"
+            android:text="ALL"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.05"
             android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
-            android:focusable="true">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📥"
-                android:textSize="18sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Uncategorized"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="11sp"
-                android:layout_marginTop="2dp" />
-
-        </LinearLayout>
+            android:focusable="true" />
 
         <View
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:background="?attr/colorSurfaceElevated" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/subNavUnsorted"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="UNSORTED"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.05"
+            android:foreground="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <TextView
             android:id="@+id/subNavTopics"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:orientation="vertical"
             android:gravity="center"
+            android:text="TOPICS"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.05"
             android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
-            android:focusable="true">
+            android:focusable="true" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🌳"
-                android:textSize="18sp" />
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceElevated" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Topics"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="11sp"
-                android:layout_marginTop="2dp" />
+        <TextView
+            android:id="@+id/subNavRecordings"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="RECORDINGS"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.05"
+            android:foreground="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true" />
 
-        </LinearLayout>
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <TextView
+            android:id="@+id/subNavDetails"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="DETAILS"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.05"
+            android:foreground="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:alpha="0.35" />
 
     </LinearLayout>
 

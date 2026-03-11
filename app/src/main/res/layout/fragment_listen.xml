@@ -333,7 +333,7 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:layout_marginStart="2dp"
-                        android:src="@drawable/ic_mark_nudge_commit"
+                        android:src="@drawable/ic_check"
                         android:padding="6dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:clickable="true"

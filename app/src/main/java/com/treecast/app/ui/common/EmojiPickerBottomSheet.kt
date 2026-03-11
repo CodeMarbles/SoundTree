@@ -1,4 +1,4 @@
-package com.treecast.app.ui.topics
+package com.treecast.app.ui.common
 
 import android.os.Bundle
 import android.view.LayoutInflater

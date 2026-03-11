@@ -2,31 +2,29 @@ package com.treecast.app.ui.library
 
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.library.details.TopicDetailsFragment
+import com.treecast.app.ui.library.manage.TopicsManageFragment
+import com.treecast.app.ui.library.all.AllRecordingsFragment
 import com.treecast.app.ui.topics.TopicsFragment
 
 /**
- * Adapter for the Library swipe-tile ViewPager2.
+ * Adapter for the 5-page Library ViewPager2.
  *
- * Page 0 : TopicsFragment    (hierarchical topics overview)
- * Page 1 : InboxTileFragment (recordings with no topic assigned)
+ *   [0] AllRecordingsFragment  — flat chronological list of all recordings
+ *   [1] InboxTileFragment      — unsorted / inbox recordings
+ *   [2] TopicsManageFragment   — topic tree management (no recordings inline)
+ *   [3] TopicsFragment         — full topic + recording tree (Recordings tab)
+ *   [4] TopicDetailsFragment   — details page for a selected topic
  */
 class LibraryTilesAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
 
-    private val pages = mutableListOf<Fragment>()
-
-    init {
-        pages.add(TopicsFragment())
-        pages.add(InboxTileFragment())
-    }
-
-    /**
-     * Called whenever the tree changes. Rebuilds tiles.
-     * TODO: diff instead of full rebuild for smooth animations.
-     */
-    fun rebuild(viewModel: MainViewModel) {
-        notifyDataSetChanged()
-    }
+    private val pages = listOf(
+        AllRecordingsFragment(),
+        InboxTileFragment(),
+        TopicsManageFragment(),
+        TopicsFragment(),
+        TopicDetailsFragment()
+    )
 
     override fun getItemCount(): Int = pages.size
     override fun createFragment(position: Int): Fragment = pages[position]

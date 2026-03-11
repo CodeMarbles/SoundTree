@@ -450,6 +450,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateTopic(t: TopicEntity) = viewModelScope.launch { repo.updateTopic(t) }
     fun deleteTopic(t: TopicEntity) = viewModelScope.launch { repo.deleteTopic(t) }
 
+    // ── Library Details navigation ────────────────────────────────────
+    private val _libraryDetailsTopicId = MutableStateFlow<Long?>(null)
+    val libraryDetailsTopicId: StateFlow<Long?> = _libraryDetailsTopicId
+
+    /**
+     * Called by [LibraryFragment.openTopicDetails] and [LibraryFragment.navigateToTopicDetails]
+     * to set which topic the Details tab should display.
+     * Passing null clears the selection (Details tab becomes greyed out again).
+     */
+    fun setLibraryDetailsTopic(id: Long?) {
+        _libraryDetailsTopicId.value = id
+    }
+
     // ── Lock ──────────────────────────────────────────────────────────
     private val _isLocked = MutableStateFlow(false)
     val isLocked: StateFlow<Boolean> = _isLocked

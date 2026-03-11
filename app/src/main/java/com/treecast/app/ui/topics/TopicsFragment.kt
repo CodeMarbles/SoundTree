@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentTopicsBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import kotlinx.coroutines.launch
 
 class TopicsFragment : Fragment() {
