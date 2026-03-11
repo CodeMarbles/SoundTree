@@ -1,40 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Mini Player bar v3 — full mirror of the Mini Recorder layout.
+  Mini Player bar v4 — three-row layout.
 
-  96dp two-row layout:
-    Row 1 (weight 52): skip-back | play/pause | skip-forward | [playback timeline]
-    Row 2 (weight 42): [title (top) + time (bottom), stacked left] | spacer |
-                       delete | nudge-back | jump-prev | [MARK pill] | jump-next | nudge-fwd | commit
+  108dp layout:
+    Row 1 (weight 18): recording title — full width, single line
+    Row 2 (weight 52): skip-back | play/pause | skip-forward | [playback timeline]
+    Row 3 (weight 38): playback time | spacer |
+                       delete | nudge-back | jump-prev | [MARK] | jump-next | nudge-fwd | commit
 
-  Timeline (MiniPlayerTimelineView) behaviour:
-    - Fixed bar representing total duration; fill shows played portion.
-    - Solid accent playhead dot at the current position.
-    - Mark dots at their fraction of total duration — selected mark in teal.
-    - Floating timestamp label above the selected mark (always on, no toggle).
-    - Tap near a mark dot → selects it (MainActivity calls viewModel.selectMark + seekTo).
-    - Tap elsewhere       → seeks to that position.
+  Moving the title to its own row gives the mark cluster in Row 3 the full
+  width of the bar — no more cramping.
 
-  Mark cluster control hierarchy (left → right):
-    delete      — removes selected mark from DB (enabled only when mark is selected)
-    nudge-back  — outer ring: move selected mark back in time
-    jump-prev   — inner ring: navigate to + select the previous mark
-    MARK        — centre:    drop a new mark at current playback position
-                             Blue (colorAccent) stroke = "listener's mark tool"
-    jump-next   — inner ring: navigate to + select the next mark
-    nudge-fwd   — outer ring: move selected mark forward in time
-    commit      — confirms the nudged position; clears selection and re-locks nudge
-
-  Background is colorMiniPlayerSurface (see themes.xml) — bluer/lighter than
-  colorSurfaceBase so the player stands apart from the recorder and nav.
-
-  The accentLine is repositioned by MainActivity.updateMiniPlayerAccentLine().
+  Height bump from 96dp → 108dp; update LayoutElement.MINI_PLAYER in
+  MainActivity.applyLayoutOrder() to match: (108 * dp).toInt()
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="96dp"
+    android:layout_height="108dp"
     android:background="?attr/colorMiniPlayerSurface"
     android:elevation="4dp"
     android:clickable="true"
@@ -60,7 +44,29 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ── Row 1: Transport controls + playback timeline ─────── -->
+        <!-- ── Row 1: Recording title ─────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="18"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <TextView
+                android:id="@+id/tvMiniTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+        </LinearLayout>
+
+        <!-- ── Row 2: Transport controls + playback timeline ─────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -109,11 +115,7 @@
                 android:contentDescription="Skip forward"
                 app:tint="?attr/colorTextPrimary" />
 
-            <!--
-              Playback timeline — fills rest of Row 1, matching the recorder's
-              MiniRecorderTimelineView slot. Touch is handled internally by
-              MiniPlayerTimelineView and does NOT bubble to the root click.
-            -->
+            <!-- Playback timeline — fills rest of Row 2 -->
             <com.treecast.app.ui.widget.MiniPlayerTimelineView
                 android:id="@+id/miniPlayerTimeline"
                 android:layout_width="0dp"
@@ -124,44 +126,25 @@
 
         </LinearLayout>
 
-        <!-- ── Row 2: Title/time (left) + mark cluster (right) ───── -->
+        <!-- ── Row 3: Time (left) + mark cluster (right) ─────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="42"
+            android:layout_weight="38"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="12dp"
             android:paddingEnd="8dp">
 
-            <!-- Stacked title + time — mirrors recorder's elapsed label position -->
-            <LinearLayout
+            <!-- Playback time — left aligned, mirrors recorder's elapsed -->
+            <TextView
+                android:id="@+id/tvMiniTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="start">
-
-                <TextView
-                    android:id="@+id/tvMiniTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:textSize="11sp"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:maxWidth="150dp" />
-
-                <TextView
-                    android:id="@+id/tvMiniTime"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0:00 / 0:00"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="10sp"
-                    android:fontFamily="monospace" />
-
-            </LinearLayout>
+                android:text="0:00 / 0:00"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
 
             <!-- Spacer pushes mark cluster to the right -->
             <Space
@@ -176,12 +159,12 @@
               ════════════════════════════════════════════════
             -->
 
-            <!-- Delete selected mark (enabled only when mark is selected) -->
+            <!-- Delete selected mark -->
             <ImageView
                 android:id="@+id/btnMiniDeleteMark"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginEnd="2dp"
                 android:src="@drawable/ic_delete"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -195,9 +178,8 @@
             <!-- Nudge mark back ← (outer ring) -->
             <ImageView
                 android:id="@+id/btnMiniMarkNudgeBack"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginEnd="2dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/ic_mark_nudge_back"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -213,7 +195,6 @@
                 android:id="@+id/btnMiniJumpPrev"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:layout_marginEnd="2dp"
                 android:src="@drawable/ic_jump_prev_mark"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -222,31 +203,28 @@
                 android:contentDescription="Jump to previous mark"
                 app:tint="?attr/colorMarkDefault" />
 
-            <!--
-              MARK pill — blue stroke = "listener's tool".
-              Recorder's pill uses red (colorRecordActive) stroke.
-            -->
+            <!-- MARK pill — blue stroke = "listener's tool" -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnMiniAddMark"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="30dp"
                 android:text="MARK"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/white"
                 android:textAllCaps="true"
                 android:letterSpacing="0.08"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:backgroundTint="?attr/colorMarkAction"
                 app:icon="@drawable/ic_mark"
-                app:iconSize="14dp"
+                app:iconSize="13dp"
                 app:iconTint="@color/white"
                 app:iconGravity="textStart"
-                app:iconPadding="4dp"
-                app:cornerRadius="16dp"
+                app:iconPadding="3dp"
+                app:cornerRadius="15dp"
                 app:strokeColor="?attr/colorAccent"
                 app:strokeWidth="2dp"
                 android:contentDescription="Add mark at current position" />
@@ -256,7 +234,6 @@
                 android:id="@+id/btnMiniJumpNext"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:layout_marginStart="2dp"
                 android:src="@drawable/ic_jump_next_mark"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -268,10 +245,8 @@
             <!-- Nudge mark forward → (outer ring) -->
             <ImageView
                 android:id="@+id/btnMiniMarkNudgeForward"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginStart="2dp"
-                android:layout_marginEnd="2dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/ic_mark_nudge_forward"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -287,7 +262,6 @@
                 android:id="@+id/btnMiniMarkCommit"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:layout_marginStart="2dp"
                 android:src="@drawable/ic_mark_nudge_commit"
                 android:padding="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"

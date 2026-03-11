@@ -552,7 +552,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: _nowPlaying.value?.positionMs
             ?: return
         val recId = _nowPlaying.value?.recording?.id ?: return
-        viewModelScope.launch { repo.addMark(recId, posMs) }
+        viewModelScope.launch {
+            val newId = repo.addMark(recId, posMs)
+            _selectedMarkId.value = newId
+            _playbackMarkNudgeLocked.value = false
+        }
     }
 
     fun deleteSelectedMark() {

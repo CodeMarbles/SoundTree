@@ -210,7 +210,7 @@ class MainActivity : AppCompatActivity() {
                 binding.rootStack.addView(view, lp)
             } else {
                 val heightPx = when (element) {
-                    LayoutElement.MINI_PLAYER   -> (96 * dp).toInt()
+                    LayoutElement.MINI_PLAYER   -> (108 * dp).toInt()
                     LayoutElement.MINI_RECORDER -> (96 * dp).toInt()
                     LayoutElement.NAV           -> (64 * dp).toInt()
                     LayoutElement.TITLE_BAR     -> (53 * dp).toInt()
