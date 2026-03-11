@@ -68,8 +68,12 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
+                android:paddingVertical="4dp"
                 android:layout_marginBottom="8dp"
-                android:visibility="visible">
+                android:visibility="visible"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
                 <TextView
                     android:id="@+id/tvTopicIcon"
@@ -107,6 +111,16 @@
                         android:maxLines="2" />
 
                 </LinearLayout>
+
+                <!-- Chevron hints that the header is tappable -->
+                <ImageView
+                    android:id="@+id/ivTopicHeaderChevron"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_chevron_down"
+                    android:rotation="-90"
+                    app:tint="?attr/colorTextSecondary" />
 
             </LinearLayout>
 
@@ -254,74 +268,6 @@
 
             </LinearLayout>
 
-
-            <!-- ╔══════════════════════════════════════╗ -->
-            <!-- ║  Mini tab panel (Categorize | Marks) ║ -->
-            <!-- ╚══════════════════════════════════════╝ -->
-
-            <!-- Mini tab bar -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:orientation="horizontal"
-                android:background="?attr/colorSurfaceBase"
-                android:layout_marginBottom="0dp">
-
-                <TextView
-                    android:id="@+id/tabCategorize"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="Categorize"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:gravity="center"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="match_parent"
-                    android:background="?attr/colorSurfaceElevated" />
-
-                <TextView
-                    android:id="@+id/tabMarks"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:text="Marks"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:gravity="center"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-            </LinearLayout>
-
-            <!-- Active tab indicator bar -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="2dp"
-                android:background="?attr/colorSurfaceBase"
-                android:layout_marginBottom="12dp">
-
-                <View
-                    android:id="@+id/tabIndicator"
-                    android:layout_width="0dp"
-                    android:layout_height="2dp"
-                    android:background="?attr/colorAccent" />
-
-            </FrameLayout>
-
-            <!-- Page 0: Categorize -->
-            <com.treecast.app.ui.common.TopicPickerView
-                android:id="@+id/topicPicker"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="visible" />
-
             <!-- Page 1: Marks -->
             <LinearLayout
                 android:id="@+id/marksPanel"
@@ -332,7 +278,7 @@
                 android:paddingHorizontal="12dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="4dp"
-                android:visibility="gone">
+                android:visibility="visible">
 
                 <!-- ── Chip flow area ──────────────────────────── -->
                 <com.treecast.app.ui.listen.FlowLayout

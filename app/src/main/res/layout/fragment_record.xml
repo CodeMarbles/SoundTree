@@ -22,6 +22,78 @@
             android:layout_height="wrap_content"
             android:padding="24dp">
 
+            <!-- ── Topic header (tap to change topic) ────────────────── -->
+            <LinearLayout
+                android:id="@+id/topicHeader"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="6dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <!-- Topic icon -->
+                <TextView
+                    android:id="@+id/tvRecordTopicIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📥"
+                    android:textSize="40sp"
+                    android:lineHeight="48sp"
+                    android:layout_marginEnd="12dp"
+                    android:includeFontPadding="false" />
+
+                <!-- "TOPIC:" label + selected topic name -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="TOPIC:"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="11sp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRecordTopicName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Uncategorised"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:ellipsize="end"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+                <!-- Chevron hints the header is tappable -->
+                <ImageView
+                    android:id="@+id/ivRecordTopicChevron"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_chevron_down"
+                    android:rotation="-90"
+                    app:tint="?attr/colorTextSecondary" />
+
+            </LinearLayout>
+
+
             <!-- ── Live waveform visualiser ───────────────────────────── -->
             <com.treecast.app.ui.record.WaveformView
                 android:id="@+id/waveformView"
@@ -127,32 +199,6 @@
                     app:cornerRadius="26dp" />
 
             </LinearLayout>
-
-            <!-- ── Recording Topic label ──────────────────────────────── -->
-            <TextView
-                android:id="@+id/tvRecordingTopicLabel"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:text="Recording Topic"
-                android:textColor="?attr/colorTextSecondary"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:layout_marginTop="24dp"
-                app:layout_constraintTop_toBottomOf="@id/stopSaveContainer"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
-
-            <!-- ── Topic picker ───────────────────────────────────────── -->
-            <com.treecast.app.ui.common.TopicPickerView
-                android:id="@+id/topicPicker"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                app:layout_constraintTop_toBottomOf="@id/tvRecordingTopicLabel"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="16dp" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

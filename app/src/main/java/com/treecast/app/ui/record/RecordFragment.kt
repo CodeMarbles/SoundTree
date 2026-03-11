@@ -26,6 +26,7 @@ import com.treecast.app.databinding.FragmentRecordBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageVolumeHelper
@@ -91,7 +92,7 @@ class RecordFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupButtons()
-        setupTopicPicker()
+        setupTopicHeader()
         observeLock()
         bindRecordingService()
     }
@@ -152,32 +153,58 @@ class RecordFragment : Fragment() {
         binding.btnLockScreen.setOnClickListener { viewModel.setLocked(true) }
     }
 
-    private fun setupTopicPicker() {
+    // ── Topic header ───────────────────────────────────────────────────
+    /**
+     * Wires up the tappable topic header on the Record tab.
+     *
+     * Tapping it opens [TopicPickerBottomSheet]. The selected topic is kept in
+     * [selectedTopicId] and forwarded to [RecordingService] while a recording
+     * is in progress, exactly as before.
+     *
+     * Also handles the deleted-topic reset (previously done inside
+     * setupTopicPicker's allTopics collector).
+     */
+    private fun setupTopicHeader() {
+        // Initialise the header to the current selection (Uncategorised on first load).
+        updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
+
+        // Watch for topic deletions and auto-reset if the selected topic disappears.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.allTopics.collect { topics ->
-                        binding.topicPicker.setTopics(topics)
-                        // If the selected topic was deleted by the user, reset the picker
-                        // and the service back to Uncategorised (null) automatically.
-                        if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
-                            selectedTopicId = null
-                            binding.topicPicker.setSelectedTopic(null, "Uncategorised", Icons.INBOX)
-                            recordingService?.setTopic(null)
-                        }
+                viewModel.allTopics.collect { topics ->
+                    if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
+                        selectedTopicId = null
+                        updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
+                        recordingService?.setTopic(null)
                     }
                 }
             }
         }
-        binding.topicPicker.onTopicSelected = { topicId ->
-            selectedTopicId = topicId
-            val svc = recordingService
-            if (svc != null && svc.state.value != RecordingService.State.IDLE) {
-                svc.setTopic(topicId)
-            }
+
+        binding.topicHeader.setOnClickListener {
+            val topics = viewModel.allTopics.value
+            TopicPickerBottomSheet(topics, selectedTopicId) { topicId ->
+                selectedTopicId = topicId
+                val topic = topics.firstOrNull { it.id == topicId }
+                updateRecordTopicHeader(
+                    topicId,
+                    topic?.name ?: "Uncategorised",
+                    topic?.icon ?: Icons.INBOX
+                )
+                // Forward the new topic to the service while recording.
+                val svc = recordingService
+                if (svc != null && svc.state.value != RecordingService.State.IDLE) {
+                    svc.setTopic(topicId)
+                }
+            }.show(childFragmentManager, "topic_picker")
         }
     }
 
+    /** Syncs the three header views with the given topic state. */
+    private fun updateRecordTopicHeader(topicId: Long?, name: String, icon: String) {
+        binding.tvRecordTopicIcon.text = icon
+        binding.tvRecordTopicName.text = name
+    }
 
     private fun observeServiceState() {
         val svc = recordingService ?: return
@@ -266,7 +293,6 @@ class RecordFragment : Fragment() {
                     // emits, so we only need to handle post-save navigation here — no
                     // second DB write should occur.
                     svc.notificationSaveEvent.collect { saved ->
-                        binding.topicPicker.collapse()
                         if (viewModel.jumpToLibraryOnSave.value) {
                             viewModel.selectRecording(saved.recordingId)
                             (requireActivity() as? MainActivity)
@@ -315,7 +341,6 @@ class RecordFragment : Fragment() {
                 lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
-                binding.topicPicker.collapse()
             }
             RecordingService.State.RECORDING -> {
                 binding.btnRecord.text = "⏸  Pause"
@@ -431,7 +456,6 @@ class RecordFragment : Fragment() {
                 storageVolumeUuid = result.storageVolumeUuid
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
-            binding.topicPicker.collapse()
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {

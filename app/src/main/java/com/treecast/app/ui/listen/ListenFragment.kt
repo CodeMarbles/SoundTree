@@ -21,6 +21,7 @@ import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.databinding.FragmentListenBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.NowPlayingState
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.util.Icons
 import kotlinx.coroutines.launch
 import com.treecast.app.util.themeColor
@@ -34,8 +35,6 @@ class ListenFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private var isSeeking = false
 
-    private var selectedTab = 0
-    private var defaultTabRecordingId: Long? = null
     private val markChips = mutableMapOf<Long, TextView>()
     private var lastPassedMarkId: Long? = null
 
@@ -50,8 +49,7 @@ class ListenFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupTransportControls()
-        setupMiniTabs()
-        setupTopicPicker()
+        setupTopicHeader()
         setupMarksPanel()
         observeNowPlaying()
         observeMarks()
@@ -88,57 +86,22 @@ class ListenFragment : Fragment() {
         })
     }
 
-    // ── Mini tabs ──────────────────────────────────────────────────────
-    private fun setupMiniTabs() {
-        binding.tabCategorize.setOnClickListener { selectTab(0) }
-        binding.tabMarks.setOnClickListener      { selectTab(1) }
-        selectTab(0)
-    }
-
-    private fun selectTab(tab: Int) {
-        selectedTab = tab
-        binding.tabCategorize.setTextColor(
-            if (tab == 0) requireContext().themeColor(R.attr.colorTextPrimary)
-            else requireContext().themeColor(R.attr.colorTextSecondary)
-        )
-        binding.tabMarks.setTextColor(
-            if (tab == 1) requireContext().themeColor(R.attr.colorTextPrimary)
-            else requireContext().themeColor(R.attr.colorTextSecondary)
-        )
-
-        val indicator = binding.tabIndicator
-        val parent = indicator.parent as View
-        parent.post {
-            val tabWidth    = parent.width / 2
-            val targetWidth = (tabWidth * 0.6f).toInt()
-            val offset = if (tab == 0) (tabWidth - targetWidth) / 2
-            else tabWidth + (tabWidth - targetWidth) / 2
-            val params = indicator.layoutParams
-            params.width = targetWidth
-            indicator.layoutParams = params
-            indicator.translationX = offset.toFloat()
-        }
-
-        // fragment_listen.xml: binding.topicPicker (was categoryPicker — step-3 XML edit)
-        binding.topicPicker.visibility = if (tab == 0) View.VISIBLE else View.GONE
-        binding.marksPanel.visibility  = if (tab == 1) View.VISIBLE else View.GONE
-    }
-
-    // ── Topic picker ───────────────────────────────────────────────────
-    private fun setupTopicPicker() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.allTopics.collect { topics ->
-                        binding.topicPicker.setTopics(topics)
-                    }
+    // ── Topic header ───────────────────────────────────────────────────
+    /**
+     * Tapping the topic icon / name in the header opens [TopicPickerBottomSheet],
+     * letting the user reassign the currently-playing recording to a different
+     * topic. The header content (icon, topic name, title) is driven by
+     * [observeNowPlaying] as before — no changes needed there.
+     */
+    private fun setupTopicHeader() {
+        binding.topicHeader.setOnClickListener {
+            val topics = viewModel.allTopics.value
+            val currentTopicId = viewModel.nowPlaying.value?.recording?.topicId
+            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
+                viewModel.nowPlaying.value?.recording?.id?.let { recId ->
+                    viewModel.moveRecording(recId, topicId)
                 }
-            }
-        }
-        binding.topicPicker.onTopicSelected = { topicId ->
-            viewModel.nowPlaying.value?.recording?.id?.let { recId ->
-                viewModel.moveRecording(recId, topicId)
-            }
+            }.show(childFragmentManager, "topic_picker")
         }
     }
 
@@ -311,39 +274,6 @@ class ListenFragment : Fragment() {
             binding.tvPosition.text  = formatMs(pos)
             binding.tvRemaining.text = "-${formatMs(dur - pos)}"
             binding.waveformView.setProgress(pos.toFloat() / dur.toFloat())
-        }
-
-        // Auto-select default tab once per recording load
-        if (defaultTabRecordingId != state.recording.id) {
-            defaultTabRecordingId = state.recording.id
-
-            // Show fake waveform instantly, then replace with real data
-            binding.waveformView.setSeed(state.recording.id)
-            viewModel.loadWaveform(
-                recordingId = state.recording.id,
-                filePath    = state.recording.filePath
-            )
-
-            selectTab(if (state.recording.topicId == null) 0 else 1)
-
-            val topic = viewModel.allTopics.value.find { it.id == state.recording.topicId }
-            binding.topicPicker.setSelectedTopic(
-                state.recording.topicId,
-                topic?.name ?: "Uncategorised",
-                topic?.icon ?: Icons.INBOX
-            )
-
-            // Show prominent topic icon + name header
-            binding.topicHeader.visibility = View.VISIBLE
-            if (topic != null) {
-                binding.tvTopicIcon.text = topic.icon
-                binding.tvCategory.text  = topic.name
-                binding.tvCategory.setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
-            } else {
-                binding.tvTopicIcon.text = Icons.INBOX
-                binding.tvCategory.text  = "Uncategorized"
-                binding.tvCategory.setTextColor(requireContext().themeColor(R.attr.colorStatusRecordingLabel))
-            }
         }
 
         // Highlight the last-passed mark
