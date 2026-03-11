@@ -1,5 +1,6 @@
 package com.treecast.app.ui.library.details
 
+import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -15,12 +16,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.R
+import com.treecast.app.databinding.FragmentTopicDetailsBinding
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
-import com.treecast.app.databinding.FragmentTopicDetailsBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.RecordingsAdapter
 import com.treecast.app.util.themeColor
@@ -50,6 +52,10 @@ class TopicDetailsFragment : Fragment() {
     private var currentTopic: TopicEntity? = null
     private var newestFirst = true
 
+    companion object {
+        private const val REQUEST_REPARENT = "TopicDetails_reparent"
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -64,6 +70,7 @@ class TopicDetailsFragment : Fragment() {
         setupRecordingsAdapter()
         setupSortButton()
         setupEditButton()
+        setupMoveButton()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -278,6 +285,30 @@ class TopicDetailsFragment : Fragment() {
 
         // Remove icon edit hint background
         binding.tvTopicIcon.setBackgroundResource(0)
+    }
+
+    // ── Move / reparent ────────────────────────────────────────────────
+
+    private fun setupMoveButton() {
+        // Register result listener once
+        childFragmentManager.setFragmentResultListener(
+            REQUEST_REPARENT, viewLifecycleOwner
+        ) { _, bundle ->
+            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setFragmentResultListener
+            viewModel.reparentTopic(topicId, newParentId)
+            // Hierarchy map will refresh automatically via allTopics observer
+        }
+
+        binding.btnMoveTopic.setOnClickListener {
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
+            val excluded = viewModel.getTopicWithDescendantIds(topicId)
+            TopicPickerBottomSheet.newInstance(
+                selectedTopicId = currentTopic?.parentId,
+                requestKey      = REQUEST_REPARENT,
+                excludedIds     = excluded
+            ).show(childFragmentManager, "reparent_picker_details")
+        }
     }
 
     // ── Recordings list ────────────────────────────────────────────────

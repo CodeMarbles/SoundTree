@@ -32,6 +32,7 @@ class TopicsManageAdapter(
     private val onCollapseToggle: (topicId: Long, currentlyCollapsed: Boolean) -> Unit,
     private val onTopicSelect:    (topicId: Long?) -> Unit,
     private val onDetailsClick:   (topicId: Long) -> Unit,
+    private val onMoveClick:      (topicId: Long) -> Unit,
 ) : ListAdapter<TreeItem.Node, TopicsManageAdapter.VH>(DIFF) {
 
     companion object {
@@ -59,11 +60,12 @@ class TopicsManageAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        private val colorBar:  View          = v.findViewById(R.id.colorBar)
-        private val tvIcon:    TextView      = v.findViewById(R.id.tvIcon)
-        private val tvName:    TextView      = v.findViewById(R.id.tvName)
-        private val ivChevron: ImageView     = v.findViewById(R.id.ivChevron)
-        private val btnDetails: MaterialButton = v.findViewById(R.id.btnDetails)
+        private val colorBar:   View           = v.findViewById(R.id.colorBar)
+        private val tvIcon:     TextView        = v.findViewById(R.id.tvIcon)
+        private val tvName:     TextView        = v.findViewById(R.id.tvName)
+        private val ivChevron:  ImageView       = v.findViewById(R.id.ivChevron)
+        private val btnMove:    android.widget.ImageButton = v.findViewById(R.id.btnMove)
+        private val btnDetails: MaterialButton  = v.findViewById(R.id.btnDetails)
 
         fun bind(item: TreeItem.Node) {
             val topic = item.treeNode.topic
@@ -112,6 +114,11 @@ class TopicsManageAdapter(
                 val newSelection = if (isSelected) -1L else topic.id
                 selectedTopicId = newSelection
                 onTopicSelect(if (newSelection == -1L) null else newSelection)
+            }
+
+            // ── Move button ───────────────────────────────────────────
+            btnMove.setOnClickListener {
+                onMoveClick(topic.id)
             }
 
             // ── DETAILS button ────────────────────────────────────────

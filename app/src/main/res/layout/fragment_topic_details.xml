@@ -107,12 +107,28 @@
 
         </LinearLayout>
 
+        <!-- Move topic button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMoveTopic"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="12dp"
+            android:text="⤴ MOVE TO..."
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:letterSpacing="0.04"
+            android:minWidth="0dp"
+            android:paddingHorizontal="12dp"
+            app:cornerRadius="8dp"
+            app:strokeColor="?attr/colorSurfaceElevated"
+            app:strokeWidth="1dp" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorSurfaceElevated" />
-
-        <!-- ── Recordings section ─────────────────────────────────── -->
+            android:background="?attr/colorSurfaceElevated" /> ─────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

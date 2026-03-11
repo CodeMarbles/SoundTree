@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentTopicsManageBinding
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.NewTopicDialog
 import kotlinx.coroutines.launch
@@ -36,6 +37,13 @@ class TopicsManageFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var adapter: TopicsManageAdapter
 
+    companion object {
+        private const val REQUEST_REPARENT = "TopicsManage_reparent"
+    }
+
+    // Tracks which topic ID the pending reparent picker was opened for
+    private var pendingReparentTopicId: Long = -1L
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -46,6 +54,16 @@ class TopicsManageFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // ── Reparent picker result ────────────────────────────────────
+        childFragmentManager.setFragmentResultListener(
+            REQUEST_REPARENT, viewLifecycleOwner
+        ) { _, bundle ->
+            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val topicId = pendingReparentTopicId.takeIf { it >= 0 } ?: return@setFragmentResultListener
+            viewModel.reparentTopic(topicId, newParentId)
+            pendingReparentTopicId = -1L
+        }
 
         adapter = TopicsManageAdapter(
             onCollapseToggle = { topicId, isCollapsed ->
@@ -59,6 +77,15 @@ class TopicsManageFragment : Fragment() {
             },
             onDetailsClick = { topicId ->
                 (requireParentFragment() as? LibraryFragment)?.openTopicDetails(topicId)
+            },
+            onMoveClick = { topicId ->
+                pendingReparentTopicId = topicId
+                val excluded = viewModel.getTopicWithDescendantIds(topicId)
+                TopicPickerBottomSheet.newInstance(
+                    selectedTopicId = null,
+                    requestKey      = REQUEST_REPARENT,
+                    excludedIds     = excluded
+                ).show(childFragmentManager, "reparent_picker")
             }
         )
 

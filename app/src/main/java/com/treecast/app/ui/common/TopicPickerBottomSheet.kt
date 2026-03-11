@@ -16,53 +16,29 @@ import com.treecast.app.ui.MainViewModel
 /**
  * A [BottomSheetDialogFragment] that presents the full topic tree for selection.
  *
- * Uses the Fragment Result API so it survives configuration changes (theme
- * switches, rotation) without losing its callback. The caller registers a
- * [androidx.fragment.app.FragmentResultListener] *before* showing the sheet,
- * and the sheet fires [setFragmentResult] on selection.
- *
- * Usage (from a Fragment):
- * ```
- * // Register once in onViewCreated:
- * childFragmentManager.setFragmentResultListener(
- *     TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
- * ) { _, bundle ->
- *     val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
- *     // handle selection
- * }
- *
- * // Show when needed:
- * TopicPickerBottomSheet.newInstance(currentTopicId)
- *     .show(childFragmentManager, "topic_picker")
- * ```
- *
- * Usage (from an Activity):
- * ```
- * // Register once in onCreate/onStart:
- * supportFragmentManager.setFragmentResultListener(
- *     TopicPickerBottomSheet.REQUEST_KEY, this
- * ) { _, bundle ->
- *     val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
- * }
- *
- * // Show with a unique tag per call-site to avoid FragmentManager collisions:
- * TopicPickerBottomSheet.newInstance(currentTopicId)
- *     .show(supportFragmentManager, "mini_rec_topic_picker")
- * ```
+ * Supports an optional [excludedIds] set — any topic whose ID is in that set,
+ * and its entire subtree, will be hidden from the list. Used when reparenting
+ * a topic to prevent selecting itself or any of its descendants.
  */
 class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
-        const val REQUEST_KEY   = "TopicPickerBottomSheet"   // default / Record tab
+        const val REQUEST_KEY   = "TopicPickerBottomSheet"
         const val KEY_TOPIC_ID  = "topicId"
         const val KEY_REQUEST   = "requestKey"
+        const val KEY_EXCLUDED_IDS = "excludedIds"
         const val TOPIC_ID_NONE = -1L
 
-        fun newInstance(selectedTopicId: Long?, requestKey: String = REQUEST_KEY): TopicPickerBottomSheet =
+        fun newInstance(
+            selectedTopicId: Long?,
+            requestKey: String = REQUEST_KEY,
+            excludedIds: Set<Long> = emptySet()
+        ): TopicPickerBottomSheet =
             TopicPickerBottomSheet().apply {
                 arguments = Bundle().apply {
                     putLong(KEY_TOPIC_ID, selectedTopicId ?: TOPIC_ID_NONE)
                     putString(KEY_REQUEST, requestKey)
+                    putLongArray(KEY_EXCLUDED_IDS, excludedIds.toLongArray())
                 }
             }
 
@@ -72,6 +48,9 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
     private val requestKey: String
         get() = arguments?.getString(KEY_REQUEST) ?: REQUEST_KEY
+
+    private val excludedIds: Set<Long>
+        get() = arguments?.getLongArray(KEY_EXCLUDED_IDS)?.toSet() ?: emptySet()
 
     private val viewModel: MainViewModel by activityViewModels()
 
@@ -121,15 +100,27 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
     private fun refreshList() {
         val topics = viewModel.allTopics.value
         val roots  = TreeBuilder.build(topics, emptyList())
-        treeAdapter.submitList(buildAdapterItems(roots, 0))
+        val excluded = excludedIds
+        treeAdapter.submitList(buildAdapterItems(roots, 0, excluded))
     }
 
-    private fun buildAdapterItems(nodes: List<TreeNode>, depth: Int): List<PickerItem> {
+    /**
+     * Builds the flat list for the adapter, skipping any node (and its entire
+     * subtree) whose ID appears in [excluded].
+     */
+    private fun buildAdapterItems(
+        nodes: List<TreeNode>,
+        depth: Int,
+        excluded: Set<Long>
+    ): List<PickerItem> {
         val out = mutableListOf<PickerItem>()
         for (node in nodes) {
+            // Skip this node and its entire subtree if excluded
+            if (node.topic.id in excluded) continue
+
             val collapsed = node.topic.id in collapsedNodeIds
             out.add(PickerItem(node, depth, collapsed))
-            if (!collapsed) out.addAll(buildAdapterItems(node.children, depth + 1))
+            if (!collapsed) out.addAll(buildAdapterItems(node.children, depth + 1, excluded))
         }
         return out
     }

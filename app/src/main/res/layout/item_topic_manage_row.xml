@@ -60,6 +60,21 @@
         app:tint="?attr/colorTextSecondary"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnMove" />
+
+    <!-- Move/reparent icon button -->
+    <ImageButton
+        android:id="@+id/btnMove"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_move"
+        android:padding="6dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Move topic"
+        android:layout_marginEnd="2dp"
+        app:tint="?attr/colorTextSecondary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btnDetails" />
 
     <!-- DETAILS button -->
