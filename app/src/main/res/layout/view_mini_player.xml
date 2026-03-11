@@ -55,12 +55,22 @@
             android:paddingEnd="14dp">
 
             <TextView
-                android:id="@+id/tvMiniTitle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="Now Playing: "
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04" />
+
+            <TextView
+                android:id="@+id/tvMiniTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="—"
                 android:textColor="?attr/colorTextPrimary"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
 

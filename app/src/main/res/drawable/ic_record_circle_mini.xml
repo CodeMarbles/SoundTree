@@ -1,0 +1,23 @@
+<!-- res/drawable/ic_record_circle_mini.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+
+    <!-- Border ring — theme-aware -->
+    <path
+        android:fillColor="?attr/colorTextPrimary"
+        android:pathData="M18,2 A16,16 0 1,1 17.999,2 Z" />
+
+    <!-- Inner cutout (creates the ring appearance) -->
+    <path
+        android:fillColor="?attr/colorSurfaceBase"
+        android:pathData="M18,4 A14,14 0 1,1 17.999,4 Z" />
+
+    <!-- Red fill dot -->
+    <path
+        android:fillColor="?attr/colorRecordActive"
+        android:pathData="M18,8 A10,10 0 1,1 17.999,8 Z" />
+
+</vector>

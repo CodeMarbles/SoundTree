@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 val heightPx = when (element) {
                     LayoutElement.MINI_PLAYER   -> (108 * dp).toInt()
-                    LayoutElement.MINI_RECORDER -> (96 * dp).toInt()
+                    LayoutElement.MINI_RECORDER -> (108 * dp).toInt()
                     LayoutElement.NAV           -> (64 * dp).toInt()
                     LayoutElement.TITLE_BAR     -> (53 * dp).toInt()
                     else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
@@ -574,6 +574,22 @@ class MainActivity : AppCompatActivity() {
                     }
                     start()
                 }
+            }
+        }
+
+        // ── State label: text + color driven by recording state ───────────────
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                val (label, color) = when (state) {
+                    RecordingService.State.RECORDING ->
+                        "● RECORDING" to themeColor(R.attr.colorRecordActive)
+                    RecordingService.State.PAUSED ->
+                        "⏸ PAUSED" to themeColor(R.attr.colorRecordPause)
+                    RecordingService.State.IDLE ->
+                        "◉ READY" to themeColor(R.attr.colorTextSecondary)
+                }
+                recorderBinding.tvMiniRecStateLabel.text  = label
+                recorderBinding.tvMiniRecStateLabel.setTextColor(color)
             }
         }
 
