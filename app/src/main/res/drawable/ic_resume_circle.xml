@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Resume circle — a play triangle inside a filled ring.
-  Used on the Mini Recorder rec/pause button when state = PAUSED.
+  Resume circle — solid circle with a play triangle cut out of it.
 
-  Same 24×24 viewport as ic_record_circle so it sits at the same visual
-  weight. The outer ring is a donut (full circle minus inner clip); the
-  triangle is slightly inset and nudged a touch rightward for optical
-  centering (play triangles read as left-heavy without the nudge).
+  Uses a single <path> with fillType="evenOdd": the outer circle and the
+  inner triangle are wound in opposite directions, so the triangle becomes
+  transparent and the background shows through it.
 
-  Color is applied entirely via imageTintList in code (colorRecordPause).
+  This means imageTintList tints the whole thing one color (e.g. yellow)
+  and the triangle appears as a hole — giving crisp contrast at any tint
+  without needing a second path.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -16,15 +16,12 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Outer filled circle (same as ic_record_circle) -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2 C6.477,2 2,6.477 2,12 C2,17.523 6.477,22 12,22 C17.523,22 22,17.523 22,12 C22,6.477 17.523,2 12,2 Z" />
-
-    <!-- Play triangle — pointing right, optically centered in the circle.
-         Vertices: left-top (9.5, 7.5), left-bottom (9.5, 16.5), right-tip (17, 12) -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M9.5,7.5 L9.5,16.5 L17.0,12.0 Z" />
+        android:fillType="evenOdd"
+        android:pathData="
+            M12,2 C6.477,2 2,6.477 2,12 C2,17.523 6.477,22 12,22 C17.523,22 22,17.523 22,12 C22,6.477 17.523,2 12,2 Z
+            M9.5,16.5 L17.0,12.0 L9.5,7.5 Z
+        " />
 
 </vector>
