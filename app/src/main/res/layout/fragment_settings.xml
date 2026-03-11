@@ -314,7 +314,7 @@
                             android:layout_height="36dp"
                             android:layout_weight="1"
                             android:text="Never"
-                            android:textSize="12sp"
+                            android:textSize="10sp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp" />
 
@@ -324,8 +324,8 @@
                             android:layout_width="0dp"
                             android:layout_height="36dp"
                             android:layout_weight="1"
-                            android:text="While Recording"
-                            android:textSize="12sp"
+                            android:text="RECORDING"
+                            android:textSize="10sp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp" />
 
@@ -336,7 +336,7 @@
                             android:layout_height="36dp"
                             android:layout_weight="1"
                             android:text="Always"
-                            android:textSize="12sp"
+                            android:textSize="10sp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp" />
 
