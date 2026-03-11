@@ -15,10 +15,12 @@ import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
 import com.treecast.app.databinding.ActivityMainBinding
 import com.treecast.app.service.RecordingService
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
 import com.treecast.app.ui.settings.SettingsFragment
+import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageEjectReceiver
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
@@ -448,6 +450,21 @@ class MainActivity : AppCompatActivity() {
         // (MiniPlayerTimelineView consumes its own touch events, so this fires
         //  only on taps elsewhere in the bar.)
 
+        // ── Title row ─────────────────────────────────────────────────────
+        p.miniTitleRow.setOnClickListener {
+            val topics = viewModel.allTopics.value
+            val currentTopicId = viewModel.nowPlaying.value?.recording?.topicId
+            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
+                viewModel.nowPlaying.value?.recording?.id?.let { recId ->
+                    viewModel.moveRecording(recId, topicId)
+                }
+                // Update the icon immediately — nowPlaying re-emits async,
+                // so this keeps the mini player in sync without a visible lag
+                val topic = topics.firstOrNull { it.id == topicId }
+                p.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
+            }.show(supportFragmentManager, "mini_topic_picker")
+        }
+
         // ── Transport controls ────────────────────────────────────────────
         p.btnMiniPlayPause.setOnClickListener  { viewModel.togglePlayPause() }
         p.btnMiniSkipBack.setOnClickListener   { viewModel.skipBack() }
@@ -484,6 +501,12 @@ class MainActivity : AppCompatActivity() {
                 // UI content updates (unchanged)
                 if (state != null) {
                     p.tvMiniTitle.text = state.recording.title
+
+                    // Populate topic icon
+                    val topic = viewModel.allTopics.value
+                        .firstOrNull { it.id == state.recording.topicId }
+                    p.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
+
                     p.tvMiniTime.text  = "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
                     p.btnMiniPlayPause.setImageResource(
                         if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
