@@ -514,15 +514,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_SHOW_MINI_RECORDER, show).apply()
     }
 
-    // ── Show last-mark timestamp in timeline ─────────────────────────────────
-
-    private val _showRecordMarkTimestamp =
-        MutableStateFlow(prefs.getBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, false))
-    val showRecordMarkTimestamp: StateFlow<Boolean> = _showRecordMarkTimestamp
-    fun setShowRecordMarkTimestamp(show: Boolean) {
-        _showRecordMarkTimestamp.value = show
-        prefs.edit().putBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, show).apply()
-    }
+//    // ── Show last-mark timestamp in timeline ─────────────────────────────────
+//
+//    private val _showRecordMarkTimestamp =
+//        MutableStateFlow(prefs.getBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, false))
+//    val showRecordMarkTimestamp: StateFlow<Boolean> = _showRecordMarkTimestamp
+//    fun setShowRecordMarkTimestamp(show: Boolean) {
+//        _showRecordMarkTimestamp.value = show
+//        prefs.edit().putBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, show).apply()
+//    }
 
     // ── Selected recording ────────────────────────────────────────────
     private val _selectedRecordingId = MutableStateFlow(-1L)
@@ -563,6 +563,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun deleteSelectedRecordingMark() {
+        val idx = _selectedRecordingMarkIndex.value.takeIf { it >= 0 } ?: return
+        val marks = _recordingMarks.value.toMutableList()
+        if (idx !in marks.indices) return
+        marks.removeAt(idx)
+        _recordingMarks.value = marks
+        _selectedRecordingMarkIndex.value = -1
+        // Re-lock nudge since selection is gone
+        resetMarkNudgeLock()
+    }
+
     private val _dropMarkEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val dropMarkEvent: SharedFlow<Unit> = _dropMarkEvent
     fun requestDropMark() { _dropMarkEvent.tryEmit(Unit) }
@@ -592,6 +603,73 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetMarkNudgeLock() {
         _markNudgeLocked.value = false
         _selectedRecordingMarkIndex.value = -1
+    }
+
+    /** Unlocks playback mark nudging. Called when the user selects a mark by
+     *  tapping directly on the timeline dot. */
+    fun unlockPlaybackMarkNudge() {
+        _playbackMarkNudgeLocked.value = false
+    }
+
+    // ── Playback mark nudge ───────────────────────────────────────────────────
+// Separate from the recording nudge (which operates on in-memory pending marks).
+// Playback nudge writes directly to the DB; commit just clears selection.
+
+    private val _playbackMarkNudgeLocked = MutableStateFlow(true)
+    val playbackMarkNudgeLocked: StateFlow<Boolean> = _playbackMarkNudgeLocked
+
+    /**
+     * Jumps to and selects the nearest mark before the current position.
+     * Falls back to the first mark if nothing precedes the playhead.
+     */
+    fun jumpAndSelectPrevMark() {
+        val posMs = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs ?: return
+        val mark = _marks.value
+            .filter { it.positionMs < posMs - 500L }
+            .maxByOrNull { it.positionMs }
+            ?: _marks.value.minByOrNull { it.positionMs }
+        if (mark != null) {
+            seekTo(mark.positionMs)
+            _selectedMarkId.value = mark.id
+            _playbackMarkNudgeLocked.value = false
+        }
+    }
+
+    /**
+     * Jumps to and selects the nearest mark after the current position.
+     */
+    fun jumpAndSelectNextMark() {
+        val posMs = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs ?: return
+        val mark = _marks.value
+            .filter { it.positionMs > posMs + 500L }
+            .minByOrNull { it.positionMs }
+        if (mark != null) {
+            seekTo(mark.positionMs)
+            _selectedMarkId.value = mark.id
+            _playbackMarkNudgeLocked.value = false
+        }
+    }
+
+    fun nudgePlaybackMarkBack() {
+        if (_playbackMarkNudgeLocked.value) return
+        val id = _selectedMarkId.value ?: return
+        val deltaMs = -(_markNudgeSecs.value * 1000L).toLong()
+        viewModelScope.launch { repo.nudgeMark(id, deltaMs) }
+    }
+
+    fun nudgePlaybackMarkForward() {
+        if (_playbackMarkNudgeLocked.value) return
+        val id = _selectedMarkId.value ?: return
+        val deltaMs = (_markNudgeSecs.value * 1000L).toLong()
+        viewModelScope.launch { repo.nudgeMark(id, deltaMs) }
+    }
+
+    /** Clears selection and re-locks nudging until the next jump-and-select. */
+    fun commitPlaybackMarkNudge() {
+        _playbackMarkNudgeLocked.value = true
+        _selectedMarkId.value = null
     }
 
     // ── Nudge events (observed by RecordFragment to forward to the service) ───

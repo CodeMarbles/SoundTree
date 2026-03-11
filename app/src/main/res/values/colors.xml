@@ -34,6 +34,10 @@
     <color name="grey_900">#1A1A25</color>
     <color name="grey_800">#252535</color>
 
+    <!-- Blues -->
+    <color name="blue_900">#1A1E2E</color>
+    <color name="slate_50">#DDE6FF</color>
+
     <!-- Light surface scale (for light theme) -->
     <color name="grey_50">#F5F5FA</color>
     <color name="grey_100">#EDEDF4</color>

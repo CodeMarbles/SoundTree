@@ -113,6 +113,22 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
+            <!-- Delete selected mark — enabled only when a mark is selected -->
+            <ImageView
+                android:id="@+id/btnMiniRecDeleteMark"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_delete"
+                android:padding="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:enabled="false"
+                android:alpha="0.3"
+                android:contentDescription="Delete selected mark"
+                app:tint="?attr/colorDestructive" />
+
             <!-- Nudge last mark back  ← 📍 -->
             <ImageView
                 android:id="@+id/btnMiniNudgeBack"
@@ -154,6 +170,8 @@
                 app:iconGravity="textStart"
                 app:iconPadding="4dp"
                 app:cornerRadius="16dp"
+                app:strokeColor="?attr/colorRecordActive"
+                app:strokeWidth="2dp"
                 android:contentDescription="Drop mark" />
 
             <!-- Nudge last mark forward  📍 → -->

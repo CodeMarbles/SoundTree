@@ -37,6 +37,7 @@
         <item name="colorBackground">@color/grey_950</item>
         <item name="colorSurfaceBase">@color/grey_900</item>
         <item name="colorSurfaceElevated">@color/grey_800</item>
+        <item name="colorMiniPlayerSurface">@color/blue_900</item>
         <item name="colorControlsTray">@color/brown_950</item>
 
         <!-- Buttons -->

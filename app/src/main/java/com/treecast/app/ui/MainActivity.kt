@@ -210,7 +210,7 @@ class MainActivity : AppCompatActivity() {
                 binding.rootStack.addView(view, lp)
             } else {
                 val heightPx = when (element) {
-                    LayoutElement.MINI_PLAYER   -> (80 * dp).toInt()
+                    LayoutElement.MINI_PLAYER   -> (96 * dp).toInt()
                     LayoutElement.MINI_RECORDER -> (96 * dp).toInt()
                     LayoutElement.NAV           -> (64 * dp).toInt()
                     LayoutElement.TITLE_BAR     -> (53 * dp).toInt()
@@ -438,45 +438,105 @@ class MainActivity : AppCompatActivity() {
 
     // ── Mini Player ───────────────────────────────────────────────────
     private fun setupMiniPlayer() {
+        val p = binding.miniPlayer   // shorthand for binding.miniPlayer
+
+        // ── Navigate to Listen tab on root tap — but NOT when tapping the timeline ──
+        p.root.setOnClickListener { navigateTo(PAGE_LISTEN) }
+        // (MiniPlayerTimelineView consumes its own touch events, so this fires
+        //  only on taps elsewhere in the bar.)
+
+        // ── Transport controls ────────────────────────────────────────────
+        p.btnMiniPlayPause.setOnClickListener  { viewModel.togglePlayPause() }
+        p.btnMiniSkipBack.setOnClickListener   { viewModel.skipBack() }
+        p.btnMiniSkipForward.setOnClickListener{ viewModel.skipForward() }
+
+        // ── Mark cluster buttons ──────────────────────────────────────────
+        p.btnMiniAddMark.setOnClickListener      { viewModel.addMark() }
+        p.btnMiniJumpPrev.setOnClickListener     { viewModel.jumpAndSelectPrevMark() }
+        p.btnMiniJumpNext.setOnClickListener     { viewModel.jumpAndSelectNextMark() }
+        p.btnMiniMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
+        p.btnMiniMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
+        p.btnMiniMarkCommit.setOnClickListener       { viewModel.commitPlaybackMarkNudge() }
+        p.btnMiniDeleteMark.setOnClickListener       { viewModel.deleteSelectedMark() }
+
+        // ── Timeline: seek on empty-area tap ─────────────────────────────
+        p.miniPlayerTimeline.onSeekRequested = { fraction ->
+            val dur = viewModel.nowPlaying.value?.durationMs ?: return@onSeekRequested
+            viewModel.seekTo((fraction * dur).toLong())
+        }
+
+        // ── Timeline: mark tap → select mark + seek to it ────────────────
+        p.miniPlayerTimeline.onMarkTapped = { markId ->
+            val mark = viewModel.marks.value.firstOrNull { it.id == markId }
+                ?: return@onMarkTapped
+            viewModel.selectMark(markId)
+            viewModel.seekTo(mark.positionMs)
+            // Selecting via tap unlocks nudging (mirrors jump-and-select behaviour)
+            viewModel.unlockPlaybackMarkNudge()
+        }
+
+        // ── Observe nowPlaying → update title, time, and timeline progress ──
         lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
-                binding.miniPlayer.root.visibility = if (state != null) View.VISIBLE else View.GONE
+                p.root.visibility = if (state != null) View.VISIBLE else View.GONE
                 if (state != null) {
-                    binding.miniPlayer.tvMiniTitle.text = state.recording.title
-                    val frac = if (state.durationMs > 0)
-                        (state.positionMs * 1000 / state.durationMs).toInt() else 0
-                    binding.miniPlayer.miniProgressBar.setProgress(frac)   // ← was .progress =
-                    binding.miniPlayer.tvMiniTime.text =
-                        "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
-                    binding.miniPlayer.btnMiniPlayPause.setImageResource(
+                    p.tvMiniTitle.text = state.recording.title
+                    p.tvMiniTime.text  = "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
+                    p.btnMiniPlayPause.setImageResource(
                         if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
                     )
+                    val fraction = if (state.durationMs > 0)
+                        state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
+                    p.miniPlayerTimeline.setProgress(fraction)
                 }
             }
         }
 
-        // Feed mark dot positions to the progress view
+        // ── Observe marks + selectedMarkId → update timeline dots ─────────
         lifecycleScope.launch {
-            viewModel.marks.collect { marks ->
-                val dur = viewModel.nowPlaying.value?.durationMs ?: return@collect
-                if (dur <= 0) return@collect
-                val fracs = marks.map { it.positionMs.toFloat() / dur.toFloat() }
-                binding.miniPlayer.miniProgressBar.setMarkFractions(fracs)
-            }
+            combine(
+                viewModel.marks,
+                viewModel.selectedMarkId
+            ) { marks, selectedId -> Pair(marks, selectedId) }
+                .collect { (marks, selectedId) ->
+                    val dur = viewModel.nowPlaying.value?.durationMs ?: 0L
+                    val fracs = if (dur > 0) marks.map { it.positionMs.toFloat() / dur } else emptyList()
+                    val ids   = marks.map { it.id }
+                    p.miniPlayerTimeline.setMarks(fracs, ids)
+
+                    val selectedMark = marks.firstOrNull { it.id == selectedId }
+                    p.miniPlayerTimeline.setSelectedMark(selectedId, selectedMark?.positionMs)
+                }
         }
 
-        binding.miniPlayer.root.setOnClickListener { navigateTo(PAGE_LISTEN) }
-        binding.miniPlayer.btnMiniPlayPause.setOnClickListener { viewModel.togglePlayPause() }
-        binding.miniPlayer.btnMiniSkipBack.setOnClickListener { viewModel.skipBack() }
-        binding.miniPlayer.btnMiniSkipForward.setOnClickListener { viewModel.skipForward() }
-        binding.miniPlayer.btnMiniJumpPrev.setOnClickListener   { viewModel.jumpToPrevMark() }
-        binding.miniPlayer.btnMiniJumpNext.setOnClickListener   { viewModel.jumpToNextMark() }
-        binding.miniPlayer.btnMiniAddMark.setOnClickListener    { viewModel.addMark() }
+        // ── Observe selectedMarkId + nudge lock → enable/disable cluster ───
+        lifecycleScope.launch {
+            combine(
+                viewModel.selectedMarkId,
+                viewModel.playbackMarkNudgeLocked
+            ) { selectedId, locked -> Pair(selectedId, locked) }
+                .collect { (selectedId, locked) ->
+                    val hasSelection = selectedId != null
+                    val canNudge     = hasSelection && !locked
+
+                    // Delete: needs selection; nudge/commit: needs selection + unlocked
+                    p.btnMiniDeleteMark.isEnabled        = hasSelection
+                    p.btnMiniMarkNudgeBack.isEnabled     = canNudge
+                    p.btnMiniMarkNudgeForward.isEnabled  = canNudge
+                    p.btnMiniMarkCommit.isEnabled        = canNudge
+
+                    p.btnMiniDeleteMark.alpha        = if (hasSelection) 1f else 0.3f
+                    p.btnMiniMarkNudgeBack.alpha     = if (canNudge) 1f else 0.3f
+                    p.btnMiniMarkNudgeForward.alpha  = if (canNudge) 1f else 0.3f
+                    p.btnMiniMarkCommit.alpha        = if (canNudge) 1f else 0.3f
+                }
+        }
     }
 
     // ── Mini Recorder ───────────────────────────────────────────────────
     private fun setupMiniRecorder() {
         val recorderBinding = binding.miniRecorder
+        recorderBinding.miniRecTimeline.showLastMarkTimestamp = true
 
         // ── Visibility ────────────────────────────────────────────────────
         lifecycleScope.launch {
@@ -600,11 +660,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         // ── Timeline: update with marks + selected index ───────────────────
-        lifecycleScope.launch {
-            viewModel.showRecordMarkTimestamp.collect { show ->
-                recorderBinding.miniRecTimeline.showLastMarkTimestamp = show
-            }
-        }
+//        lifecycleScope.launch {
+//            viewModel.showRecordMarkTimestamp.collect { show ->
+//                recorderBinding.miniRecTimeline.showLastMarkTimestamp = show
+//            }
+//        }
         lifecycleScope.launch {
             combine(
                 viewModel.recordingElapsedMs,
@@ -650,6 +710,11 @@ class MainActivity : AppCompatActivity() {
             viewModel.commitMarkNudge()
         }
 
+        // ── Delete selected recording mark ────────────────────────────────────
+        recorderBinding.btnMiniRecDeleteMark.setOnClickListener {
+            viewModel.deleteSelectedRecordingMark()
+        }
+
         // ── Enable/disable nudge cluster ───────────────────────────────────
         lifecycleScope.launch {
             combine(
@@ -661,7 +726,10 @@ class MainActivity : AppCompatActivity() {
                     val hasActiveSelection = marks.isNotEmpty() &&
                             (selectedIdx >= 0 || marks.isNotEmpty())  // last mark counts
                     val canNudge = hasActiveSelection && !locked
+                    val hasSelection = marks.isNotEmpty() && selectedIdx >= 0
 
+                    recorderBinding.btnMiniRecDeleteMark.isEnabled = hasSelection
+                    recorderBinding.btnMiniRecDeleteMark.alpha     = if (hasSelection) 1f else 0.3f
                     recorderBinding.btnMiniNudgeBack.isEnabled    = canNudge
                     recorderBinding.btnMiniNudgeForward.isEnabled = canNudge
                     recorderBinding.btnMiniNudgeCommit.isEnabled  = canNudge

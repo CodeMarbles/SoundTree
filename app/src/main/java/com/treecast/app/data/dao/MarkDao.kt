@@ -25,4 +25,8 @@ interface MarkDao {
 
     @Query("DELETE FROM marks WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    /** Moves a mark's position by deltaMs (negative = back, positive = forward). Floors at 0. */
+    @Query("UPDATE marks SET position_ms = MAX(0, position_ms + :deltaMs) WHERE id = :id")
+    suspend fun nudgeMark(id: Long, deltaMs: Long)
 }

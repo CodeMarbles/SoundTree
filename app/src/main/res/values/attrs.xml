@@ -29,6 +29,9 @@
     <attr name="colorRecordPause"       format="color" />
     <attr name="colorDestructive"       format="color" />
 
+    <!-- Mini Player distinct surface -->
+    <attr name="colorMiniPlayerSurface" format="color" />
+
     <!-- Mini Recorder -->
     <attr name="colorMiniRecorderActive" format="color" />
     <attr name="colorMiniRecorderPaused" format="color" />

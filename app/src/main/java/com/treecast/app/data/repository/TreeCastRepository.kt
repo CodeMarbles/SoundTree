@@ -172,6 +172,7 @@ class TreeCastRepository(context: Context) {
     suspend fun addMark(recordingId: Long, positionMs: Long) =
         markDao.insert(MarkEntity(recordingId = recordingId, positionMs = positionMs))
     suspend fun deleteMark(id: Long) = markDao.deleteById(id)
+    suspend fun nudgeMark(id: Long, deltaMs: Long) = markDao.nudgeMark(id, deltaMs)
 
     companion object {
         @Volatile private var INSTANCE: TreeCastRepository? = null
