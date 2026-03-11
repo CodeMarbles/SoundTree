@@ -355,6 +355,8 @@ class MainActivity : AppCompatActivity() {
                 // When on Library, LibraryFragment drives the top title itself.
 
                 // ── History recording ──────────────────────────────────
+                viewModel.setCurrentPage(position)
+
                 // Skip recording when we are the ones driving this page
                 // change as part of a back-press; only record genuine
                 // forward navigation initiated by the user.
@@ -367,8 +369,6 @@ class MainActivity : AppCompatActivity() {
                 if (navHistory.lastOrNull() != position) {
                     navHistory.addLast(position)
                 }
-
-                viewModel.setCurrentPage(position)
             }
         })
     }
