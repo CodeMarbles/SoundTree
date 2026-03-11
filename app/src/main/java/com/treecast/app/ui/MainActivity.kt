@@ -577,18 +577,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ── State label: text + color driven by recording state ───────────────
+        // ── State label: icon + text + color driven by recording state ───────────
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
-                val (label, color) = when (state) {
+                val (iconRes, label, color) = when (state) {
                     RecordingService.State.RECORDING ->
-                        "● RECORDING" to themeColor(R.attr.colorRecordActive)
+                        Triple(R.drawable.ic_record_circle, "RECORDING", themeColor(R.attr.colorRecordActive))
                     RecordingService.State.PAUSED ->
-                        "⏸ PAUSED" to themeColor(R.attr.colorRecordPause)
+                        Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
                     RecordingService.State.IDLE ->
-                        "◉ READY" to themeColor(R.attr.colorTextSecondary)
+                        Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
                 }
-                recorderBinding.tvMiniRecStateLabel.text  = label
+                recorderBinding.ivMiniRecStateIcon.setImageResource(iconRes)
+                recorderBinding.ivMiniRecStateIcon.imageTintList =
+                    android.content.res.ColorStateList.valueOf(color)
+                recorderBinding.tvMiniRecStateLabel.text = label
                 recorderBinding.tvMiniRecStateLabel.setTextColor(color)
             }
         }
@@ -596,26 +599,22 @@ class MainActivity : AppCompatActivity() {
         // ── Record/Pause button icon + tint ────────────────────────────────
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
-                recorderBinding.btnMiniRecPause.setImageResource(
-                    when (state) {
-                        RecordingService.State.RECORDING -> R.drawable.ic_pause
-                        RecordingService.State.PAUSED    -> R.drawable.ic_resume_circle
-                        RecordingService.State.IDLE      -> R.drawable.ic_record_circle
+                when (state) {
+                    RecordingService.State.IDLE -> {
+                        recorderBinding.btnMiniRecPause.setImageResource(R.drawable.ic_record_circle_mini)
+                        recorderBinding.btnMiniRecPause.imageTintList = null   // let the vector's own colours show
                     }
-                )
-                val tintColor = when (state) {
-                    // RECORDING: red circle means "tap to pause"
-                    RecordingService.State.RECORDING ->
-                        themeColor(R.attr.colorRecordPause)
-                    // PAUSED: yellow/orange means "tap to resume"
-                    RecordingService.State.PAUSED ->
-                        themeColor(R.attr.colorRecordActive)
-                    // IDLE: red dot (not recording yet / stopped)
-                    RecordingService.State.IDLE ->
-                        themeColor(R.attr.colorRecordActive)
+                    RecordingService.State.RECORDING -> {
+                        recorderBinding.btnMiniRecPause.setImageResource(R.drawable.ic_pause)
+                        recorderBinding.btnMiniRecPause.imageTintList =
+                            android.content.res.ColorStateList.valueOf(themeColor(R.attr.colorRecordPause))
+                    }
+                    RecordingService.State.PAUSED -> {
+                        recorderBinding.btnMiniRecPause.setImageResource(R.drawable.ic_resume_circle)
+                        recorderBinding.btnMiniRecPause.imageTintList =
+                            android.content.res.ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
+                    }
                 }
-                recorderBinding.btnMiniRecPause.imageTintList =
-                    android.content.res.ColorStateList.valueOf(tintColor)
             }
         }
 

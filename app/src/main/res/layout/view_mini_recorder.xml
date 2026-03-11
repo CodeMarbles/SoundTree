@@ -51,11 +51,19 @@
             android:paddingStart="14dp"
             android:paddingEnd="14dp">
 
+            <ImageView
+                android:id="@+id/ivMiniRecStateIcon"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginEnd="5dp"
+                android:src="@drawable/ic_stop_square"
+                android:contentDescription="" />
+
             <TextView
                 android:id="@+id/tvMiniRecStateLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="● RECORDING"
+                android:text="READY"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.04" />
