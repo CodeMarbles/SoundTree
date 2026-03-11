@@ -367,6 +367,8 @@ class MainActivity : AppCompatActivity() {
                 if (navHistory.lastOrNull() != position) {
                     navHistory.addLast(position)
                 }
+
+                viewModel.setCurrentPage(position)
             }
         })
     }
@@ -479,7 +481,7 @@ class MainActivity : AppCompatActivity() {
         // ── Observe nowPlaying → update title, time, and timeline progress ──
         lifecycleScope.launch {
             viewModel.nowPlaying.collect { state ->
-                p.root.visibility = if (state != null) View.VISIBLE else View.GONE
+                // UI content updates (unchanged)
                 if (state != null) {
                     p.tvMiniTitle.text = state.recording.title
                     p.tvMiniTime.text  = "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
@@ -490,6 +492,21 @@ class MainActivity : AppCompatActivity() {
                         state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
                     p.miniPlayerTimeline.setProgress(fraction)
                 }
+            }
+        }
+
+        // ── Mini Player visibility ─────────────────────────────────────────
+        lifecycleScope.launch {
+            combine(
+                viewModel.nowPlaying,
+                viewModel.hidePlayerOnListenTab,
+                viewModel.currentPage
+            ) { state, hideOnListenTab, page ->
+                val hasContent = state != null
+                val suppressed = hideOnListenTab && (page == PAGE_LISTEN)
+                hasContent && !suppressed
+            }.collect { visible ->
+                p.root.visibility = if (visible) View.VISIBLE else View.GONE
             }
         }
 
@@ -550,13 +567,21 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             combine(
                 viewModel.recordingState,
-                viewModel.showMiniRecorder
-            ) { state, alwaysShow -> state to alwaysShow }
-                .collect { (state, alwaysShow) ->
-                    val isActive = state != RecordingService.State.IDLE
-                    recorderBinding.root.visibility =
-                        if (isActive || alwaysShow) View.VISIBLE else View.GONE
+                viewModel.recorderWidgetVisibility,
+                viewModel.hideRecorderOnRecordTab,
+                viewModel.currentPage
+            ) { state, mode, hideOnRecordTab, page ->
+                val isActive = state != RecordingService.State.IDLE
+                val wantShow = when (mode) {
+                    RecorderWidgetVisibility.NEVER           -> false
+                    RecorderWidgetVisibility.WHILE_RECORDING -> isActive
+                    RecorderWidgetVisibility.ALWAYS          -> true
                 }
+                val suppressed = hideOnRecordTab && (page == PAGE_RECORD)
+                wantShow && !suppressed
+            }.collect { visible ->
+                recorderBinding.root.visibility = if (visible) View.VISIBLE else View.GONE
+            }
         }
 
         // ── Background color: 3-state ──────────────────────────────────────

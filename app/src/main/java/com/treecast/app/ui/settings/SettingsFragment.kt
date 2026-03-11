@@ -18,6 +18,7 @@ import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.ProcessingStatus
+import com.treecast.app.ui.RecorderWidgetVisibility
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
@@ -231,18 +232,44 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRecordingWidgetSection() {
-        // ── Always show toggle ────────────────────────────────────────────
-        binding.switchShowMiniRecorder.isChecked = viewModel.showMiniRecorder.value
-        binding.switchShowMiniRecorder.setOnCheckedChangeListener { _, checked ->
-            viewModel.setShowMiniRecorder(checked)
+
+        // ── Recorder Widget visibility toggle group ───────────────────────
+        val toggleGroup = binding.toggleRecorderVisibility
+
+        // Map each button id → enum value (and back)
+        val btnToMode = mapOf(
+            R.id.btnRecorderVisNever          to RecorderWidgetVisibility.NEVER,
+            R.id.btnRecorderVisWhileRecording to RecorderWidgetVisibility.WHILE_RECORDING,
+            R.id.btnRecorderVisAlways         to RecorderWidgetVisibility.ALWAYS
+        )
+        val modeToBtn = btnToMode.entries.associate { (k, v) -> v to k }
+
+        fun applyMode(mode: RecorderWidgetVisibility) {
+            // Check the right button
+            toggleGroup.check(modeToBtn[mode] ?: R.id.btnRecorderVisWhileRecording)
+            // Dependent row: enabled only when not NEVER
+            val dependentEnabled = mode != RecorderWidgetVisibility.NEVER
+            binding.rowHideRecorderOnRecordTab.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.switchHideRecorderOnRecordTab.isEnabled = dependentEnabled
         }
 
-        // ── Show mark timestamp toggle ────────────────────────────────────
-//        binding.switchShowRecordMarkTimestamp.isChecked =
-//            viewModel.showRecordMarkTimestamp.value
-//        binding.switchShowRecordMarkTimestamp.setOnCheckedChangeListener { _, checked ->
-//            viewModel.setShowRecordMarkTimestamp(checked)
-//        }
+        // Initialise from ViewModel
+        applyMode(viewModel.recorderWidgetVisibility.value)
+        binding.switchHideRecorderOnRecordTab.isChecked =
+            viewModel.hideRecorderOnRecordTab.value
+
+        // User taps a button
+        toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val mode = btnToMode[checkedId] ?: return@addOnButtonCheckedListener
+            viewModel.setRecorderWidgetVisibility(mode)
+            applyMode(mode)
+        }
+
+        // Dependent toggle
+        binding.switchHideRecorderOnRecordTab.setOnCheckedChangeListener { _, checked ->
+            viewModel.setHideRecorderOnRecordTab(checked)
+        }
 
         // ── Mark nudge seconds ────────────────────────────────────────────
         fun Float.toNudgeDisplay() =
@@ -261,21 +288,19 @@ class SettingsFragment : Fragment() {
             binding.tvMarkNudgeSecs.text = newVal.toNudgeDisplay()
         }
 
-        // ── Keep toggles in sync if another screen changes prefs ─────────
+        // ── Keep controls in sync if another screen changes prefs ─────────
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.showMiniRecorder.collect { show ->
-                        if (binding.switchShowMiniRecorder.isChecked != show)
-                            binding.switchShowMiniRecorder.isChecked = show
+                    viewModel.recorderWidgetVisibility.collect { mode ->
+                        applyMode(mode)
                     }
                 }
-//                launch {
-//                    viewModel.showRecordMarkTimestamp.collect { show ->
-//                        if (binding.switchShowRecordMarkTimestamp.isChecked != show)
-//                            binding.switchShowRecordMarkTimestamp.isChecked = show
-//                    }
-//                }
+                launch {
+                    viewModel.hideRecorderOnRecordTab.collect { hide ->
+                        binding.switchHideRecorderOnRecordTab.isChecked = hide
+                    }
+                }
             }
         }
     }
@@ -322,6 +347,12 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlaybackSettings() {
+        // ── Hide Listen Widget on Listen Tab ──────────────────────────────
+        binding.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
+        binding.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
+            viewModel.setHidePlayerOnListenTab(checked)
+        }
+
         // ── Jump to Library on save toggle ───────────────────────────────
         binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
         binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->

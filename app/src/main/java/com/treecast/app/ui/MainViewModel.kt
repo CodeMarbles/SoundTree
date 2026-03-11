@@ -85,7 +85,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_LAYOUT_ORDER    = "layout_element_order"
         private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
         private const val PREF_MARK_REWIND_THRESHOLD = "mark_rewind_threshold_secs"
-        private const val PREF_SHOW_MINI_RECORDER         = "show_mini_recorder"
+        private const val PREF_RECORDER_WIDGET_VISIBILITY  = "recorder_widget_visibility"
+        private const val PREF_HIDE_RECORDER_ON_RECORD_TAB = "hide_recorder_on_record_tab"
+        private const val PREF_HIDE_PLAYER_ON_LISTEN_TAB   = "hide_player_on_listen_tab"
         private const val PREF_SHOW_RECORD_MARK_TIMESTAMP = "show_record_mark_timestamp"
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
     }
@@ -504,15 +506,50 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_SHOW_TITLE_BAR, show).apply()
     }
 
-    // ── Always-show Mini Recorder setting ────────────────────────────────────
+    // ── Recorder widget visibility (3-state) ─────────────────────────────────
 
-    private val _showMiniRecorder =
-        MutableStateFlow(prefs.getBoolean(PREF_SHOW_MINI_RECORDER, false))
-    val showMiniRecorder: StateFlow<Boolean> = _showMiniRecorder
-    fun setShowMiniRecorder(show: Boolean) {
-        _showMiniRecorder.value = show
-        prefs.edit().putBoolean(PREF_SHOW_MINI_RECORDER, show).apply()
+    private val _recorderWidgetVisibility = MutableStateFlow(
+        RecorderWidgetVisibility.fromString(
+            prefs.getString(PREF_RECORDER_WIDGET_VISIBILITY, null)
+        )
+    )
+    val recorderWidgetVisibility: StateFlow<RecorderWidgetVisibility> = _recorderWidgetVisibility
+
+    fun setRecorderWidgetVisibility(mode: RecorderWidgetVisibility) {
+        _recorderWidgetVisibility.value = mode
+        prefs.edit().putString(PREF_RECORDER_WIDGET_VISIBILITY, mode.name).apply()
     }
+
+    // ── Hide Recorder widget while on Record tab ──────────────────────────────
+
+    private val _hideRecorderOnRecordTab = MutableStateFlow(
+        prefs.getBoolean(PREF_HIDE_RECORDER_ON_RECORD_TAB, false)
+    )
+    val hideRecorderOnRecordTab: StateFlow<Boolean> = _hideRecorderOnRecordTab
+
+    fun setHideRecorderOnRecordTab(hide: Boolean) {
+        _hideRecorderOnRecordTab.value = hide
+        prefs.edit().putBoolean(PREF_HIDE_RECORDER_ON_RECORD_TAB, hide).apply()
+    }
+
+    // ── Hide Listen widget while on Listen tab ────────────────────────────────
+
+    private val _hidePlayerOnListenTab = MutableStateFlow(
+        prefs.getBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, false)
+    )
+    val hidePlayerOnListenTab: StateFlow<Boolean> = _hidePlayerOnListenTab
+
+    fun setHidePlayerOnListenTab(hide: Boolean) {
+        _hidePlayerOnListenTab.value = hide
+        prefs.edit().putBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, hide).apply()
+    }
+
+    // ── Current page (tab index) — driven by MainActivity on every tab change ─
+
+    private val _currentPage = MutableStateFlow(MainActivity.PAGE_RECORD)
+    val currentPage: StateFlow<Int> = _currentPage
+
+    fun setCurrentPage(page: Int) { _currentPage.value = page }
 
 //    // ── Show last-mark timestamp in timeline ─────────────────────────────────
 //
