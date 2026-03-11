@@ -53,21 +53,25 @@ import com.treecast.app.ui.MainViewModel
 class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
-        const val REQUEST_KEY   = "TopicPickerBottomSheet"
+        const val REQUEST_KEY   = "TopicPickerBottomSheet"   // default / Record tab
         const val KEY_TOPIC_ID  = "topicId"
-        const val TOPIC_ID_NONE = -1L   // sentinel for "Uncategorised" (null)
+        const val KEY_REQUEST   = "requestKey"
+        const val TOPIC_ID_NONE = -1L
 
-        fun newInstance(selectedTopicId: Long?): TopicPickerBottomSheet =
+        fun newInstance(selectedTopicId: Long?, requestKey: String = REQUEST_KEY): TopicPickerBottomSheet =
             TopicPickerBottomSheet().apply {
                 arguments = Bundle().apply {
                     putLong(KEY_TOPIC_ID, selectedTopicId ?: TOPIC_ID_NONE)
+                    putString(KEY_REQUEST, requestKey)
                 }
             }
 
-        /** Convenience to extract the nullable topicId from a result bundle. */
         fun topicIdFromBundle(bundle: Bundle): Long? =
             bundle.getLong(KEY_TOPIC_ID, TOPIC_ID_NONE).takeIf { it != TOPIC_ID_NONE }
     }
+
+    private val requestKey: String
+        get() = arguments?.getString(KEY_REQUEST) ?: REQUEST_KEY
 
     private val viewModel: MainViewModel by activityViewModels()
 
@@ -108,7 +112,7 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun deliverResult(topicId: Long?) {
-        parentFragmentManager.setFragmentResult(REQUEST_KEY, Bundle().apply {
+        parentFragmentManager.setFragmentResult(requestKey, Bundle().apply {
             putLong(KEY_TOPIC_ID, topicId ?: TOPIC_ID_NONE)
         })
         dismiss()

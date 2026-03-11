@@ -1,5 +1,6 @@
 package com.treecast.app.ui
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
@@ -463,8 +464,10 @@ class MainActivity : AppCompatActivity() {
 
         // ── Title row ─────────────────────────────────────────────────────
         p.miniTitleRow.setOnClickListener {
-            TopicPickerBottomSheet.newInstance(viewModel.nowPlaying.value?.recording?.topicId)
-                .show(supportFragmentManager, "mini_topic_picker")
+            TopicPickerBottomSheet.newInstance(
+                selectedTopicId = viewModel.nowPlaying.value?.recording?.topicId,
+                requestKey      = TopicPickerBottomSheet.REQUEST_KEY + "_mini_player"
+            ).show(supportFragmentManager, "mini_topic_picker")
         }
 
         // ── Transport controls ────────────────────────────────────────────
@@ -833,8 +836,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         recorderBinding.btnMiniRecTopic.setOnClickListener {
-            TopicPickerBottomSheet.newInstance(viewModel.recordingTopicId.value)
-                .show(supportFragmentManager, "mini_rec_topic_picker")
+            TopicPickerBottomSheet.newInstance(
+                selectedTopicId = viewModel.recordingTopicId.value,
+                requestKey      = TopicPickerBottomSheet.REQUEST_KEY + "_mini_rec"
+            ).show(supportFragmentManager, "mini_rec_topic_picker")
         }
 
         // ── Tap root (not on buttons) → navigate to Record tab ────────────
@@ -852,6 +857,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Lock ──────────────────────────────────────────────────────────
+    @SuppressLint("ClickableViewAccessibility") // this warning is from the setOnTouchListener call that doesn't route anywhere (deliberately)
     private fun observeLockState() {
         lifecycleScope.launch {
             viewModel.isLocked.collect { locked ->
