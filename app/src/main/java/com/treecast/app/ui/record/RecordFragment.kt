@@ -165,10 +165,27 @@ class RecordFragment : Fragment() {
      * setupTopicPicker's allTopics collector).
      */
     private fun setupTopicHeader() {
-        // Initialise the header to the current selection (Uncategorised on first load).
         updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
 
-        // Watch for topic deletions and auto-reset if the selected topic disappears.
+        // Register result listener once here, survives the sheet being recreated
+        childFragmentManager.setFragmentResultListener(
+            TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            selectedTopicId = topicId
+            viewModel.setRecordingTopicId(topicId)
+            val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+            updateRecordTopicHeader(
+                topicId,
+                topic?.name ?: "Uncategorised",
+                topic?.icon ?: Icons.INBOX
+            )
+            val svc = recordingService
+            if (svc != null && svc.state.value != RecordingService.State.IDLE) {
+                svc.setTopic(topicId)
+            }
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -199,22 +216,8 @@ class RecordFragment : Fragment() {
         }
 
         binding.topicHeader.setOnClickListener {
-            val topics = viewModel.allTopics.value
-            TopicPickerBottomSheet(topics, selectedTopicId) { topicId ->
-                selectedTopicId = topicId
-                viewModel.setRecordingTopicId(topicId)
-                val topic = topics.firstOrNull { it.id == topicId }
-                updateRecordTopicHeader(
-                    topicId,
-                    topic?.name ?: "Uncategorised",
-                    topic?.icon ?: Icons.INBOX
-                )
-                // Forward the new topic to the service while recording.
-                val svc = recordingService
-                if (svc != null && svc.state.value != RecordingService.State.IDLE) {
-                    svc.setTopic(topicId)
-                }
-            }.show(childFragmentManager, "topic_picker")
+            TopicPickerBottomSheet.newInstance(selectedTopicId)
+                .show(childFragmentManager, "topic_picker")
         }
     }
 
@@ -474,6 +477,9 @@ class RecordFragment : Fragment() {
                 storageVolumeUuid = result.storageVolumeUuid
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
+
+            // Reset topic AFTER reading it for the save, not on IDLE state change
+            //viewModel.setRecordingTopicId(null)
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {

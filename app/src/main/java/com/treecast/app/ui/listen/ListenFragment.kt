@@ -87,21 +87,20 @@ class ListenFragment : Fragment() {
     }
 
     // ── Topic header ───────────────────────────────────────────────────
-    /**
-     * Tapping the topic icon / name in the header opens [TopicPickerBottomSheet],
-     * letting the user reassign the currently-playing recording to a different
-     * topic. The header content (icon, topic name, title) is driven by
-     * [observeNowPlaying] as before — no changes needed there.
-     */
     private fun setupTopicHeader() {
+        childFragmentManager.setFragmentResultListener(
+            TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            viewModel.nowPlaying.value?.recording?.id?.let { recId ->
+                viewModel.moveRecording(recId, topicId)
+            }
+        }
+
         binding.topicHeader.setOnClickListener {
-            val topics = viewModel.allTopics.value
             val currentTopicId = viewModel.nowPlaying.value?.recording?.topicId
-            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
-                viewModel.nowPlaying.value?.recording?.id?.let { recId ->
-                    viewModel.moveRecording(recId, topicId)
-                }
-            }.show(childFragmentManager, "topic_picker")
+            TopicPickerBottomSheet.newInstance(currentTopicId)
+                .show(childFragmentManager, "topic_picker")
         }
     }
 

@@ -4,42 +4,82 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.treecast.app.R
-import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeNode
+import com.treecast.app.ui.MainViewModel
 
 /**
  * A [BottomSheetDialogFragment] that presents the full topic tree for selection.
  *
- * Replaces the inline [TopicPickerView] on the Listen and Record tabs. The tree
- * rendering reuses [TopicTreeAdapter] and [PickerItem] from TopicPickerView.kt.
+ * Uses the Fragment Result API so it survives configuration changes (theme
+ * switches, rotation) without losing its callback. The caller registers a
+ * [androidx.fragment.app.FragmentResultListener] *before* showing the sheet,
+ * and the sheet fires [setFragmentResult] on selection.
  *
- * Usage:
+ * Usage (from a Fragment):
  * ```
- * TopicPickerBottomSheet(viewModel.allTopics.value, currentTopicId) { topicId ->
+ * // Register once in onViewCreated:
+ * childFragmentManager.setFragmentResultListener(
+ *     TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
+ * ) { _, bundle ->
+ *     val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
  *     // handle selection
- * }.show(childFragmentManager, "topic_picker")
+ * }
+ *
+ * // Show when needed:
+ * TopicPickerBottomSheet.newInstance(currentTopicId)
+ *     .show(childFragmentManager, "topic_picker")
+ * ```
+ *
+ * Usage (from an Activity):
+ * ```
+ * // Register once in onCreate/onStart:
+ * supportFragmentManager.setFragmentResultListener(
+ *     TopicPickerBottomSheet.REQUEST_KEY, this
+ * ) { _, bundle ->
+ *     val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+ * }
+ *
+ * // Show with a unique tag per call-site to avoid FragmentManager collisions:
+ * TopicPickerBottomSheet.newInstance(currentTopicId)
+ *     .show(supportFragmentManager, "mini_rec_topic_picker")
  * ```
  */
-class TopicPickerBottomSheet(
-    private val topics: List<TopicEntity>,
-    private val selectedTopicId: Long?,
-    private val onTopicSelected: (Long?) -> Unit
-) : BottomSheetDialogFragment() {
+class TopicPickerBottomSheet : BottomSheetDialogFragment() {
+
+    companion object {
+        const val REQUEST_KEY   = "TopicPickerBottomSheet"
+        const val KEY_TOPIC_ID  = "topicId"
+        const val TOPIC_ID_NONE = -1L   // sentinel for "Uncategorised" (null)
+
+        fun newInstance(selectedTopicId: Long?): TopicPickerBottomSheet =
+            TopicPickerBottomSheet().apply {
+                arguments = Bundle().apply {
+                    putLong(KEY_TOPIC_ID, selectedTopicId ?: TOPIC_ID_NONE)
+                }
+            }
+
+        /** Convenience to extract the nullable topicId from a result bundle. */
+        fun topicIdFromBundle(bundle: Bundle): Long? =
+            bundle.getLong(KEY_TOPIC_ID, TOPIC_ID_NONE).takeIf { it != TOPIC_ID_NONE }
+    }
+
+    private val viewModel: MainViewModel by activityViewModels()
+
+    private val selectedTopicId: Long?
+        get() = arguments?.getLong(KEY_TOPIC_ID, TOPIC_ID_NONE)
+            ?.takeIf { it != TOPIC_ID_NONE }
 
     private val collapsedNodeIds = mutableSetOf<Long>()
-    private val roots: List<TreeNode> by lazy { TreeBuilder.build(topics, emptyList()) }
     private var recyclerView: RecyclerView? = null
 
     private val treeAdapter = TopicTreeAdapter(
-        onNodeClick = { node ->
-            onTopicSelected(node.topic.id)
-            dismiss()
-        },
+        onNodeClick = { node -> deliverResult(node.topic.id) },
         onNodeToggle = { id ->
             if (!collapsedNodeIds.add(id)) collapsedNodeIds.remove(id)
             refreshList()
@@ -61,14 +101,22 @@ class TopicPickerBottomSheet(
         }
 
         view.findViewById<View>(R.id.rowUncategorised).setOnClickListener {
-            onTopicSelected(null)
-            dismiss()
+            deliverResult(null)
         }
 
         refreshList()
     }
 
+    private fun deliverResult(topicId: Long?) {
+        parentFragmentManager.setFragmentResult(REQUEST_KEY, Bundle().apply {
+            putLong(KEY_TOPIC_ID, topicId ?: TOPIC_ID_NONE)
+        })
+        dismiss()
+    }
+
     private fun refreshList() {
+        val topics = viewModel.allTopics.value
+        val roots  = TreeBuilder.build(topics, emptyList())
         treeAdapter.submitList(buildAdapterItems(roots, 0))
     }
 

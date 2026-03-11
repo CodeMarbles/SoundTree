@@ -450,19 +450,21 @@ class MainActivity : AppCompatActivity() {
         // (MiniPlayerTimelineView consumes its own touch events, so this fires
         //  only on taps elsewhere in the bar.)
 
+        supportFragmentManager.setFragmentResultListener(
+            TopicPickerBottomSheet.REQUEST_KEY + "_mini_player", this
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            viewModel.nowPlaying.value?.recording?.id?.let { recId ->
+                viewModel.moveRecording(recId, topicId)
+            }
+            val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+            binding.miniPlayer.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
+        }
+
         // ── Title row ─────────────────────────────────────────────────────
         p.miniTitleRow.setOnClickListener {
-            val topics = viewModel.allTopics.value
-            val currentTopicId = viewModel.nowPlaying.value?.recording?.topicId
-            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
-                viewModel.nowPlaying.value?.recording?.id?.let { recId ->
-                    viewModel.moveRecording(recId, topicId)
-                }
-                // Update the icon immediately — nowPlaying re-emits async,
-                // so this keeps the mini player in sync without a visible lag
-                val topic = topics.firstOrNull { it.id == topicId }
-                p.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
-            }.show(supportFragmentManager, "mini_topic_picker")
+            TopicPickerBottomSheet.newInstance(viewModel.nowPlaying.value?.recording?.topicId)
+                .show(supportFragmentManager, "mini_topic_picker")
         }
 
         // ── Transport controls ────────────────────────────────────────────
@@ -821,15 +823,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        supportFragmentManager.setFragmentResultListener(
+            TopicPickerBottomSheet.REQUEST_KEY + "_mini_rec", this
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            viewModel.setRecordingTopicId(topicId)
+            val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+            recorderBinding.btnMiniRecTopic.text = topic?.icon ?: Icons.INBOX
+        }
+
         recorderBinding.btnMiniRecTopic.setOnClickListener {
-            val topics = viewModel.allTopics.value
-            val currentTopicId = viewModel.recordingTopicId.value
-            TopicPickerBottomSheet(topics, currentTopicId) { topicId ->
-                viewModel.setRecordingTopicId(topicId)
-                // Immediate icon update; the observer below will also fire shortly
-                val topic = topics.firstOrNull { it.id == topicId }
-                recorderBinding.btnMiniRecTopic.text = topic?.icon ?: Icons.INBOX
-            }.show(supportFragmentManager, "mini_rec_topic_picker")
+            TopicPickerBottomSheet.newInstance(viewModel.recordingTopicId.value)
+                .show(supportFragmentManager, "mini_rec_topic_picker")
         }
 
         // ── Tap root (not on buttons) → navigate to Record tab ────────────

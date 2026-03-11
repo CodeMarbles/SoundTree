@@ -130,7 +130,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (state == RecordingService.State.IDLE) {
             _markNudgeLocked.value = false
             _selectedRecordingMarkIndex.value = -1
-            _recordingTopicId.value = null
         }
     }
 
