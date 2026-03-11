@@ -444,7 +444,7 @@ class RecordFragment : Fragment() {
 
     /** Calls through to the service after all pre-flight checks pass. */
     private fun doStartRecording(svc: RecordingService) {
-        svc.startRecording(topicId = selectedTopicId)
+        svc.startRecording(topicId = viewModel.recordingTopicId.value)
     }
 
     private fun pauseRecording()  { recordingService?.pauseRecording() }
@@ -460,7 +460,7 @@ class RecordFragment : Fragment() {
             // Guard against the user having deleted the selected topic while
             // the recording was in progress. Fall back to Inbox (null) rather
             // than producing a foreign key violation on save.
-            val resolvedTopicId = selectedTopicId?.takeIf { id ->
+            val resolvedTopicId = viewModel.recordingTopicId.value?.takeIf { id ->
                 viewModel.allTopics.value.any { it.id == id }
             }
 

@@ -813,6 +813,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            combine(viewModel.recordingTopicId, viewModel.allTopics) { topicId, topics ->
+                topics.firstOrNull { it.id == topicId }?.icon ?: Icons.INBOX
+            }.collect { icon ->
+                recorderBinding.btnMiniRecTopic.text = icon
+            }
+        }
+
         recorderBinding.btnMiniRecTopic.setOnClickListener {
             val topics = viewModel.allTopics.value
             val currentTopicId = viewModel.recordingTopicId.value
