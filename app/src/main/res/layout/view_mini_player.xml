@@ -183,8 +183,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Delete selected mark"
-                app:tint="?attr/colorDestructive" />
+                android:contentDescription="Delete selected mark" />
 
             <!-- Nudge mark back ← (outer ring) -->
             <ImageView

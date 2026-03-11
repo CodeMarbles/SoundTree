@@ -154,6 +154,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:enabled="false"
+                android:alpha="0.3"
                 android:contentDescription="Delete selected mark" />
 
             <!-- Nudge last mark back  ← 📍 -->

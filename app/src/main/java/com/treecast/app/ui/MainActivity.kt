@@ -520,16 +520,23 @@ class MainActivity : AppCompatActivity() {
                     val hasSelection = selectedId != null
                     val canNudge     = hasSelection && !locked
 
-                    // Delete: needs selection; nudge/commit: needs selection + unlocked
-                    p.btnMiniDeleteMark.isEnabled        = hasSelection
-                    p.btnMiniMarkNudgeBack.isEnabled     = canNudge
-                    p.btnMiniMarkNudgeForward.isEnabled  = canNudge
-                    p.btnMiniMarkCommit.isEnabled        = canNudge
+                    val tealColor = themeColor(R.attr.colorMarkSelected)
+                    val greyColor = themeColor(R.attr.colorTextSecondary)
 
-                    p.btnMiniDeleteMark.alpha        = if (hasSelection) 1f else 0.3f
-                    p.btnMiniMarkNudgeBack.alpha     = if (canNudge) 1f else 0.3f
-                    p.btnMiniMarkNudgeForward.alpha  = if (canNudge) 1f else 0.3f
-                    p.btnMiniMarkCommit.alpha        = if (canNudge) 1f else 0.3f
+                    p.btnMiniDeleteMark.isEnabled = hasSelection
+                    p.btnMiniDeleteMark.alpha = if (hasSelection) 1f else 0.3f
+                    p.btnMiniDeleteMark.imageTintList =
+                        ColorStateList.valueOf(if (hasSelection) tealColor else greyColor)
+
+                    for (v in listOf(
+                        p.btnMiniMarkNudgeBack,
+                        p.btnMiniMarkNudgeForward,
+                        p.btnMiniMarkCommit
+                    )) {
+                        v.isEnabled = canNudge
+                        v.alpha = if (canNudge) 1f else 0.3f
+                        v.imageTintList = ColorStateList.valueOf(if (canNudge) tealColor else greyColor)
+                    }
                 }
         }
     }
@@ -644,6 +651,7 @@ class MainActivity : AppCompatActivity() {
                 val inertViews = listOf(
                     recorderBinding.btnMiniRecSave,
                     recorderBinding.btnMiniMark,
+                    recorderBinding.btnMiniRecDeleteMark,
                     recorderBinding.btnMiniNudgeBack,
                     recorderBinding.btnMiniNudgeForward,
                     recorderBinding.btnMiniNudgeCommit,
@@ -740,18 +748,18 @@ class MainActivity : AppCompatActivity() {
                 val tealColor = themeColor(R.attr.colorMarkSelected)
                 val greyColor = themeColor(R.attr.colorTextSecondary)
 
-                // Delete — teal when a mark is selected, grey when not
                 recorderBinding.btnMiniRecDeleteMark.isEnabled = hasSelection
+                recorderBinding.btnMiniRecDeleteMark.alpha = if (hasSelection) 1f else 0.3f
                 recorderBinding.btnMiniRecDeleteMark.imageTintList =
                     ColorStateList.valueOf(if (hasSelection) tealColor else greyColor)
 
-                // Nudge / commit — teal when nudgeable, grey when not
                 for (v in listOf(
                     recorderBinding.btnMiniNudgeBack,
                     recorderBinding.btnMiniNudgeForward,
                     recorderBinding.btnMiniNudgeCommit
                 )) {
                     v.isEnabled = canNudge
+                    v.alpha = if (canNudge) 1f else 0.3f
                     v.imageTintList = ColorStateList.valueOf(if (canNudge) tealColor else greyColor)
                 }
             }
