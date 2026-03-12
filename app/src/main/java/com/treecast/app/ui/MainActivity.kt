@@ -7,6 +7,8 @@ import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -196,8 +198,10 @@ class MainActivity : AppCompatActivity() {
      * space regardless of position.  All other views keep their fixed heights.
      */
     private fun applyLayoutOrder() {
-        val order     = viewModel.layoutOrder.value
-        val showTitle = viewModel.showTitleBar.value
+        val order         = viewModel.layoutOrder.value
+        val showTitle     = viewModel.showTitleBar.value
+        val anyPillActive = viewModel.playerPillMinimized.value || viewModel.recorderPillMinimized.value
+        val pillOnlyMode  = !showTitle && anyPillActive
 
         val viewMap = mapOf(
             LayoutElement.TITLE_BAR    to binding.titleBarContainer,
@@ -213,11 +217,7 @@ class MainActivity : AppCompatActivity() {
 
         for (element in order) {
             val view = viewMap[element] ?: continue
-            if (element == LayoutElement.TITLE_BAR) {
-                val anyPillActive =
-                    viewModel.playerPillMinimized.value || viewModel.recorderPillMinimized.value
-                if (!showTitle && !anyPillActive) continue
-            }
+            if (element == LayoutElement.TITLE_BAR && !showTitle && !anyPillActive) continue
             if (element == LayoutElement.CONTENT) {
                 val lp = android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
@@ -228,7 +228,8 @@ class MainActivity : AppCompatActivity() {
                     LayoutElement.MINI_PLAYER   -> (108 * dp).toInt()
                     LayoutElement.MINI_RECORDER -> (108 * dp).toInt()
                     LayoutElement.NAV           -> (64 * dp).toInt()
-                    LayoutElement.TITLE_BAR     -> (53 * dp).toInt()
+                    LayoutElement.TITLE_BAR -> if (pillOnlyMode) LinearLayout.LayoutParams.WRAP_CONTENT
+                    else               (53 * dp).toInt()
                     else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 }
                 val lp = android.widget.LinearLayout.LayoutParams(
@@ -237,6 +238,14 @@ class MainActivity : AppCompatActivity() {
                 binding.rootStack.addView(view, lp)
             }
         }
+
+        // Pill-only mode: when the title bar is disabled but a pill is active,
+        // shrink the inner topBar to just fit the pill and hide the title text.
+        val topBarLp = binding.topBar.layoutParams
+        topBarLp.height = if (pillOnlyMode) ViewGroup.LayoutParams.WRAP_CONTENT else (52 * dp).toInt()
+        binding.topBar.layoutParams = topBarLp
+        binding.topBar.setPadding(0, if (pillOnlyMode) 1 else 0, 0, 0)
+        binding.tvTopTitle.visibility = if (pillOnlyMode) View.GONE else View.VISIBLE
 
         updateMiniPlayerAccentLine(order)
         updateMiniRecorderAccentLine(order)
