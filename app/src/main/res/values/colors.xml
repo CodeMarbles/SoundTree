@@ -35,6 +35,8 @@
     <color name="grey_800">#252535</color>
 
     <!-- Blues -->
+    <color name="blue_pill_100">#C4D6FF</color>
+    <color name="blue_820">#1E2844</color>
     <color name="blue_900">#1A1E2E</color>
     <color name="slate_50">#DDE6FF</color>
 
@@ -63,6 +65,7 @@
     <color name="amber_500">#FFBB33</color>
     <color name="amber_800">#B8860B</color>
     <color name="amber_950">#3A3000</color>
+    <color name="amber_960">#342200</color>
     <color name="amber_980">#261A00</color>
 
     <!-- Status greens / oranges -->

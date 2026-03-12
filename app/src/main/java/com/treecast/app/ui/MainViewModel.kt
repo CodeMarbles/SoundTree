@@ -632,6 +632,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, hide).apply()
     }
 
+    // ── Mini widget minimized state (session-only, not persisted) ────────────
+    //
+    // When true the full widget is hidden and a compact pill appears in
+    // the title bar overlay instead.  Intentionally NOT written to
+    // SharedPreferences — restoring to full widgets on every app launch
+    // is the desired default behaviour.
+
+    private val _playerPillMinimized  = MutableStateFlow(false)
+    val playerPillMinimized: StateFlow<Boolean> = _playerPillMinimized
+
+    private val _recorderPillMinimized = MutableStateFlow(false)
+    val recorderPillMinimized: StateFlow<Boolean> = _recorderPillMinimized
+
+    fun setPlayerPillMinimized(minimized: Boolean)  { _playerPillMinimized.value  = minimized }
+    fun setRecorderPillMinimized(minimized: Boolean) { _recorderPillMinimized.value = minimized }
+
+
     // ── Current page (tab index) — driven by MainActivity on every tab change ─
 
     private val _currentPage = MutableStateFlow(MainActivity.PAGE_RECORD)

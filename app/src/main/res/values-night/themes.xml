@@ -58,6 +58,11 @@
         <!-- Mini Recorder -->
         <item name="colorMiniRecorderPaused">@color/amber_980</item>
 
+        <!-- Title bar pills -->
+        <item name="colorPillPlayerFill">@color/blue_820</item>
+        <item name="colorPillPlayerStroke">#2E4899</item>
+        <item name="colorPillRecorderPausedFill">@color/amber_960</item>
+
         <!-- Marks -->
         <item name="colorMarkDefault">@color/pink_700</item>
         <item name="colorMarkSelected">@color/teal_a700</item>

@@ -12,38 +12,53 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- ── Top title bar ──────────────────────────────────────── -->
+        <!-- ── Title bar ──────────────────────────────────────── -->
+        <!--
+            titleBarContainer: outer vertical LinearLayout — unchanged.
+            topBar: was a horizontal LinearLayout; converted to FrameLayout
+            so that the pill overlay (view_title_pills) can sit on top of
+            tvTopTitle via Z-order without affecting the text view's layout.
+        -->
         <LinearLayout
             android:id="@+id/titleBarContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-            <LinearLayout
+
+            <FrameLayout
                 android:id="@+id/topBar"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="20dp"
                 android:background="?attr/colorSurfaceBase">
 
+                <!-- Title text — sits at the back of the Z stack -->
                 <TextView
                     android:id="@+id/tvTopTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="20dp"
                     android:text="Record"
                     android:textColor="?attr/colorTextPrimary"
                     android:textSize="17sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.03" />
 
-            </LinearLayout>
+                <!-- Pill overlay — draws on top of the title text.
+                     Visibility of each pill is controlled by MainActivity. -->
+                <include
+                    android:id="@+id/titlePills"
+                    layout="@layout/view_title_pills"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="?attr/colorSurfaceElevated" />
+
         </LinearLayout>
 
         <!-- ── Page content ───────────────────────────────────────── -->

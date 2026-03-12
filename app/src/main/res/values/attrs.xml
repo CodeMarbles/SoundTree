@@ -36,6 +36,11 @@
     <attr name="colorMiniRecorderActive" format="color" />
     <attr name="colorMiniRecorderPaused" format="color" />
 
+    <!-- Title bar pills -->
+    <attr name="colorPillPlayerFill"          format="color" />
+    <attr name="colorPillPlayerStroke"        format="color" />
+    <attr name="colorPillRecorderPausedFill"  format="color" />
+
     <!-- Buttons -->
     <attr name="colorActionCancel" format="color" />
     <attr name="colorActionSave"   format="color" />

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Title bar pill overlay — v3.
+
+  Changes from v2:
+    - Each pill is now wrapped in a fixed-weight container (always VISIBLE).
+      The pill itself is GONE/VISIBLE inside that container. This ensures a
+      single pill never expands beyond its half of the title bar.
+    - pillPlayerStatus TextView replaced with ivPillPlayerPlay ImageView
+      (ic_play vector, tinted colorTextPrimary).
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="6dp">
+
+    <!-- ── Left half — always holds recorder pill space ──────────── -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginEnd="3dp">
+
+        <LinearLayout
+            android:id="@+id/pillRecorder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/pillRecorderStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="■ READY"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorTextSecondary"
+                android:letterSpacing="0.04"
+                android:singleLine="true"
+                android:layout_marginEnd="3dp" />
+
+            <TextView
+                android:id="@+id/pillRecorderTopic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:singleLine="true"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── Right half — always holds player pill space ───────────── -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="3dp">
+
+        <LinearLayout
+            android:id="@+id/pillPlayer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:visibility="gone">
+
+            <!-- ic_play icon replaces the previous "▶" text -->
+            <ImageView
+                android:id="@+id/ivPillPlayerPlay"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:src="@drawable/ic_play"
+                android:scaleType="fitCenter"
+                android:layout_marginEnd="4dp"
+                app:tint="?attr/colorTextPrimary"
+                xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+            <TextView
+                android:id="@+id/pillPlayerTopic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:singleLine="true"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/pillPlayerFilename"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=""
+                android:textSize="10sp"
+                android:textColor="?attr/colorTextPrimary"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:fadingEdgeLength="10dp"
+                android:requiresFadingEdge="horizontal" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

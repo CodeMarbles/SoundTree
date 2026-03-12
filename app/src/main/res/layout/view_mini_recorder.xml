@@ -49,7 +49,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="14dp"
-            android:paddingEnd="14dp">
+            android:paddingEnd="4dp">
 
             <ImageView
                 android:id="@+id/ivMiniRecStateIcon"
@@ -57,16 +57,41 @@
                 android:layout_height="10dp"
                 android:layout_marginEnd="5dp"
                 android:src="@drawable/ic_stop_square"
-                android:contentDescription="" />
+                android:scaleType="fitCenter" />
 
             <TextView
                 android:id="@+id/tvMiniRecStateLabel"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="READY"
+                android:textColor="?attr/colorTextSecondary"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.04" />
+                android:letterSpacing="0.04"
+                android:singleLine="true" />
+
+            <!-- Topic icon — shown when recording has a topic assigned -->
+            <TextView
+                android:id="@+id/tvMiniRecTopicIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:paddingEnd="2dp"
+                android:visibility="gone" />
+
+            <!-- Minimize button — sends widget to title-bar pill -->
+            <ImageView
+                android:id="@+id/btnMiniRecorderMinimize"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_chevron_up"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Minimize recorder" />
 
         </LinearLayout>
 

@@ -53,7 +53,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:paddingEnd="4dp"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true">
@@ -86,6 +86,18 @@
                 android:textSize="11sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
+
+            <!-- Minimize button — sends widget to title-bar pill -->
+            <ImageView
+                android:id="@+id/btnMiniPlayerMinimize"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_chevron_up"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Minimize player" />
 
         </LinearLayout>
 
