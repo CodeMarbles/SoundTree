@@ -200,6 +200,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val playerListener = object : Player.Listener {
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            // Guard: if we just started a new recording (isPlaying=true in state) but
+            // receive a stale isPlaying=false from the previous recording ending,
+            // don't let it overwrite the new recording's in-flight state.
+            if (!isPlaying && _nowPlaying.value?.isPlaying == true) {
+                // Check if the controller actually agrees we're not playing
+                if (mediaController?.isPlaying == false &&
+                    mediaController?.playbackState != Player.STATE_BUFFERING) {
+                    _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = false) ?: return
+                    stopProgressPolling()
+                    viewModelScope.launch { saveCurrentPosition() }
+                }
+                return
+            }
             _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = isPlaying) ?: return
             if (isPlaying) {
                 startProgressPolling(_nowPlaying.value?.recording?.id ?: return)
@@ -233,8 +246,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val uri = Uri.fromFile(File(recording.filePath))
         val mediaItem = MediaItem.Builder()
             .setUri(uri)
-            .setMediaId(recording.id.toString())   // used by PlaybackService for mark commands
+            .setMediaId(recording.id.toString())
             .build()
+
+        controller.stop()
         controller.setMediaItem(mediaItem)
         controller.prepare()
 
