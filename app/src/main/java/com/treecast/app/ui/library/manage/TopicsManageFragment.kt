@@ -1,18 +1,23 @@
 package com.treecast.app.ui.library.manage
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentTopicsManageBinding
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.NewTopicDialog
@@ -21,13 +26,12 @@ import kotlinx.coroutines.launch
 /**
  * TOPICS tab — topic tree management surface.
  *
- * Shows only the topic tree (no recording leaves). Each row has a DETAILS
- * button. Single tap = select (enables + SUBTOPIC FAB). Tapping the selected
- * row again = deselect.
+ * Shows a static Unsorted row (via [UnsortedRowAdapter]) followed by the full
+ * topic tree (via [TopicsManageAdapter]), composed with [ConcatAdapter].
+ * Single tap on a topic row navigates to the Details tab.
+ * Long-press opens a PopupMenu: New Subtopic / Move / Rename / Icon / Delete.
  *
- * Dual FABs in the bottom-right corner:
- *   [+ SUBTOPIC] — disabled until a topic is selected; creates under selected parent
- *   [+ TOPIC]    — always active; creates a root-level topic
+ * One FAB: [+ TOPIC] — always active; creates a root-level topic.
  */
 class TopicsManageFragment : Fragment() {
 
@@ -35,13 +39,14 @@ class TopicsManageFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: MainViewModel by activityViewModels()
-    private lateinit var adapter: TopicsManageAdapter
+
+    private lateinit var unsortedRowAdapter: UnsortedRowAdapter
+    private lateinit var topicsAdapter: TopicsManageAdapter
 
     companion object {
         private const val REQUEST_REPARENT = "TopicsManage_reparent"
     }
 
-    // Tracks which topic ID the pending reparent picker was opened for
     private var pendingReparentTopicId: Long = -1L
 
     override fun onCreateView(
@@ -65,18 +70,23 @@ class TopicsManageFragment : Fragment() {
             pendingReparentTopicId = -1L
         }
 
-        adapter = TopicsManageAdapter(
+        unsortedRowAdapter = UnsortedRowAdapter(
+            onUnsortedClick = {
+                (requireParentFragment() as? LibraryFragment)?.navigateToUnsorted()
+            }
+        )
+
+        topicsAdapter = TopicsManageAdapter(
             onCollapseToggle = { topicId, isCollapsed ->
                 viewModel.toggleCollapse(topicId, isCollapsed)
             },
-            onTopicSelect = { topicId ->
-                // Enable/disable + SUBTOPIC FAB based on whether anything is selected
-                val hasSelection = topicId != null
-                binding.fabAddSubtopic.isEnabled = hasSelection
-                binding.fabAddSubtopic.alpha = if (hasSelection) 1f else 0.4f
-            },
-            onDetailsClick = { topicId ->
+            onTopicClick = { topicId ->
                 (requireParentFragment() as? LibraryFragment)?.openTopicDetails(topicId)
+            },
+            onNewSubtopic = { parentId ->
+                NewTopicDialog(parentId = parentId) { name, icon, color ->
+                    viewModel.createTopic(name, parentId, icon, color)
+                }.show(childFragmentManager, "new_subtopic")
             },
             onMoveClick = { topicId ->
                 pendingReparentTopicId = topicId
@@ -86,11 +96,31 @@ class TopicsManageFragment : Fragment() {
                     requestKey      = REQUEST_REPARENT,
                     excludedIds     = excluded
                 ).show(childFragmentManager, "reparent_picker")
+            },
+            onRenameClick = { topicId, currentName ->
+                showRenameDialog(topicId, currentName)
+            },
+            onIconClick = { topicId ->
+                EmojiPickerBottomSheet { emoji ->
+                    val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+                        ?: return@EmojiPickerBottomSheet
+                    viewModel.updateTopic(topic.copy(icon = emoji))
+                }.show(childFragmentManager, "emoji_picker_manage")
+            },
+            onDeleteClick = { topicId ->
+                val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+                    ?: return@TopicsManageAdapter
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Delete \"${topic.name}\"?")
+                    .setMessage("This topic will be permanently deleted.")
+                    .setPositiveButton("Delete") { _, _ -> viewModel.deleteTopic(topic) }
+                    .setNegativeButton("Cancel", null)
+                    .show()
             }
         )
 
         binding.recyclerTopicsManage.apply {
-            this.adapter = this@TopicsManageFragment.adapter
+            adapter = ConcatAdapter(unsortedRowAdapter, topicsAdapter)
             layoutManager = LinearLayoutManager(requireContext())
             setHasFixedSize(false)
         }
@@ -102,24 +132,53 @@ class TopicsManageFragment : Fragment() {
             }.show(childFragmentManager, "new_topic")
         }
 
-        // ── FAB: + SUBTOPIC (only active when a topic is selected) ────
-        binding.fabAddSubtopic.setOnClickListener {
-            val selectedId = adapter.selectedTopicId.takeIf { it >= 0 } ?: return@setOnClickListener
-            NewTopicDialog(parentId = selectedId) { name, icon, color ->
-                viewModel.createTopic(name, selectedId, icon, color)
-            }.show(childFragmentManager, "new_subtopic")
-        }
-
+        // ── Observe tree items + unsorted count ───────────────────────
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.treeItems.collect { items ->
-                    // Only show Node items — no recording leaves in this view
-                    val nodes = items.filterIsInstance<TreeItem.Node>()
-                    adapter.submitList(nodes)
-                    binding.tvEmptyTopics.visibility = if (nodes.isEmpty()) View.VISIBLE else View.GONE
+                launch {
+                    viewModel.treeItems.collect { items ->
+                        val nodes = items.filterIsInstance<TreeItem.Node>()
+                        topicsAdapter.submitList(nodes)
+                        binding.tvEmptyTopics.visibility =
+                            if (nodes.isEmpty()) View.VISIBLE else View.GONE
+                    }
+                }
+                launch {
+                    viewModel.allRecordings.collect { recordings ->
+                        unsortedRowAdapter.unsortedCount = recordings.count { it.topicId == null }
+                    }
                 }
             }
         }
+    }
+
+    // ── Rename dialog ──────────────────────────────────────────────────
+
+    private fun showRenameDialog(topicId: Long, currentName: String) {
+        val editText = EditText(requireContext()).apply {
+            setText(currentName)
+            selectAll()
+            setSingleLine()
+        }
+        val padding = (20 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(requireContext()).apply {
+            setPadding(padding, 0, padding, 0)
+            addView(editText)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Rename Topic")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = editText.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+                        ?: return@setPositiveButton
+                    viewModel.updateTopic(topic.copy(name = newName))
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroyView() {

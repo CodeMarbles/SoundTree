@@ -133,6 +133,10 @@ class LibraryFragment : Fragment() {
         // Stay on PAGE_DETAILS; TopicDetailsFragment observes the ID and re-renders.
     }
 
+    fun navigateToUnsorted() {
+        binding.tilePager.setCurrentItem(PAGE_UNSORTED, true)
+    }
+
     /**
      * Called from MainActivity after saving a recording. Navigates to whichever
      * sub-page is most relevant.

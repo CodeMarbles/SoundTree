@@ -165,7 +165,7 @@ class RecordFragment : Fragment() {
      * setupTopicPicker's allTopics collector).
      */
     private fun setupTopicHeader() {
-        updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
+        updateRecordTopicHeader(null, getString(R.string.label_unsorted), Icons.INBOX)
 
         // Register result listener once here, survives the sheet being recreated
         childFragmentManager.setFragmentResultListener(
@@ -177,7 +177,7 @@ class RecordFragment : Fragment() {
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
             updateRecordTopicHeader(
                 topicId,
-                topic?.name ?: "Uncategorised",
+                topic?.name ?: getString(R.string.label_unsorted),
                 topic?.icon ?: Icons.INBOX
             )
             val svc = recordingService
@@ -198,7 +198,7 @@ class RecordFragment : Fragment() {
                         val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         updateRecordTopicHeader(
                             topicId,
-                            topic?.name ?: "Uncategorised",
+                            topic?.name ?: getString(R.string.label_unsorted),
                             topic?.icon ?: Icons.INBOX
                         )
                     }

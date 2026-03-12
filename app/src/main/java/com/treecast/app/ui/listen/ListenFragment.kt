@@ -297,7 +297,7 @@ class ListenFragment : Fragment() {
         // Populate the topic header
         val topic = viewModel.allTopics.value.firstOrNull { it.id == state.recording.topicId }
         binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
-        binding.tvCategory.text  = topic?.name ?: "Uncategorised"
+        binding.tvCategory.text  = topic?.name ?: getString(R.string.label_unsorted)
 
         binding.btnPlayPause.setImageResource(
             if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)

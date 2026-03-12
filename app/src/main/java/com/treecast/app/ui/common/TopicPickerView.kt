@@ -29,7 +29,7 @@ class TopicPickerView @JvmOverloads constructor(
 
     private var isExpanded = false
     private var selectedTopicId: Long? = null
-    private var selectedTopicName: String = "Uncategorised"
+    private var selectedTopicName: String = context.getString(R.string.label_unsorted)
     private var selectedTopicIcon: String = Icons.INBOX
     private val collapsedNodeIds = mutableSetOf<Long>()
     private var lastRoots: List<TreeNode> = emptyList()
@@ -62,7 +62,9 @@ class TopicPickerView @JvmOverloads constructor(
         recyclerView.layoutManager = LinearLayoutManager(context)
 
         headerRow.setOnClickListener { toggle() }
-        tvUncategorised.setOnClickListener { selectTopic(null, "Uncategorised", Icons.INBOX) }
+        tvUncategorised.setOnClickListener {
+            selectTopic(null, context.getString(R.string.label_unsorted), Icons.INBOX)
+        }
 
         updateHeader()
     }
@@ -80,7 +82,6 @@ class TopicPickerView @JvmOverloads constructor(
         selectedTopicIcon = topicIcon
         updateHeader()
     }
-
 
     fun collapse() {
         if (isExpanded) toggle()
@@ -136,17 +137,18 @@ class TopicPickerView @JvmOverloads constructor(
     }
 }
 
-// ── Data model ──────────────────────────────────────────────────────────────
+// ── Data model ───────────────────────────────────────────────────────────────
 data class PickerItem(val node: TreeNode, val depth: Int, val isCollapsed: Boolean)
 
-// ── Adapter ─────────────────────────────────────────────────────────────────
+// ── Adapter ──────────────────────────────────────────────────────────────────
+
 class TopicTreeAdapter(
     private val onNodeClick:  (TreeNode) -> Unit,
     private val onNodeToggle: (Long) -> Unit
-) : ListAdapter<PickerItem, TopicTreeAdapter.VH>(DIFF) {
+) : androidx.recyclerview.widget.ListAdapter<PickerItem, TopicTreeAdapter.VH>(DIFF) {
 
     companion object {
-        val DIFF = object : DiffUtil.ItemCallback<PickerItem>() {
+        val DIFF = object : androidx.recyclerview.widget.DiffUtil.ItemCallback<PickerItem>() {
             override fun areItemsTheSame(a: PickerItem, b: PickerItem) =
                 a.node.topic.id == b.node.topic.id
             override fun areContentsTheSame(a: PickerItem, b: PickerItem) = a == b
@@ -160,7 +162,6 @@ class TopicTreeAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        // IDs from item_category_picker_node.xml — unchanged layout file
         private val tvIcon:   TextView  = v.findViewById(R.id.tvIcon)
         private val tvName:   TextView  = v.findViewById(R.id.tvName)
         private val ivToggle: ImageView = v.findViewById(R.id.ivToggle)

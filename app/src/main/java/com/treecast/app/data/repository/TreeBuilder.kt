@@ -65,59 +65,72 @@ object TreeBuilder {
             val node = nodeMap[t.id] ?: continue
             val parentId = t.parentId
             if (parentId == null) {
-                node.depth = 0
                 roots.add(node)
             } else {
                 val parent = nodeMap[parentId]
                 if (parent != null) {
-                    node.depth = parent.depth + 1
                     parent.children.add(node)
                 } else {
                     // Orphan → promote to root
-                    node.depth = 0
                     roots.add(node)
                 }
             }
         }
 
-        // ── 2. Sort each level ────────────────────────────────────────
+        // ── 2. Assign depths top-down now that the tree is fully wired ─
+        // This must happen after all parent-child relationships are set,
+        // so that depth is always computed from the actual tree structure
+        // regardless of the order topics arrived from the DB.
+        fun assignDepths(nodes: List<MutableNode>, depth: Int) {
+            for (node in nodes) {
+                node.depth = depth
+                assignDepths(node.children, depth + 1)
+            }
+        }
+        assignDepths(roots, 0)
+
+        // ── 3. Sort each level ────────────────────────────────────────
         roots.sortBy { it.topic.sortOrder }
         nodeMap.values.forEach { node ->
             node.children.sortBy { it.topic.sortOrder }
             node.recordings.sortBy { it.sortOrder }
         }
 
-        // ── 3. Freeze into immutable TreeNodes ────────────────────────
+        // ── 4. Freeze into immutable TreeNodes ────────────────────────
         return roots.map { it.freeze() }
     }
 
     /**
      * Flatten the tree into a RecyclerView-compatible list,
      * respecting each node's collapsed state from [collapsedIds].
+     *
+     * Depth is passed as a traversal parameter rather than read from
+     * [TreeNode.depth], so display depth is always correct even if the
+     * stored depth were somehow stale.
      */
     fun flatten(
         roots: List<TreeNode>,
         collapsedIds: Set<Long> = emptySet()
     ): List<TreeItem> {
         val result = mutableListOf<TreeItem>()
-        fun visit(node: TreeNode) {
+        fun visit(node: TreeNode, depth: Int) {
             val isCollapsed = node.topic.id in collapsedIds
             result.add(
                 TreeItem.Node(
-                    treeNode = node,
-                    depth = node.depth,
+                    treeNode    = node,
+                    depth       = depth,
                     hasChildren = node.children.isNotEmpty() || node.recordings.isNotEmpty(),
                     isCollapsed = isCollapsed
                 )
             )
             if (!isCollapsed) {
-                node.children.forEach { visit(it) }
+                node.children.forEach { visit(it, depth + 1) }
                 node.recordings.forEach { rec ->
-                    result.add(TreeItem.Leaf(recording = rec, depth = node.depth + 1))
+                    result.add(TreeItem.Leaf(recording = rec, depth = depth + 1))
                 }
             }
         }
-        roots.forEach { visit(it) }
+        roots.forEach { visit(it, 0) }
         return result
     }
 

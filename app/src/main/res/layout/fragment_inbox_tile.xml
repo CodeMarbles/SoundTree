@@ -10,7 +10,7 @@
         android:id="@+id/tvHeader"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="📥 Uncategorized"
+        android:text="@string/picker_unsorted"
         android:textColor="?attr/colorTextPrimary"
         android:textSize="20sp"
         android:textStyle="bold"

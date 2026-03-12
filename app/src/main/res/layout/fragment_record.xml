@@ -71,7 +71,7 @@
                         android:id="@+id/tvRecordTopicName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Uncategorised"
+                        android:text="@string/label_unsorted"
                         android:textColor="?attr/colorTextPrimary"
                         android:textSize="20sp"
                         android:textStyle="bold"

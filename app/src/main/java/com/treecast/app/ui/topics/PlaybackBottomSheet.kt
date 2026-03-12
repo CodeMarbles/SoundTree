@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.treecast.app.R
 import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.util.Icons
@@ -55,7 +56,7 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
                     val topic = recording.topicId?.let { id -> topics.find { it.id == id } }
                     binding.topicPicker.setSelectedTopic(
                         recording.topicId,
-                        topic?.name ?: "Uncategorised",
+                        topic?.name ?: getString(R.string.label_unsorted),
                         topic?.icon ?: Icons.INBOX
                     )
                 }

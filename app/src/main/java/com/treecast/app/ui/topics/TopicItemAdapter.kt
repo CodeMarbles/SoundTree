@@ -328,7 +328,7 @@ class TopicItemAdapter(
                     val topic = rec.topicId?.let { id -> topics.find { it.id == id } }
                     picker.setSelectedTopic(
                         rec.topicId,
-                        topic?.name ?: "Uncategorised",
+                        topic?.name ?: itemView.context.getString(R.string.label_unsorted),
                         topic?.icon ?: Icons.INBOX
                     )
                     picker.onTopicSelected = { topicId ->

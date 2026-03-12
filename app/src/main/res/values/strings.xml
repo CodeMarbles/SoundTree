@@ -7,10 +7,17 @@
     <string name="tile_tree">Topics</string>
     <string name="tile_inbox">Inbox</string>
     <string name="btn_unlock">Unlock</string>
-    <string name="picker_uncategorised">📥  Uncategorised (Inbox)</string>
-    <string name="empty_tree">No topics yet.\nTap 💭 + Topic to get started.</string>
+    <!-- The display name for recordings with no topic. Change here to update everywhere. -->
+    <string name="label_unsorted">Unsorted</string>
+    <string name="picker_unsorted">📥  Unsorted</string>
+    <string name="empty_tree">No topics yet.\nTap + TOPIC to get started.</string>
     <string name="empty_inbox">Your unsorted recordings appear here.</string>
-    <string name="uncategorised">💭 Uncategorised</string>
+    <string name="unsorted">📥 Unsorted</string>
     <string name="layout_btn_edit">Edit layout</string>
     <string name="layout_btn_apply">Apply</string>
+
+    <plurals name="recording_count">
+        <item quantity="one">1 recording</item>
+        <item quantity="other">%d recordings</item>
+    </plurals>
 </resources>
