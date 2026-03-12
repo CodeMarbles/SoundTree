@@ -2,6 +2,7 @@ package com.treecast.app.ui.settings
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
@@ -50,22 +51,14 @@ class LayoutReorderWidget @JvmOverloads constructor(
     companion object {
         const val TYPE_STRIP = 0
         const val TYPE_CONTENT = 1
+        const val TYPE_TITLE_BAR = 2
     }
 
     // ── Public state ──────────────────────────────────────────────────
 
-    /**
-     * Whether the TITLE_BAR element is visible in both the widget and the
-     * live app layout.  Changing this does not lose its position in the order.
-     */
     var showTitleBar: Boolean = true
         set(value) {
             if (field == value) return
-            if (!value) {
-                // Preserve TITLE_BAR's current index before removing it
-                hiddenTitleBarIndex = displayItems.indexOf(LayoutElement.TITLE_BAR)
-                    .takeIf { it >= 0 } ?: hiddenTitleBarIndex
-            }
             field = value
             rebuildDisplayItems()
         }
@@ -84,10 +77,6 @@ class LayoutReorderWidget @JvmOverloads constructor(
     // Full 4-element order — source of truth, always kept in sync.
     private val fullOrder: MutableList<LayoutElement> =
         LayoutElement.DEFAULT_ORDER.toMutableList()
-
-    // Position in fullOrder where TITLE_BAR should be re-inserted when
-    // showTitleBar flips back to true.
-    private var hiddenTitleBarIndex: Int = 0
 
     // Filtered view of fullOrder fed to the RecyclerView adapter.
     private val displayItems: MutableList<LayoutElement> = mutableListOf()
@@ -152,10 +141,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
 
     private fun rebuildDisplayItems() {
         displayItems.clear()
-        displayItems.addAll(
-            if (showTitleBar) fullOrder
-            else fullOrder.filter { it != LayoutElement.TITLE_BAR }
-        )
+        displayItems.addAll(fullOrder)
         adapter.notifyDataSetChanged()
         requestLayout()
     }
@@ -171,28 +157,29 @@ class LayoutReorderWidget @JvmOverloads constructor(
      * TITLE_BAR at [hiddenTitleBarIndex] when applicable.
      */
     private fun syncFullOrder() {
-        if (showTitleBar) {
-            fullOrder.clear()
-            fullOrder.addAll(displayItems)
-        } else {
-            val rebuilt = displayItems.toMutableList()
-            rebuilt.add(hiddenTitleBarIndex.coerceIn(0, rebuilt.size), LayoutElement.TITLE_BAR)
-            fullOrder.clear()
-            fullOrder.addAll(rebuilt)
-        }
+        fullOrder.clear()
+        fullOrder.addAll(displayItems)
     }
 
     // ── Adapter ───────────────────────────────────────────────────────
 
     private inner class ElementAdapter : RecyclerView.Adapter<ElementAdapter.VH>() {
 
-        inner class VH(val row: LinearLayout, val label: TextView, val handle: TextView) :
-            RecyclerView.ViewHolder(row)
+        inner class VH(
+            val row: LinearLayout,
+            val label: TextView,
+            val handle: TextView,
+            val pillLeft: View? = null,
+            val pillRight: View? = null
+        ) : RecyclerView.ViewHolder(row)
 
         override fun getItemCount(): Int = displayItems.size
 
-        override fun getItemViewType(position: Int): Int =
-            if (displayItems[position] == LayoutElement.CONTENT) TYPE_CONTENT else TYPE_STRIP
+        override fun getItemViewType(position: Int): Int = when (displayItems[position]) {
+            LayoutElement.CONTENT   -> TYPE_CONTENT
+            LayoutElement.TITLE_BAR -> TYPE_TITLE_BAR
+            else                    -> TYPE_STRIP
+        }
 
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH {
             val isContent = viewType == TYPE_CONTENT
@@ -208,44 +195,139 @@ class LayoutReorderWidget @JvmOverloads constructor(
                 letterSpacing = 0.07f
             }
 
-            val row: LinearLayout = if (isContent) ContentCard(context) else LinearLayout(context)
-            row.apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                layoutParams = RecyclerView.LayoutParams(
-                    RecyclerView.LayoutParams.MATCH_PARENT, heightPx
-                )
-                val margin = (2 * dp).toInt()
-                (layoutParams as RecyclerView.LayoutParams)
-                    .setMargins(0, margin, 0, margin)
-
-                background = GradientDrawable().apply {
-                    setColor(context.themeColor(R.attr.colorSurfaceBase))
-                    setStroke(
-                        (1 * dp).toInt(),
-                        context.themeColor(R.attr.colorSurfaceElevated)
+            if (viewType == TYPE_TITLE_BAR) {
+                val row = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    layoutParams = RecyclerView.LayoutParams(
+                        RecyclerView.LayoutParams.MATCH_PARENT, heightPx
                     )
-                    cornerRadius = (4 * dp)
+                    val margin = (2 * dp).toInt()
+                    (layoutParams as RecyclerView.LayoutParams).setMargins(0, margin, 0, margin)
+                    background = GradientDrawable().apply {
+                        setColor(context.themeColor(R.attr.colorSurfaceBase))
+                        setStroke((1 * dp).toInt(), context.themeColor(R.attr.colorSurfaceElevated))
+                        cornerRadius = (4 * dp)
+                    }
                 }
-            }
 
-            val handle = TextView(context).apply {
-                text = "⠿"
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setTextColor(context.themeColor(R.attr.colorTextSecondary))
-                setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
-                visibility = if (editing) View.VISIBLE else View.INVISIBLE
-            }
-            row.orientation = LinearLayout.HORIZONTAL
-            row.addView(handle)
-            row.addView(label, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                val handle = TextView(context).apply {
+                    text = "⠿"
+                    textSize = 14f
+                    gravity = Gravity.CENTER
+                    setTextColor(context.themeColor(R.attr.colorTextSecondary))
+                    setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
+                    visibility = if (editing) View.VISIBLE else View.INVISIBLE
+                }
 
-            return VH(row, label, handle)
+                val pillContainer = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    setPadding((4 * dp).toInt(), 0, (4 * dp).toInt(), 0)
+                }
+
+                val pillHeight = (14 * dp).toInt()
+
+                val pillLeft = View(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, pillHeight, 1f).also {
+                        it.marginEnd = (3 * dp).toInt()
+                    }
+                }
+                val pillRight = View(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, pillHeight, 1f).also {
+                        it.marginStart = (3 * dp).toInt()
+                    }
+                }
+
+                pillContainer.addView(pillLeft)
+                pillContainer.addView(pillRight)
+
+                row.addView(handle)
+                row.addView(label, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                row.addView(pillContainer)
+
+                return VH(row, label, handle, pillLeft, pillRight)
+            } else {
+
+                val row: LinearLayout =
+                    if (isContent) ContentCard(context) else LinearLayout(context)
+                row.apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    layoutParams = RecyclerView.LayoutParams(
+                        RecyclerView.LayoutParams.MATCH_PARENT, heightPx
+                    )
+                    val margin = (2 * dp).toInt()
+                    (layoutParams as RecyclerView.LayoutParams)
+                        .setMargins(0, margin, 0, margin)
+
+                    background = GradientDrawable().apply {
+                        setColor(context.themeColor(R.attr.colorSurfaceBase))
+                        setStroke(
+                            (1 * dp).toInt(),
+                            context.themeColor(R.attr.colorSurfaceElevated)
+                        )
+                        cornerRadius = (4 * dp)
+                    }
+                }
+
+                val handle = TextView(context).apply {
+                    text = "⠿"
+                    textSize = 14f
+                    gravity = Gravity.CENTER
+                    setTextColor(context.themeColor(R.attr.colorTextSecondary))
+                    setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
+                    visibility = if (editing) View.VISIBLE else View.INVISIBLE
+                }
+                row.orientation = LinearLayout.HORIZONTAL
+                row.addView(handle)
+                row.addView(
+                    label,
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                )
+
+                return VH(row, label, handle)
+            }
         }
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val element = displayItems[position]
+
+            // ── Title bar pill-mode rendering ─────────────────────────────────────
+            if (element == LayoutElement.TITLE_BAR) {
+                if (!showTitleBar && holder.pillLeft != null && holder.pillRight != null) {
+                    // Disabled state — show muted twin pills, hide label
+                    holder.label.visibility = View.GONE
+                    (holder.pillLeft?.parent as? View)?.visibility = View.VISIBLE
+
+                    fun mutedStroke(base: Int): Int =
+                        Color.argb(80, Color.red(base), Color.green(base), Color.blue(base))
+                    fun mutedFill(base: Int): Int =
+                        Color.argb(20, Color.red(base), Color.green(base), Color.blue(base))
+
+                    val red  = context.themeColor(R.attr.colorRecordActive)
+                    val blue = context.themeColor(R.attr.colorAccent)
+                    val strokePx = (1.5f * context.resources.displayMetrics.density).toInt()
+
+                    holder.pillLeft.background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 999f * context.resources.displayMetrics.density
+                        setColor(mutedFill(red))
+                        setStroke(strokePx, mutedStroke(red))
+                    }
+                    holder.pillRight.background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 999f * context.resources.displayMetrics.density
+                        setColor(mutedFill(blue))
+                        setStroke(strokePx, mutedStroke(blue))
+                    }
+                } else {
+                    holder.label.visibility = View.VISIBLE
+                    (holder.pillLeft?.parent as? View)?.visibility = View.GONE
+                }
+            }
+
             holder.label.text = element.displayName.uppercase()
             val targetAlpha = if (editing) 1f else 0.55f
             holder.row.animate().alpha(targetAlpha).setDuration(150).start()

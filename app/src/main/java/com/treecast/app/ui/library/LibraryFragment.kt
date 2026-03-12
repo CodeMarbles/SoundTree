@@ -105,10 +105,10 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        // Start on Topics page.
-        binding.tilePager.setCurrentItem(PAGE_TOPICS, false)
-        updateSubNavSelection(PAGE_TOPICS)
-        updateTopTitle(PAGE_TOPICS)
+        // Start on ALL page
+        binding.tilePager.setCurrentItem(PAGE_ALL, false)
+        updateSubNavSelection(PAGE_ALL)
+        updateTopTitle(PAGE_ALL)
     }
 
     // ── Public API ────────────────────────────────────────────────────

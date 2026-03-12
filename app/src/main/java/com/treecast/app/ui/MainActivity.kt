@@ -556,6 +556,15 @@ class MainActivity : AppCompatActivity() {
                 if (state != null) {
                     p.tvMiniTitle.text = state.recording.title
 
+                    // Playing label — reports current state, turns yellow when paused
+                    if (state.isPlaying) {
+                        p.tvMiniPlayingLabel.text = "NOW PLAYING:"
+                        p.tvMiniPlayingLabel.setTextColor(themeColor(R.attr.colorTextSecondary))
+                    } else {
+                        p.tvMiniPlayingLabel.text = "PAUSED:"
+                        p.tvMiniPlayingLabel.setTextColor(themeColor(R.attr.colorRecordPause))
+                    }
+
                     // Populate topic icon
                     val topic = viewModel.allTopics.value
                         .firstOrNull { it.id == state.recording.topicId }
@@ -626,16 +635,16 @@ class MainActivity : AppCompatActivity() {
         recorderBinding.miniRecTimeline.showLastMarkTimestamp = true
 
         // ── Background color: 3-state ──────────────────────────────────────
-        val surfaceColor = themeColor(R.attr.colorSurfaceBase)
+        val idleColor      = themeColor(R.attr.colorMiniRecorderIdle)
         val recordingColor = themeColor(R.attr.colorMiniRecorderActive)   // dark/light red
         val pausedColor = themeColor(R.attr.colorMiniRecorderPaused)      // dark/light yellow
 
-        var lastBgColor = surfaceColor
+        var lastBgColor = idleColor
 
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
                 val targetColor = when (state) {
-                    RecordingService.State.IDLE      -> surfaceColor
+                    RecordingService.State.IDLE      -> idleColor
                     RecordingService.State.RECORDING -> recordingColor
                     RecordingService.State.PAUSED    -> pausedColor
                 }
@@ -953,6 +962,16 @@ class MainActivity : AppCompatActivity() {
                 pill.pillPlayer.visibility = if (pillVisible) View.VISIBLE else View.GONE
 
                 if (pillVisible && state != null) {
+                    if (state.isPlaying) {
+                        pill.ivPillPlayerPlay.setImageResource(R.drawable.ic_play)
+                        pill.ivPillPlayerPlay.imageTintList =
+                            ColorStateList.valueOf(themeColor(R.attr.colorAccent))
+                    } else {
+                        pill.ivPillPlayerPlay.setImageResource(R.drawable.ic_pause)
+                        pill.ivPillPlayerPlay.imageTintList =
+                            ColorStateList.valueOf(themeColor(R.attr.colorRecordPause))
+                    }
+
                     // Topic icon
                     val topic = viewModel.allTopics.value
                         .firstOrNull { it.id == state.recording.topicId }

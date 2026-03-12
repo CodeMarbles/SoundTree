@@ -17,12 +17,15 @@
     <color name="purple_600">#4F48CC</color>
 
     <!-- Red / pink -->
+    <color name="pink_700">#C2185B</color>
+    <color name="pink_900">#880E4F</color>
+
+    <color name="red_40">#F2E8E8</color>    <!-- light: very subtly pinkish, between grey_100 and red_50 -->
     <color name="red_50">#FCEAEA</color>
     <color name="red_500">#FF3B3B</color>
     <color name="red_700">#D32F2F</color>
     <color name="red_800">#CC2222</color>
-    <color name="pink_700">#C2185B</color>
-    <color name="pink_900">#880E4F</color>
+    <color name="red_920">#1E1214</color>   <!-- dark: warm red-tinged dark, between grey_900 and red_950 -->
     <color name="red_950">#1A0808</color>
 
     <!-- Teal -->

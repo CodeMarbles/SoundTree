@@ -33,6 +33,7 @@
     <attr name="colorMiniPlayerSurface" format="color" />
 
     <!-- Mini Recorder -->
+    <attr name="colorMiniRecorderIdle"   format="color" />
     <attr name="colorMiniRecorderActive" format="color" />
     <attr name="colorMiniRecorderPaused" format="color" />
 

@@ -55,6 +55,7 @@
         <item name="colorMiniRecorderActive">@color/red_50</item>
 
         <!-- Mini Recorder -->
+        <item name="colorMiniRecorderIdle">@color/red_40</item>
         <item name="colorMiniRecorderPaused">@color/yellow_50</item>
 
         <!-- Title bar pills -->
