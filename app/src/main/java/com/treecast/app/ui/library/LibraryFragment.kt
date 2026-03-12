@@ -88,7 +88,7 @@ class LibraryFragment : Fragment() {
         binding.tilePager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 updateSubNavSelection(position)
-                (requireActivity() as? MainActivity)?.setTopTitle("Library")
+                updateTopTitle(position)
             }
         })
 
@@ -97,6 +97,10 @@ class LibraryFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.libraryDetailsTopicId.collect {
                     updateSubNavSelection(binding.tilePager.currentItem)
+                    // Keep the title in sync if the user is already on the Details page
+                    if (binding.tilePager.currentItem == PAGE_DETAILS) {
+                        updateTopTitle(PAGE_DETAILS)
+                    }
                 }
             }
         }
@@ -104,7 +108,7 @@ class LibraryFragment : Fragment() {
         // Start on Topics page.
         binding.tilePager.setCurrentItem(PAGE_TOPICS, false)
         updateSubNavSelection(PAGE_TOPICS)
-        (requireActivity() as? MainActivity)?.setTopTitle("Library")
+        updateTopTitle(PAGE_TOPICS)
     }
 
     // ── Public API ────────────────────────────────────────────────────
@@ -156,6 +160,41 @@ class LibraryFragment : Fragment() {
     }
 
     // ── Internal helpers ──────────────────────────────────────────────
+
+    /**
+     * Called by MainActivity when the outer ViewPager2 swipes to the Library
+     * tab, so the title reflects whichever inner sub-page is currently visible
+     * rather than staying frozen on the previous tab's title.
+     */
+    fun refreshTopTitle() {
+        if (_binding == null) return
+        updateTopTitle(binding.tilePager.currentItem)
+    }
+
+    /**
+     * Computes the breadcrumb title for [position] and pushes it to the
+     * activity's top title bar.
+     *
+     *   Topics      → "Library > Topics"
+     *   Details     → "Library > Details > My Topic Name"
+     *   etc.
+     */
+    private fun updateTopTitle(position: Int) {
+        val title = when (position) {
+            PAGE_ALL        -> "Library > All"
+            PAGE_UNSORTED   -> "Library > Unsorted"
+            PAGE_TOPICS     -> "Library > Topics"
+            PAGE_RECORDINGS -> "Library > Recordings"
+            PAGE_DETAILS    -> {
+                val topicId = viewModel.libraryDetailsTopicId.value
+                val name = viewModel.allTopics.value
+                    .firstOrNull { it.id == topicId }?.name.orEmpty()
+                if (name.isNotEmpty()) "Library > Details > $name" else "Library > Details"
+            }
+            else -> "Library"
+        }
+        (requireActivity() as? MainActivity)?.setTopTitle(title)
+    }
 
     private fun updateSubNavSelection(position: Int) {
         val accent    = requireContext().themeColor(R.attr.colorAccent)

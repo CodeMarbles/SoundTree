@@ -35,6 +35,7 @@ class TopicItemAdapter(
     private val onTopicIconChange: (TopicEntity) -> Unit,
     private val onTopicRename:  (TopicEntity, String) -> Unit,
     private val onTopicDelete:  (TopicEntity) -> Unit,
+    private val onDetailsClick: (topicId: Long) -> Unit,
     private val onPlayPause:    (RecordingEntity) -> Unit,
     private val onRename:       (id: Long, newTitle: String) -> Unit,
     private val onMove:         (id: Long, topicId: Long?) -> Unit,
@@ -145,7 +146,7 @@ class TopicItemAdapter(
         private val btnIcon:          MaterialButton = v.findViewById(R.id.btnIcon)
         private val btnRename:        MaterialButton = v.findViewById(R.id.btnRename)
         private val btnDelete:        MaterialButton = v.findViewById(R.id.btnDelete)
-        // btnDetails is a placeholder — no action wired yet
+        private val btnDetails:       MaterialButton = v.findViewById(R.id.btnDetails)
 
         fun bind(item: TreeItem.Node) {
             val topic   = item.treeNode.topic
@@ -230,6 +231,7 @@ class TopicItemAdapter(
                         .show()
                 }
             }
+            btnDetails.setOnClickListener { onDetailsClick(topic.id) }
         }
     }
 

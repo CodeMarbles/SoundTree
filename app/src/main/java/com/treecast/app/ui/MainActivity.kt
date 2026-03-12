@@ -354,8 +354,11 @@ class MainActivity : AppCompatActivity() {
                 updateBottomNavSelection(position)
                 if (position != PAGE_LIBRARY) {
                     viewModel.setTopTitle(pageTitles[position] ?: "")
+                } else {
+                    // LibraryFragment drives the title, but its inner page-change
+                    // callback won't fire on a swipe-in from another tab — nudge it.
+                    libraryFragment.refreshTopTitle()
                 }
-                // When on Library, LibraryFragment drives the top title itself.
 
                 // ── History recording ──────────────────────────────────
                 viewModel.setCurrentPage(position)

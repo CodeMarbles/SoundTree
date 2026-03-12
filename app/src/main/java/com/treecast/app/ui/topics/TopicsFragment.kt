@@ -14,6 +14,7 @@ import com.treecast.app.databinding.FragmentTopicsBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
+import com.treecast.app.ui.library.LibraryFragment
 import kotlinx.coroutines.launch
 
 class TopicsFragment : Fragment() {
@@ -40,6 +41,9 @@ class TopicsFragment : Fragment() {
             },
             onTopicDelete = { topic ->
                 viewModel.deleteTopic(topic)
+            },
+            onDetailsClick = { topicId ->
+                (parentFragment as? LibraryFragment)?.openTopicDetails(topicId)
             },
             onPlayPause = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
