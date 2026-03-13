@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
@@ -18,6 +19,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
@@ -32,6 +34,8 @@ import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
+import com.treecast.app.util.bitmapToPngByteArray
+import com.treecast.app.util.buildTopicArtwork
 import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -244,9 +248,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         stopProgressPolling()
 
         val uri = Uri.fromFile(File(recording.filePath))
+        val topic = allTopics.value.firstOrNull { it.id == recording.topicId }
+        val topicName = topic?.name ?: getApplication<Application>().getString(R.string.unsorted)
+
+        val artwork = topic?.let { buildTopicArtwork(it.color, it.icon) }
+        val artworkBytes = artwork?.let { bitmapToPngByteArray(it) }
+
         val mediaItem = MediaItem.Builder()
             .setUri(uri)
             .setMediaId(recording.id.toString())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(recording.title)
+                    .setArtist(topicName)
+                    .apply { artworkBytes?.let { setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) } }
+                    .build()
+            )
             .build()
 
         controller.stop()

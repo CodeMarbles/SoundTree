@@ -1,5 +1,3 @@
-@file:UnstableApi @file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.treecast.app.service
 
 import android.content.Intent
@@ -8,8 +6,8 @@ import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
@@ -22,6 +20,7 @@ import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.repository.TreeCastRepository
+import com.treecast.app.service.PlaybackService.MarkAwarePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -117,7 +116,7 @@ class PlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(
-            mediaItem: androidx.media3.common.MediaItem?,
+            mediaItem: MediaItem?,
             reason: Int
         ) {
             val recordingId = mediaItem?.mediaId?.toLongOrNull()
