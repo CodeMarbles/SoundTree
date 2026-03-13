@@ -27,6 +27,7 @@
     <!-- Recording -->
     <attr name="colorRecordActive"      format="color" />
     <attr name="colorRecordPause"       format="color" />
+    <attr name="colorRecordButtonBorder" format="color" />
     <attr name="colorDestructive"       format="color" />
 
     <!-- Mini Player distinct surface -->

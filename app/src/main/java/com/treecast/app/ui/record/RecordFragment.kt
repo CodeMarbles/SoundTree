@@ -131,7 +131,7 @@ class RecordFragment : Fragment() {
             }
         }
 
-        binding.btnStopSave.setOnClickListener { stopAndSave() }
+        binding.btnSave.setOnClickListener { stopAndSave() }
 
         // Drop mark button — in-app counterpart of the notification action.
         // Delegates directly to the service via Binder.

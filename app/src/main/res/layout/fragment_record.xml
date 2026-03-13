@@ -1,4 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Record tab — redesigned layout.
+
+  Structure (top → bottom):
+    ┌─ ConstraintLayout (root) ──────────────────────────────────────────┐
+    │  ┌─ NestedScrollView ─────────────────────────────────────────────┐│
+    │  │  └─ LinearLayout (vertical scroll content)                     ││
+    │  │       ├─ compoundHeader   (topic zone | divider | rec-name)    ││
+    │  │       ├─ waveformFrame    (WaveformView + tvTimer overlay)      ││
+    │  │       ├─ primaryControls  (Cancel | ● REC circle | Save)       ││
+    │  │       └─ deadSpaceCard    (DotGridView + S/M/L buttons)        ││
+    │  └────────────────────────────────────────────────────────────────┘│
+    │  ┌─ bottomPinnedArea (LinearLayout, vertical) ────────────────────┐│
+    │  │   ├─ markExtendedControls  (GONE until mark selected)          ││
+    │  │   └─ markLockContainer     (GONE in idle state)                ││
+    │  └────────────────────────────────────────────────────────────────┘│
+    └────────────────────────────────────────────────────────────────────┘
+
+  ID changes vs. previous layout (for Kotlin migration):
+    REMOVED  stopSaveContainer   → btnCancel / btnSave now live directly
+                                   in primaryControlsContainer
+    REMOVED  ivRecordTopicChevron → header no longer has a chevron
+    NEW      compoundHeader       outer row wrapper
+    NEW      topicPickerZone      previously "topicHeader" — same click
+                                   behaviour, tighter style
+    PRESERVED topicHeader         now an alias id on topicPickerZone so
+                                   existing click-listener wiring works (see note)
+             tvRecordTopicIcon   same
+             tvRecordTopicName   same
+             waveformView        same (now inside waveformFrame FrameLayout)
+             tvTimer             same (now overlaid on waveform)
+             btnRecord           same ID, now a true 80dp circle
+             btnCancel           same, now directly constrained (not in container)
+             btnSave             same, now directly constrained (not in container)
+             markLockContainer   same (visibility toggled by state)
+             btnLockScreen       same ID, now icon-only boxy style
+             btnDropMark         same
+
+  NOTE: topicHeader is set as the id of topicPickerZone so that
+        binding.topicHeader.setOnClickListener { … } in RecordFragment
+        compiles without change.  The recordingNameZone needs a new
+        click-listener wired in RecordFragment for the rename dialog.
+-->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6,310 +49,597 @@
     android:layout_height="match_parent"
     android:background="?attr/colorBackground">
 
-    <!-- ── Scrollable content (everything except the pinned bottom row) ── -->
+    <!-- ════════════════════════════════════════════════════════════════
+         Scrollable content area
+         Constrained bottom_toTopOf bottomPinnedArea so that the pinned
+         mark/lock bar never overlaps the scroll content.
+         ════════════════════════════════════════════════════════════════ -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/recordScrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/markLockContainer">
+        app:layout_constraintBottom_toTopOf="@id/bottomPinnedArea">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!-- Single child required by NestedScrollView -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="24dp">
+            android:orientation="vertical">
 
-            <!-- ── Topic header (tap to change topic) ────────────────── -->
+            <!-- ── Compound header ────────────────────────────────────
+                 Horizontal row split into two tappable zones:
+                   LEFT  — topic icon + name  → opens TopicPickerBottomSheet
+                   RIGHT — recording filename → opens rename dialog
+                            (RIGHT zone is GONE in IDLE state)
+                 ─────────────────────────────────────────────────────── -->
             <LinearLayout
-                android:id="@+id/topicHeader"
-                android:layout_width="0dp"
+                android:id="@+id/compoundHeader"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingVertical="6dp"
-                android:layout_marginBottom="16dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="8dp">
 
-                <!-- Topic icon -->
-                <TextView
-                    android:id="@+id/tvRecordTopicIcon"
+                <!-- Topic picker zone (always visible) -->
+                <LinearLayout
+                    android:id="@+id/topicHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📥"
-                    android:textSize="40sp"
-                    android:lineHeight="48sp"
-                    android:layout_marginEnd="12dp"
-                    android:includeFontPadding="false" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingVertical="4dp"
+                    android:paddingEnd="2dp">
 
-                <!-- "TOPIC:" label + selected topic name -->
+                    <!-- Topic emoji icon -->
+                    <TextView
+                        android:id="@+id/tvRecordTopicIcon"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:gravity="center"
+                        android:text="📥"
+                        android:textSize="18sp"
+                        android:includeFontPadding="false"
+                        android:background="?attr/colorSurfaceBase"
+                        android:backgroundTint="?attr/colorSurfaceBase"
+                        android:layerType="software" />
+                    <!--
+                      Note: the square emoji background is achieved via the
+                      MaterialCardView wrapping further below if needed.
+                      For now a simple coloured background on the TextView
+                      suffices.  Corner radius can be added via a shape drawable
+                      set in RecordFragment.updateRecordTopicHeader() if desired.
+                    -->
+
+                    <!-- Topic label stack -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOPIC"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="9sp"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.08"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvRecordTopicName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_unsorted"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:maxWidth="160dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Thin vertical divider — GONE in IDLE -->
+                <View
+                    android:id="@+id/headerDivider"
+                    android:layout_width="1dp"
+                    android:layout_height="30dp"
+                    android:layout_marginHorizontal="10dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:visibility="gone" />
+
+                <!-- Recording name zone — GONE in IDLE -->
                 <LinearLayout
+                    android:id="@+id/recordingNameZone"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
-                    android:gravity="center_vertical">
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingVertical="4dp"
+                    android:visibility="gone">
 
                     <TextView
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="TOPIC:"
+                        android:text="RECORDING"
                         android:textColor="?attr/colorTextSecondary"
-                        android:textSize="11sp"
+                        android:textSize="9sp"
                         android:textAllCaps="true"
-                        android:letterSpacing="0.1"
+                        android:letterSpacing="0.08"
                         android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/tvRecordTopicName"
+                        android:id="@+id/tvRecordingName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/label_unsorted"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
+                        android:text="—"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
                         android:ellipsize="end"
                         android:maxLines="1" />
 
                 </LinearLayout>
 
-                <!-- Chevron hints the header is tappable -->
-                <ImageView
-                    android:id="@+id/ivRecordTopicChevron"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:rotation="-90"
-                    app:tint="?attr/colorTextSecondary" />
-
             </LinearLayout>
 
+            <!-- Header bottom border -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated" />
 
-            <!-- ── Live waveform visualiser ───────────────────────────── -->
-            <com.treecast.app.ui.record.WaveformView
-                android:id="@+id/waveformView"
-                android:layout_width="0dp"
-                android:layout_height="100dp"
-                app:layout_constraintTop_toBottomOf="@id/topicHeader"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="8dp" />
+            <!-- ── Waveform + timer overlay ────────────────────────────
+                 FrameLayout lets tvTimer sit centred on top of the
+                 waveform.  The text-shadow on tvTimer (set in code) keeps
+                 the timer readable against the waveform bars.
+                 ─────────────────────────────────────────────────────── -->
+            <FrameLayout
+                android:id="@+id/waveformFrame"
+                android:layout_width="match_parent"
+                android:layout_height="88dp"
+                android:layout_marginHorizontal="14dp"
+                android:layout_marginTop="10dp"
+                android:background="?attr/colorSurfaceBase">
+                <!--
+                  The rounded corners on this surface are added via a
+                  ShapeDrawable background set from RecordFragment if desired,
+                  or left as a flat rect for now.
+                -->
 
-            <!-- ── Recording timer ────────────────────────────────────── -->
-            <TextView
-                android:id="@+id/tvTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0:00"
-                android:textSize="56sp"
-                android:textColor="?attr/colorTextPrimary"
-                android:fontFamily="monospace"
-                android:letterSpacing="0.03"
-                app:layout_constraintTop_toBottomOf="@id/waveformView"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="16dp" />
+                <com.treecast.app.ui.record.WaveformView
+                    android:id="@+id/waveformView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
 
-            <!-- ── Record / Pause / Resume button ────────────────────── -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRecord"
-                android:layout_width="0dp"
-                android:layout_height="64dp"
-                android:text="REC"
-                android:textSize="18sp"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="?attr/colorRecordActive"
-                app:cornerRadius="32dp"
-                app:layout_constraintTop_toBottomOf="@id/tvTimer"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="20dp" />
+                <!-- Timer centred over the waveform -->
+                <TextView
+                    android:id="@+id/tvTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="0:00"
+                    android:textSize="40sp"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.03"
+                    android:includeFontPadding="false" />
+                <!--
+                  Layer-type="software" is set on tvTimer in RecordFragment so
+                  that setShadowLayer() for the text-shadow halo works on API 28+.
+                -->
 
-            <!-- ── Cancel / Stop & Save row ──────────────────────────── -->
-            <LinearLayout
-                android:id="@+id/stopSaveContainer"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:orientation="horizontal"
-                android:visibility="gone"
-                android:layout_marginTop="12dp"
-                app:layout_constraintTop_toBottomOf="@id/btnRecord"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
+            </FrameLayout>
 
-                <!-- #CC2222: darker muted red for cancel card bg — no palette entry yet -->
+            <!-- ── Primary controls row ───────────────────────────────
+                 ConstraintLayout keeps the circle button permanently
+                 centred, with Cancel (start→circle) and Save (circle→end)
+                 filling the flanking space.  Both flanking buttons are
+                 GONE in IDLE — the circle remains centred regardless.
+                 ─────────────────────────────────────────────────────── -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/primaryControlsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="92dp"
+                android:layout_marginHorizontal="14dp"
+                android:layout_marginTop="8dp">
+
+                <!-- Cancel — fills left of circle, shorter height, boxy corners -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/btnCancel"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
+                    android:layout_height="48dp"
                     android:layout_marginEnd="8dp"
                     android:clickable="true"
                     android:focusable="true"
+                    android:visibility="gone"
                     app:cardBackgroundColor="?attr/colorActionCancel"
-                    app:cardCornerRadius="26dp"
-                    app:cardElevation="0dp">
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/btnRecord"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="✕  Cancel"
-                            android:textColor="#FFFFFF"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Double Tap to Cancel"
-                            android:textColor="#CCFFFFFF"
-                            android:textSize="10sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="Cancel"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
 
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- #1E7D45: dark green for save action — no palette entry yet -->
+                <!-- ● Record / Pause / Resume — true circle, 80 dp
+                     Background tint, icon, text label, and stroke width are
+                     ALL managed in RecordFragment.updateUiForState():
+                       IDLE      → red fill (colorRecordActive), strokeWidth=2dp,
+                                   icon=ic_record_circle, text="REC"
+                       RECORDING → yellow fill (colorRecordPause), strokeWidth=0,
+                                   icon=ic_pause, text="PAUSE"
+                       PAUSED    → blue fill (colorAccent), strokeWidth=2dp,
+                                   icon=ic_resume_circle, text="RESUME"             -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStopSave"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="SAVE"
-                    app:icon="@drawable/ic_save_mic_crook"
-                    app:iconTint="@null"
-                    app:iconSize="20dp"
-                    app:iconGravity="textStart"
-                    android:textSize="15sp"
+                    android:id="@+id/btnRecord"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:text="REC"
                     android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:backgroundTint="?attr/colorRecordActive"
+                    app:icon="@drawable/ic_record_circle"
+                    app:iconGravity="top"
+                    app:iconSize="22dp"
+                    app:iconPadding="2dp"
+                    app:iconTint="#FFFFFF"
+                    app:cornerRadius="40dp"
+                    app:strokeColor="?attr/colorRecordButtonBorder"
+                    app:strokeWidth="2dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <!-- Save — fills right of circle, shorter height, boxy corners -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSave"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="Save"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
                     android:backgroundTint="?attr/colorActionSave"
-                    app:cornerRadius="26dp" />
+                    android:visibility="gone"
+                    app:cornerRadius="10dp"
+                    app:layout_constraintStart_toEndOf="@id/btnRecord"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
 
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- ── Dead-space / in-development placeholder ─────────────
+                 MaterialCardView gives the rounded border and surface.
+                 DotGridView draws the dot-grid pattern inside.
+                 S / M / L buttons control dotGridView's height in code:
+                   S → DotGridView.SMALL_DP  (0dp — effectively hidden)
+                   M → DotGridView.MEDIUM_DP (3 × reference height)
+                   L → DotGridView.LARGE_DP  (20 × reference height, scrolls)
+                 ─────────────────────────────────────────────────────── -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/deadSpaceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="14dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="?attr/colorBackground"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorSurfaceElevated"
+                app:strokeWidth="1.5dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- S / M / L size buttons — always visible at top of card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="6dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDeadSmall"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="S"
+                            android:textSize="11sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDeadMedium"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="M"
+                            android:textSize="11sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDeadLarge"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="L"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                    <!-- Dot-grid fill — height set from RecordFragment -->
+                    <com.treecast.app.ui.record.DotGridView
+                        android:id="@+id/dotGridView"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ── Lock / Mark row — pinned to bottom, never scrolls ─────────── -->
+    <!-- ════════════════════════════════════════════════════════════════
+         Pinned bottom area
+         Contains the extended mark controls (GONE until mark selected)
+         stacked above the mark / lock row (GONE in IDLE).
+         The NestedScrollView is constrained to the top of this view.
+         ════════════════════════════════════════════════════════════════ -->
     <LinearLayout
-        android:id="@+id/markLockContainer"
+        android:id="@+id/bottomPinnedArea"
         android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:orientation="horizontal"
-        android:visibility="gone"
-        android:paddingHorizontal="24dp"
-        android:paddingBottom="12dp"
-        android:paddingTop="8dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ── Lock Screen button (narrow, left) ───────────────────── -->
+        <!-- ── Extended mark controls ─────────────────────────────────
+             Slides in above the mark button when a mark is freshly
+             dropped (auto-selected) or will be selected in a future
+             waveform-tap interaction.
+
+             Contents (left → right):
+               tvMarkTimestamp   — monospace timestamp of selected mark
+               [spacer]
+               btnMarkNudgeBack  — shift mark earlier
+               btnMarkNudgeForward — shift mark later
+               btnMarkDelete     — delete selected mark (dismisses panel)
+               btnMarkConfirm    — UI-only confirm: deselects mark,
+                                   hides this panel, re-enables nudge
+                                   lock (no data written)
+             ─────────────────────────────────────────────────────────── -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btnLockScreen"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:cardBackgroundColor="?attr/colorActionLockScreen"
-            app:cardCornerRadius="26dp"
+            android:id="@+id/markExtendedControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="8dp"
             app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:gravity="center">
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="10dp">
 
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_lock"
-                    app:tint="?attr/colorStatusLockScreen"
-                    android:layout_marginBottom="3dp" />
-
+                <!-- Timestamp of selected mark -->
                 <TextView
+                    android:id="@+id/tvMarkTimestamp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Lock\nScreen"
-                    android:textColor="?attr/colorStatusLockScreen"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:gravity="center"
-                    android:lineSpacingMultiplier="1.1" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Mark button (wide, right) ────────────────────────────── -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btnDropMark"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="3"
-            android:layout_marginStart="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:cardBackgroundColor="?attr/colorMarkAction"
-            app:cardCornerRadius="26dp"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_mark"
-                    android:layout_marginBottom="3dp"
-                    app:tint="#FFFFFF" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Mark"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.12" />
-
-                <TextView
-                    android:id="@+id/tvMarkCount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0 marks"
+                    android:text="0:00"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
-                    android:layout_marginTop="3dp"
-                    android:visibility="gone" />
+                    android:fontFamily="monospace" />
+
+                <!-- Flexible spacer -->
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Nudge earlier -->
+                <ImageView
+                    android:id="@+id/btnMarkNudgeBack"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="2dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_mark_nudge_back"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="?attr/colorTextSecondary"
+                    android:contentDescription="Nudge mark earlier" />
+
+                <!-- Nudge later -->
+                <ImageView
+                    android:id="@+id/btnMarkNudgeForward"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="2dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_mark_nudge_forward"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="?attr/colorTextSecondary"
+                    android:contentDescription="Nudge mark later" />
+
+                <!-- Delete mark -->
+                <ImageView
+                    android:id="@+id/btnMarkDelete"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="4dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_delete"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="?attr/colorTextSecondary"
+                    android:contentDescription="Delete mark" />
+
+                <!-- Confirm / dismiss (UI-only: deselects mark, hides panel) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnMarkConfirm"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="?attr/colorMarkSelected"
+                    app:cardCornerRadius="7dp"
+                    app:cardElevation="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="5dp"
+                        android:src="@drawable/ic_check"
+                        app:tint="#FFFFFF"
+                        android:scaleType="fitCenter" />
+
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- ── Mark / Lock row ────────────────────────────────────────
+             Pinned to the bottom of the screen, GONE in IDLE state.
+             Lock is now icon-only with a boxy corner radius (10dp).
+             Mark button fills the remaining width with icon + text
+             side-by-side (no stacking).
+             ─────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/markLockContainer"
+            android:layout_width="match_parent"
+            android:layout_height="68dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <!-- Lock screen — icon only, boxy rounded rect -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnLockScreen"
+                android:layout_width="52dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="?attr/colorActionLockScreen"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="0dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_lock"
+                    app:tint="?attr/colorStatusLockScreen"
+                    android:scaleType="fitCenter" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Mark — icon + text, horizontal, fills remaining width -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnDropMark"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="?attr/colorMarkAction"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="7dp"
+                        android:src="@drawable/ic_mark"
+                        app:tint="#FFFFFF"
+                        android:scaleType="fitCenter" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="MARK"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
 
     </LinearLayout>
 
