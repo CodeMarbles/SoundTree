@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Save icon — large green checkmark (dominant) with a small mic
+  capsule body tucked into the upper crook. No stand arc or stem.
+
+  This is the "reduced complexity" variant — cleaner at 28–30dp
+  where the stand arc and stem become noise rather than signal.
+  The pill silhouette alone reads unmistakably as a mic in context.
+
+  Usage:
+    - Leave imageTintList = null so the two-color design shows.
+    - Checkmark: #4CAF50 (Material Green 500).
+    - Mic capsule: #FFFFFF (contrast variant).
+      For monochromatic: swap #FFFFFF → #81C784 (lighter green).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ── Large green checkmark (dominant element) ── -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#4CAF50"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3,16 L9,22 L21,8" />
+
+    <!-- ── Mic capsule body only (centered at x=5.5, y=2..10, rx=2) ── -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5.5,2 H5.5 A2,2 0 0,1 7.5,4 V8 A2,2 0 0,1 5.5,10 H5.5 A2,2 0 0,1 3.5,8 V4 A2,2 0 0,1 5.5,2 Z" />
+
+</vector>

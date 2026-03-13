@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Save icon — filled green circle with white checkmark.
+  Semantics: "I'm done / recording committed."
+  Reads cleanly at 28–30dp in the Mini Recorder widget.
+  Color applied via app:tint / imageTintList if you want
+  to override the green (e.g. for disabled state), or
+  leave tint unset to let the vector's own colors show.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Green filled circle background -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M12,2 A10,10 0 1,1 12,22 A10,10 0 1,1 12,2 Z" />
+
+    <!-- White checkmark -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7,12.5 L10.5,16 L17,9" />
+
+</vector>
