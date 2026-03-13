@@ -1,47 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Record tab — redesigned layout.
-
-  Structure (top → bottom):
-    ┌─ ConstraintLayout (root) ──────────────────────────────────────────┐
-    │  ┌─ NestedScrollView ─────────────────────────────────────────────┐│
-    │  │  └─ LinearLayout (vertical scroll content)                     ││
-    │  │       ├─ compoundHeader   (topic zone | divider | rec-name)    ││
-    │  │       ├─ waveformFrame    (WaveformView + tvTimer overlay)      ││
-    │  │       ├─ primaryControls  (Cancel | ● REC circle | Save)       ││
-    │  │       └─ deadSpaceCard    (DotGridView + S/M/L buttons)        ││
-    │  └────────────────────────────────────────────────────────────────┘│
-    │  ┌─ bottomPinnedArea (LinearLayout, vertical) ────────────────────┐│
-    │  │   ├─ markExtendedControls  (GONE until mark selected)          ││
-    │  │   └─ markLockContainer     (GONE in idle state)                ││
-    │  └────────────────────────────────────────────────────────────────┘│
-    └────────────────────────────────────────────────────────────────────┘
-
-  ID changes vs. previous layout (for Kotlin migration):
-    REMOVED  stopSaveContainer   → btnCancel / btnSave now live directly
-                                   in primaryControlsContainer
-    REMOVED  ivRecordTopicChevron → header no longer has a chevron
-    NEW      compoundHeader       outer row wrapper
-    NEW      topicPickerZone      previously "topicHeader" — same click
-                                   behaviour, tighter style
-    PRESERVED topicHeader         now an alias id on topicPickerZone so
-                                   existing click-listener wiring works (see note)
-             tvRecordTopicIcon   same
-             tvRecordTopicName   same
-             waveformView        same (now inside waveformFrame FrameLayout)
-             tvTimer             same (now overlaid on waveform)
-             btnRecord           same ID, now a true 80dp circle
-             btnCancel           same, now directly constrained (not in container)
-             btnSave             same, now directly constrained (not in container)
-             markLockContainer   same (visibility toggled by state)
-             btnLockScreen       same ID, now icon-only boxy style
-             btnDropMark         same
-
-  NOTE: topicHeader is set as the id of topicPickerZone so that
-        binding.topicHeader.setOnClickListener { … } in RecordFragment
-        compiles without change.  The recordingNameZone needs a new
-        click-listener wired in RecordFragment for the rename dialog.
--->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -255,37 +212,49 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/primaryControlsContainer"
                 android:layout_width="match_parent"
-                android:layout_height="92dp"
+                android:layout_height="108dp"
                 android:layout_marginHorizontal="14dp"
                 android:layout_marginTop="8dp">
 
                 <!-- Cancel — fills left of circle, shorter height, boxy corners -->
-                <com.google.android.material.card.MaterialCardView
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCancel"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="Cancel"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="?attr/colorActionCancel"
                     android:visibility="gone"
-                    app:cardBackgroundColor="?attr/colorActionCancel"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="0dp"
+                    app:cornerRadius="10dp"
+                    app:icon="@drawable/ic_cancel_x"
+                    app:iconSize="16dp"
+                    app:iconTint="#FFFFFF"
+                    app:iconGravity="textStart"
+                    app:iconPadding="6dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toStartOf="@id/btnRecord"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
+                    app:layout_constraintBottom_toBottomOf="parent" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:text="Cancel"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                </com.google.android.material.card.MaterialCardView>
+                <TextView
+                    android:id="@+id/tvCancelHint"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="Double-tap to cancel"
+                    android:textColor="#AAFFFFFF"
+                    android:textSize="9sp"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.1"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toBottomOf="@id/btnCancel"
+                    app:layout_constraintStart_toStartOf="@id/btnCancel"
+                    app:layout_constraintEnd_toEndOf="@id/btnCancel"
+                    app:layout_constraintBottom_toBottomOf="parent" />
 
                 <!-- ● Record / Pause / Resume — true circle, 80 dp
                      Background tint, icon, text label, and stroke width are
@@ -312,8 +281,10 @@
                     android:backgroundTint="?attr/colorRecordActive"
                     app:icon="@drawable/ic_record_circle"
                     app:iconGravity="top"
-                    app:iconSize="22dp"
-                    app:iconPadding="2dp"
+                    app:iconSize="28dp"
+                    app:iconPadding="0dp"
+                    android:paddingTop="20dp"
+                    android:paddingBottom="2dp"
                     app:iconTint="#FFFFFF"
                     app:cornerRadius="40dp"
                     app:strokeColor="?attr/colorRecordButtonBorder"
@@ -338,6 +309,10 @@
                     android:backgroundTint="?attr/colorActionSave"
                     android:visibility="gone"
                     app:cornerRadius="10dp"
+                    app:icon="@drawable/ic_save_mic_crook"
+                    app:iconSize="16dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="6dp"
                     app:layout_constraintStart_toEndOf="@id/btnRecord"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
@@ -485,9 +460,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0:00"
-                    android:textColor="?attr/colorTextSecondary"
+                    android:textColor="?attr/colorMarkSelected"
                     android:textSize="11sp"
-                    android:fontFamily="monospace" />
+                    android:fontFamily="monospace"
+                    android:background="@drawable/bg_pill_teal_stroke"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="3dp" />
 
                 <!-- Flexible spacer -->
                 <Space
@@ -506,7 +484,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    app:tint="?attr/colorTextSecondary"
+                    app:tint="?attr/colorMarkSelected"
                     android:contentDescription="Nudge mark earlier" />
 
                 <!-- Nudge later -->
@@ -520,7 +498,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    app:tint="?attr/colorTextSecondary"
+                    app:tint="?attr/colorMarkSelected"
                     android:contentDescription="Nudge mark later" />
 
                 <!-- Delete mark -->
@@ -534,7 +512,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    app:tint="?attr/colorTextSecondary"
+                    app:tint="?attr/colorMarkSelected"
                     android:contentDescription="Delete mark" />
 
                 <!-- Confirm / dismiss (UI-only: deselects mark, hides panel) -->

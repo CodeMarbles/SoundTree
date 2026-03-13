@@ -10,9 +10,11 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.os.IBinder
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -32,6 +34,7 @@ import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -51,6 +54,11 @@ class RecordFragment : Fragment() {
     private var lastCancelTapMs: Long = 0L
     private val doubleTapWindowMs = 500L
 
+    // ── In-progress recording display name ────────────────────────────
+    // Set in doStartRecording(); updated by showRenameDialog().
+    // Used as the recording title on save.
+    private var currentRecordingDisplayName: String = ""
+
     // ── Recording service ─────────────────────────────────────────────
     private var recordingService: RecordingService? = null
     private var isBound = false
@@ -58,7 +66,6 @@ class RecordFragment : Fragment() {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-//            Log.d("TC_DEBUG", "RecordFragment: onServiceConnected")
             recordingService = (binder as RecordingService.RecordingBinder).getService()
             isBound = true
             observeServiceState()
@@ -68,7 +75,6 @@ class RecordFragment : Fragment() {
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
-//            Log.w("TC_DEBUG", "RecordFragment: onServiceDisconnected")
             isBound = false
             recordingService = null
         }
@@ -93,7 +99,9 @@ class RecordFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupButtons()
+        setupNewControls()
         setupTopicHeader()
+        setupTimerShadow()
         observeLock()
         bindRecordingService()
     }
@@ -113,9 +121,9 @@ class RecordFragment : Fragment() {
     }
 
     /**
-    * Called by MainActivity when the Mini Recorder's save button is tapped
-    * from outside the Record tab. Delegates to the existing stopAndSave() path.
-    */
+     * Called by MainActivity when the Mini Recorder's save button is tapped
+     * from outside the Record tab. Delegates to the existing stopAndSave() path.
+     */
     fun triggerSaveFromExternal() {
         stopAndSave()
     }
@@ -133,11 +141,11 @@ class RecordFragment : Fragment() {
 
         binding.btnSave.setOnClickListener { stopAndSave() }
 
-        // Drop mark button — in-app counterpart of the notification action.
-        // Delegates directly to the service via Binder.
+        // Drop mark button — shows extended mark controls after dropping.
         binding.btnDropMark.setOnClickListener {
             recordingService?.dropMark()
             binding.waveformView.pushMark()
+            showMarkControls(recordingService?.elapsedMs?.value ?: 0L)
         }
 
         // Cancel requires a double-tap to prevent accidental presses.
@@ -154,21 +162,45 @@ class RecordFragment : Fragment() {
         binding.btnLockScreen.setOnClickListener { viewModel.setLocked(true) }
     }
 
+    // ── New controls (dead-space, mark extended, recording name) ──────
+    private fun setupNewControls() {
+        // ── Dead-space size buttons ───────────────────────────────────
+        binding.btnDeadSmall.setOnClickListener  { setDeadSpaceSize(DotGridView.SMALL_DP)  }
+        binding.btnDeadMedium.setOnClickListener { setDeadSpaceSize(DotGridView.MEDIUM_DP) }
+        binding.btnDeadLarge.setOnClickListener  { setDeadSpaceSize(DotGridView.LARGE_DP)  }
+
+        // ── Mark extended controls ────────────────────────────────────
+        // Confirm: UI-only dismiss — no data written.
+        binding.btnMarkConfirm.setOnClickListener { hideMarkControls() }
+
+        // Delete: remove the currently selected recording mark.
+        binding.btnMarkDelete.setOnClickListener {
+            viewModel.deleteSelectedRecordingMark()
+            hideMarkControls()
+        }
+
+        // Nudge: routed through ViewModel → nudgeBack/ForwardEvent → service,
+        // consistent with the Mini Recorder nudge buttons.
+        binding.btnMarkNudgeBack.setOnClickListener    { viewModel.requestNudgeBack()    }
+        binding.btnMarkNudgeForward.setOnClickListener { viewModel.requestNudgeForward() }
+
+        // ── Recording name zone ───────────────────────────────────────
+        binding.recordingNameZone.setOnClickListener { showRenameDialog() }
+    }
+
+    // ── Timer text shadow (legibility over waveform) ──────────────────
+    private fun setupTimerShadow() {
+        binding.tvTimer.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        binding.tvTimer.setShadowLayer(
+            16f, 0f, 0f,
+            requireContext().themeColor(R.attr.colorBackground)
+        )
+    }
+
     // ── Topic header ───────────────────────────────────────────────────
-    /**
-     * Wires up the tappable topic header on the Record tab.
-     *
-     * Tapping it opens [TopicPickerBottomSheet]. The selected topic is kept in
-     * [selectedTopicId] and forwarded to [RecordingService] while a recording
-     * is in progress, exactly as before.
-     *
-     * Also handles the deleted-topic reset (previously done inside
-     * setupTopicPicker's allTopics collector).
-     */
     private fun setupTopicHeader() {
         updateRecordTopicHeader(null, getString(R.string.label_unsorted), Icons.INBOX)
 
-        // Register result listener once here, survives the sheet being recreated
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
         ) { _, bundle ->
@@ -222,7 +254,7 @@ class RecordFragment : Fragment() {
         }
     }
 
-    /** Syncs the three header views with the given topic state. */
+    /** Syncs the topic header views with the given topic state. */
     private fun updateRecordTopicHeader(topicId: Long?, name: String, icon: String) {
         binding.tvRecordTopicIcon.text = icon
         binding.tvRecordTopicName.text = name
@@ -236,6 +268,7 @@ class RecordFragment : Fragment() {
                 launch {
                     svc.state.collect { updateUiForState(it) }
                 }
+
                 // ── Push recording state to ViewModel (drives Mini Recorder) ─
                 launch {
                     svc.state.collect { state ->
@@ -247,33 +280,18 @@ class RecordFragment : Fragment() {
                         }
                     }
                 }
+
+                // ── Elapsed time → timer display + ViewModel ──────────
                 launch {
                     svc.elapsedMs.collect { ms ->
                         binding.tvTimer.text = formatDuration(ms)
-                    }
-                }
-                launch {
-                    svc.amplitude.collect { amp ->
-                        binding.waveformView.pushAmplitude(amp)
-                    }
-                }
-                launch {
-                    svc.pendingMarkCount.collect { count ->
-                        if (count > 0) {
-                            binding.tvMarkCount.text = "$count ${if (count == 1) "mark" else "marks"}"
-                            binding.tvMarkCount.visibility = View.VISIBLE
-                        } else {
-                            binding.tvMarkCount.visibility = View.GONE
-                        }
+                        viewModel.setRecordingElapsedMs(ms)
                     }
                 }
 
-                // ── Push elapsed time to ViewModel ────────────────────
                 launch {
-                    svc.elapsedMs.collect { ms ->
-                        viewModel.setRecordingElapsedMs(ms)
-                        // Update timer display (existing behaviour)
-                        binding.tvTimer.text = formatDuration(ms)
+                    svc.amplitude.collect { amp ->
+                        binding.waveformView.pushAmplitude(amp)
                     }
                 }
 
@@ -284,36 +302,49 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                // ── Bridge toggle-pause events from Mini Recorder button ───
+                // ── Keep mark controls timestamp live after nudges ─────
+                // Whenever the selected mark's position changes (i.e. after a
+                // nudge), update the timestamp chip in the panel to reflect
+                // its new location.
+                launch {
+                    combine(
+                        viewModel.recordingMarks,
+                        viewModel.selectedRecordingMarkIndex
+                    ) { marks, idx ->
+                        if (idx >= 0 && idx < marks.size) marks[idx] else null
+                    }.collect { stampMs ->
+                        if (stampMs != null &&
+                            binding.markExtendedControls.visibility == View.VISIBLE) {
+                            binding.tvMarkTimestamp.text = formatDuration(stampMs)
+                        }
+                    }
+                }
+
+                // ── Bridge toggle-pause events from Mini Recorder ─────
                 launch {
                     viewModel.toggleRecordingPauseEvent.collect {
                         when (recordingService?.state?.value) {
                             RecordingService.State.RECORDING -> pauseRecording()
                             RecordingService.State.PAUSED    -> resumeRecording()
-                            else -> { /* IDLE is handled in MainActivity via triggerQuickRecord() */ }
+                            else -> { /* IDLE handled in MainActivity via triggerQuickRecord() */ }
                         }
                     }
                 }
 
-                // ── Bridge nudge-back events (v2: carries target index) ───
+                // ── Bridge nudge events (carry target mark index) ─────
                 launch {
                     viewModel.nudgeBackEvent.collect { event ->
                         recordingService?.nudgeMarkBack(event.secs, event.markIndex)
                     }
                 }
-
-                // ── Bridge nudge-forward events (v2: carries target index) ─
                 launch {
                     viewModel.nudgeForwardEvent.collect { event ->
                         recordingService?.nudgeMarkForward(event.secs, event.markIndex)
                     }
                 }
 
+                // ── Notification save → post-save navigation ──────────
                 launch {
-                    // Observe saves that were triggered from the notification action button.
-                    // The service has already written to the database by the time this
-                    // emits, so we only need to handle post-save navigation here — no
-                    // second DB write should occur.
                     svc.notificationSaveEvent.collect { saved ->
                         if (viewModel.jumpToLibraryOnSave.value) {
                             viewModel.selectRecording(saved.recordingId)
@@ -323,13 +354,13 @@ class RecordFragment : Fragment() {
                     }
                 }
 
+                // ── Bridge drop/delete mark events from Mini Recorder ─
                 launch {
-                   viewModel.dropMarkEvent.collect {
-                       recordingService?.dropMark()
-                       binding.waveformView.pushMark()
-                   }
+                    viewModel.dropMarkEvent.collect {
+                        recordingService?.dropMark()
+                        binding.waveformView.pushMark()
+                    }
                 }
-
                 launch {
                     viewModel.deleteMarkEvent.collect { index ->
                         recordingService?.removeMarkAt(index)
@@ -353,38 +384,116 @@ class RecordFragment : Fragment() {
 
     // ── Recording state UI ────────────────────────────────────────────
     private fun updateUiForState(state: RecordingService.State) {
+        val density = resources.displayMetrics.density
+
         when (state) {
             RecordingService.State.IDLE -> {
-                binding.btnRecord.text = "REC"
-                binding.btnRecord.setIconResource(R.drawable.ic_record_circle)
+                // Circle: red, bordered
                 binding.btnRecord.backgroundTintList =
                     ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
-                binding.stopSaveContainer.visibility = View.GONE
+                binding.btnRecord.setIconResource(R.drawable.ic_record_circle)
+                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
+                binding.btnRecord.text = "REC"
+                binding.btnRecord.strokeWidth = (2 * density).toInt()
+                binding.btnRecord.strokeColor =
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordButtonBorder))
+
+                // Flanking buttons + hint label hidden
+                binding.btnCancel.visibility    = View.GONE
+                binding.tvCancelHint.visibility = View.GONE
+                binding.btnSave.visibility      = View.GONE
+
+                // Mark/lock row hidden; mark extended controls collapsed
                 binding.markLockContainer.visibility = View.GONE
+                hideMarkControls()
+
+                // Header: topic zone only
+                binding.headerDivider.visibility     = View.GONE
+                binding.recordingNameZone.visibility = View.GONE
+
                 lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
                 binding.waveformView.clear()
             }
+
             RecordingService.State.RECORDING -> {
-                binding.btnRecord.text = "PAUSE"
-                binding.btnRecord.setIconResource(R.drawable.ic_pause)
-                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
+                // Circle: yellow (pause colour), no border
                 binding.btnRecord.backgroundTintList =
                     ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
-                //requireContext().getColorStateList(android.R.color.holo_orange_light)
-                binding.stopSaveContainer.visibility = View.VISIBLE
+                binding.btnRecord.setIconResource(R.drawable.ic_pause)
+                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
+                binding.btnRecord.text = "PAUSE"
+                binding.btnRecord.strokeWidth = 0
+
+                // Flanking buttons + hint label visible
+                binding.btnCancel.visibility    = View.VISIBLE
+                binding.tvCancelHint.visibility = View.VISIBLE
+                binding.btnSave.visibility      = View.VISIBLE
+
+                // Mark/lock row visible
                 binding.markLockContainer.visibility = View.VISIBLE
+
+                // Header: show recording name
+                binding.headerDivider.visibility     = View.VISIBLE
+                binding.recordingNameZone.visibility = View.VISIBLE
+                binding.tvRecordingName.text = currentRecordingDisplayName
             }
+
             RecordingService.State.PAUSED -> {
-                binding.btnRecord.text = "RESUME"
+                // Circle: accent blue, bordered
+                binding.btnRecord.backgroundTintList =
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorAccent))
                 binding.btnRecord.setIconResource(R.drawable.ic_resume_circle)
                 binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
-                binding.btnRecord.backgroundTintList =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
-                binding.stopSaveContainer.visibility = View.VISIBLE
-                binding.markLockContainer.visibility = View.VISIBLE
+                binding.btnRecord.text = "RESUME"
+                binding.btnRecord.strokeWidth = (2 * density).toInt()
+                binding.btnRecord.strokeColor =
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordButtonBorder))
+
+                // Flanking buttons + hint remain visible (set in RECORDING, left as-is)
+                // Mark/lock row remains visible
+                // Header name zone remains visible
             }
         }
+    }
+
+    // ── Mark extended controls ────────────────────────────────────────
+    private fun showMarkControls(stampMs: Long) {
+        binding.tvMarkTimestamp.text = formatDuration(stampMs)
+        binding.markExtendedControls.visibility = View.VISIBLE
+    }
+
+    private fun hideMarkControls() {
+        binding.markExtendedControls.visibility = View.GONE
+    }
+
+    // ── Dead-space size ───────────────────────────────────────────────
+    private fun setDeadSpaceSize(heightDp: Int) {
+        val px = (heightDp * resources.displayMetrics.density).toInt()
+        binding.dotGridView.layoutParams =
+            binding.dotGridView.layoutParams.apply { height = px }
+        binding.dotGridView.requestLayout()
+    }
+
+    // ── Rename dialog ─────────────────────────────────────────────────
+    private fun showRenameDialog() {
+        val editText = EditText(requireContext()).apply {
+            setText(currentRecordingDisplayName)
+            selectAll()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Rename Recording")
+            .setView(editText)
+            .setPositiveButton("OK") { _, _ ->
+                val newName = editText.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    currentRecordingDisplayName = newName
+                    binding.tvRecordingName.text = newName
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── Recording actions ─────────────────────────────────────────────
@@ -403,15 +512,8 @@ class RecordFragment : Fragment() {
     }
 
     private fun startRecording() {
-        // Resolve the target volume before touching the service.
         val volume = viewModel.resolveRecordingVolume()
 
-        // Always explicitly start the service, not just when the binder isn't
-        // ready. A bound-only service can be destroyed when its last client
-        // unbinds (e.g. during activity recreation on theme change). Calling
-        // startForegroundService() here promotes it to a started service, so
-        // Android won't destroy it just because RecordFragment temporarily
-        // unbound during a configuration change.
         ContextCompat.startForegroundService(
             requireContext(),
             Intent(requireContext(), RecordingService::class.java)
@@ -422,10 +524,8 @@ class RecordFragment : Fragment() {
             pendingQuickRecord = true
             return
         }
-        // Wire the volume — must happen before startRecording() opens the file.
         svc.setStorageDir(volume.rootDir, volume.uuid)
 
-        // Free-space check: warn but don't block.
         if (!svc.hasSufficientFreeSpace()) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Low Storage")
@@ -438,8 +538,6 @@ class RecordFragment : Fragment() {
                     doStartRecording(svc)
                 }
                 .setNegativeButton("Cancel") { _, _ ->
-                    // Reset the service dir so a later recording to a different
-                    // volume isn't accidentally routed here.
                     svc.setStorageDir(
                         StorageVolumeHelper.getDefaultVolume(requireContext()).rootDir,
                         StorageVolumeHelper.UUID_PRIMARY
@@ -453,6 +551,8 @@ class RecordFragment : Fragment() {
 
     /** Calls through to the service after all pre-flight checks pass. */
     private fun doStartRecording(svc: RecordingService) {
+        currentRecordingDisplayName = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+            .format(Date(System.currentTimeMillis()))
         svc.startRecording(topicId = viewModel.recordingTopicId.value)
     }
 
@@ -466,26 +566,25 @@ class RecordFragment : Fragment() {
             val stamp = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
                 .format(Date(System.currentTimeMillis()))
 
-            // Guard against the user having deleted the selected topic while
-            // the recording was in progress. Fall back to Inbox (null) rather
-            // than producing a foreign key violation on save.
             val resolvedTopicId = viewModel.recordingTopicId.value?.takeIf { id ->
                 viewModel.allTopics.value.any { it.id == id }
             }
 
+            val title = if (currentRecordingDisplayName.isNotEmpty())
+                "Recording – $currentRecordingDisplayName"
+            else
+                "Recording – $stamp"
+
             val savedDeferred = viewModel.saveRecordingWithMarks(
-                filePath       = result.filePath,
-                durationMs     = result.durationMs,
-                fileSizeBytes  = File(result.filePath).length(),
-                title          = "Recording – $stamp",
-                topicId        = resolvedTopicId,
-                markTimestamps = result.markTimestamps,
+                filePath          = result.filePath,
+                durationMs        = result.durationMs,
+                fileSizeBytes     = File(result.filePath).length(),
+                title             = title,
+                topicId           = resolvedTopicId,
+                markTimestamps    = result.markTimestamps,
                 storageVolumeUuid = result.storageVolumeUuid
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
-
-            // Reset topic AFTER reading it for the save, not on IDLE state change
-            //viewModel.setRecordingTopicId(null)
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {
@@ -503,12 +602,12 @@ class RecordFragment : Fragment() {
     private fun cancelRecording() {
         val svc = recordingService ?: return
         val result = svc.stopRecording()
-        // Delete the audio file — nothing is saved, marks are discarded.
         if (result.filePath != null) {
             File(result.filePath).delete()
         }
         selectedTopicId = null
         lastCancelTapMs = 0L
+        currentRecordingDisplayName = ""
         Toast.makeText(requireContext(), "Recording cancelled", Toast.LENGTH_SHORT).show()
     }
 
