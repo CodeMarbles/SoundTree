@@ -39,11 +39,30 @@
             android:foreground="?attr/selectableItemBackground"
             android:visibility="gone">
 
+            <!-- Record dot — only visible in PAUSED state -->
+            <ImageView
+                android:id="@+id/ivPillRecorderDot"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:src="@drawable/ic_record_circle"
+                android:scaleType="fitCenter"
+                android:layout_marginEnd="3dp"
+                android:visibility="gone" />
+
+            <!-- State icon: stop square / record circle / pause icon -->
+            <ImageView
+                android:id="@+id/ivPillRecorderIcon"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:src="@drawable/ic_stop_square"
+                android:scaleType="fitCenter"
+                android:layout_marginEnd="4dp" />
+
             <TextView
                 android:id="@+id/pillRecorderStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="■ READY"
+                android:text="READY"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorTextSecondary"
@@ -86,7 +105,6 @@
             android:foreground="?attr/selectableItemBackground"
             android:visibility="gone">
 
-            <!-- ic_play icon replaces the previous "▶" text -->
             <ImageView
                 android:id="@+id/ivPillPlayerPlay"
                 android:layout_width="10dp"

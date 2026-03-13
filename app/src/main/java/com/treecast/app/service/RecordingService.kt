@@ -11,6 +11,7 @@ import android.os.StatFs
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.service.RecordingService.StopResult
 import com.treecast.app.ui.MainActivity
@@ -533,7 +534,7 @@ class RecordingService : Service() {
                 this, REQUEST_RESUME, resumeIntent, PendingIntent.FLAG_IMMUTABLE
             )
             NotificationCompat.Action(
-                android.R.drawable.ic_media_play, "Resume", resumePi
+                R.drawable.ic_resume_circle, "Resume", resumePi
             )
         } else {
             val pauseIntent = Intent(this, RecordingService::class.java)
@@ -542,7 +543,7 @@ class RecordingService : Service() {
                 this, REQUEST_PAUSE, pauseIntent, PendingIntent.FLAG_IMMUTABLE
             )
             NotificationCompat.Action(
-                android.R.drawable.ic_media_pause, "Pause", pausePi
+                R.drawable.ic_pause, "Pause", pausePi
             )
         }
 
@@ -553,7 +554,7 @@ class RecordingService : Service() {
             this, REQUEST_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
         )
         val saveAction = NotificationCompat.Action(
-            android.R.drawable.ic_menu_save, "Save", savePi
+            R.drawable.ic_save_mic_crook, "Save", savePi
         )
 
         // ── Drop Mark action ──────────────────────────────────────────
@@ -563,7 +564,7 @@ class RecordingService : Service() {
             this, REQUEST_MARK, markIntent, PendingIntent.FLAG_IMMUTABLE
         )
         val markAction = NotificationCompat.Action(
-            android.R.drawable.ic_menu_add, "Mark", markPi
+            R.drawable.ic_mark, "Mark", markPi
         )
 
         val markCountText = if (pendingMarks.isNotEmpty())

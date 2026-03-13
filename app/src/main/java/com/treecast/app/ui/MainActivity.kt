@@ -673,7 +673,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 recorderBinding.ivMiniRecStateIcon.setImageResource(iconRes)
                 recorderBinding.ivMiniRecStateIcon.imageTintList =
-                    android.content.res.ColorStateList.valueOf(color)
+                    ColorStateList.valueOf(color)
                 recorderBinding.tvMiniRecStateLabel.text = label
                 recorderBinding.tvMiniRecStateLabel.setTextColor(color)
             }
@@ -690,12 +690,12 @@ class MainActivity : AppCompatActivity() {
                     RecordingService.State.RECORDING -> {
                         recorderBinding.btnMiniRecPause.setImageResource(R.drawable.ic_pause)
                         recorderBinding.btnMiniRecPause.imageTintList =
-                            android.content.res.ColorStateList.valueOf(themeColor(R.attr.colorRecordPause))
+                            ColorStateList.valueOf(themeColor(R.attr.colorRecordPause))
                     }
                     RecordingService.State.PAUSED -> {
                         recorderBinding.btnMiniRecPause.setImageResource(R.drawable.ic_resume_circle)
                         recorderBinding.btnMiniRecPause.imageTintList =
-                            android.content.res.ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
+                            ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
                     }
                 }
             }
@@ -1057,18 +1057,31 @@ class MainActivity : AppCompatActivity() {
                 pill.pillRecorder.visibility = if (pillVisible) View.VISIBLE else View.GONE
 
                 if (pillVisible) {
-                    val (label, textColor) = when (state) {
+                    val (iconRes, label, textColor) = when (state) {
                         RecordingService.State.IDLE ->
-                            "■ READY" to themeColor(R.attr.colorTextSecondary)
+                            Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
                         RecordingService.State.RECORDING ->
-                            "● REC"   to themeColor(R.attr.colorRecordActive)
+                            Triple(R.drawable.ic_record_circle, "REC", themeColor(R.attr.colorRecordActive))
                         RecordingService.State.PAUSED ->
-                            "⏸ PAUSED" to themeColor(R.attr.colorRecordPause)
+                            Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
                     }
-                    val topicIcon = viewModel.allTopics.value
-                        .firstOrNull { it.id == viewModel.recordingTopicId.value }?.icon
+
+                    // Record dot prefix — only in PAUSED state
+                    pill.ivPillRecorderDot.visibility =
+                        if (state == RecordingService.State.PAUSED) View.VISIBLE else View.GONE
+                    pill.ivPillRecorderDot.imageTintList =
+                        ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
+
+                    // Recorder Status Icon+Label
+                    pill.ivPillRecorderIcon.setImageResource(iconRes)
+                    pill.ivPillRecorderIcon.imageTintList = ColorStateList.valueOf(textColor)
+
                     pill.pillRecorderStatus.text = label
                     pill.pillRecorderStatus.setTextColor(textColor)
+
+                    // Topic Icon
+                    val topicIcon = viewModel.allTopics.value
+                        .firstOrNull { it.id == viewModel.recordingTopicId.value }?.icon
                     if (topicIcon != null) {
                         pill.pillRecorderTopic.text = topicIcon
                         pill.pillRecorderTopic.setTextColor(textColor)

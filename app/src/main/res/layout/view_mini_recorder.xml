@@ -122,13 +122,12 @@
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:layout_marginStart="6dp"
-                android:src="@drawable/ic_save"
+                android:src="@drawable/ic_save_mic_crook"
                 android:padding="3dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Save recording"
-                app:tint="?attr/colorActionSave" />
+                android:contentDescription="Save recording" />
 
             <!-- Growing timeline — fills the rest of Row 1 -->
             <com.treecast.app.ui.widget.MiniRecorderTimelineView

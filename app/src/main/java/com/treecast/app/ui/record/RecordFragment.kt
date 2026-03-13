@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import android.os.IBinder
 import android.view.LayoutInflater
@@ -354,7 +355,8 @@ class RecordFragment : Fragment() {
     private fun updateUiForState(state: RecordingService.State) {
         when (state) {
             RecordingService.State.IDLE -> {
-                binding.btnRecord.text = "● REC"
+                binding.btnRecord.text = "REC"
+                binding.btnRecord.setIconResource(R.drawable.ic_record_circle)
                 binding.btnRecord.backgroundTintList =
                     ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
                 binding.stopSaveContainer.visibility = View.GONE
@@ -364,7 +366,9 @@ class RecordFragment : Fragment() {
                 binding.waveformView.clear()
             }
             RecordingService.State.RECORDING -> {
-                binding.btnRecord.text = "⏸  Pause"
+                binding.btnRecord.text = "PAUSE"
+                binding.btnRecord.setIconResource(R.drawable.ic_pause)
+                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
                 binding.btnRecord.backgroundTintList =
                     ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
                 //requireContext().getColorStateList(android.R.color.holo_orange_light)
@@ -372,9 +376,11 @@ class RecordFragment : Fragment() {
                 binding.markLockContainer.visibility = View.VISIBLE
             }
             RecordingService.State.PAUSED -> {
-                binding.btnRecord.text = "▶  Resume"
+                binding.btnRecord.text = "RESUME"
+                binding.btnRecord.setIconResource(R.drawable.ic_resume_circle)
+                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
                 binding.btnRecord.backgroundTintList =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorAccent))
+                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
                 binding.stopSaveContainer.visibility = View.VISIBLE
                 binding.markLockContainer.visibility = View.VISIBLE
             }
