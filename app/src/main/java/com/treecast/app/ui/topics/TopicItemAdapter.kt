@@ -241,7 +241,6 @@ class TopicItemAdapter(
     // inlineTopicPicker (class updated to TopicPickerView in XML by step-3 edit)
     inner class LeafVH(v: View) : RecyclerView.ViewHolder(v) {
         private val btnInlinePlay:    ImageView       = v.findViewById(R.id.btnInlinePlay)
-        private val dotListened:      View            = v.findViewById(R.id.dotListened)
         private val tvTitle:          TextView        = v.findViewById(R.id.tvTitle)
         private val tvDuration:       TextView        = v.findViewById(R.id.tvDuration)
         private val tvDate:           TextView        = v.findViewById(R.id.tvDate)
@@ -278,7 +277,6 @@ class TopicItemAdapter(
             tvTitle.text    = rec.title
             tvDuration.text = formatDuration(rec.durationMs)
             tvDate.text     = formatDate(rec.createdAt)
-            dotListened.visibility = if (rec.isListened) View.GONE else View.VISIBLE
 
             // ── Selection highlight ───────────────────────────────────
             // Tint the row background when this recording is the loaded/playing one.

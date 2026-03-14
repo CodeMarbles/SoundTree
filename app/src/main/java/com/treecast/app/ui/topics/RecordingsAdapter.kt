@@ -65,7 +65,6 @@ class RecordingsAdapter(
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
         private val btnInlinePlay:    ImageView       = v.findViewById(R.id.btnInlinePlay)
-        private val dotListened:      View            = v.findViewById(R.id.dotListened)
         private val tvTitle:          TextView        = v.findViewById(R.id.tvTitle)
         private val tvMeta:           TextView        = v.findViewById(R.id.tvMeta)
         private val ivChevron:        ImageView       = v.findViewById(R.id.ivChevron)
@@ -95,7 +94,6 @@ class RecordingsAdapter(
         fun bind(rec: RecordingEntity) {
             tvTitle.text = rec.title
             tvMeta.text  = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
-            dotListened.visibility = if (rec.isListened) View.GONE else View.VISIBLE
 
             // ── Selection highlight ───────────────────────────────────
             // Tint the row background when this recording is the loaded/playing one.

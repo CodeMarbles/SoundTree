@@ -10,7 +10,7 @@ import com.treecast.app.util.WaveformStatus
 
 /**
  * A single recorded audio episode (leaf node in the podcast tree).
- * Belongs to a topic (nullable = uncategorised / Inbox).
+ * Belongs to a topic (nullable = Unsorted).
  *
  * DB version 4 adds [storageVolumeUuid] to track which storage device holds
  * the audio file.
@@ -35,7 +35,7 @@ import com.treecast.app.util.WaveformStatus
 data class RecordingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 
-    /** Null = "Inbox" (uncategorised) */
+    /** Null = "Unsorted" (uncategorised) */
     @ColumnInfo(name = "topic_id") val topicId: Long? = null,
 
     @ColumnInfo(name = "title") val title: String,

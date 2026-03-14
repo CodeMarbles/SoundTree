@@ -41,14 +41,6 @@
             android:layout_marginStart="2dp"
             android:layout_marginEnd="2dp" />
 
-        <View
-            android:id="@+id/dotListened"
-            android:layout_width="6dp"
-            android:layout_height="6dp"
-            android:background="@drawable/dot_unlistened"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="10dp" />
-
         <!-- NEW badge — visible only for recordings < 30 min old -->
         <TextView
             android:id="@+id/tvNewBadge"
