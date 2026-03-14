@@ -23,6 +23,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentRecordBinding
@@ -389,21 +390,24 @@ class RecordFragment : Fragment() {
     }
 
     // ── Recording state UI ────────────────────────────────────────────
+    private fun toDp(pixels: Float): Int {
+        return (pixels * resources.displayMetrics.density).toInt()
+    }
     private fun updateUiForState(state: RecordingService.State) {
         val density = resources.displayMetrics.density
 
         when (state) {
             RecordingService.State.IDLE -> {
                 // Circle: red, bordered
-                binding.btnRecord.backgroundTintList =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
-                binding.btnRecord.setIconResource(R.drawable.ic_record_circle)
-                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
-                binding.btnRecord.text = "REC"
-                binding.btnRecord.strokeWidth = (2 * density).toInt()
-                binding.btnRecord.strokeColor =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordButtonBorder))
+                with(binding.btnRecord) {
+                    backgroundTintList = ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordActive))
 
+                    icon = null
+                    //iconTint = ColorStateList.valueOf(Color.WHITE)
+
+                    text = "REC"
+                    textSize = 18f
+                }
                 // Flanking buttons + hint label hidden
                 binding.btnCancel.visibility    = View.GONE
                 binding.tvCancelHint.visibility = View.GONE
@@ -424,12 +428,16 @@ class RecordFragment : Fragment() {
 
             RecordingService.State.RECORDING -> {
                 // Circle: yellow (pause colour), no border
-                binding.btnRecord.backgroundTintList =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
-                binding.btnRecord.setIconResource(R.drawable.ic_pause)
-                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
-                binding.btnRecord.text = "PAUSE"
-                binding.btnRecord.strokeWidth = 0
+                with(binding.btnRecord) {
+                    backgroundTintList = ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
+
+                    setIconResource(R.drawable.ic_pause)
+                    iconSize = toDp(48f)
+                    iconTint = ColorStateList.valueOf(Color.WHITE)
+                    iconPadding = 0
+
+                    text = null
+                }
 
                 // Flanking buttons + hint label visible
                 binding.btnCancel.visibility    = View.VISIBLE
@@ -447,14 +455,18 @@ class RecordFragment : Fragment() {
 
             RecordingService.State.PAUSED -> {
                 // Circle: accent blue, bordered
-                binding.btnRecord.backgroundTintList =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorAccent))
-                binding.btnRecord.setIconResource(R.drawable.ic_resume_circle)
-                binding.btnRecord.iconTint = ColorStateList.valueOf(Color.WHITE)
-                binding.btnRecord.text = "RESUME"
-                binding.btnRecord.strokeWidth = (2 * density).toInt()
-                binding.btnRecord.strokeColor =
-                    ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordButtonBorder))
+                with(binding.btnRecord) {
+                    backgroundTintList = ColorStateList.valueOf(Color.BLUE)
+
+                    setIconResource(R.drawable.ic_resume_circle)
+                    iconSize = toDp(24f)
+                    iconGravity = MaterialButton.ICON_GRAVITY_TEXT_TOP
+                    iconPadding = toDp(5f)
+                    iconTint = ColorStateList.valueOf(Color.WHITE)
+
+                    text = "RESUME"
+                    textSize = 9f
+                }
 
                 // Flanking buttons + hint remain visible (set in RECORDING, left as-is)
                 // Mark/lock row remains visible
