@@ -309,7 +309,7 @@
                     android:backgroundTint="?attr/colorActionSave"
                     android:visibility="gone"
                     app:cornerRadius="10dp"
-                    app:icon="@drawable/ic_save_mic_crook"
+                    app:icon="@drawable/ic_check"
                     app:iconSize="16dp"
                     app:iconGravity="textStart"
                     app:iconPadding="6dp"
