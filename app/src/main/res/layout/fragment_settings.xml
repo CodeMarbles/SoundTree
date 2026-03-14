@@ -14,9 +14,9 @@
 
         <!-- App identity -->
         <TextView
+            android:id="@+id/tvAppIdentity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🌳  TreeCast"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="28sp"
             android:textStyle="bold"

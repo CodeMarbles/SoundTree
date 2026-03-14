@@ -41,6 +41,7 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupHeader()
         setupProcessingSection()
         setupTheme()
         setupPlaybackSettings()
@@ -59,6 +60,10 @@ class SettingsFragment : Fragment() {
        super.onResume()
        viewModel.refreshStorageVolumes()   // refresh free-space numbers
    }
+
+    private fun setupHeader() {
+        binding.tvAppIdentity.text = getString(R.string.app_identity, getString(R.string.app_name), getString(R.string.app_emoji))
+    }
 
     private fun setupProcessingSection() {
         // Button: regenerate all waveforms from scratch.
