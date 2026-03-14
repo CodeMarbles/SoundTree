@@ -5,6 +5,10 @@ plugins {
     id 'kotlin-parcelize'
 }
 
+def major = 0
+def minor = 1
+def patch = 0
+
 android {
     namespace 'com.treecast.app'
     compileSdk 34
@@ -13,16 +17,22 @@ android {
         applicationId "com.treecast.app"
         minSdk 28
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode major * 100000 + minor * 1000 + patch
+        versionName "${major}.${minor}.${patch}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            // I want to be able to use the debug version with prod data in testing for now so dont do this
+            //applicationIdSuffix ".debug"
+            //versionNameSuffix "-debug"
         }
     }
     compileOptions {
