@@ -54,6 +54,8 @@ class AllRecordingsAdapter(
             return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60)
             else "%d:%02d".format(s / 60, s % 60)
         }
+        /** Threshold in milliseconds for "new" recording highlight. */
+        private const val NEW_THRESHOLD_MS = 30 * 60 * 1_000L
     }
 
     var topics: List<TopicEntity> = emptyList()
@@ -94,6 +96,7 @@ class AllRecordingsAdapter(
         private val btnMove:          MaterialButton  = v.findViewById(R.id.btnMove)
         private val btnDelete:        MaterialButton  = v.findViewById(R.id.btnDelete)
         private val picker:           TopicPickerView = v.findViewById(R.id.inlineTopicPicker)
+        private val tvNewBadge:       TextView        = v.findViewById(R.id.tvNewBadge)
 
         private val gestureDetector = GestureDetectorCompat(v.context,
             object : GestureDetector.SimpleOnGestureListener() {
@@ -136,6 +139,7 @@ class AllRecordingsAdapter(
                 btnInlinePlay.setOnClickListener {
                     Snackbar.make(itemView, "Storage device not connected", Snackbar.LENGTH_SHORT).show()
                 }
+                tvNewBadge.visibility = View.GONE
             } else {
                 val isThisPlaying = rec.id == nowPlayingId && isPlaying
                 btnInlinePlay.setImageResource(if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
@@ -143,6 +147,10 @@ class AllRecordingsAdapter(
                     itemView.context.themeColor(R.attr.colorAccent))
                 itemView.alpha = 1f
                 btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+
+                // ── "New" recording badge (< 30 minutes old) ──────────
+                val isNew = System.currentTimeMillis() - rec.createdAt < NEW_THRESHOLD_MS
+                tvNewBadge.visibility = if (isNew) View.VISIBLE else View.GONE
             }
 
             val isExpanded = rec.id == expandedId

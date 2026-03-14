@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *   [0] ALL          — Flat chronological list of all recordings
  *   [1] UNSORTED     — Recordings with no topic (Inbox)
  *   [2] TOPICS       — Topic tree management (no recordings inline)
- *   [3] RECORDINGS   — Full topic+recording tree (original Topics view)
+ *   [3] ORGANIZE     — Deprecated Recordings view; now a blank placeholder
  *   [4] DETAILS      — Details page for a selected topic
  *
  * Swipe between sub-pages is DISABLED — the outer ViewPager2 owns horizontal swipe.
@@ -45,7 +45,7 @@ class LibraryFragment : Fragment() {
         const val PAGE_ALL        = 0
         const val PAGE_UNSORTED   = 1
         const val PAGE_TOPICS     = 2
-        const val PAGE_RECORDINGS = 3
+        const val PAGE_RECORDINGS = 3   // kept for back-compat; now shows Organize placeholder
         const val PAGE_DETAILS    = 4
     }
 
@@ -138,12 +138,24 @@ class LibraryFragment : Fragment() {
     }
 
     /**
-     * Called from MainActivity after saving a recording. Navigates to whichever
-     * sub-page is most relevant.
+     * Called from MainActivity after saving a recording.
+     *
+     * If the recording has a topic: sets the Details topic in the ViewModel and
+     * navigates to PAGE_DETAILS so the user lands on that topic's detail page
+     * with the new recording highlighted.
+     *
+     * If the recording is unsorted (topicId == null): navigates to PAGE_UNSORTED.
+     *
+     * The recording selection (viewModel.selectRecording) is always called by the
+     * caller before this, so the adapter highlight will be set automatically.
      */
     fun jumpToSubPageForRecording(topicId: Long?) {
-        val page = if (topicId != null) PAGE_RECORDINGS else PAGE_UNSORTED
-        binding.tilePager.setCurrentItem(page, true)
+        if (topicId != null) {
+            viewModel.setLibraryDetailsTopic(topicId)
+            binding.tilePager.setCurrentItem(PAGE_DETAILS, true)
+        } else {
+            binding.tilePager.setCurrentItem(PAGE_UNSORTED, true)
+        }
     }
 
     /**
@@ -188,7 +200,7 @@ class LibraryFragment : Fragment() {
             PAGE_ALL        -> "Library > All"
             PAGE_UNSORTED   -> "Library > Unsorted"
             PAGE_TOPICS     -> "Library > Topics"
-            PAGE_RECORDINGS -> "Library > Recordings"
+            PAGE_RECORDINGS -> "Library > Organize"
             PAGE_DETAILS    -> {
                 val topicId = viewModel.libraryDetailsTopicId.value
                 val name = viewModel.allTopics.value
@@ -201,29 +213,25 @@ class LibraryFragment : Fragment() {
     }
 
     private fun updateSubNavSelection(position: Int) {
-        val accent    = requireContext().themeColor(R.attr.colorAccent)
-        val dim       = requireContext().themeColor(R.attr.colorTextSecondary)
-        val detailsOk = viewModel.libraryDetailsTopicId.value != null
+        val accent   = requireContext().themeColor(R.attr.colorAccent)
+        val inactive = requireContext().themeColor(R.attr.colorTextSecondary)
+        val detailsEnabled = viewModel.libraryDetailsTopicId.value != null
 
-        data class Entry(val tab: TextView, val page: Int, val enabled: Boolean = true)
-
-        listOf(
-            Entry(binding.subNavAll,        PAGE_ALL),
-            Entry(binding.subNavUnsorted,   PAGE_UNSORTED),
-            Entry(binding.subNavTopics,     PAGE_TOPICS),
-            Entry(binding.subNavRecordings, PAGE_RECORDINGS),
-            Entry(binding.subNavDetails,    PAGE_DETAILS, enabled = detailsOk)
-        ).forEach { (tab, page, enabled) ->
-            val isActive = page == position
-            tab.setTextColor(if (isActive) accent else dim)
-            tab.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
-            tab.alpha = when {
-                isActive  -> 1f
-                !enabled  -> 0.35f
-                else      -> 1f
+        fun style(tv: TextView, active: Boolean, enabled: Boolean = true) {
+            tv.setTextColor(if (active) accent else inactive)
+            tv.setTypeface(null, if (active) Typeface.BOLD else Typeface.NORMAL)
+            tv.alpha = when {
+                active  -> 1f
+                enabled -> 0.7f
+                else    -> 0.35f
             }
-            tab.isEnabled = enabled
         }
+
+        style(binding.subNavAll,        position == PAGE_ALL)
+        style(binding.subNavUnsorted,   position == PAGE_UNSORTED)
+        style(binding.subNavTopics,     position == PAGE_TOPICS)
+        style(binding.subNavRecordings, position == PAGE_RECORDINGS)
+        style(binding.subNavDetails,    position == PAGE_DETAILS, enabled = detailsEnabled)
     }
 
     override fun onDestroyView() {

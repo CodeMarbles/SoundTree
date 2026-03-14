@@ -469,7 +469,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun setFavourite(id: Long, fav: Boolean)    = viewModelScope.launch { repo.setFavourite(id, fav) }
-    fun renameRecording(id: Long, title: String)= viewModelScope.launch { repo.renameRecording(id, title) }
+    fun renameRecording(id: Long, title: String) = viewModelScope.launch {
+        repo.renameRecording(id, title)
+        // Keep nowPlaying in sync so the Listen tab header updates immediately
+        // without waiting for a DB re-query — mirrors how moveRecording() works.
+        if (_nowPlaying.value?.recording?.id == id) {
+            _nowPlaying.value = _nowPlaying.value?.copy(
+                recording = _nowPlaying.value!!.recording.copy(title = title)
+            )
+        }
+    }
     fun updatePlayback(id: Long, posMs: Long, listened: Boolean) =
         viewModelScope.launch { repo.updatePlayback(id, posMs, listened) }
 
@@ -910,6 +919,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ── Processing status refresh tick ────────────────────────────────
+    //
+    // WorkManager's getWorkInfosByTagFlow can miss the terminal-state emission
+    // when the last job completes (a known race in some API levels). SettingsFragment
+    // bumps this tick every ~3 s while it's visible, forcing the combine chain to
+    // re-evaluate and pick up any completed jobs WorkManager may not have re-emitted.
+    private val _processingRefreshTick = MutableStateFlow(0L)
+
+    fun tickProcessingRefresh() {
+        _processingRefreshTick.value = System.currentTimeMillis()
+    }
+
     // ── Processing status (for Settings tab) ──────────────────────────────────
 
     private val recentlyCompletedJobs = mutableListOf<ProcessingJobInfo>()
@@ -923,10 +944,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * each row can be labelled with the recording's topic emoji and title.
      * WorkInfo.inputData is not accessible to observers, so we embed the
      * recording ID as a tag ("rid:<id>") and cross-reference from there.
+     *
+     * A periodic refresh tick from SettingsFragment is folded into the combine
+     * chain as a safety net against missed WorkManager emissions.
      */
     val processingStatus: StateFlow<ProcessingStatus> =
         WorkManager.getInstance(getApplication<Application>())
             .getWorkInfosByTagFlow(WaveformWorker.TAG)
+            .combine(_processingRefreshTick) { workInfos, _ -> workInfos }
             .combine(allRecordings) { workInfos, recordings -> workInfos to recordings }
             .combine(allTopics)     { (workInfos, recordings), topics ->
                 val recordingById = recordings.associateBy { it.id }
@@ -938,15 +963,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     state       = wi.state
                 )
 
-                // Accumulate newly-finished jobs — no cap, show everything.
                 if (!processingStatusInitialized) {
-                    // First emission — record all already-terminal jobs so we don't display them
                     workInfos
                         .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
                         .forEach { startupTerminalIds.add(it.id) }
                     processingStatusInitialized = true
                 } else {
-                    // Subsequent emissions — only accumulate jobs that transitioned this session
                     workInfos
                         .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
                         .filter { it.id !in startupTerminalIds }
@@ -966,6 +988,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProcessingStatus.IDLE)
+
 
     /**
      * Returns a display label for [job] in the form "$topicIcon $title".

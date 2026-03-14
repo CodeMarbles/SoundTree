@@ -5,7 +5,9 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.treecast.app.ui.library.details.TopicDetailsFragment
 import com.treecast.app.ui.library.manage.TopicsManageFragment
 import com.treecast.app.ui.library.all.AllRecordingsFragment
-import com.treecast.app.ui.topics.TopicsFragment
+// TopicsFragment is intentionally NOT imported here — it's preserved but unused
+// while the Organize tab shows a blank placeholder.  Re-import and swap
+// OrganizeFragment below back to TopicsFragment() to restore the old view.
 
 /**
  * Adapter for the 5-page Library ViewPager2.
@@ -13,7 +15,7 @@ import com.treecast.app.ui.topics.TopicsFragment
  *   [0] AllRecordingsFragment  — flat chronological list of all recordings
  *   [1] InboxTileFragment      — unsorted / inbox recordings
  *   [2] TopicsManageFragment   — topic tree management (no recordings inline)
- *   [3] TopicsFragment         — full topic + recording tree (Recordings tab)
+ *   [3] OrganizeFragment       — blank placeholder (formerly TopicsFragment)
  *   [4] TopicDetailsFragment   — details page for a selected topic
  */
 class LibraryTilesAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
@@ -22,7 +24,7 @@ class LibraryTilesAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
         AllRecordingsFragment(),
         InboxTileFragment(),
         TopicsManageFragment(),
-        TopicsFragment(),
+        OrganizeFragment(),          // was TopicsFragment() — code preserved in TopicsFragment.kt
         TopicDetailsFragment()
     )
 

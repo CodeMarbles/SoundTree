@@ -55,9 +55,15 @@ class RecordFragment : Fragment() {
     private val doubleTapWindowMs = 500L
 
     // ── In-progress recording display name ────────────────────────────
-    // Set in doStartRecording(); updated by showRenameDialog().
+    // Set in doStartRecording() to a timestamp string (the auto-generated default).
+    // Updated by showRenameDialog() to whatever the user types.
     // Used as the recording title on save.
     private var currentRecordingDisplayName: String = ""
+
+    // True once the user has explicitly renamed via showRenameDialog().
+    // When true, stopAndSave() uses currentRecordingDisplayName verbatim
+    // (no "Recording – " prefix). When false (auto-stamp), the prefix is applied.
+    private var userHasRenamedRecording: Boolean = false
 
     // ── Recording service ─────────────────────────────────────────────
     private var recordingService: RecordingService? = null
@@ -488,8 +494,19 @@ class RecordFragment : Fragment() {
             .setPositiveButton("OK") { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty()) {
+                    // User provided a name — use it verbatim on save.
                     currentRecordingDisplayName = newName
+                    userHasRenamedRecording = true
                     binding.tvRecordingName.text = newName
+                } else {
+                    // User cleared the field — fall back to a fresh auto-generated
+                    // timestamp and treat the recording as un-renamed so stopAndSave()
+                    // will prepend the "Recording – " prefix.
+                    val generated = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+                        .format(Date(System.currentTimeMillis()))
+                    currentRecordingDisplayName = generated
+                    userHasRenamedRecording = false
+                    binding.tvRecordingName.text = generated
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -551,8 +568,10 @@ class RecordFragment : Fragment() {
 
     /** Calls through to the service after all pre-flight checks pass. */
     private fun doStartRecording(svc: RecordingService) {
+        // Reset the display name to the current timestamp and clear any prior rename.
         currentRecordingDisplayName = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
             .format(Date(System.currentTimeMillis()))
+        userHasRenamedRecording = false
         svc.startRecording(topicId = viewModel.recordingTopicId.value)
     }
 
@@ -570,10 +589,16 @@ class RecordFragment : Fragment() {
                 viewModel.allTopics.value.any { it.id == id }
             }
 
-            val title = if (currentRecordingDisplayName.isNotEmpty())
-                "Recording – $currentRecordingDisplayName"
-            else
-                "Recording – $stamp"
+            // If the user renamed the recording, use their title verbatim.
+            // If they didn't rename (auto-timestamp default), apply the "Recording – " prefix.
+            val title = when {
+                userHasRenamedRecording && currentRecordingDisplayName.isNotEmpty() ->
+                    currentRecordingDisplayName
+                currentRecordingDisplayName.isNotEmpty() ->
+                    "Recording – $currentRecordingDisplayName"
+                else ->
+                    "Recording – $stamp"
+            }
 
             val savedDeferred = viewModel.saveRecordingWithMarks(
                 filePath          = result.filePath,
@@ -608,6 +633,7 @@ class RecordFragment : Fragment() {
         selectedTopicId = null
         lastCancelTapMs = 0L
         currentRecordingDisplayName = ""
+        userHasRenamedRecording = false
         Toast.makeText(requireContext(), "Recording cancelled", Toast.LENGTH_SHORT).show()
     }
 

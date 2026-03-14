@@ -68,8 +68,21 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.processingStatus.collect { status ->
-                    renderProcessingStatus(status)
+                // Observe the processing status flow and render on every emission.
+                launch {
+                    viewModel.processingStatus.collect { status ->
+                        renderProcessingStatus(status)
+                    }
+                }
+
+                // Safety-net: tick the ViewModel every 3 s while this fragment is
+                // visible so the combine chain re-evaluates even if WorkManager
+                // misses emitting the terminal-state change for the last job.
+                launch {
+                    while (true) {
+                        kotlinx.coroutines.delay(3_000L)
+                        viewModel.tickProcessingRefresh()
+                    }
                 }
             }
         }

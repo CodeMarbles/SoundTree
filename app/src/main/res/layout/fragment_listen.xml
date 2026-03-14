@@ -70,11 +70,9 @@
                 android:gravity="center_vertical"
                 android:paddingVertical="4dp"
                 android:layout_marginBottom="8dp"
-                android:visibility="visible"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
+                android:visibility="visible">
 
+                <!-- Topic icon — always tappable; opens Topic Picker to re-assign topic -->
                 <TextView
                     android:id="@+id/tvTopicIcon"
                     android:layout_width="wrap_content"
@@ -82,14 +80,23 @@
                     android:textSize="40sp"
                     android:lineHeight="48sp"
                     android:layout_marginEnd="12dp"
-                    android:includeFontPadding="false" />
+                    android:includeFontPadding="false"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true" />
 
+                <!-- Title area — tapping opens rename dialog for the current recording -->
                 <LinearLayout
+                    android:id="@+id/layoutTitleArea"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingVertical="2dp">
 
                     <TextView
                         android:id="@+id/tvCategory"
@@ -112,7 +119,7 @@
 
                 </LinearLayout>
 
-                <!-- Chevron hints that the header is tappable -->
+                <!-- Chevron removed: two separate click targets replace the single-row tap -->
                 <ImageView
                     android:id="@+id/ivTopicHeaderChevron"
                     android:layout_width="18dp"
@@ -120,6 +127,7 @@
                     android:layout_marginStart="8dp"
                     android:src="@drawable/ic_chevron_down"
                     android:rotation="-90"
+                    android:visibility="gone"
                     app:tint="?attr/colorTextSecondary" />
 
             </LinearLayout>

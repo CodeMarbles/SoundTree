@@ -88,7 +88,14 @@ class ListenFragment : Fragment() {
     }
 
     // ── Topic header ───────────────────────────────────────────────────
+    // ── Topic header ───────────────────────────────────────────────────
+    //
+    // Two independent click targets replace the old single-row tap:
+    //   tvTopicIcon      → Topic Picker (move recording to a different topic)
+    //   layoutTitleArea  → Rename dialog (edit the recording's title)
+    //
     private fun setupTopicHeader() {
+        // ── Topic Picker result listener ──────────────────────────────
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
         ) { _, bundle ->
@@ -98,10 +105,35 @@ class ListenFragment : Fragment() {
             }
         }
 
-        binding.topicHeader.setOnClickListener {
+        // ── Topic icon → open Topic Picker ────────────────────────────
+        binding.tvTopicIcon.setOnClickListener {
             val currentTopicId = viewModel.nowPlaying.value?.recording?.topicId
             TopicPickerBottomSheet.newInstance(currentTopicId)
                 .show(childFragmentManager, "topic_picker")
+        }
+
+        // ── Title area → rename the current recording ─────────────────
+        binding.layoutTitleArea.setOnClickListener {
+            val rec = viewModel.nowPlaying.value?.recording ?: return@setOnClickListener
+            val editText = android.widget.EditText(requireContext()).apply {
+                setText(rec.title)
+                selectAll()
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            }
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Rename Recording")
+                .setView(editText)
+                .setPositiveButton("Save") { _, _ ->
+                    val newTitle = editText.text.toString().trim()
+                    if (newTitle.isNotEmpty()) {
+                        viewModel.renameRecording(rec.id, newTitle)
+                        // tvTitle will update automatically via observeNowPlaying()
+                        // once the DB emits the renamed recording.
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
 

@@ -100,7 +100,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="RECORDINGS"
+            android:text="ORGANIZE"
             android:textSize="11sp"
             android:textColor="?attr/colorTextSecondary"
             android:letterSpacing="0.05"

@@ -49,6 +49,23 @@
             android:layout_marginStart="4dp"
             android:layout_marginEnd="10dp" />
 
+        <!-- NEW badge — visible only for recordings < 30 min old -->
+        <TextView
+            android:id="@+id/tvNewBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NEW"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/bg_new_badge"
+            android:layout_marginEnd="6dp"
+            android:visibility="gone" />
+
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"

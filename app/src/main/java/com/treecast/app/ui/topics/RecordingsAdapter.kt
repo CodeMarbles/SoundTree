@@ -11,7 +11,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -25,7 +24,8 @@ import com.treecast.app.ui.common.TopicPickerView
 import com.treecast.app.util.Icons
 import com.treecast.app.util.themeColor
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class RecordingsAdapter(
     private val onPlayPause: (RecordingEntity) -> Unit,
@@ -40,6 +40,7 @@ class RecordingsAdapter(
             override fun areItemsTheSame(a: RecordingEntity, b: RecordingEntity) = a.id == b.id
             override fun areContentsTheSame(a: RecordingEntity, b: RecordingEntity) = a == b
         }
+        private const val NEW_THRESHOLD_MS = 30 * 60 * 1_000L
     }
 
     var topics: List<TopicEntity> = emptyList()
@@ -73,6 +74,7 @@ class RecordingsAdapter(
         private val btnMove:          MaterialButton  = v.findViewById(R.id.btnMove)
         private val btnDelete:        MaterialButton  = v.findViewById(R.id.btnDelete)
         private val picker:           TopicPickerView = v.findViewById(R.id.inlineTopicPicker)
+        private val tvNewBadge:       TextView        = v.findViewById(R.id.tvNewBadge)
 
         private val gestureDetector = GestureDetectorCompat(v.context,
             object : GestureDetector.SimpleOnGestureListener() {
@@ -118,6 +120,7 @@ class RecordingsAdapter(
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
+                tvNewBadge.visibility = View.GONE
             } else {
                 val isThisPlaying = rec.id == nowPlayingId && isPlaying
                 btnInlinePlay.setImageResource(
@@ -126,6 +129,10 @@ class RecordingsAdapter(
                     itemView.context.themeColor(R.attr.colorAccent))
                 itemView.alpha = 1f
                 btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+
+                // ── "New" recording badge (< 30 minutes old) ──────────
+                val isNew = System.currentTimeMillis() - rec.createdAt < NEW_THRESHOLD_MS
+                tvNewBadge.visibility = if (isNew) View.VISIBLE else View.GONE
             }
 
             // ── Expand / collapse controls tray ──────────────────────────────
