@@ -52,6 +52,8 @@ class TopicDetailsFragment : Fragment() {
 
     /** Local collapse state for the hierarchy widget — independent of the main tree. */
     private val hierarchyCollapsedIds = mutableSetOf<Long>()
+    private var hierarchyInitializedForTopicId: Long? = null
+    private var previousTopicId: Long? = null
 
     companion object {
         private const val REQUEST_REPARENT = "TopicDetails_reparent"
@@ -123,7 +125,11 @@ class TopicDetailsFragment : Fragment() {
         val topic = allTopics.find { it.id == topicId } ?: return
 
         // Reset hierarchy collapse state when the selected topic changes
-        if (topic.id != currentTopic?.id) hierarchyCollapsedIds.clear()
+        if (topic.id != currentTopic?.id) {
+            previousTopicId = currentTopic?.id
+            hierarchyCollapsedIds.clear()
+            hierarchyInitializedForTopicId = null
+        }
 
         currentTopic = topic
 
@@ -154,12 +160,6 @@ class TopicDetailsFragment : Fragment() {
             cursor = cursor.parentId?.let { pid -> allTopics.find { it.id == pid } }
         }
 
-        if (ancestors.isEmpty()) {
-            // Root-level topic — show a root sentinel row
-            addHierarchyRow(icon = "🌳", name = "Root", depth = 0,
-                topicId = null, isCurrent = false, hasChildren = false)
-        }
-
         ancestors.forEachIndexed { index, topic ->
             addHierarchyRow(
                 icon = topic.icon, name = topic.name,
@@ -186,16 +186,37 @@ class TopicDetailsFragment : Fragment() {
         )
 
         // ── 3. Descendant subtree — start collapsed ───────────────────
-        // Seed collapse state: all children start collapsed unless already opened
-        if (!hierarchyCollapsedIds.contains(topicId) && directChildren.isNotEmpty()) {
-            // Use the topicId as a "gate" so children are hidden initially.
-            // We represent "children of X are collapsed" by putting X in the set.
-            hierarchyCollapsedIds.add(topicId)
+        if (hierarchyInitializedForTopicId != topicId && directChildren.isNotEmpty()) {
+            hierarchyInitializedForTopicId = topicId
+
+            // Default: immediate children visible, grandchildren collapsed
+            directChildren.forEach { child ->
+                if (allTopics.any { it.parentId == child.id })
+                    hierarchyCollapsedIds.add(child.id)
+            }
+
+            // If we navigated here from a descendant, re-expand the path to it
+            val prevId = previousTopicId
+            if (prevId != null) {
+                findPathDown(topicId, prevId, allTopics)
+                    .dropLast(1)  // The leaf itself doesn't need to be un-collapsed
+                    .forEach { hierarchyCollapsedIds.remove(it) }
+            }
         }
 
         if (topicId !in hierarchyCollapsedIds) {
             addDescendantRows(topicId, currentDepth + 1, allTopics)
         }
+    }
+
+    private fun findPathDown(fromId: Long, toId: Long, allTopics: List<TopicEntity>): List<Long> {
+        val path = mutableListOf<Long>()
+        var cursor = allTopics.find { it.id == toId }
+        while (cursor != null && cursor.id != fromId) {
+            path.add(0, cursor.id)
+            cursor = cursor.parentId?.let { pid -> allTopics.find { it.id == pid } }
+        }
+        return if (cursor?.id == fromId) path else emptyList()
     }
 
     /**
