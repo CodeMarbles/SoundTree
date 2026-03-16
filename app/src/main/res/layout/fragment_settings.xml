@@ -395,45 +395,44 @@
                     android:layout_height="1dp"
                     android:background="?attr/colorSurfaceElevated"
                     android:layout_marginHorizontal="16dp" />
+                <!-- ── Always show recorder shortcut ─────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
 
-                <!-- Show last mark timestamp toggle -->
-                <!--                    <LinearLayout-->
-                <!--                        android:layout_width="match_parent"-->
-                <!--                        android:layout_height="wrap_content"-->
-                <!--                        android:orientation="horizontal"-->
-                <!--                        android:gravity="center_vertical"-->
-                <!--                        android:paddingHorizontal="16dp"-->
-                <!--                        android:paddingVertical="14dp">-->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                <!--                        <LinearLayout-->
-                <!--                            android:layout_width="0dp"-->
-                <!--                            android:layout_height="wrap_content"-->
-                <!--                            android:layout_weight="1"-->
-                <!--                            android:orientation="vertical">-->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Always show recorder shortcut"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="15sp" />
 
-                <!--                            <TextView-->
-                <!--                                android:layout_width="wrap_content"-->
-                <!--                                android:layout_height="wrap_content"-->
-                <!--                                android:text="Show mark timestamp"-->
-                <!--                                android:textColor="?attr/colorTextPrimary"-->
-                <!--                                android:textSize="15sp" />-->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Keep the title-bar pill visible at all times"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
 
-                <!--                            <TextView-->
-                <!--                                android:layout_width="wrap_content"-->
-                <!--                                android:layout_height="wrap_content"-->
-                <!--                                android:text="Float last mark time above timeline"-->
-                <!--                                android:textColor="?attr/colorTextSecondary"-->
-                <!--                                android:textSize="12sp"-->
-                <!--                                android:layout_marginTop="2dp" />-->
+                    </LinearLayout>
 
-                <!--                        </LinearLayout>-->
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switchAlwaysShowRecorderPill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
 
-                <!--                        <androidx.appcompat.widget.SwitchCompat-->
-                <!--                            android:id="@+id/switchShowRecordMarkTimestamp"-->
-                <!--                            android:layout_width="wrap_content"-->
-                <!--                            android:layout_height="wrap_content" />-->
-
-                <!--                    </LinearLayout>-->
+                </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
@@ -541,7 +540,128 @@
                 android:orientation="vertical"
                 android:padding="4dp">
 
+                <!-- ── Playback Widget visibility (3-state) ──────────── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Playback Widget"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="When to show the widget above the nav bar"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="10dp" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/togglePlayerVisibility"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:singleSelection="true"
+                        app:selectionRequired="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPlayerVisNever"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:text="Never"
+                            android:textSize="10sp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPlayerVisWhilePlaying"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:text="PLAYING"
+                            android:textSize="10sp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPlayerVisAlways"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:text="Always"
+                            android:textSize="10sp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp" />
+
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
                 <!-- ── Hide Listen Widget on Listen Tab ─────────── -->
+                <LinearLayout
+                    android:id="@+id/rowHidePlayerOnListenTab"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Hide on Listen Tab"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Don't show widget while Listen tab is active"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switchHidePlayerOnListenTab"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- ── Always show player shortcut ────────────── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -559,14 +679,14 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Hide Listen Widget on Listen Tab"
+                            android:text="Always show player shortcut"
                             android:textColor="?attr/colorTextPrimary"
                             android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Don't show widget while Listen tab is active"
+                            android:text="Keep the title-bar pill visible at all times"
                             android:textColor="?attr/colorTextSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
@@ -574,7 +694,7 @@
                     </LinearLayout>
 
                     <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchHidePlayerOnListenTab"
+                        android:id="@+id/switchAlwaysShowPlayerPill"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
 

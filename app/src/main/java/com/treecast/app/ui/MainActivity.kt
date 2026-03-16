@@ -103,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         setupMiniRecorder()
         setupMiniRecorderMinimize()
 
+        setupTabChangeOverrideReset()
         setupBackNavigation()
 
         observeLockState()
@@ -908,60 +909,84 @@ class MainActivity : AppCompatActivity() {
         val p    = binding.miniPlayer
         val pill = binding.titlePills
 
+        // ── Close button → stop & clear everything ────────────────────────
+        p.btnMiniPlayerClose.setOnClickListener {
+            viewModel.stopAndClear()
+            // playerPillMinimized is reset inside stopAndClear(); no extra call needed.
+        }
+        // Close button tint — dim secondary colour so it reads as less prominent
+        // than the minimize button
+        p.btnMiniPlayerClose.imageTintList =
+            ColorStateList.valueOf(themeColor(R.attr.colorTextSecondary))
+
         // ── Minimize button → set state ───────────────────────────────────
         p.btnMiniPlayerMinimize.setOnClickListener {
             viewModel.setPlayerPillMinimized(true)
         }
-        // Minimize button — solid purple pill (accent color)
         p.btnMiniPlayerMinimize.background =
             solidPillBackground(themeColor(R.attr.colorAccent))
 
-        // Player pill background — theme-static, set once
+        // Player pill background — set once
         pill.pillPlayer.background = pillBackground(
             themeColor(R.attr.colorPillPlayerFill),
             themeColor(R.attr.colorPillPlayerStroke)
         )
 
-        // ── Pill tap → restore full widget ───────────────────────────────
+        // ── Pill tap ──────────────────────────────────────────────────────
+        // • NEVER mode  → navigate to Listen tab (pill acts as a shortcut)
+        // • Other modes → restore widget; set override so it survives tab suppression
         pill.pillPlayer.setOnClickListener {
-            viewModel.setPlayerPillMinimized(false)
-        }
-
-        // ── Visibility: full widget ───────────────────────────────────────
-        // Replaces the existing mini player visibility observer in setupMiniPlayer().
-        // Adds playerPillMinimized to the combine.
-        lifecycleScope.launch {
-            combine(
-                viewModel.nowPlaying,
-                viewModel.hidePlayerOnListenTab,
-                viewModel.currentPage,
-                viewModel.playerPillMinimized
-            ) { state, hideOnListenTab, page, minimized ->
-                val hasContent = state != null
-                val suppressed = hideOnListenTab && (page == PAGE_LISTEN)
-                val shouldShow = hasContent && !suppressed
-                shouldShow && !minimized
-            }.collect { visible ->
-                p.root.visibility = if (visible) View.VISIBLE else View.GONE
+            when {
+                // NEVER mode - pill is always a shortcut to the tab
+                viewModel.playerWidgetVisibility.value == PlayerWidgetVisibility.NEVER -> {
+                    navigateTo(PAGE_LISTEN)
+                }
+                // PLAYING mode - only show when playing but nothing is loaded
+                ((viewModel.playerWidgetVisibility.value == PlayerWidgetVisibility.WHILE_PLAYING) && (viewModel.nowPlaying.value == null)) -> {
+                    navigateTo(PAGE_LISTEN)
+                }
+                // Widget is currently visible → navigate to tab
+                isPlayerWidgetVisible() -> {
+                    navigateTo(PAGE_LISTEN)
+                }
+                // Widget is hidden (minimized or suppressed) → show it
+                else -> {
+                    viewModel.setPlayerHideOverriddenThisVisit(true)
+                    viewModel.setPlayerPillMinimized(false)
+                }
             }
         }
 
-        // ── Visibility + content: pill ────────────────────────────────────
+        // ── Pill visibility ───────────────────────────────────────────────
+        //
+        // pillVisible = alwaysShow
+        //            || ( (hasContent && minimized) && !(hideOnListenTab && onListenTab) )
+        //
+        // Note: alwaysShow gives full override — pill visible even when suppressed by tab.
         lifecycleScope.launch {
             combine(
                 viewModel.nowPlaying,
+                viewModel.playerPillMinimized,
                 viewModel.hidePlayerOnListenTab,
                 viewModel.currentPage,
-                viewModel.playerPillMinimized
-            ) { state, hideOnListenTab, page, minimized ->
-                val hasContent = state != null
-                val suppressed = hideOnListenTab && (page == PAGE_LISTEN)
-                val shouldShow = hasContent && !suppressed
-                Triple(shouldShow && minimized, state, minimized)
-            }.collect { (pillVisible, state, _) ->
+                viewModel.alwaysShowPlayerPill
+            ) { state, minimized, hideOnListenTab, page, alwaysShow ->
+                val hasContent  = state != null
+                val onListenTab = page == PAGE_LISTEN
+                val tabVisible  = hasContent && minimized && !(hideOnListenTab && onListenTab)
+                alwaysShow || tabVisible
+            }.collect { pillVisible ->
                 pill.pillPlayer.visibility = if (pillVisible) View.VISIBLE else View.GONE
+                updateTitleTextAlpha()
+            }
+        }
 
-                if (pillVisible && state != null) {
+        // ── Pill content ──────────────────────────────────────────────────
+        // Separate observer so pill content always stays fresh regardless of
+        // visibility decisions above.
+        lifecycleScope.launch {
+            viewModel.nowPlaying.collect { state ->
+                if (state != null) {
                     if (state.isPlaying) {
                         pill.ivPillPlayerPlay.setImageResource(R.drawable.ic_play)
                         pill.ivPillPlayerPlay.imageTintList =
@@ -971,20 +996,91 @@ class MainActivity : AppCompatActivity() {
                         pill.ivPillPlayerPlay.imageTintList =
                             ColorStateList.valueOf(themeColor(R.attr.colorRecordPause))
                     }
-
-                    // Topic icon
                     val topic = viewModel.allTopics.value
                         .firstOrNull { it.id == state.recording.topicId }
                     val icon = topic?.icon ?: Icons.INBOX
                     pill.pillPlayerTopic.text = icon
                     pill.pillPlayerTopic.visibility = View.VISIBLE
-
-                    // Filename (marquee TextView — selection keeps it scrolling)
                     pill.pillPlayerFilename.text = state.recording.title
                     pill.pillPlayerFilename.isSelected = true
+                } else {
+                    // Idle pill state — grey icon, no filename
+                    pill.ivPillPlayerPlay.setImageResource(R.drawable.ic_stop_square)
+                    pill.ivPillPlayerPlay.imageTintList =
+                        ColorStateList.valueOf(themeColor(R.attr.colorTextSecondary))
+                    pill.pillPlayerTopic.visibility = View.GONE
+                    pill.pillPlayerFilename.text = "NO SELECTION"
+                    pill.pillPlayerFilename.isSelected = false   // stop marquee scroll on idle
                 }
+            }
+        }
 
-                updateTitleTextAlpha()
+        // ── Widget visibility ─────────────────────────────────────────────
+        //
+        // shouldShow = (visibility==ALWAYS) || (hasContent && visibility!=NEVER)
+        // suppressed = hideOnListenTab && onListenTab && !overriddenThisVisit
+        // widgetVisible = shouldShow && !suppressed && !minimized
+        lifecycleScope.launch {
+            // Combine nowPlaying + playerWidgetVisibility + override into a
+            // single inner flow so we stay within Kotlin's 5-arg combine limit.
+            val innerFlow = combine(
+                viewModel.nowPlaying,
+                viewModel.playerWidgetVisibility,
+                viewModel.playerHideOverriddenThisVisit
+            ) { state, visibility, overridden ->
+                Triple(state, visibility, overridden)
+            }
+            combine(
+                innerFlow,
+                viewModel.hidePlayerOnListenTab,
+                viewModel.currentPage,
+                viewModel.playerPillMinimized
+            ) { (state, visibility, overridden), hideOnListenTab, page, minimized ->
+                val hasContent  = state != null
+                val alwaysShow  = visibility == PlayerWidgetVisibility.ALWAYS
+                val neverShow   = visibility == PlayerWidgetVisibility.NEVER
+                val shouldShow  = alwaysShow || (hasContent && !neverShow)
+                val onListenTab = page == PAGE_LISTEN
+                val suppressed  = hideOnListenTab && onListenTab && !overridden
+                shouldShow && !suppressed && !minimized
+            }.collect { visible ->
+                p.root.visibility = if (visible) View.VISIBLE else View.GONE
+            }
+        }
+
+        // ── Idle state display ────────────────────────────────────────────
+        // When the widget is visible but nothing is loaded (ALWAYS mode, no content),
+        // swap the title row to show a grey icon + "NO SELECTION" status.
+        lifecycleScope.launch {
+            combine(
+                viewModel.nowPlaying,
+                viewModel.playerWidgetVisibility
+            ) { state, visibility ->
+                state == null && visibility == PlayerWidgetVisibility.ALWAYS
+            }.collect { idle ->
+                if (idle) {
+                    p.tvMiniPlayingLabel.text = "NO SELECTION"
+                    p.tvMiniTopicIcon.visibility = View.GONE
+                    p.tvMiniTitle.text = ""
+                    // Grey out the transport row — nothing to control
+                    p.btnMiniPlayPause.isEnabled = false
+                    p.btnMiniPlayPause.alpha = 0.3f
+                    p.btnMiniSkipBack.isEnabled = false
+                    p.btnMiniSkipBack.alpha = 0.3f
+                    p.btnMiniSkipForward.isEnabled = false
+                    p.btnMiniSkipForward.alpha = 0.3f
+                    p.miniPlayerTimeline.visibility = View.INVISIBLE
+                } else {
+                    p.tvMiniPlayingLabel.text = "NOW PLAYING:"
+                    p.tvMiniTopicIcon.visibility = View.VISIBLE
+                    p.btnMiniPlayPause.isEnabled = true
+                    p.btnMiniPlayPause.alpha = 1f
+                    p.btnMiniSkipBack.isEnabled = true
+                    p.btnMiniSkipBack.alpha = 1f
+                    p.btnMiniSkipForward.isEnabled = true
+                    p.btnMiniSkipForward.alpha = 1f
+                    p.miniPlayerTimeline.visibility = View.VISIBLE
+                }
             }
         }
     }
@@ -1000,115 +1096,164 @@ class MainActivity : AppCompatActivity() {
         rec.btnMiniRecorderMinimize.setOnClickListener {
             viewModel.setRecorderPillMinimized(true)
         }
-
-        // Minimize button — solid red pill
         rec.btnMiniRecorderMinimize.background =
             solidPillBackground(themeColor(R.attr.colorRecordActive))
 
-        // ── Pill tap → restore full widget ───────────────────────────────
+        // ── Pill tap ──────────────────────────────────────────────────────
         pill.pillRecorder.setOnClickListener {
-            viewModel.setRecorderPillMinimized(false)
+            when {
+                // NEVER mode - pill always redirects
+                viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.NEVER -> {
+                    navigateTo(PAGE_RECORD)
+                }
+                // RECORDING mode but no media loaded
+                ((viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.WHILE_RECORDING) && (viewModel.recordingState.value == RecordingService.State.IDLE)) -> {
+                    navigateTo(PAGE_RECORD)
+                }
+                // mini recorder already visible, second tap nav's to page
+                isRecorderWidgetVisible() -> {
+                    navigateTo(PAGE_RECORD)
+                }
+                // otherwise show the mini recorder, override visibility suppression if necessary (not NEVER mode after all)
+                else -> {
+                    viewModel.setRecorderHideOverriddenThisVisit(true)
+                    viewModel.setRecorderPillMinimized(false)
+                }
+            }
         }
 
-        // ── Visibility: full widget ───────────────────────────────────────
-        // Replaces the existing recorder visibility observer in setupMiniRecorder().
-        // Adds recorderPillMinimized to the combine.
+        // ── Pill visibility ───────────────────────────────────────────────
+        //
+        // pillVisible = alwaysShow
+        //            || ( (hasContent && minimized) && !(hideOnRecordTab && onRecordTab) )
         lifecycleScope.launch {
             combine(
                 viewModel.recordingState,
+                viewModel.recorderPillMinimized,
+                viewModel.hideRecorderOnRecordTab,
+                viewModel.currentPage,
+                viewModel.alwaysShowRecorderPill
+            ) { state, minimized, hideOnRecordTab, page, alwaysShow ->
+                val hasContent = when (viewModel.recorderWidgetVisibility.value) {
+                    RecorderWidgetVisibility.NEVER  -> alwaysShow   // only alwaysShow path matters
+                    RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
+                    RecorderWidgetVisibility.ALWAYS -> true
+                }
+                val onRecordTab = page == PAGE_RECORD
+                val tabVisible  = hasContent && minimized && !(hideOnRecordTab && onRecordTab)
+                alwaysShow || tabVisible
+            }.collect { pillVisible ->
+                pill.pillRecorder.visibility = if (pillVisible) View.VISIBLE else View.GONE
+                updateTitleTextAlpha()
+            }
+        }
+
+        // ── Widget visibility ─────────────────────────────────────────────
+        lifecycleScope.launch {
+            val innerFlow = combine(
+                viewModel.recordingState,
                 viewModel.recorderWidgetVisibility,
+                viewModel.recorderHideOverriddenThisVisit
+            ) { state, visibility, overridden ->
+                Triple(state, visibility, overridden)
+            }
+            combine(
+                innerFlow,
                 viewModel.hideRecorderOnRecordTab,
                 viewModel.currentPage,
                 viewModel.recorderPillMinimized
-            ) { state, mode, hideOnRecordTab, page, minimized ->
-                val isActive = state != RecordingService.State.IDLE
-                val wantShow = when (mode) {
+            ) { (state, visibility, overridden), hideOnRecordTab, page, minimized ->
+                val wantShow = when (visibility) {
                     RecorderWidgetVisibility.NEVER           -> false
-                    RecorderWidgetVisibility.WHILE_RECORDING -> isActive
+                    RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
                     RecorderWidgetVisibility.ALWAYS          -> true
                 }
-                val suppressed = hideOnRecordTab && (page == PAGE_RECORD)
-                val shouldShow = wantShow && !suppressed
-                shouldShow && !minimized
+                val onRecordTab = page == PAGE_RECORD
+                val suppressed  = hideOnRecordTab && onRecordTab && !overridden
+                wantShow && !suppressed && !minimized
             }.collect { visible ->
                 rec.root.visibility = if (visible) View.VISIBLE else View.GONE
             }
         }
 
-        // ── Visibility + content: pill ────────────────────────────────────
+        // ── Pill content observer — unchanged from before ─────────────────
         lifecycleScope.launch {
-            combine(
-                viewModel.recordingState,
-                viewModel.recorderWidgetVisibility,
-                viewModel.hideRecorderOnRecordTab,
-                viewModel.currentPage,
-                viewModel.recorderPillMinimized
-            ) { state, mode, hideOnRecordTab, page, minimized ->
-                val isActive = state != RecordingService.State.IDLE
-                val wantShow = when (mode) {
-                    RecorderWidgetVisibility.NEVER           -> false
-                    RecorderWidgetVisibility.WHILE_RECORDING -> isActive
-                    RecorderWidgetVisibility.ALWAYS          -> true
+            viewModel.recordingState.collect { state ->
+                val (iconRes, label, textColor) = when (state) {
+                    RecordingService.State.IDLE ->
+                        Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
+                    RecordingService.State.RECORDING ->
+                        Triple(R.drawable.ic_record_circle, "REC", themeColor(R.attr.colorRecordActive))
+                    RecordingService.State.PAUSED ->
+                        Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
                 }
-                val suppressed = hideOnRecordTab && (page == PAGE_RECORD)
-                val shouldShow = wantShow && !suppressed
-                Pair(shouldShow && minimized, state)
-            }.collect { (pillVisible, state) ->
-                pill.pillRecorder.visibility = if (pillVisible) View.VISIBLE else View.GONE
+                pill.ivPillRecorderDot.visibility =
+                    if (state == RecordingService.State.PAUSED) View.VISIBLE else View.GONE
+                pill.ivPillRecorderDot.imageTintList =
+                    ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
+                pill.ivPillRecorderIcon.setImageResource(iconRes)
+                pill.ivPillRecorderIcon.imageTintList = ColorStateList.valueOf(textColor)
+                pill.pillRecorderStatus.text = label
+                pill.pillRecorderStatus.setTextColor(textColor)
 
-                if (pillVisible) {
-                    val (iconRes, label, textColor) = when (state) {
-                        RecordingService.State.IDLE ->
-                            Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
-                        RecordingService.State.RECORDING ->
-                            Triple(R.drawable.ic_record_circle, "REC", themeColor(R.attr.colorRecordActive))
-                        RecordingService.State.PAUSED ->
-                            Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
-                    }
-
-                    // Record dot prefix — only in PAUSED state
-                    pill.ivPillRecorderDot.visibility =
-                        if (state == RecordingService.State.PAUSED) View.VISIBLE else View.GONE
-                    pill.ivPillRecorderDot.imageTintList =
-                        ColorStateList.valueOf(themeColor(R.attr.colorRecordActive))
-
-                    // Recorder Status Icon+Label
-                    pill.ivPillRecorderIcon.setImageResource(iconRes)
-                    pill.ivPillRecorderIcon.imageTintList = ColorStateList.valueOf(textColor)
-
-                    pill.pillRecorderStatus.text = label
-                    pill.pillRecorderStatus.setTextColor(textColor)
-
-                    // Topic Icon
-                    val topicIcon = viewModel.allTopics.value
-                        .firstOrNull { it.id == viewModel.recordingTopicId.value }?.icon
-                    if (topicIcon != null) {
-                        pill.pillRecorderTopic.text = topicIcon
-                        pill.pillRecorderTopic.setTextColor(textColor)
-                        pill.pillRecorderTopic.visibility = View.VISIBLE
-                    } else {
-                        pill.pillRecorderTopic.visibility = View.GONE
-                    }
-                    pill.pillRecorder.background = when (state) {
-                        RecordingService.State.IDLE ->
-                            pillBackground(
-                                themeColor(R.attr.colorSurfaceBase),
-                                themeColor(R.attr.colorRecordActive)
-                            )
-                        RecordingService.State.RECORDING ->
-                            pillBackground(
-                                themeColor(R.attr.colorMiniRecorderActive),
-                                themeColor(R.attr.colorRecordActive)
-                            )
-                        RecordingService.State.PAUSED ->
-                            pillBackground(
-                                themeColor(R.attr.colorPillRecorderPausedFill),
-                                themeColor(R.attr.colorRecordPause)
-                            )
-                    }
+                // Topic Icon
+                val topicIcon = viewModel.allTopics.value
+                    .firstOrNull { it.id == viewModel.recordingTopicId.value }?.icon
+                if (topicIcon != null) {
+                    pill.pillRecorderTopic.text = topicIcon
+                    pill.pillRecorderTopic.setTextColor(textColor)
+                    pill.pillRecorderTopic.visibility = View.VISIBLE
+                } else {
+                    pill.pillRecorderTopic.visibility = View.GONE
                 }
 
-                updateTitleTextAlpha()
+                // Pill Border
+                pill.pillRecorder.background = when (state) {
+                    RecordingService.State.IDLE ->
+                        pillBackground(
+                            themeColor(R.attr.colorSurfaceBase),
+                            themeColor(R.attr.colorRecordActive)
+                        )
+                    RecordingService.State.RECORDING ->
+                        pillBackground(
+                            themeColor(R.attr.colorMiniRecorderActive),
+                            themeColor(R.attr.colorRecordActive)
+                        )
+                    RecordingService.State.PAUSED ->
+                        pillBackground(
+                            themeColor(R.attr.colorPillRecorderPausedFill),
+                            themeColor(R.attr.colorRecordPause)
+                        )
+                }
+            }
+        }
+    }
+
+    /**
+     * Watches currentPage and resets the per-visit suppress-override flags
+     * whenever the user leaves the tab that owns each widget.
+     *
+     * This means: if the user tapped the player pill to force-show the player
+     * on the Listen tab, navigating away resets that override so the widget
+     * re-hides on the next visit to that tab.
+     */
+    private fun setupTabChangeOverrideReset() {
+        lifecycleScope.launch {
+            var prevPage = viewModel.currentPage.value
+            viewModel.currentPage.collect { page ->
+                if (page != prevPage) {
+                    // ── Reset on EXIT from the suppressed tab ─────────────
+                    if (prevPage == PAGE_LISTEN) viewModel.setPlayerHideOverriddenThisVisit(false)
+                    if (prevPage == PAGE_RECORD) viewModel.setRecorderHideOverriddenThisVisit(false)
+
+                    // ── Reset on ENTRY to the suppressed tab ──────────────
+                    // Catches the case where the override was stale from a
+                    // previous visit and the exit reset didn't fire cleanly.
+                    if (page == PAGE_LISTEN) viewModel.setPlayerHideOverriddenThisVisit(false)
+                    if (page == PAGE_RECORD) viewModel.setRecorderHideOverriddenThisVisit(false)
+
+                    prevPage = page
+                }
             }
         }
     }
@@ -1124,6 +1269,45 @@ class MainActivity : AppCompatActivity() {
             .alpha(if (anyPill) 0.35f else 1.0f)
             .setDuration(150)
             .start()
+    }
+
+    /**
+     * Returns true if the Mini Player widget is currently on screen.
+     * Used by the pill tap handler to decide navigate-vs-show.
+     */
+    private fun isPlayerWidgetVisible(): Boolean {
+        val vm          = viewModel
+        val state       = vm.nowPlaying.value
+        val visibility  = vm.playerWidgetVisibility.value
+        val hasContent  = state != null
+        val alwaysShow  = visibility == PlayerWidgetVisibility.ALWAYS
+        val neverShow   = visibility == PlayerWidgetVisibility.NEVER
+        val shouldShow  = alwaysShow || (hasContent && !neverShow)
+        val suppressed  = vm.hidePlayerOnListenTab.value
+                && vm.currentPage.value == PAGE_LISTEN
+                && !vm.playerHideOverriddenThisVisit.value
+        val minimized   = vm.playerPillMinimized.value
+        return shouldShow && !suppressed && !minimized
+    }
+
+    /**
+     * Returns true if the Mini Recorder widget is currently on screen.
+     * Used by the pill tap handler to decide navigate-vs-show.
+     */
+    private fun isRecorderWidgetVisible(): Boolean {
+        val vm         = viewModel
+        val state      = vm.recordingState.value
+        val visibility = vm.recorderWidgetVisibility.value
+        val wantShow   = when (visibility) {
+            RecorderWidgetVisibility.NEVER           -> false
+            RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
+            RecorderWidgetVisibility.ALWAYS          -> true
+        }
+        val suppressed = vm.hideRecorderOnRecordTab.value
+                && vm.currentPage.value == PAGE_RECORD
+                && !vm.recorderHideOverriddenThisVisit.value
+        val minimized  = vm.recorderPillMinimized.value
+        return wantShow && !suppressed && !minimized
     }
 
     // ── Top title ─────────────────────────────────────────────────────

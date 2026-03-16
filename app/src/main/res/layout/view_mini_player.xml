@@ -88,6 +88,20 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
+            <!-- Close button — stops playback and clears selection entirely.
+                 Placed left of minimize so the less-common action doesn't
+                 compete with the minimize thumb-target on the right edge. -->
+            <ImageView
+                android:id="@+id/btnMiniPlayerClose"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Close player" />
+
             <!-- Minimize button — sends widget to title-bar pill -->
             <ImageView
                 android:id="@+id/btnMiniPlayerMinimize"

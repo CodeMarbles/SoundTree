@@ -17,6 +17,7 @@ import androidx.work.WorkInfo
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.PlayerWidgetVisibility
 import com.treecast.app.ui.ProcessingStatus
 import com.treecast.app.ui.RecorderWidgetVisibility
 import com.treecast.app.util.AppVolume
@@ -289,6 +290,12 @@ class SettingsFragment : Fragment() {
             viewModel.setHideRecorderOnRecordTab(checked)
         }
 
+        // ── Always show recorder shortcut ────────────────────────────────────
+        binding.switchAlwaysShowRecorderPill.isChecked = viewModel.alwaysShowRecorderPill.value
+        binding.switchAlwaysShowRecorderPill.setOnCheckedChangeListener { _, checked ->
+            viewModel.setAlwaysShowRecorderPill(checked)
+        }
+
         // ── Mark nudge seconds ────────────────────────────────────────────
         fun Float.toNudgeDisplay() =
             if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
@@ -317,6 +324,11 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.hideRecorderOnRecordTab.collect { hide ->
                         binding.switchHideRecorderOnRecordTab.isChecked = hide
+                    }
+                }
+                launch {
+                    viewModel.alwaysShowRecorderPill.collect { show ->
+                        binding.switchAlwaysShowRecorderPill.isChecked = show
                     }
                 }
             }
@@ -365,28 +377,59 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlaybackSettings() {
-        // ── Hide Listen Widget on Listen Tab ──────────────────────────────
+
+        // ── Player widget visibility (3-state) ───────────────────────────────
+        val playerToggleGroup = binding.togglePlayerVisibility
+
+        val playerBtnToMode = mapOf(
+            R.id.btnPlayerVisNever       to PlayerWidgetVisibility.NEVER,
+            R.id.btnPlayerVisWhilePlaying to PlayerWidgetVisibility.WHILE_PLAYING,
+            R.id.btnPlayerVisAlways      to PlayerWidgetVisibility.ALWAYS
+        )
+        val playerModeToBtn = playerBtnToMode.entries.associate { (k, v) -> v to k }
+
+        fun applyPlayerMode(mode: PlayerWidgetVisibility) {
+            playerToggleGroup.check(playerModeToBtn[mode] ?: R.id.btnPlayerVisWhilePlaying)
+            // "Hide on Listen Tab" only makes sense when the widget can appear,
+            // i.e. not when NEVER is selected.
+            val dependentEnabled = mode != PlayerWidgetVisibility.NEVER
+            binding.rowHidePlayerOnListenTab.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.switchHidePlayerOnListenTab.isEnabled = dependentEnabled
+        }
+
+        applyPlayerMode(viewModel.playerWidgetVisibility.value)
         binding.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
+        binding.switchAlwaysShowPlayerPill.isChecked  = viewModel.alwaysShowPlayerPill.value
+
+        playerToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val mode = playerBtnToMode[checkedId] ?: return@addOnButtonCheckedListener
+            viewModel.setPlayerWidgetVisibility(mode)
+            applyPlayerMode(mode)
+        }
+
         binding.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
             viewModel.setHidePlayerOnListenTab(checked)
         }
 
-        // ── Jump to Library on save toggle ───────────────────────────────
-        binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
-        binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setJumpToLibraryOnSave(isChecked)
+        binding.switchAlwaysShowPlayerPill.setOnCheckedChangeListener { _, checked ->
+            viewModel.setAlwaysShowPlayerPill(checked)
         }
 
-        // ── Auto-navigate toggle ───────────────────────────────────────
+        // ── Switch to Listen on play ──────────────────────────────────────────
         binding.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
         binding.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setAutoNavigateToListen(isChecked)
         }
 
-        // ── Scrub Back ────────────────────────────────────────────────
-        // Initialise display from ViewModel
-        binding.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
+        // ── Jump to Library on save ───────────────────────────────────────────
+        binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
+        binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setJumpToLibraryOnSave(isChecked)
+        }
 
+        // ── Scrub Back ────────────────────────────────────────────────────────
+        binding.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
         binding.btnScrubBackMinus.setOnClickListener {
             val newVal = (viewModel.scrubBackSecs.value - 5).coerceAtLeast(5)
             viewModel.setScrubBackSecs(newVal)
@@ -398,9 +441,8 @@ class SettingsFragment : Fragment() {
             binding.tvScrubBackSecs.text = newVal.toString()
         }
 
-        // ── Scrub Forward ─────────────────────────────────────────────
+        // ── Scrub Forward ─────────────────────────────────────────────────────
         binding.tvScrubForwardSecs.text = viewModel.scrubForwardSecs.value.toString()
-
         binding.btnScrubForwardMinus.setOnClickListener {
             val newVal = (viewModel.scrubForwardSecs.value - 5).coerceAtLeast(5)
             viewModel.setScrubForwardSecs(newVal)
@@ -412,11 +454,11 @@ class SettingsFragment : Fragment() {
             binding.tvScrubForwardSecs.text = newVal.toString()
         }
 
-        // ── Mark Rewind Threshold ─────────────────────────────────────────
-        fun Float.toDisplayString() = if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
+        // ── Mark Rewind Threshold ─────────────────────────────────────────────
+        fun Float.toDisplayString() =
+            if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
 
         binding.tvMarkRewindSecs.text = viewModel.markRewindThresholdSecs.value.toDisplayString()
-
         binding.btnMarkRewindMinus.setOnClickListener {
             val newVal = (viewModel.markRewindThresholdSecs.value - 0.5f).coerceAtLeast(0.5f)
             viewModel.setMarkRewindThresholdSecs(newVal)
@@ -426,6 +468,25 @@ class SettingsFragment : Fragment() {
             val newVal = (viewModel.markRewindThresholdSecs.value + 0.5f).coerceAtMost(5.0f)
             viewModel.setMarkRewindThresholdSecs(newVal)
             binding.tvMarkRewindSecs.text = newVal.toDisplayString()
+        }
+
+        // ── Keep controls in sync with external pref changes ─────────────────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.playerWidgetVisibility.collect { mode -> applyPlayerMode(mode) }
+                }
+                launch {
+                    viewModel.hidePlayerOnListenTab.collect { hide ->
+                        binding.switchHidePlayerOnListenTab.isChecked = hide
+                    }
+                }
+                launch {
+                    viewModel.alwaysShowPlayerPill.collect { show ->
+                        binding.switchAlwaysShowPlayerPill.isChecked = show
+                    }
+                }
+            }
         }
     }
 

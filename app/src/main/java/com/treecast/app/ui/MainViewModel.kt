@@ -90,9 +90,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
         private const val PREF_MARK_REWIND_THRESHOLD = "mark_rewind_threshold_secs"
         private const val PREF_RECORDER_WIDGET_VISIBILITY  = "recorder_widget_visibility"
+        private const val PREF_PLAYER_WIDGET_VISIBILITY   = "player_widget_visibility"
+        private const val PREF_ALWAYS_SHOW_PLAYER_PILL    = "always_show_player_pill"
+        private const val PREF_ALWAYS_SHOW_RECORDER_PILL  = "always_show_recorder_pill"
         private const val PREF_HIDE_RECORDER_ON_RECORD_TAB = "hide_recorder_on_record_tab"
         private const val PREF_HIDE_PLAYER_ON_LISTEN_TAB   = "hide_player_on_listen_tab"
-        private const val PREF_SHOW_RECORD_MARK_TIMESTAMP = "show_record_mark_timestamp"
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
     }
@@ -479,6 +481,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
     }
+
+    /**
+     * Stops playback and fully clears the player state, returning the app to
+     * the same state as if it had just been launched with no recording selected.
+     *
+     * Called by the Mini Player close (×) button.
+     */
+    fun stopAndClear() {
+        mediaController?.stop()
+        _nowPlaying.value = null
+        _selectedRecordingId.value = -1L
+        _playerPillMinimized.value = false   // restore pill-only users to widget view
+        marksJob?.cancel()
+        _marks.value = emptyList()
+        _selectedMarkId.value = null
+    }
+
+
     fun updatePlayback(id: Long, posMs: Long, listened: Boolean) =
         viewModelScope.launch { repo.updatePlayback(id, posMs, listened) }
 
@@ -658,6 +678,61 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, hide).apply()
     }
 
+    // ── Player widget visibility (3-state) ───────────────────────────────────
+
+    private val _playerWidgetVisibility = MutableStateFlow(
+        PlayerWidgetVisibility.fromString(
+            prefs.getString(PREF_PLAYER_WIDGET_VISIBILITY, null)
+        )
+    )
+    val playerWidgetVisibility: StateFlow<PlayerWidgetVisibility> = _playerWidgetVisibility
+
+    fun setPlayerWidgetVisibility(mode: PlayerWidgetVisibility) {
+        _playerWidgetVisibility.value = mode
+        prefs.edit().putString(PREF_PLAYER_WIDGET_VISIBILITY, mode.name).apply()
+    }
+
+    // ── Always show player pill / recorder pill ───────────────────────────────
+    //
+    // When true the pill in the title bar is unconditionally visible regardless
+    // of widget visibility mode or minimized state.  Persisted so the user's
+    // preference survives app restarts.
+
+    private val _alwaysShowPlayerPill = MutableStateFlow(
+        prefs.getBoolean(PREF_ALWAYS_SHOW_PLAYER_PILL, false)
+    )
+    val alwaysShowPlayerPill: StateFlow<Boolean> = _alwaysShowPlayerPill
+
+    fun setAlwaysShowPlayerPill(show: Boolean) {
+        _alwaysShowPlayerPill.value = show
+        prefs.edit().putBoolean(PREF_ALWAYS_SHOW_PLAYER_PILL, show).apply()
+    }
+
+    private val _alwaysShowRecorderPill = MutableStateFlow(
+        prefs.getBoolean(PREF_ALWAYS_SHOW_RECORDER_PILL, false)
+    )
+    val alwaysShowRecorderPill: StateFlow<Boolean> = _alwaysShowRecorderPill
+
+    fun setAlwaysShowRecorderPill(show: Boolean) {
+        _alwaysShowRecorderPill.value = show
+        prefs.edit().putBoolean(PREF_ALWAYS_SHOW_RECORDER_PILL, show).apply()
+    }
+
+    // ── Tab-suppress override (session-only, not persisted) ──────────────────
+    //
+    // Set to true when the user manually expands a widget while on the tab
+    // that would normally suppress it (e.g. tapping the player pill on the
+    // Listen tab when hidePlayerOnListenTab is true).
+    // Reset to false when the user navigates away from that tab.
+
+    private val _playerHideOverriddenThisVisit = MutableStateFlow(false)
+    val playerHideOverriddenThisVisit: StateFlow<Boolean> = _playerHideOverriddenThisVisit
+    fun setPlayerHideOverriddenThisVisit(v: Boolean) { _playerHideOverriddenThisVisit.value = v }
+
+    private val _recorderHideOverriddenThisVisit = MutableStateFlow(false)
+    val recorderHideOverriddenThisVisit: StateFlow<Boolean> = _recorderHideOverriddenThisVisit
+    fun setRecorderHideOverriddenThisVisit(v: Boolean) { _recorderHideOverriddenThisVisit.value = v }
+
     // ── Mini widget minimized state (session-only, not persisted) ────────────
     //
     // When true the full widget is hidden and a compact pill appears in
@@ -681,16 +756,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val currentPage: StateFlow<Int> = _currentPage
 
     fun setCurrentPage(page: Int) { _currentPage.value = page }
-
-//    // ── Show last-mark timestamp in timeline ─────────────────────────────────
-//
-//    private val _showRecordMarkTimestamp =
-//        MutableStateFlow(prefs.getBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, false))
-//    val showRecordMarkTimestamp: StateFlow<Boolean> = _showRecordMarkTimestamp
-//    fun setShowRecordMarkTimestamp(show: Boolean) {
-//        _showRecordMarkTimestamp.value = show
-//        prefs.edit().putBoolean(PREF_SHOW_RECORD_MARK_TIMESTAMP, show).apply()
-//    }
 
     // ── Selected recording ────────────────────────────────────────────
     private val _selectedRecordingId = MutableStateFlow(-1L)
