@@ -174,7 +174,10 @@ class RecordFragment : Fragment() {
     private fun setupNewControls() {
         // ── Mark extended controls ────────────────────────────────────
         // Confirm: UI-only dismiss — no data written.
-        binding.btnMarkConfirm.setOnClickListener { hideMarkControls() }
+        binding.btnMarkConfirm.setOnClickListener {
+            viewModel.commitMarkNudge()
+            hideMarkControls()
+        }
 
         // Delete: remove the currently selected recording mark.
         binding.btnMarkDelete.setOnClickListener {
@@ -402,6 +405,18 @@ class RecordFragment : Fragment() {
                         marks.getOrNull(idx)
                     }.collect { selectedTs ->
                         binding.multiLineWaveformView.setSelectedMarkId(selectedTs)
+                    }
+                }
+
+                launch {
+                    svc.amplitude.collect { amp ->
+                        // Guard against stale replay emissions arriving after clearLiveData().
+                        if (svc.state.value == RecordingService.State.IDLE) return@collect
+                        binding.multiLineWaveformView.pushAmplitude(
+                            amplitude = amp / 32767f,
+                            elapsedMs = svc.elapsedMs.value
+                        )
+                        binding.waveformView.pushAmplitude(amp)
                     }
                 }
             }
@@ -666,6 +681,8 @@ class RecordFragment : Fragment() {
         if (result.filePath != null) {
             File(result.filePath).delete()
         }
+        binding.multiLineWaveformView.clearLiveData()
+        binding.waveformView.clear()
         selectedTopicId = null
         lastCancelTapMs = 0L
         currentRecordingDisplayName = ""

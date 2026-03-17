@@ -204,6 +204,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
     fun clearLiveData() {
         liveAmplitudes.clear()
         totalDurationMs = 0L
+        lastRedrawMs    = 0L
         amplitudes      = null
         markStore.clear()
         selectedMarkId  = null
@@ -237,13 +238,15 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
     }
 
-    /** Notify all visible ViewHolders to redraw their overlay (cheap). */
+    /** Notify all currently attached ViewHolders to redraw their overlay (cheap). */
     private fun notifyAllVisibleLines() {
-        val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
-        val first = lm.findFirstVisibleItemPosition()
-        val last  = lm.findLastVisibleItemPosition()
-        for (pos in first..last) {
-            val vh = recyclerView.findViewHolderForAdapterPosition(pos) as? WaveformLineAdapter.LineViewHolder
+        // Iterate attached children directly rather than using
+        // findViewHolderForAdapterPosition(), which can return null for positions
+        // within the visible range during layout passes — silently skipping those
+        // lines and leaving stale mark colours on screen.
+        for (i in 0 until recyclerView.childCount) {
+            val vh = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+                    as? WaveformLineAdapter.LineViewHolder
             vh?.updateOverlay(selectedMarkId, playheadMs)
         }
     }
@@ -308,12 +311,40 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         fun bindLineViewHolder(holder: LineViewHolder, position: Int) {
             val item = items.getOrNull(position) ?: return
+
+            // For the live boundary line (last item), item.endMs was frozen at the
+            // moment the item was first added to the list by extendLinesIfNeeded().
+            // totalDurationMs is kept current by pushAmplitude, so always use it
+            // for the last line. For completed lines and the listen tab, item.endMs
+            // and totalDurationMs are equivalent.
+            val effectiveEndMs = if (position == items.lastIndex)
+                totalDurationMs.coerceAtLeast(item.endMs)
+            else
+                item.endMs
+
+            // During live recording, amplitudes (the pre-extracted array) is null.
+            // Use liveAmplitudes, deriving samplesPerSecond from the actual sample
+            // count and elapsed time so amplitudeIndexForX maps correctly.
+            val amps: FloatArray?
+            val sps: Int
+            if (amplitudes != null) {
+                amps = amplitudes
+                sps  = WaveformExtractor.SAMPLES_PER_SECOND
+            } else if (liveAmplitudes.isNotEmpty() && totalDurationMs > 0) {
+                amps = liveAmplitudes.toFloatArray()
+                sps  = (liveAmplitudes.size * 1000L / totalDurationMs)
+                    .toInt().coerceAtLeast(1)
+            } else {
+                amps = null
+                sps  = WaveformExtractor.SAMPLES_PER_SECOND
+            }
+
             holder.lineView.bind(
                 startMs          = item.startMs,
-                endMs            = item.endMs,
-                lineWindowMs     = if (items.size > 1) secondsPerLine * 1000L else (item.endMs - item.startMs),
-                amplitudes       = amplitudes,
-                samplesPerSecond = WaveformExtractor.SAMPLES_PER_SECOND,
+                endMs            = effectiveEndMs,
+                lineWindowMs     = secondsPerLine * 1000L,
+                amplitudes       = amps,
+                samplesPerSecond = sps,
                 markStore        = markStore,
                 selectedMarkId   = selectedMarkId,
                 playheadMs       = playheadMs,
