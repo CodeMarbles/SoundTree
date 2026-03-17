@@ -19,25 +19,25 @@ import kotlin.math.roundToInt
 /**
  * Renders a single horizontal strip of waveform covering a fixed time window.
  *
+```
  * ── Rendering architecture ────────────────────────────────────────────────────
  *
- * Drawing is split into two layers:
+ * Drawing is split into three layers:
  *
- *   1. Static bitmap  — the waveform bars (played gradient + unplayed dim).
- *      Pre-rendered into [lineBitmap] once per data/size change.
- *      Invalidated only when amplitude data or the view dimensions change —
- *      NOT when the playhead moves or marks change.
+ *   1. Waveform bitmap  ([lineBitmap]) — the amplitude bars.
+ *      ARGB_8888, height = view height minus ruler strip.
+ *      Rebuilt when amplitude data or view dimensions change.
  *
- *   2. Dynamic overlay — drawn directly to the canvas on every [onDraw]:
- *        a. Mark lines + triangles (thin, just a few drawLine/drawPath calls)
- *        b. Playhead line (when this line contains the current position)
- *        c. Timestamp ruler (top strip with tick marks and time labels)
- *        d. Playhead timestamp label (floating above the playhead)
+ *   2. Ruler bitmap  ([rulerBitmap]) — tick marks, grid lines, time labels.
+ *      ARGB_8888 transparent, full view height so vertical grid lines extend
+ *      through the waveform area. Blitted over layer 1 in a single GPU pass.
+ *      Rebuilt only when [startMs]/[endMs]/[fillWidthPx] change — never during
+ *      playback or mark updates. Future per-layer opacity effects (e.g. fading
+ *      the ruler on the live-recording boundary line) require no bitmap changes.
  *
- * This means that during playback, only layer 2 is redrawn — the expensive
- * waveform bars are a single drawBitmap call. The bitmap is shared via
- * [BitmapCache] so that lines fully before or after the playhead share
- * a single cached bitmap each.
+ *   3. Dynamic overlays — drawn directly to the canvas on every [onDraw]:
+ *        a. Mark lines + triangles
+ *        b. Playhead line + timestamp label
  *
  * ── Coordinate model ──────────────────────────────────────────────────────────
  *
@@ -116,11 +116,28 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Bitmap cache ──────────────────────────────────────────────────────────
 
+    // ── Bitmap cache ──────────────────────────────────────────────────────────
+
     /** Pre-rendered waveform bars. Null until first layout + data bind. */
     private var lineBitmap: Bitmap? = null
 
     /** True when [lineBitmap] needs to be redrawn before next onDraw. */
     private var bitmapDirty: Boolean = true
+
+    /**
+     * Pre-rendered ruler layer — tick marks, grid lines, and time labels —
+     * drawn onto a transparent ARGB_8888 bitmap the full view height so that
+     * vertical grid lines extend through the waveform area.
+     *
+     * Rebuilt only when [startMs]/[endMs]/[fillWidthPx] change (i.e. at bind
+     * time for completed lines; on each new partial-line tick for the live
+     * recording boundary). The transparent background means blitting it over
+     * [lineBitmap] is a single GPU compositing pass with no extra overdraw.
+     */
+    private var rulerBitmap: Bitmap? = null
+
+    /** True when [rulerBitmap] needs to be redrawn before next onDraw. */
+    private var rulerBitmapDirty: Boolean = true
 
     // ── Geometry constants ────────────────────────────────────────────────────
 
@@ -213,6 +230,7 @@ class WaveformLineView @JvmOverloads constructor(
         showPlayedSplit:  Boolean
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
+        if (windowChanged) rulerBitmapDirty = true
         val dataChanged   = this.amplitudes !== amplitudes   // reference check: same array = same data
 
         this.startMs          = startMs
@@ -274,7 +292,8 @@ class WaveformLineView @JvmOverloads constructor(
             )
 
             recomputeFillWidthPx()
-            bitmapDirty = true
+            bitmapDirty      = true
+            rulerBitmapDirty = true
         }
     }
 
@@ -287,26 +306,29 @@ class WaveformLineView @JvmOverloads constructor(
         val waveformTop = rulerHeightPx.toFloat()
         val waveformH   = height - rulerHeightPx
 
-        // ── Layer 1: static waveform bitmap ───────────────────────────
+        // ── Layer 1: waveform bars bitmap ─────────────────────────────
         if (bitmapDirty || lineBitmap == null) {
-            rebuildBitmap(waveformH)
+            rebuildWaveformBitmap(waveformH)
         }
         lineBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
 
-        // ── Layer 2c: timestamp ruler ──────────────────────────────────
-        drawRuler(canvas)
+        // ── Layer 2: ruler bitmap (transparent bg, full view height) ──
+        // Blitted over the waveform so grid lines show through both areas.
+        if (rulerBitmapDirty || rulerBitmap == null) {
+            rebuildRulerBitmap()
+        }
+        rulerBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
 
-        // ── Layer 2a: mark overlay ─────────────────────────────────────
+        // ── Layer 3a: mark overlay ────────────────────────────────────
         drawMarks(canvas, waveformTop, waveformH.toFloat())
 
-        // ── Layer 2b: playhead + label ─────────────────────────────────
+        // ── Layer 3b: playhead + label ────────────────────────────────
         drawPlayhead(canvas, waveformTop, waveformH.toFloat())
-
     }
 
     // ── Bitmap rebuild ────────────────────────────────────────────────────────
 
-    private fun rebuildBitmap(waveformH: Int) {
+    private fun rebuildWaveformBitmap(waveformH: Int) {
         if (width == 0 || waveformH <= 0) return
 
         val bmp = Bitmap.createBitmap(width, waveformH, Bitmap.Config.ARGB_8888)
@@ -328,6 +350,68 @@ class WaveformLineView @JvmOverloads constructor(
         lineBitmap?.recycle()
         lineBitmap  = bmp
         bitmapDirty = false
+    }
+
+    /**
+     * Renders the timestamp ruler into a full-view-height transparent bitmap.
+     *
+     * The bitmap covers [0, 0, width, height]:
+     *   - Top [rulerHeightPx] rows: tick caps and time labels.
+     *   - Remaining rows: vertical grid lines continuing into the waveform.
+     *
+     * Drawing to a transparent bitmap rather than directly to the canvas means
+     * this work only runs when [startMs]/[endMs]/[fillWidthPx] change — not on
+     * every frame. It also keeps the ruler visually independent of the waveform
+     * bars, enabling future per-layer opacity/alpha effects without bitmap
+     * reconstruction.
+     */
+    private fun rebuildRulerBitmap() {
+        if (width == 0 || height == 0) return
+
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        // Default pixel value is 0 (transparent) — no explicit clear needed.
+        val c = Canvas(bmp)
+
+        val windowMs = (endMs - startMs).toFloat()
+        if (windowMs > 0f) {
+            val labelY     = rulerHeightPx - (3f * density)
+            val edgePadPx  = 2f * density
+            val minSpacePx = 28f * density
+
+            fun drawTickLine(x: Float) {
+                // Short tick in the ruler strip.
+                c.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
+                // Grid line continuing through the full waveform area.
+                c.drawLine(x, rulerHeightPx.toFloat(), x, height.toFloat(), rulerTickPaint)
+            }
+
+            // Left boundary
+            drawTickLine(0f)
+            rulerPaint.textAlign = Paint.Align.LEFT
+            c.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
+
+            // Right boundary
+            drawTickLine(fillWidthPx)
+            rulerPaint.textAlign = Paint.Align.RIGHT
+            c.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
+
+            // Interior interval ticks
+            rulerPaint.textAlign = Paint.Align.CENTER
+            val intervalMs = rulerIntervalMs(windowMs.toLong())
+            var tickMs = ((startMs / intervalMs) + 1) * intervalMs
+            while (tickMs < endMs) {
+                val x = ((tickMs - startMs).toFloat() / windowMs) * fillWidthPx
+                drawTickLine(x)
+                if (x > minSpacePx && x < fillWidthPx - minSpacePx) {
+                    c.drawText(formatMs(tickMs), x, labelY, rulerPaint)
+                }
+                tickMs += intervalMs
+            }
+        }
+
+        rulerBitmap?.recycle()
+        rulerBitmap      = bmp
+        rulerBitmapDirty = false
     }
 
     // ── Mark overlay ──────────────────────────────────────────────────────────
@@ -399,48 +483,6 @@ class WaveformLineView @JvmOverloads constructor(
     }
 
     // ── Timestamp ruler ───────────────────────────────────────────────────────
-
-    private fun drawRuler(canvas: Canvas) {
-        val windowMs = (endMs - startMs).toFloat()
-        if (windowMs <= 0f) return
-
-        val labelY     = rulerHeightPx - (3f * density)
-        val edgePadPx  = 2f * density
-        val minSpacePx = 28f * density   // interior label suppression zone near each edge
-
-        fun drawTickLine(x: Float) {
-            // Short tick from top of ruler down to the label.
-            canvas.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
-            // Continuation from ruler bottom through the waveform to the view bottom.
-            canvas.drawLine(x, rulerHeightPx.toFloat(), x, height.toFloat(), rulerTickPaint)
-        }
-
-        // ── Left boundary ──────────────────────────────────────────────────────
-        drawTickLine(0f)
-        rulerPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
-
-        // ── Right boundary ─────────────────────────────────────────────────────
-        drawTickLine(fillWidthPx)
-        rulerPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
-
-        // ── Interior interval ticks ────────────────────────────────────────────
-        rulerPaint.textAlign = Paint.Align.CENTER
-        val intervalMs = rulerIntervalMs(windowMs.toLong())
-        var tickMs = ((startMs / intervalMs) + 1) * intervalMs
-        while (tickMs < endMs) {
-            val x = ((tickMs - startMs).toFloat() / windowMs) * fillWidthPx
-            drawTickLine(x)
-            // Suppress the label if it would crowd a boundary label, but always
-            // draw the tick line itself so the grid stays visually consistent.
-            if (x > minSpacePx && x < fillWidthPx - minSpacePx) {
-                canvas.drawText(formatMs(tickMs), x, labelY, rulerPaint)
-            }
-            tickMs += intervalMs
-        }
-    }
-
     /**
      * Returns a round interval in milliseconds suitable for ruler ticks given
      * the line's [windowMs] span. Aims for roughly 4–6 ticks per line.
@@ -462,7 +504,6 @@ class WaveformLineView @JvmOverloads constructor(
      * the sub-array covering [startMs]..[endMs].
      */
     private fun amplitudeIndexForX(x: Float, totalSamples: Int): Int {
-        val totalDurationMs  = endMs    // relative to recording start
         // Index into the full amplitude array that corresponds to startMs.
         val startIdx = ((startMs  / 1000.0) * samplesPerSecond).toInt()
             .coerceIn(0, totalSamples - 1)
@@ -493,6 +534,8 @@ class WaveformLineView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         lineBitmap?.recycle()
         lineBitmap = null
+        rulerBitmap?.recycle()
+        rulerBitmap = null
     }
 
     companion object {
