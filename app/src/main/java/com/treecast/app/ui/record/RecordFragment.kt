@@ -354,6 +354,7 @@ class RecordFragment : Fragment() {
                 // ── Notification save → post-save navigation ──────────
                 launch {
                     svc.notificationSaveEvent.collect { saved ->
+                        resetRecordingState()
                         if (viewModel.jumpToLibraryOnSave.value) {
                             viewModel.selectRecording(saved.recordingId)
                             (requireActivity() as? MainActivity)
@@ -440,8 +441,6 @@ class RecordFragment : Fragment() {
         return (pixels * resources.displayMetrics.density).toInt()
     }
     private fun updateUiForState(state: RecordingService.State) {
-        val density = resources.displayMetrics.density
-
         when (state) {
             RecordingService.State.IDLE -> {
                 // Circle: red, bordered
@@ -467,10 +466,8 @@ class RecordFragment : Fragment() {
                 binding.headerDivider.visibility     = View.GONE
                 binding.recordingNameZone.visibility = View.GONE
 
-                lastCancelTapMs = 0L
+                resetRecordingState()
                 binding.tvTimer.text = "0:00"
-
-                binding.multiLineWaveformView.clearLiveData()
             }
 
             RecordingService.State.RECORDING -> {
@@ -661,6 +658,7 @@ class RecordFragment : Fragment() {
                 storageVolumeUuid = result.storageVolumeUuid
             )
             Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
+            resetRecordingState()
 
             if (viewModel.jumpToLibraryOnSave.value) {
                 lifecycleScope.launch {
@@ -675,18 +673,35 @@ class RecordFragment : Fragment() {
         }
     }
 
+    // ── Recording state reset ─────────────────────────────────────────
+    /**
+     * Returns the Record tab to a clean ready-state after any recording
+     * session ends — whether via save, cancel, or any future path.
+     *
+     * Owns ALL post-session cleanup:
+     *   • Waveform widgets cleared
+     *   • Fragment-local session fields zeroed
+     *
+     * Called explicitly by [cancelRecording] and [stopAndSave], and also
+     * by [updateUiForState] on the IDLE transition as a safety net for any
+     * path that doesn't call those functions directly.
+     */
+    private fun resetRecordingState() {
+        binding.multiLineWaveformView.clearLiveData()
+        binding.waveformView.clear()
+        selectedTopicId             = null
+        lastCancelTapMs             = 0L
+        currentRecordingDisplayName = ""
+        userHasRenamedRecording     = false
+    }
+
     private fun cancelRecording() {
         val svc = recordingService ?: return
         val result = svc.stopRecording()
         if (result.filePath != null) {
             File(result.filePath).delete()
         }
-        binding.multiLineWaveformView.clearLiveData()
-        binding.waveformView.clear()
-        selectedTopicId = null
-        lastCancelTapMs = 0L
-        currentRecordingDisplayName = ""
-        userHasRenamedRecording = false
+        resetRecordingState()
         Toast.makeText(requireContext(), "Recording cancelled", Toast.LENGTH_SHORT).show()
     }
 
