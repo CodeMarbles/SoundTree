@@ -328,21 +328,68 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Bitmap rebuild ────────────────────────────────────────────────────────
 
+    /**
+     * Renders the waveform bars into [lineBitmap].
+     *
+     * ── Stable bucket mapping ─────────────────────────────────────────────────────
+     *
+     * Each visual bar covers a fixed range of samples, computed from the full
+     * line width and [lineWindowMs] — both of which are constants for the lifetime
+     * of a line. This means bar N always maps to the same sample range regardless
+     * of how many samples have arrived so far, eliminating the pulsation effect
+     * seen on the live recording line when [liveAmplitudes] grows between redraws.
+     *
+     * Each bar takes the peak (max) amplitude across its sample range rather than
+     * a single point sample. This makes bars monotonically stable — a bar's height
+     * can only stay the same or grow as new audio fills its range, never jump to
+     * an unrelated value.
+     *
+     * For completed lines and the Listen tab the behaviour is identical to before:
+     * [lineWindowMs] == [endMs] - [startMs] and [fillWidthPx] == [width], so the
+     * full bar count is drawn and every bar has exactly the same sample coverage
+     * as it always did.
+     */
     private fun rebuildWaveformBitmap(waveformH: Int) {
         if (width == 0 || waveformH <= 0) return
 
         val bmp = Bitmap.createBitmap(width, waveformH, Bitmap.Config.ARGB_8888)
         val c   = Canvas(bmp)
 
+        // Number of bars that fit across the full view width — fixed for this line.
+        val fullBarCount = (width / stride).toInt().coerceAtLeast(1)
+
+        // How many samples a full line represents, anchored to the full line window.
+        // Using lineWindowMs (not endMs-startMs) keeps this constant even while the
+        // live partial line is still growing.
+        val fullWindowSamples = (lineWindowMs / 1000.0 * samplesPerSecond)
+            .coerceAtLeast(1.0)
+
+        // Fixed samples-per-bar — never changes during a recording.
+        val samplesPerBar = fullWindowSamples / fullBarCount
+
+        // Sample index where this line's audio starts in the shared amplitude array.
+        val startIdx = ((startMs / 1000.0) * samplesPerSecond).toInt()
+
+        val amps    = amplitudes ?: WaveformExtractor.flatFallback(fullBarCount)
+        val centerY = waveformH / 2f
+        val maxHalf = centerY * 0.88f
+
+        // Only draw bars that are within the filled portion of the line.
         val barCount = (fillWidthPx / stride).toInt().coerceAtLeast(1)
-        val amps = amplitudes ?: WaveformExtractor.flatFallback(barCount)
-        val centerY  = waveformH / 2f
-        val maxHalf  = centerY * 0.88f
 
         for (i in 0 until barCount) {
-            val x = i * stride
-            val idx  = amplitudeIndexForX(x, amps.size)
-            val half = maxHalf * amps[idx].coerceAtLeast(0.07f)
+            // Fixed sample range for this bar — stable across redraws.
+            val sampleStart = (startIdx + i       * samplesPerBar).toInt().coerceIn(0, amps.size - 1)
+            val sampleEnd   = (startIdx + (i + 1) * samplesPerBar).toInt().coerceIn(0, amps.size)
+
+            // Peak amplitude across the bar's sample range.
+            val amp = if (sampleEnd > sampleStart)
+                amps.slice(sampleStart until sampleEnd).max()!!
+            else
+                amps[sampleStart]
+
+            val half = maxHalf * amp.coerceAtLeast(0.07f)
+            val x    = i * stride
             rect.set(x, centerY - half, x + barWidthPx, centerY + half)
             c.drawRoundRect(rect, cornerPx, cornerPx, playedPaint)
         }
@@ -350,6 +397,36 @@ class WaveformLineView @JvmOverloads constructor(
         lineBitmap?.recycle()
         lineBitmap  = bmp
         bitmapDirty = false
+    }
+
+    /**
+     * Returns the interval between ruler ticks, chosen so that ticks are never
+     * uncomfortably close together in pixels — regardless of how narrow the
+     * filled portion of the line is.
+     *
+     * The pixel-aware approach matters most on the Record tab, where the live
+     * partial line grows from zero width and the time window is always the full
+     * [secondsPerLine] even when only a few seconds have been recorded.
+     */
+    private fun rulerIntervalMs(windowMs: Long, fillWidthPx: Float): Long {
+        // "Nice" tick spacings in ascending order.
+        val candidates = longArrayOf(
+            5_000L, 10_000L, 15_000L, 30_000L,
+            60_000L, 2 * 60_000L, 5 * 60_000L
+        )
+
+        // Smallest pixel gap we're comfortable with between any two ticks.
+        // At 44dp the ruler stays readable without feeling sparse on full lines.
+        val minTickSpacingPx = 44f * density
+
+        // What time interval (ms) produces at least minTickSpacingPx of separation,
+        // given the current physical fill width?
+        val minIntervalMs = ((windowMs * minTickSpacingPx) /
+                fillWidthPx.coerceAtLeast(1f)).toLong()
+
+        // Pick the smallest "nice" interval that satisfies the pixel constraint.
+        return candidates.firstOrNull { it >= minIntervalMs }
+            ?: candidates.last()   // fallback: widest spacing if nothing fits
     }
 
     /**
@@ -374,35 +451,46 @@ class WaveformLineView @JvmOverloads constructor(
 
         val windowMs = (endMs - startMs).toFloat()
         if (windowMs > 0f) {
-            val labelY     = rulerHeightPx - (3f * density)
-            val edgePadPx  = 2f * density
-            val minSpacePx = 28f * density
+            val labelY    = rulerHeightPx - (3f * density)
+            val edgePadPx = 2f * density
+
+            // Minimum px gap an interior tick must have from each boundary tick
+            // before its label is drawn. Prevents label collisions.
+            val minLabelSpacePx = 28f * density
+
+            // Minimum px width before we bother drawing the right boundary tick.
+            // Below this threshold the two boundary ticks would be too close.
+            val rightBoundaryMinPx = 60f * density
 
             fun drawTickLine(x: Float) {
-                // Short tick in the ruler strip.
+                // Short tick cap in the ruler strip.
                 c.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
-                // Grid line continuing through the full waveform area.
+                // Grid line extending through the full waveform area.
                 c.drawLine(x, rulerHeightPx.toFloat(), x, height.toFloat(), rulerTickPaint)
             }
 
-            // Left boundary
+            // ── Left boundary (always drawn) ──────────────────────────────────
             drawTickLine(0f)
             rulerPaint.textAlign = Paint.Align.LEFT
             c.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
 
-            // Right boundary
-            drawTickLine(fillWidthPx)
-            rulerPaint.textAlign = Paint.Align.RIGHT
-            c.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
+            // ── Right boundary (only when line is wide enough) ────────────────
+            if (fillWidthPx >= rightBoundaryMinPx) {
+                drawTickLine(fillWidthPx)
+                rulerPaint.textAlign = Paint.Align.RIGHT
+                c.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
+            }
 
-            // Interior interval ticks
+            // ── Interior interval ticks ───────────────────────────────────────
             rulerPaint.textAlign = Paint.Align.CENTER
-            val intervalMs = rulerIntervalMs(windowMs.toLong())
+            val intervalMs = rulerIntervalMs(windowMs.toLong(), fillWidthPx)
             var tickMs = ((startMs / intervalMs) + 1) * intervalMs
             while (tickMs < endMs) {
                 val x = ((tickMs - startMs).toFloat() / windowMs) * fillWidthPx
+                if (x >= fillWidthPx) break   // don't overdraw the right boundary
                 drawTickLine(x)
-                if (x > minSpacePx && x < fillWidthPx - minSpacePx) {
+                // Only draw the label if it won't collide with either boundary label.
+                if (x > minLabelSpacePx && x < fillWidthPx - minLabelSpacePx) {
                     c.drawText(formatMs(tickMs), x, labelY, rulerPaint)
                 }
                 tickMs += intervalMs
@@ -510,7 +598,7 @@ class WaveformLineView @JvmOverloads constructor(
         val endIdx   = ((endMs    / 1000.0) * samplesPerSecond).toInt()
             .coerceIn(0, totalSamples - 1)
         val windowSamples = (endIdx - startIdx).coerceAtLeast(1)
-        val barCount      = (width / stride).toInt().coerceAtLeast(1)
+        val barCount      = (fillWidthPx / stride).toInt().coerceAtLeast(1)
         val barIdx        = (x / stride).toInt().coerceIn(0, barCount - 1)
         return (startIdx + (barIdx.toFloat() / barCount * windowSamples).toInt())
             .coerceIn(0, totalSamples - 1)
