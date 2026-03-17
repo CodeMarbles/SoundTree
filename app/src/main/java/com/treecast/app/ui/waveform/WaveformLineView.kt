@@ -61,6 +61,7 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Configuration (set by adapter at bind time) ───────────────────────────
 
+
     /** Start of this line's time window, milliseconds. */
     var startMs: Long = 0L
         private set
@@ -68,6 +69,11 @@ class WaveformLineView @JvmOverloads constructor(
     /** End of this line's time window, milliseconds. */
     var endMs: Long = 0L
         private set
+
+    /**
+     * How many milliseconds a fully filled line represents.  Used to render a partial line
+     */
+    private var lineWindowMs: Long = 0L
 
     /**
      * Full recording amplitude array (all lines share the same array reference).
@@ -80,6 +86,11 @@ class WaveformLineView @JvmOverloads constructor(
      * Must match [WaveformExtractor.SAMPLES_PER_SECOND].
      */
     private var samplesPerSecond: Int = WaveformExtractor.SAMPLES_PER_SECOND
+
+    /**
+     * Actual draw width of the waveform in the line.  Used for partial waveform lines
+     */
+    private var fillWidthPx: Float = 0f
 
     /**
      * Shared mark store (owned by [MultiLineWaveformView]).
@@ -193,6 +204,7 @@ class WaveformLineView @JvmOverloads constructor(
     fun bind(
         startMs:          Long,
         endMs:            Long,
+        lineWindowMs:     Long,
         amplitudes:       FloatArray?,
         samplesPerSecond: Int,
         markStore:        TreeMap<Long, WaveformMark>,
@@ -205,12 +217,15 @@ class WaveformLineView @JvmOverloads constructor(
 
         this.startMs          = startMs
         this.endMs            = endMs
+        this.lineWindowMs     = lineWindowMs
         this.amplitudes       = amplitudes
         this.samplesPerSecond = samplesPerSecond
         this.markStore        = markStore
         this.selectedMarkId   = selectedMarkId
         this.playheadMs       = playheadMs
         this.showPlayedSplit  = showPlayedSplit
+
+        recomputeFillWidthPx()
 
         if (windowChanged || dataChanged) bitmapDirty = true
         invalidate()
@@ -226,12 +241,28 @@ class WaveformLineView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun xToMs(x: Float): Long {
+        if (fillWidthPx <= 0f) return startMs
+        val windowMs = endMs - startMs
+        return (startMs + ((x / fillWidthPx) * windowMs).toLong())
+            .coerceIn(startMs, endMs)
+    }
+
     // ── Layout ────────────────────────────────────────────────────────────────
+
+    private fun recomputeFillWidthPx() {
+        // Compute how wide this line's audio actually is.
+        // For full lines this is 1.0 * width; for the last partial line it's less.
+        val actualWindowMs = (endMs - startMs).coerceAtLeast(1L)
+        fillWidthPx = if (lineWindowMs >= endMs - startMs)
+            (actualWindowMs.toFloat() / lineWindowMs) * width
+        else
+            width.toFloat()
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
-            // Gradient shader spans the full width of this line.
             playedPaint.shader = LinearGradient(
                 0f, 0f, w.toFloat(), 0f,
                 intArrayOf(
@@ -241,6 +272,8 @@ class WaveformLineView @JvmOverloads constructor(
                 ),
                 null, Shader.TileMode.CLAMP
             )
+
+            recomputeFillWidthPx()
             bitmapDirty = true
         }
     }
@@ -279,17 +312,17 @@ class WaveformLineView @JvmOverloads constructor(
         val bmp = Bitmap.createBitmap(width, waveformH, Bitmap.Config.ARGB_8888)
         val c   = Canvas(bmp)
 
-        val amps     = amplitudes ?: WaveformExtractor.flatFallback(barCountFor(width))
-        val barCount = (width / stride).toInt().coerceAtLeast(1)
+        val barCount = (fillWidthPx / stride).toInt().coerceAtLeast(1)
+        val amps = amplitudes ?: WaveformExtractor.flatFallback(barCount)
         val centerY  = waveformH / 2f
         val maxHalf  = centerY * 0.88f
 
         for (i in 0 until barCount) {
-            val x    = i * stride
+            val x = i * stride
             val idx  = amplitudeIndexForX(x, amps.size)
             val half = maxHalf * amps[idx].coerceAtLeast(0.07f)
             rect.set(x, centerY - half, x + barWidthPx, centerY + half)
-            c.drawRoundRect(rect, cornerPx, cornerPx, playedPaint)  // always gradient
+            c.drawRoundRect(rect, cornerPx, cornerPx, playedPaint)
         }
 
         lineBitmap?.recycle()
@@ -318,7 +351,7 @@ class WaveformLineView @JvmOverloads constructor(
                 val isSelected = mark.id == selectedId
                 if ((pass == 0) == isSelected) continue   // first pass = unselected only
 
-                val x = ((mark.positionMs - startMs).toFloat() / windowMs) * width
+                val x = ((mark.positionMs - startMs).toFloat() / windowMs) * fillWidthPx
                 val paint = if (isSelected) markSelectedPaint else markPaint
 
                 canvas.drawLine(x, waveformTop, x, waveformTop + waveformH, paint)
@@ -342,15 +375,15 @@ class WaveformLineView @JvmOverloads constructor(
 
         val playheadX = when {
             playheadMs <= startMs -> 0f
-            playheadMs >= endMs   -> width.toFloat()
-            else -> ((playheadMs - startMs).toFloat() / windowMs) * width
+            playheadMs >= endMs   -> fillWidthPx
+            else -> ((playheadMs - startMs).toFloat() / windowMs) * fillWidthPx
         }
 
         // Dim the unplayed region to the right of the playhead.
-        if (playheadX < width) {
+        if (playheadX < fillWidthPx) {
             canvas.drawRect(
                 playheadX, waveformTop,
-                width.toFloat(), waveformTop + waveformH,
+                fillWidthPx, waveformTop + waveformH,
                 unplayedPaint
             )
         }
@@ -362,7 +395,7 @@ class WaveformLineView @JvmOverloads constructor(
 
         val label = formatMs(playheadMs)
         val labelY = waveformTop - (4f * density)
-        canvas.drawText(label, playheadX.coerceIn(30f, width - 30f), labelY, playheadLabelPaint)
+        canvas.drawText(label, playheadX.coerceIn(30f, fillWidthPx - 30f), labelY, playheadLabelPaint)
     }
 
     // ── Timestamp ruler ───────────────────────────────────────────────────────
@@ -388,20 +421,20 @@ class WaveformLineView @JvmOverloads constructor(
         canvas.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
 
         // ── Right boundary ─────────────────────────────────────────────────────
-        drawTickLine(width.toFloat())
+        drawTickLine(fillWidthPx)
         rulerPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText(formatMs(endMs), width - edgePadPx, labelY, rulerPaint)
+        canvas.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
 
         // ── Interior interval ticks ────────────────────────────────────────────
         rulerPaint.textAlign = Paint.Align.CENTER
         val intervalMs = rulerIntervalMs(windowMs.toLong())
         var tickMs = ((startMs / intervalMs) + 1) * intervalMs
         while (tickMs < endMs) {
-            val x = ((tickMs - startMs).toFloat() / windowMs) * width
+            val x = ((tickMs - startMs).toFloat() / windowMs) * fillWidthPx
             drawTickLine(x)
             // Suppress the label if it would crowd a boundary label, but always
             // draw the tick line itself so the grid stays visually consistent.
-            if (x > minSpacePx && x < width - minSpacePx) {
+            if (x > minSpacePx && x < fillWidthPx - minSpacePx) {
                 canvas.drawText(formatMs(tickMs), x, labelY, rulerPaint)
             }
             tickMs += intervalMs
@@ -441,8 +474,6 @@ class WaveformLineView @JvmOverloads constructor(
         return (startIdx + (barIdx.toFloat() / barCount * windowSamples).toInt())
             .coerceIn(0, totalSamples - 1)
     }
-
-    private fun barCountFor(w: Int) = (w / stride).toInt().coerceAtLeast(1)
 
     /** Formats a millisecond timestamp as m:ss or h:mm:ss. */
     private fun formatMs(ms: Long): String {

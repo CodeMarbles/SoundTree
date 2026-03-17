@@ -302,6 +302,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
             holder.lineView.bind(
                 startMs          = item.startMs,
                 endMs            = item.endMs,
+                lineWindowMs     = if (items.size > 1) secondsPerLine * 1000L else (item.endMs - item.startMs),
                 amplitudes       = amplitudes,
                 samplesPerSecond = WaveformExtractor.SAMPLES_PER_SECOND,
                 markStore        = markStore,
@@ -328,10 +329,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
                     }
 
                     private fun fireTimeSelected(x: Float, type: WaveformTapType) {
-                        val item     = items.getOrNull(adapterPosition) ?: return
-                        val windowMs = (item.endMs - item.startMs).toFloat()
-                        val posMs    = item.startMs + ((x / lineView.width) * windowMs).toLong()
-                        onTimeSelected?.invoke(posMs.coerceIn(item.startMs, item.endMs), type)
+                        onTimeSelected?.invoke(lineView.xToMs(x), type)
                     }
                 }
             )
