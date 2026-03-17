@@ -4,11 +4,11 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
 import java.util.TreeMap
 
@@ -74,6 +74,18 @@ class MultiLineWaveformView @JvmOverloads constructor(
         set(value) {
             field = value
             notifyAllVisibleLines()
+        }
+
+    /**
+     * When true, a single-line recording is stretched to fill the full widget
+     * width. Only applies to the first (and only) line; subsequent lines always
+     * render proportionally. Set to true on the Listen tab; leave false (default)
+     * on the Record tab.
+     */
+    var scaleToFill: Boolean = false
+        set(value) {
+            field = value
+            rebuildItemList()
         }
 
     /**
@@ -339,16 +351,24 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 sps  = WaveformExtractor.SAMPLES_PER_SECOND
             }
 
+            // scaleToFill only applies to the Listen tab (showPlayedSplit) and only
+            // when the recording fits on a single line. Multi-line recordings and all
+            // Record tab lines always render proportionally.
+            val isSingleLine    = totalDurationMs <= secondsPerLine * 1000L
+            val lineScaleToFill = scaleToFill && isSingleLine
+            val lineWindowMs    = if (lineScaleToFill) totalDurationMs else secondsPerLine * 1000L
+
             holder.lineView.bind(
                 startMs          = item.startMs,
                 endMs            = effectiveEndMs,
-                lineWindowMs     = secondsPerLine * 1000L,
+                lineWindowMs     = lineWindowMs,
                 amplitudes       = amps,
                 samplesPerSecond = sps,
                 markStore        = markStore,
                 selectedMarkId   = selectedMarkId,
                 playheadMs       = playheadMs,
-                showPlayedSplit  = showPlayedSplit
+                showPlayedSplit  = showPlayedSplit,
+                scaleToFill      = lineScaleToFill
             )
         }
 

@@ -114,6 +114,15 @@ class WaveformLineView @JvmOverloads constructor(
      */
     private var showPlayedSplit: Boolean = true
 
+    /**
+     * When true, this line stretches to fill the full view width regardless of
+     * how much of the time window is actually occupied. Used by the Listen tab
+     * for single-line recordings so short clips render at full width.
+     *
+     * When false (default), the line is drawn proportionally — a 3-minute clip
+     * in a 5-minute window occupies 60% of the width as normal.
+     */
+    private var scaleToFill: Boolean = false
     // ── Bitmap cache ──────────────────────────────────────────────────────────
 
     // ── Bitmap cache ──────────────────────────────────────────────────────────
@@ -227,7 +236,8 @@ class WaveformLineView @JvmOverloads constructor(
         markStore:        TreeMap<Long, WaveformMark>,
         selectedMarkId:   Long?,
         playheadMs:       Long,
-        showPlayedSplit:  Boolean
+        showPlayedSplit:  Boolean,
+        scaleToFill:       Boolean
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
         if (windowChanged) rulerBitmapDirty = true
@@ -242,6 +252,7 @@ class WaveformLineView @JvmOverloads constructor(
         this.selectedMarkId   = selectedMarkId
         this.playheadMs       = playheadMs
         this.showPlayedSplit  = showPlayedSplit
+        this.scaleToFill      = scaleToFill
 
         recomputeFillWidthPx()
 
@@ -269,13 +280,18 @@ class WaveformLineView @JvmOverloads constructor(
     // ── Layout ────────────────────────────────────────────────────────────────
 
     private fun recomputeFillWidthPx() {
-        // Compute how wide this line's audio actually is.
-        // For full lines this is 1.0 * width; for the last partial line it's less.
-        val actualWindowMs = (endMs - startMs).coerceAtLeast(1L)
-        fillWidthPx = if (lineWindowMs >= endMs - startMs)
-            (actualWindowMs.toFloat() / lineWindowMs) * width
-        else
+        // scaleToFill: short clip on Listen tab — stretch to full view width so
+        // a 3-minute recording doesn't render as a tiny stub on the left.
+        // All other cases: proportional fill based on actual audio duration.
+        fillWidthPx = if (scaleToFill) {
             width.toFloat()
+        } else {
+            val actualWindowMs = (endMs - startMs).coerceAtLeast(1L)
+            if (lineWindowMs >= endMs - startMs)
+                (actualWindowMs.toFloat() / lineWindowMs) * width
+            else
+                width.toFloat()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -429,6 +445,14 @@ class WaveformLineView @JvmOverloads constructor(
             ?: candidates.last()   // fallback: widest spacing if nothing fits
     }
 
+    private fun snapToNiceInterval(rawMs: Long): Long {
+        val candidates = longArrayOf(
+            5_000L, 10_000L, 15_000L, 30_000L,
+            60_000L, 2 * 60_000L, 5 * 60_000L
+        )
+        return candidates.firstOrNull { it >= rawMs } ?: candidates.last()
+    }
+
     /**
      * Renders the timestamp ruler into a full-view-height transparent bitmap.
      *
@@ -481,18 +505,30 @@ class WaveformLineView @JvmOverloads constructor(
                 c.drawText(formatMs(endMs), fillWidthPx - edgePadPx, labelY, rulerPaint)
             }
 
-            // ── Interior interval ticks ───────────────────────────────────────
-            rulerPaint.textAlign = Paint.Align.CENTER
-            val intervalMs = rulerIntervalMs(windowMs.toLong(), fillWidthPx)
+            // ── Interior interval ticks ───────────────────────────────────────────
+            val maxInteriorTicks = if (scaleToFill)
+                (windowMs / 30_000f).toInt().coerceIn(0, 4)
+            else
+                Int.MAX_VALUE
+
+            // When scaleToFill, distribute ticks evenly across the duration rather than
+            // using the pixel-spacing interval — prevents the cap from creating a large
+            // gap at the end when the spacing and cap don't naturally align.
+            val intervalMs = if (scaleToFill && maxInteriorTicks > 0)
+                snapToNiceInterval((windowMs / (maxInteriorTicks + 1)).toLong())
+            else
+                rulerIntervalMs(windowMs.toLong(), fillWidthPx)
+
+            var interiorTicksDrawn = 0
             var tickMs = ((startMs / intervalMs) + 1) * intervalMs
-            while (tickMs < endMs) {
+            while (tickMs < endMs && interiorTicksDrawn < maxInteriorTicks) {
                 val x = ((tickMs - startMs).toFloat() / windowMs) * fillWidthPx
-                if (x >= fillWidthPx) break   // don't overdraw the right boundary
+                if (x >= fillWidthPx) break
                 drawTickLine(x)
-                // Only draw the label if it won't collide with either boundary label.
                 if (x > minLabelSpacePx && x < fillWidthPx - minLabelSpacePx) {
                     c.drawText(formatMs(tickMs), x, labelY, rulerPaint)
                 }
+                interiorTicksDrawn++
                 tickMs += intervalMs
             }
         }

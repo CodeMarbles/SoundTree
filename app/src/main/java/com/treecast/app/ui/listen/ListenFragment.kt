@@ -68,6 +68,7 @@ class ListenFragment : Fragment() {
     // ── Multi-line waveform setup ──────────────────────────────────────────────
 
     private fun setupMultiLineWaveform() {
+        binding.multiLineWaveform.scaleToFill = true
         // 5-minute lines on the Listen tab — adjust when zoom controls arrive.
         binding.multiLineWaveform.secondsPerLine   = 300
         binding.multiLineWaveform.showPlayedSplit  = true
