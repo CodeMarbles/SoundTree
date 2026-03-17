@@ -7,214 +7,167 @@
     android:background="?attr/colorBackground">
 
     <!-- ════════════════════════════════════════════════════════════════
-         Scrollable content area
-         Constrained bottom_toTopOf bottomPinnedArea so that the pinned
-         mark/lock bar never overlaps the scroll content.
-         ════════════════════════════════════════════════════════════════ -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/recordScrollView"
+             Content area — weighted vertical LinearLayout so that
+             MultiLineWaveformView fills all remaining space between the
+             fixed-height controls and the pinned bottom area.
+
+             No NestedScrollView here: MultiLineWaveformView contains its own
+             RecyclerView which handles vertical scrolling within the waveform
+             window. Wrapping a RecyclerView in a NestedScrollView defeats
+             RecyclerView recycling and inflates all lines simultaneously.
+             ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/recordContentArea"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
-        android:overScrollMode="ifContentScrolls"
+        android:orientation="vertical"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottomPinnedArea">
 
-        <!-- Single child required by NestedScrollView -->
+        <!-- ── Compound header ────────────────────────────────────────
+             Unchanged — topic zone + recording name zone.
+             ─────────────────────────────────────────────────────── -->
         <LinearLayout
+            android:id="@+id/compoundHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp">
 
-            <!-- ── Compound header ────────────────────────────────────
-                 Horizontal row split into two tappable zones:
-                   LEFT  — topic icon + name  → opens TopicPickerBottomSheet
-                   RIGHT — recording filename → opens rename dialog
-                            (RIGHT zone is GONE in IDLE state)
-                 ─────────────────────────────────────────────────────── -->
+            <!-- Topic picker zone (always visible) -->
             <LinearLayout
-                android:id="@+id/compoundHeader"
-                android:layout_width="match_parent"
+                android:id="@+id/topicHeader"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingHorizontal="14dp"
-                android:paddingVertical="8dp">
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="4dp"
+                android:paddingEnd="2dp">
 
-                <!-- Topic picker zone (always visible) -->
-                <LinearLayout
-                    android:id="@+id/topicHeader"
+                <TextView
+                    android:id="@+id/tvRecordTopicIcon"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="📥"
+                    android:textSize="18sp"
+                    android:includeFontPadding="false"
+                    android:background="?attr/colorSurfaceBase"
+                    android:backgroundTint="?attr/colorSurfaceBase"
+                    android:layerType="software" />
+
+                <TextView
+                    android:id="@+id/tvRecordTopicName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingVertical="4dp"
-                    android:paddingEnd="2dp">
-
-                    <!-- Topic emoji icon -->
-                    <TextView
-                        android:id="@+id/tvRecordTopicIcon"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
-                        android:gravity="center"
-                        android:text="📥"
-                        android:textSize="18sp"
-                        android:includeFontPadding="false"
-                        android:background="?attr/colorSurfaceBase"
-                        android:backgroundTint="?attr/colorSurfaceBase"
-                        android:layerType="software" />
-                    <!--
-                      Note: the square emoji background is achieved via the
-                      MaterialCardView wrapping further below if needed.
-                      For now a simple coloured background on the TextView
-                      suffices.  Corner radius can be added via a shape drawable
-                      set in RecordFragment.updateRecordTopicHeader() if desired.
-                    -->
-
-                    <!-- Topic label stack -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginStart="8dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="TOPIC"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="9sp"
-                            android:textAllCaps="true"
-                            android:letterSpacing="0.08"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvRecordTopicName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/label_unsorted"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:maxWidth="160dp" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- Thin vertical divider — GONE in IDLE -->
-                <View
-                    android:id="@+id/headerDivider"
-                    android:layout_width="1dp"
-                    android:layout_height="30dp"
-                    android:layout_marginHorizontal="10dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:visibility="gone" />
-
-                <!-- Recording name zone — GONE in IDLE -->
-                <LinearLayout
-                    android:id="@+id/recordingNameZone"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingVertical="4dp"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="RECORDING"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="9sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.08"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvRecordingName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="12sp"
-                        android:ellipsize="end"
-                        android:maxLines="1" />
-
-                </LinearLayout>
+                    android:layout_marginStart="6dp"
+                    android:text="Unsorted"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="13sp" />
 
             </LinearLayout>
 
-            <!-- Header bottom border -->
+            <!-- Thin vertical divider — GONE in IDLE -->
             <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="?attr/colorSurfaceElevated" />
+                android:id="@+id/headerDivider"
+                android:layout_width="1dp"
+                android:layout_height="30dp"
+                android:layout_marginHorizontal="10dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:visibility="gone" />
 
-            <!-- ── Waveform + timer overlay ────────────────────────────
-                 FrameLayout lets tvTimer sit centred on top of the
-                 waveform.  The text-shadow on tvTimer (set in code) keeps
-                 the timer readable against the waveform bars.
-                 ─────────────────────────────────────────────────────── -->
-            <FrameLayout
-                android:id="@+id/waveformFrame"
-                android:layout_width="match_parent"
-                android:layout_height="88dp"
-                android:layout_marginHorizontal="14dp"
-                android:layout_marginTop="10dp"
-                android:background="?attr/colorSurfaceBase">
-                <!--
-                  The rounded corners on this surface are added via a
-                  ShapeDrawable background set from RecordFragment if desired,
-                  or left as a flat rect for now.
-                -->
+            <!-- Recording name zone (GONE in IDLE) -->
+            <LinearLayout
+                android:id="@+id/recordingNameZone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="4dp"
+                android:paddingStart="2dp"
+                android:visibility="gone">
 
-                <com.treecast.app.ui.record.WaveformView
-                    android:id="@+id/waveformView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <!-- Timer centred over the waveform -->
                 <TextView
-                    android:id="@+id/tvTimer"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:text="0:00"
-                    android:textSize="40sp"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:fontFamily="monospace"
-                    android:letterSpacing="0.03"
-                    android:includeFontPadding="false" />
-                <!--
-                  Layer-type="software" is set on tvTimer in RecordFragment so
-                  that setShadowLayer() for the text-shadow halo works on API 28+.
-                -->
+                    android:text="RECORDING"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="9sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold" />
 
-            </FrameLayout>
+                <TextView
+                    android:id="@+id/tvRecordingName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="12sp"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
 
-            <!-- ── Primary controls row ───────────────────────────────
-                 ConstraintLayout keeps the circle button permanently
-                 centred, with Cancel (start→circle) and Save (circle→end)
-                 filling the flanking space.  Both flanking buttons are
-                 GONE in IDLE — the circle remains centred regardless.
-                 ─────────────────────────────────────────────────────── -->
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/primaryControlsContainer"
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Header bottom border -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ── Waveform + timer overlay ────────────────────────────────
+             Placeholder scrolling waveform (WaveformView) + timer.
+             Will be replaced with a different visualizer once
+             MultiLineWaveformView integration is complete.
+             ─────────────────────────────────────────────────────── -->
+        <FrameLayout
+            android:id="@+id/waveformFrame"
+            android:layout_width="match_parent"
+            android:layout_height="88dp"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginTop="10dp"
+            android:background="?attr/colorSurfaceBase">
+
+            <com.treecast.app.ui.record.WaveformView
+                android:id="@+id/waveformView"
                 android:layout_width="match_parent"
-                android:layout_height="108dp"
-                android:layout_marginHorizontal="14dp"
-                android:layout_marginTop="8dp">
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="0:00"
+                android:textSize="40sp"
+                android:textColor="?attr/colorTextPrimary"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.03"
+                android:includeFontPadding="false" />
+
+        </FrameLayout>
+
+        <!-- ── Primary controls row ───────────────────────────────────
+             Unchanged — Cancel / Record circle / Save.
+             ─────────────────────────────────────────────────────── -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/primaryControlsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="108dp"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginTop="8dp">
 
                 <!-- Cancel — fills left of circle, shorter height, boxy corners -->
                 <com.google.android.material.button.MaterialButton
@@ -316,93 +269,26 @@
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent" />
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <!-- ── Dead-space / in-development placeholder ─────────────
-                 MaterialCardView gives the rounded border and surface.
-                 DotGridView draws the dot-grid pattern inside.
-                 S / M / L buttons control dotGridView's height in code:
-                   S → DotGridView.SMALL_DP  (0dp — effectively hidden)
-                   M → DotGridView.MEDIUM_DP (3 × reference height)
-                   L → DotGridView.LARGE_DP  (20 × reference height, scrolls)
-                 ─────────────────────────────────────────────────────── -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/deadSpaceCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="14dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="8dp"
-                app:cardBackgroundColor="?attr/colorBackground"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorSurfaceElevated"
-                app:strokeWidth="1.5dp">
+        <!-- ── Multi-line waveform ────────────────────────────────────
+             Fills all remaining space. Its internal RecyclerView scrolls
+             vertically within this window — no outer scroll container
+             needed or wanted.
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+             showPlayedSplit=false: no playhead on the Record tab.
+             secondsPerLine configured in RecordFragment.setupMultiLineWaveform().
+             ─────────────────────────────────────────────────────── -->
+        <com.treecast.app.ui.waveform.MultiLineWaveformView
+            android:id="@+id/multiLineWaveformView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
 
-                    <!-- S / M / L size buttons — always visible at top of card -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="6dp">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDeadSmall"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="32dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="S"
-                            android:textSize="11sp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDeadMedium"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="32dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="M"
-                            android:textSize="11sp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDeadLarge"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="32dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="L"
-                            android:textSize="11sp" />
-
-                    </LinearLayout>
-
-                    <!-- Dot-grid fill — height set from RecordFragment -->
-                    <com.treecast.app.ui.record.DotGridView
-                        android:id="@+id/dotGridView"
-                        android:layout_width="match_parent"
-                        android:layout_height="0dp" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-        </LinearLayout>
-
-    </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
 
     <!-- ════════════════════════════════════════════════════════════════
          Pinned bottom area

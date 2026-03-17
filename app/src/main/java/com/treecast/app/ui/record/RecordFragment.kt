@@ -31,6 +31,7 @@ import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageVolumeHelper
@@ -109,6 +110,7 @@ class RecordFragment : Fragment() {
         setupNewControls()
         setupTopicHeader()
         setupTimerShadow()
+        setupMultiLineWaveform()
         observeLock()
         bindRecordingService()
     }
@@ -170,11 +172,6 @@ class RecordFragment : Fragment() {
 
     // ── New controls (dead-space, mark extended, recording name) ──────
     private fun setupNewControls() {
-        // ── Dead-space size buttons ───────────────────────────────────
-        binding.btnDeadSmall.setOnClickListener  { setDeadSpaceSize(DotGridView.SMALL_DP)  }
-        binding.btnDeadMedium.setOnClickListener { setDeadSpaceSize(DotGridView.MEDIUM_DP) }
-        binding.btnDeadLarge.setOnClickListener  { setDeadSpaceSize(DotGridView.LARGE_DP)  }
-
         // ── Mark extended controls ────────────────────────────────────
         // Confirm: UI-only dismiss — no data written.
         binding.btnMarkConfirm.setOnClickListener { hideMarkControls() }
@@ -192,6 +189,14 @@ class RecordFragment : Fragment() {
 
         // ── Recording name zone ───────────────────────────────────────
         binding.recordingNameZone.setOnClickListener { showRenameDialog() }
+    }
+
+    // ── Multi-line waveform ───────────────────────────────────────────
+    private fun setupMultiLineWaveform() {
+        binding.multiLineWaveformView.secondsPerLine  = 300   // 5-minute lines
+        binding.multiLineWaveformView.showPlayedSplit = false // no playhead on Record tab
+        // onTimeSelected intentionally not wired — tapping the waveform during
+        // recording has no defined action yet. Wire here when mark-seek is added.
     }
 
     // ── Timer text shadow (legibility over waveform) ──────────────────
@@ -365,6 +370,40 @@ class RecordFragment : Fragment() {
                         recordingService?.removeMarkAt(index)
                     }
                 }
+
+                // ── MultiLineWaveformView: live amplitude feed ────────
+                launch {
+                    svc.amplitude.collect { amp ->
+                        val elapsedMs = svc.elapsedMs.value
+                        binding.multiLineWaveformView.pushAmplitude(
+                            amplitude = amp / 32767f,
+                            elapsedMs = elapsedMs
+                        )
+                        // Legacy scrolling waveform — kept until replaced.
+                        binding.waveformView.pushAmplitude(amp)
+                    }
+                }
+
+                // ── MultiLineWaveformView: mark overlays ──────────────
+                launch {
+                    svc.pendingMarksFlow.collect { timestamps ->
+                        binding.multiLineWaveformView.setMarks(
+                            timestamps.map { ts -> WaveformMark(id = ts, positionMs = ts) }
+                        )
+                    }
+                }
+
+                // ── MultiLineWaveformView: selected mark highlight ─────
+                launch {
+                    combine(
+                        viewModel.recordingMarks,
+                        viewModel.selectedRecordingMarkIndex
+                    ) { marks, idx ->
+                        marks.getOrNull(idx)
+                    }.collect { selectedTs ->
+                        binding.multiLineWaveformView.setSelectedMarkId(selectedTs)
+                    }
+                }
             }
         }
     }
@@ -415,6 +454,8 @@ class RecordFragment : Fragment() {
 
                 lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
+
+                binding.multiLineWaveformView.clearLiveData()
             }
 
             RecordingService.State.RECORDING -> {
@@ -474,14 +515,6 @@ class RecordFragment : Fragment() {
 
     private fun hideMarkControls() {
         binding.markExtendedControls.visibility = View.GONE
-    }
-
-    // ── Dead-space size ───────────────────────────────────────────────
-    private fun setDeadSpaceSize(heightDp: Int) {
-        val px = (heightDp * resources.displayMetrics.density).toInt()
-        binding.dotGridView.layoutParams =
-            binding.dotGridView.layoutParams.apply { height = px }
-        binding.dotGridView.requestLayout()
     }
 
     // ── Rename dialog ─────────────────────────────────────────────────

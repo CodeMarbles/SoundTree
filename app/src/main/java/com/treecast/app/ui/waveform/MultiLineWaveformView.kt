@@ -109,6 +109,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
      */
     private val liveAmplitudes = mutableListOf<Float>()
 
+    /** Wall-clock ms of the last bitmap redraw. Used to throttle [pushAmplitude]. */
+    private var lastRedrawMs: Long = 0L
+
     // ── Views ─────────────────────────────────────────────────────────────────
 
     private val recyclerView  = RecyclerView(context)
@@ -180,15 +183,21 @@ class MultiLineWaveformView @JvmOverloads constructor(
      * was captured — used to keep [totalDurationMs] in sync.
      */
     fun pushAmplitude(amplitude: Float, elapsedMs: Long) {
+        // Always accumulate — every sample contributes to waveform accuracy.
         liveAmplitudes.add(amplitude.coerceIn(0f, 1f))
         if (elapsedMs > totalDurationMs) {
             totalDurationMs = elapsedMs
-            // May add a new line — do a cheap diff-based update.
             extendLinesIfNeeded()
         }
-        // Redraw the last line's partial waveform.
-        val lastLineIndex = adapter.itemCount - 1
-        if (lastLineIndex >= 0) notifyLineAt(lastLineIndex, fullRebuild = true)
+        // Throttle bitmap rebuilds to ~4 fps. The live boundary line redraws
+        // constantly during recording; rebuilding on every amplitude tick
+        // (which can be 10+ Hz) wastes CPU on imperceptible updates.
+        val now = System.currentTimeMillis()
+        if (now - lastRedrawMs >= LIVE_REDRAW_INTERVAL_MS) {
+            lastRedrawMs = now
+            val lastLineIndex = adapter.itemCount - 1
+            if (lastLineIndex >= 0) notifyLineAt(lastLineIndex, fullRebuild = true)
+        }
     }
 
     /** Clear all live data (call on recording stop or cancel). */
@@ -349,6 +358,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     companion object {
         const val DEFAULT_SECONDS_PER_LINE = 300   // 5 minutes
+        private const val LIVE_REDRAW_INTERVAL_MS = 250L   // ~4 fps
 
         /** Height of each waveform line in the RecyclerView, in dp. */
         private const val LINE_HEIGHT_DP = 80
