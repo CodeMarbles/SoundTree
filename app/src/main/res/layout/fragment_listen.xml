@@ -132,11 +132,10 @@
 
             </LinearLayout>
 
-            <!-- Waveform -->
-            <com.treecast.app.ui.listen.PlaybackWaveformView
-                android:id="@+id/waveformView"
+            <com.treecast.app.ui.waveform.MultiLineWaveformView
+                android:id="@+id/multiLineWaveform"
                 android:layout_width="match_parent"
-                android:layout_height="130dp"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="20dp" />
 
             <!-- Date + Duration on one row -->

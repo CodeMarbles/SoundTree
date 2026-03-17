@@ -151,7 +151,6 @@ class RecordFragment : Fragment() {
         // Drop mark button — shows extended mark controls after dropping.
         binding.btnDropMark.setOnClickListener {
             recordingService?.dropMark()
-            binding.waveformView.pushMark()
             showMarkControls(recordingService?.elapsedMs?.value ?: 0L)
         }
 
@@ -296,12 +295,6 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                launch {
-                    svc.amplitude.collect { amp ->
-                        binding.waveformView.pushAmplitude(amp)
-                    }
-                }
-
                 // ── Push pending marks list to ViewModel ──────────────
                 launch {
                     svc.pendingMarksFlow.collect { marks ->
@@ -365,7 +358,6 @@ class RecordFragment : Fragment() {
                 launch {
                     viewModel.dropMarkEvent.collect {
                         recordingService?.dropMark()
-                        binding.waveformView.pushMark()
                     }
                 }
                 launch {
@@ -423,7 +415,6 @@ class RecordFragment : Fragment() {
 
                 lastCancelTapMs = 0L
                 binding.tvTimer.text = "0:00"
-                binding.waveformView.clear()
             }
 
             RecordingService.State.RECORDING -> {

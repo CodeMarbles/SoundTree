@@ -6,8 +6,8 @@ plugins {
 }
 
 def major = 0
-def minor = 2
-def patch = 3
+def minor = 3
+def patch = 0
 
 android {
     namespace 'com.treecast.app'
@@ -17,7 +17,7 @@ android {
         applicationId "com.treecast.app"
         minSdk 28
         targetSdk 34
-        versionCode major * 100000 + minor * 1000 + patch
+        versionCode major * 1_000_000 + minor * 1_000 + patch
         versionName "${major}.${minor}.${patch}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

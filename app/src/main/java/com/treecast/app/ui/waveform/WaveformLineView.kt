@@ -1,0 +1,453 @@
+package com.treecast.app.ui.waveform
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import android.graphics.Shader
+import android.util.AttributeSet
+import android.view.View
+import com.treecast.app.R
+import com.treecast.app.util.WaveformExtractor
+import com.treecast.app.util.themeColor
+import java.util.TreeMap
+import kotlin.math.roundToInt
+
+/**
+ * Renders a single horizontal strip of waveform covering a fixed time window.
+ *
+ * ── Rendering architecture ────────────────────────────────────────────────────
+ *
+ * Drawing is split into two layers:
+ *
+ *   1. Static bitmap  — the waveform bars (played gradient + unplayed dim).
+ *      Pre-rendered into [lineBitmap] once per data/size change.
+ *      Invalidated only when amplitude data or the view dimensions change —
+ *      NOT when the playhead moves or marks change.
+ *
+ *   2. Dynamic overlay — drawn directly to the canvas on every [onDraw]:
+ *        a. Mark lines + triangles (thin, just a few drawLine/drawPath calls)
+ *        b. Playhead line (when this line contains the current position)
+ *        c. Timestamp ruler (top strip with tick marks and time labels)
+ *        d. Playhead timestamp label (floating above the playhead)
+ *
+ * This means that during playback, only layer 2 is redrawn — the expensive
+ * waveform bars are a single drawBitmap call. The bitmap is shared via
+ * [BitmapCache] so that lines fully before or after the playhead share
+ * a single cached bitmap each.
+ *
+ * ── Coordinate model ──────────────────────────────────────────────────────────
+ *
+ * A position in milliseconds maps to an X pixel coordinate as:
+ *   x = ((positionMs - startMs).toFloat() / (endMs - startMs)) * width
+ *
+ * The inverse (touch → ms) is:
+ *   positionMs = startMs + ((x / width) * (endMs - startMs)).toLong()
+ *
+ * ── Layout ────────────────────────────────────────────────────────────────────
+ *
+ *   [ timestamp ruler — RULER_HEIGHT_DP tall                     ]
+ *   [ waveform bars + mark overlay — remaining height            ]
+ *
+ */
+class WaveformLineView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyle: Int = 0
+) : View(context, attrs, defStyle) {
+
+    // ── Configuration (set by adapter at bind time) ───────────────────────────
+
+    /** Start of this line's time window, milliseconds. */
+    var startMs: Long = 0L
+        private set
+
+    /** End of this line's time window, milliseconds. */
+    var endMs: Long = 0L
+        private set
+
+    /**
+     * Full recording amplitude array (all lines share the same array reference).
+     * This view slices [startMs]..[endMs] from it at render time.
+     */
+    private var amplitudes: FloatArray? = null
+
+    /**
+     * Samples per second the amplitude array was generated at.
+     * Must match [WaveformExtractor.SAMPLES_PER_SECOND].
+     */
+    private var samplesPerSecond: Int = WaveformExtractor.SAMPLES_PER_SECOND
+
+    /**
+     * Shared mark store (owned by [MultiLineWaveformView]).
+     * Keyed by positionMs for O(log n) range queries.
+     */
+    private var markStore: TreeMap<Long, WaveformMark>? = null
+
+    /** Currently selected mark ID, or null. Determines teal vs pink colour. */
+    private var selectedMarkId: Long? = null
+
+    /**
+     * Current playhead position in milliseconds, across the whole recording.
+     * -1 means "no playhead" (e.g. record tab where there's no seek position).
+     * Only rendered when this value falls within [startMs]..[endMs].
+     */
+    private var playheadMs: Long = -1L
+
+    /**
+     * Whether to show the "played / unplayed" split on the waveform.
+     * True on the Listen tab; false on the Record tab.
+     */
+    private var showPlayedSplit: Boolean = true
+
+    // ── Bitmap cache ──────────────────────────────────────────────────────────
+
+    /** Pre-rendered waveform bars. Null until first layout + data bind. */
+    private var lineBitmap: Bitmap? = null
+
+    /** True when [lineBitmap] needs to be redrawn before next onDraw. */
+    private var bitmapDirty: Boolean = true
+
+    // ── Geometry constants ────────────────────────────────────────────────────
+
+    private val density        = resources.displayMetrics.density
+    private val barWidthPx     = 3f  * density
+    private val barGapPx       = 2f  * density
+    private val cornerPx       = 1.5f * density
+    private val stride         get() = barWidthPx + barGapPx
+    private val rulerHeightPx  = (RULER_HEIGHT_DP * density).roundToInt()
+    private val tickHeightPx   = 6f * density
+    private val markTriSizePx  = 6f * density
+    private val markTriHeightPx = 5f * density
+
+    // ── Paints ────────────────────────────────────────────────────────────────
+
+    private val playedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        // Shader set in onSizeChanged once width is known.
+    }
+
+    private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        val base  = context.themeColor(R.attr.colorWaveformUnplayed)
+        color = android.graphics.Color.argb(
+            0x88,
+            android.graphics.Color.red(base),
+            android.graphics.Color.green(base),
+            android.graphics.Color.blue(base)
+        )
+    }
+
+    private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        strokeWidth = 2.5f * density
+        style       = Paint.Style.STROKE
+        color       = context.themeColor(R.attr.colorPlayhead)
+    }
+
+    private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        strokeWidth = 1.5f * density
+        style       = Paint.Style.FILL_AND_STROKE
+        color       = context.themeColor(R.attr.colorMarkDefault)
+    }
+
+    private val markSelectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        strokeWidth = 2f * density
+        style       = Paint.Style.FILL_AND_STROKE
+        color       = context.themeColor(R.attr.colorMarkSelected)
+    }
+
+    private val rulerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color     = context.themeColor(R.attr.colorTextSecondary)
+        textSize  = 9f * density
+        textAlign = Paint.Align.CENTER
+    }
+
+    private val rulerTickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color       = context.themeColor(R.attr.colorTextSecondary)
+        strokeWidth = 1f * density
+        alpha       = 120
+        style       = Paint.Style.STROKE
+    }
+
+    private val playheadLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color    = context.themeColor(R.attr.colorPlayhead)
+        textSize = 9f * density
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+    }
+
+    // ── Reusable objects (avoid per-draw allocations) ─────────────────────────
+
+    private val rect     = RectF()
+    private val markPath = Path()
+
+    // ── Public bind API ───────────────────────────────────────────────────────
+
+    /**
+     * Called by the adapter's onBindViewHolder. Sets all data for this line.
+     * Marks the bitmap dirty so it will be redrawn on the next [onDraw].
+     */
+    fun bind(
+        startMs:          Long,
+        endMs:            Long,
+        amplitudes:       FloatArray?,
+        samplesPerSecond: Int,
+        markStore:        TreeMap<Long, WaveformMark>,
+        selectedMarkId:   Long?,
+        playheadMs:       Long,
+        showPlayedSplit:  Boolean
+    ) {
+        val windowChanged = this.startMs != startMs || this.endMs != endMs
+        val dataChanged   = this.amplitudes !== amplitudes   // reference check: same array = same data
+
+        this.startMs          = startMs
+        this.endMs            = endMs
+        this.amplitudes       = amplitudes
+        this.samplesPerSecond = samplesPerSecond
+        this.markStore        = markStore
+        this.selectedMarkId   = selectedMarkId
+        this.playheadMs       = playheadMs
+        this.showPlayedSplit  = showPlayedSplit
+
+        if (windowChanged || dataChanged) bitmapDirty = true
+        invalidate()
+    }
+
+    /**
+     * Lightweight update — only mark selection or playhead changed.
+     * Does NOT dirty the bitmap; just triggers a cheap overlay redraw.
+     */
+    fun updateOverlay(selectedMarkId: Long?, playheadMs: Long) {
+        this.selectedMarkId = selectedMarkId
+        this.playheadMs     = playheadMs
+        invalidate()
+    }
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && h > 0) {
+            // Gradient shader spans the full width of this line.
+            playedPaint.shader = LinearGradient(
+                0f, 0f, w.toFloat(), 0f,
+                intArrayOf(
+                    context.themeColor(R.attr.colorWaveformGradientStart),
+                    context.themeColor(R.attr.colorWaveformGradientMid),
+                    context.themeColor(R.attr.colorWaveformGradientEnd)
+                ),
+                null, Shader.TileMode.CLAMP
+            )
+            bitmapDirty = true
+        }
+    }
+
+    // ── Drawing ───────────────────────────────────────────────────────────────
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        if (width == 0 || height == 0) return
+
+        val waveformTop = rulerHeightPx.toFloat()
+        val waveformH   = height - rulerHeightPx
+
+        // ── Layer 1: static waveform bitmap ───────────────────────────
+        if (bitmapDirty || lineBitmap == null) {
+            rebuildBitmap(waveformH)
+        }
+        lineBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
+
+        // ── Layer 2a: mark overlay ─────────────────────────────────────
+        drawMarks(canvas, waveformTop, waveformH.toFloat())
+
+        // ── Layer 2b: playhead + label ─────────────────────────────────
+        drawPlayhead(canvas, waveformTop, waveformH.toFloat())
+
+        // ── Layer 2c: timestamp ruler ──────────────────────────────────
+        drawRuler(canvas)
+    }
+
+    // ── Bitmap rebuild ────────────────────────────────────────────────────────
+
+    private fun rebuildBitmap(waveformH: Int) {
+        if (width == 0 || waveformH <= 0) return
+
+        val bmp = Bitmap.createBitmap(width, waveformH, Bitmap.Config.ARGB_8888)
+        val c   = Canvas(bmp)
+
+        val amps     = amplitudes ?: WaveformExtractor.flatFallback(barCountFor(width))
+        val barCount = (width / stride).toInt().coerceAtLeast(1)
+        val centerY  = waveformH / 2f
+        val maxHalf  = centerY * 0.88f
+
+        for (i in 0 until barCount) {
+            val x    = i * stride
+            val idx  = amplitudeIndexForX(x, amps.size)
+            val half = maxHalf * amps[idx].coerceAtLeast(0.07f)
+            rect.set(x, centerY - half, x + barWidthPx, centerY + half)
+            c.drawRoundRect(rect, cornerPx, cornerPx, playedPaint)  // always gradient
+        }
+
+        lineBitmap?.recycle()
+        lineBitmap  = bmp
+        bitmapDirty = false
+    }
+
+    // ── Mark overlay ──────────────────────────────────────────────────────────
+
+    private fun drawMarks(canvas: Canvas, waveformTop: Float, waveformH: Float) {
+        val store = markStore ?: return
+        if (store.isEmpty()) return
+        val windowMs = (endMs - startMs).toFloat()
+        if (windowMs <= 0f) return
+
+        // Fetch only marks within this line's time window — O(log n + k).
+        val visibleMarks = store.subMap(startMs, true, endMs, false).values
+        if (visibleMarks.isEmpty()) return
+
+        val selectedId = selectedMarkId
+
+        // TODO: I feel like we can optimize this more.  Like...we dont need to walk the list twice?
+        // Draw unselected marks first, selected on top.
+        for (pass in 0..1) {
+            for (mark in visibleMarks) {
+                val isSelected = mark.id == selectedId
+                if ((pass == 0) == isSelected) continue   // first pass = unselected only
+
+                val x = ((mark.positionMs - startMs).toFloat() / windowMs) * width
+                val paint = if (isSelected) markSelectedPaint else markPaint
+
+                canvas.drawLine(x, waveformTop, x, waveformTop + waveformH, paint)
+
+                markPath.rewind()
+                markPath.moveTo(x - markTriSizePx, waveformTop)
+                markPath.lineTo(x + markTriSizePx, waveformTop)
+                markPath.lineTo(x, waveformTop + markTriHeightPx)
+                markPath.close()
+                canvas.drawPath(markPath, paint)
+            }
+        }
+    }
+
+    // ── Playhead overlay ──────────────────────────────────────────────────────
+
+    private fun drawPlayhead(canvas: Canvas, waveformTop: Float, waveformH: Float) {
+        if (!showPlayedSplit || playheadMs < 0L) return
+        val windowMs = (endMs - startMs).toFloat()
+        if (windowMs <= 0f) return
+
+        val playheadX = when {
+            playheadMs <= startMs -> 0f
+            playheadMs >= endMs   -> width.toFloat()
+            else -> ((playheadMs - startMs).toFloat() / windowMs) * width
+        }
+
+        // Dim the unplayed region to the right of the playhead.
+        if (playheadX < width) {
+            canvas.drawRect(
+                playheadX, waveformTop,
+                width.toFloat(), waveformTop + waveformH,
+                unplayedPaint
+            )
+        }
+
+        // Don't draw the playhead line if it's off this line entirely.
+        if (playheadMs < startMs || playheadMs > endMs) return
+
+        canvas.drawLine(playheadX, waveformTop, playheadX, waveformTop + waveformH, playheadPaint)
+
+        val label = formatMs(playheadMs)
+        val labelY = waveformTop - (4f * density)
+        canvas.drawText(label, playheadX.coerceIn(30f, width - 30f), labelY, playheadLabelPaint)
+    }
+
+    // ── Timestamp ruler ───────────────────────────────────────────────────────
+
+    private fun drawRuler(canvas: Canvas) {
+        val windowMs  = (endMs - startMs).toFloat()
+        if (windowMs <= 0f) return
+
+        val intervalMs = rulerIntervalMs(windowMs.toLong())
+        // First tick at the nearest interval boundary at or after startMs.
+        val firstTick  = ((startMs / intervalMs) + 1) * intervalMs
+
+        var tickMs = firstTick
+        while (tickMs < endMs) {
+            val x = ((tickMs - startMs).toFloat() / windowMs) * width
+
+            // Tick mark
+            canvas.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
+
+            // Timestamp label — skip if too close to the left edge to avoid clipping.
+            if (x > 20f * density) {
+                canvas.drawText(formatMs(tickMs), x, rulerHeightPx - (3f * density), rulerPaint)
+            }
+
+            tickMs += intervalMs
+        }
+    }
+
+    /**
+     * Returns a round interval in milliseconds suitable for ruler ticks given
+     * the line's [windowMs] span. Aims for roughly 4–6 ticks per line.
+     */
+    private fun rulerIntervalMs(windowMs: Long): Long = when {
+        windowMs > 20 * 60_000L  -> 5 * 60_000L    // > 20 min  → 5 min ticks
+        windowMs > 10 * 60_000L  -> 2 * 60_000L    // > 10 min  → 2 min ticks
+        windowMs >  4 * 60_000L  ->     60_000L    //  > 4 min  → 1 min ticks
+        windowMs >  2 * 60_000L  ->     30_000L    //  > 2 min  → 30 sec ticks
+        windowMs >      60_000L  ->     15_000L    //  > 1 min  → 15 sec ticks
+        windowMs >      30_000L  ->     10_000L    // > 30 sec  → 10 sec ticks
+        else                     ->      5_000L    //  ≤ 30 sec →  5 sec ticks
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Maps an X pixel coordinate to an index in [amplitudes], clamped to
+     * the sub-array covering [startMs]..[endMs].
+     */
+    private fun amplitudeIndexForX(x: Float, totalSamples: Int): Int {
+        val totalDurationMs  = endMs    // relative to recording start
+        // Index into the full amplitude array that corresponds to startMs.
+        val startIdx = ((startMs  / 1000.0) * samplesPerSecond).toInt()
+            .coerceIn(0, totalSamples - 1)
+        val endIdx   = ((endMs    / 1000.0) * samplesPerSecond).toInt()
+            .coerceIn(0, totalSamples - 1)
+        val windowSamples = (endIdx - startIdx).coerceAtLeast(1)
+        val barCount      = (width / stride).toInt().coerceAtLeast(1)
+        val barIdx        = (x / stride).toInt().coerceIn(0, barCount - 1)
+        return (startIdx + (barIdx.toFloat() / barCount * windowSamples).toInt())
+            .coerceIn(0, totalSamples - 1)
+    }
+
+    private fun barCountFor(w: Int) = (w / stride).toInt().coerceAtLeast(1)
+
+    /** Formats a millisecond timestamp as m:ss or h:mm:ss. */
+    private fun formatMs(ms: Long): String {
+        val totalSecs = ms / 1000L
+        val hours     = totalSecs / 3600L
+        val mins      = (totalSecs % 3600L) / 60L
+        val secs      = totalSecs % 60L
+        return if (hours > 0)
+            "%d:%02d:%02d".format(hours, mins, secs)
+        else
+            "%d:%02d".format(mins, secs)
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        lineBitmap?.recycle()
+        lineBitmap = null
+    }
+
+    companion object {
+        /** Height of the timestamp ruler strip at the top of each line. */
+        const val RULER_HEIGHT_DP = 18
+    }
+}

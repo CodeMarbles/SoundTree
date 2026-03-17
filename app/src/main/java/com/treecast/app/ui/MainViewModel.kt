@@ -288,6 +288,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         startObservingMarks(recording.id)
         _selectedMarkId.value = null           // clear stale selection from previous recording
         _playbackMarkNudgeLocked.value = true  // re-lock nudge for the fresh recording
+
+        loadWaveform(recording.id, recording.filePath)
     }
 
     fun togglePlayPause() {
