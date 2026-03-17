@@ -260,14 +260,15 @@ class WaveformLineView @JvmOverloads constructor(
         }
         lineBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
 
+        // ── Layer 2c: timestamp ruler ──────────────────────────────────
+        drawRuler(canvas)
+
         // ── Layer 2a: mark overlay ─────────────────────────────────────
         drawMarks(canvas, waveformTop, waveformH.toFloat())
 
         // ── Layer 2b: playhead + label ─────────────────────────────────
         drawPlayhead(canvas, waveformTop, waveformH.toFloat())
 
-        // ── Layer 2c: timestamp ruler ──────────────────────────────────
-        drawRuler(canvas)
     }
 
     // ── Bitmap rebuild ────────────────────────────────────────────────────────
@@ -367,25 +368,42 @@ class WaveformLineView @JvmOverloads constructor(
     // ── Timestamp ruler ───────────────────────────────────────────────────────
 
     private fun drawRuler(canvas: Canvas) {
-        val windowMs  = (endMs - startMs).toFloat()
+        val windowMs = (endMs - startMs).toFloat()
         if (windowMs <= 0f) return
 
-        val intervalMs = rulerIntervalMs(windowMs.toLong())
-        // First tick at the nearest interval boundary at or after startMs.
-        val firstTick  = ((startMs / intervalMs) + 1) * intervalMs
+        val labelY     = rulerHeightPx - (3f * density)
+        val edgePadPx  = 2f * density
+        val minSpacePx = 28f * density   // interior label suppression zone near each edge
 
-        var tickMs = firstTick
+        fun drawTickLine(x: Float) {
+            // Short tick from top of ruler down to the label.
+            canvas.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
+            // Continuation from ruler bottom through the waveform to the view bottom.
+            canvas.drawLine(x, rulerHeightPx.toFloat(), x, height.toFloat(), rulerTickPaint)
+        }
+
+        // ── Left boundary ──────────────────────────────────────────────────────
+        drawTickLine(0f)
+        rulerPaint.textAlign = Paint.Align.LEFT
+        canvas.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
+
+        // ── Right boundary ─────────────────────────────────────────────────────
+        drawTickLine(width.toFloat())
+        rulerPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText(formatMs(endMs), width - edgePadPx, labelY, rulerPaint)
+
+        // ── Interior interval ticks ────────────────────────────────────────────
+        rulerPaint.textAlign = Paint.Align.CENTER
+        val intervalMs = rulerIntervalMs(windowMs.toLong())
+        var tickMs = ((startMs / intervalMs) + 1) * intervalMs
         while (tickMs < endMs) {
             val x = ((tickMs - startMs).toFloat() / windowMs) * width
-
-            // Tick mark
-            canvas.drawLine(x, 0f, x, tickHeightPx, rulerTickPaint)
-
-            // Timestamp label — skip if too close to the left edge to avoid clipping.
-            if (x > 20f * density) {
-                canvas.drawText(formatMs(tickMs), x, rulerHeightPx - (3f * density), rulerPaint)
+            drawTickLine(x)
+            // Suppress the label if it would crowd a boundary label, but always
+            // draw the tick line itself so the grid stays visually consistent.
+            if (x > minSpacePx && x < width - minSpacePx) {
+                canvas.drawText(formatMs(tickMs), x, labelY, rulerPaint)
             }
-
             tickMs += intervalMs
         }
     }

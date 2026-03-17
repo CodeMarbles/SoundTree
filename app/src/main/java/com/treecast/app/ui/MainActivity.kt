@@ -1010,7 +1010,7 @@ class MainActivity : AppCompatActivity() {
                         ColorStateList.valueOf(themeColor(R.attr.colorTextSecondary))
                     pill.pillPlayerTopic.visibility = View.GONE
                     pill.pillPlayerFilename.text = "NO SELECTION"
-                    pill.pillPlayerFilename.isSelected = false   // stop marquee scroll on idle
+                    //pill.pillPlayerFilename.isSelected = false   // stop marquee scroll on idle
                 }
             }
         }

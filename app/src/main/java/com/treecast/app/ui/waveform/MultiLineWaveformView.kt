@@ -147,14 +147,11 @@ class MultiLineWaveformView @JvmOverloads constructor(
         val currentLineIndex = lineIndexForMs(positionMs)
         playheadMs = positionMs
 
-        // If the playhead crossed a line boundary, the previous line needs its
-        // played/unplayed split updated (bitmap rebuild) in addition to the
-        // overlay redraw on both lines.
-        if (prevLineIndex != currentLineIndex && prevLineIndex >= 0) {
-            notifyLineAt(prevLineIndex, fullRebuild = true)
-        }
-        if (currentLineIndex >= 0) {
-            notifyLineAt(currentLineIndex, fullRebuild = false)
+        val minLine = minOf(prevLineIndex.coerceAtLeast(0), currentLineIndex)
+        val maxLine = maxOf(prevLineIndex.coerceAtLeast(0), currentLineIndex)
+
+        for (lineIndex in minLine..maxLine) {
+            notifyLineAt(lineIndex, fullRebuild = false)
         }
     }
 

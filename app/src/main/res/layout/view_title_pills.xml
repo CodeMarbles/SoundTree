@@ -132,8 +132,7 @@
                 android:textSize="10sp"
                 android:textColor="?attr/colorTextPrimary"
                 android:singleLine="true"
-                android:ellipsize="marquee"
-                android:marqueeRepeatLimit="marquee_forever"
+                android:ellipsize="end"
                 android:fadingEdgeLength="10dp"
                 android:requiresFadingEdge="horizontal" />
 
