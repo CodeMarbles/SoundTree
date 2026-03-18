@@ -770,20 +770,18 @@ class MultiLineWaveformView @JvmOverloads constructor(
                         // Record tab — boundary is the recording head
                         totalDurationMs
                     }
-
+                    val isSingleLine = totalDurationMs <= secondsPerLine * 1000L
+                    val windowMs = if (scaleToFill && isSingleLine) totalDurationMs else secondsPerLine * 1000L
                     when {
-                        boundaryMs <= lineItem.startMs -> child.left.toFloat()   // fully future
-                        boundaryMs >= lineItem.endMs   -> child.right.toFloat()  // fully filled
+                        boundaryMs <= lineItem.startMs -> child.left.toFloat()
+                        boundaryMs >= lineItem.startMs + windowMs -> child.right.toFloat()
                         else -> {
-                            val actualWindowMs   = (lineItem.endMs - lineItem.startMs).coerceAtLeast(1L)
-                            val isSingleLine     = totalDurationMs <= secondsPerLine * 1000L
-                            val filledWidth      = if (scaleToFill && isSingleLine) {
-                                child.width.toFloat()
-                            } else {
-                                child.width * (actualWindowMs.toFloat() / (secondsPerLine * 1000L))
-                            }
-                            val fraction = (boundaryMs - lineItem.startMs).toFloat() / actualWindowMs
-                            child.left + fraction * filledWidth
+                            val density = parent.context.resources.displayMetrics.density
+                            val railPx = if (showLineRail) WaveformLineView.RAIL_WIDTH_DP * density else 0f
+                            val barStridePx = WaveformLineView.BAR_STRIDE_DP * density
+                            val availableWidth = child.width - railPx
+                            val rawX = (boundaryMs - lineItem.startMs).toFloat() / windowMs * availableWidth
+                            child.left + railPx + (rawX / barStridePx).toInt() * barStridePx
                         }
                     }
                 } else {
@@ -803,7 +801,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     companion object {
         const val DEFAULT_SECONDS_PER_LINE = 300   // 5 minutes
-        private const val LIVE_REDRAW_INTERVAL_MS = 250L   // ~4 fps
+        private const val LIVE_REDRAW_INTERVAL_MS = 50L //20fps   // ~4 fps
         private const val LINE_HEIGHT_DP    = 80
         private const val BOTTOM_PADDING_DP = 56
         private const val FADE_HEIGHT_DP    = 32
@@ -822,8 +820,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
         private const val DAY_BG_HEIGHT_LINES    = 4f
         // ── Contrast / tuning knobs ───────────────────────────────────────────────────
         // These are the two values to reach for first when adjusting the visual feel.
-        const val BACKGROUND_ALPHA               = 60   // 0–255; lower = more ghostly sky
-        const val BACKGROUND_EXTENDS_UNDER_RULER = false  // true = sky behind ruler strip too
+        const val BACKGROUND_ALPHA               = 130   // 0–255; lower = more ghostly sky
+        const val BACKGROUND_EXTENDS_UNDER_RULER = true  // true = sky behind ruler strip too
 
         // When true, the background scene renders only behind the unplayed portion
         // of each line — the sky retreats as the playhead advances, giving a

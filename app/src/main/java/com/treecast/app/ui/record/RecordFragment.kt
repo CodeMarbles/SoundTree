@@ -118,6 +118,7 @@ class RecordFragment : Fragment() {
         setupTopicHeader()
         setupTimerShadow()
         setupMultiLineWaveform()
+        observeWaveformStyle()
         observeLock()
         bindRecordingService()
     }
@@ -394,17 +395,17 @@ class RecordFragment : Fragment() {
                         //   0s – 24s    → 30s/line
                         //   25s – 1:40  → 2min/line
                         //   1:40+       → 5min/line (full)
-                        val targetSeconds = when {
-                            elapsedMs < 25_000L  -> 30
-                            elapsedMs < 100_000L -> 120
-                            else                 -> 300
-                        }
-                        // KEEP THIS COMMENT BLOCK FOR TESTING
 //                        val targetSeconds = when {
-//                            elapsedMs < 8_000L  -> 12
-//                            elapsedMs < 15_000L -> 20
-//                            else                 -> 30
+//                            elapsedMs < 25_000L  -> 30
+//                            elapsedMs < 100_000L -> 120
+//                            else                 -> 300
 //                        }
+                        // KEEP THIS COMMENT BLOCK FOR TESTING
+                        val targetSeconds = when {
+                            elapsedMs < 8_000L  -> 12
+                            elapsedMs < 15_000L -> 20
+                            else                 -> 30
+                        }
                         if (targetSeconds != binding.multiLineWaveformView.secondsPerLine) {
                             binding.multiLineWaveformView.secondsPerLine = targetSeconds
                         }
@@ -460,6 +461,16 @@ class RecordFragment : Fragment() {
                     viewModel.isLocked.collect { locked ->
                         binding.btnLockScreen.alpha = if (locked) 0.3f else 1f
                     }
+                }
+            }
+        }
+    }
+
+    private fun observeWaveformStyle() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.waveformStyle.collect { style ->
+                    binding.multiLineWaveformView.waveformStyle = style
                 }
             }
         }

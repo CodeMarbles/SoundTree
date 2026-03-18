@@ -822,11 +822,13 @@ class WaveformLineView @JvmOverloads constructor(
     companion object {
         /** Height of the timestamp ruler strip at the top of each line. */
         const val RULER_HEIGHT_DP = 18
-        private const val RAIL_WIDTH_DP = 12f
+        const val RAIL_WIDTH_DP = 12f
 
         // ── Contrast knob (unplayed bars) ─────────────────────────────────────────────
         // Sync with the argb() call in unplayedBarPaint if changed.
         // 0xCC = ~80% opaque; set to 0xFF for fully solid unplayed bars.
         const val UNPLAYED_BAR_ALPHA = 0xFF //0xCC
+
+        const val BAR_STRIDE_DP = 5f   // barWidthPx (3dp) + barGapPx (2dp)
     }
 }
