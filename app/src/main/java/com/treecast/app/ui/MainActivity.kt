@@ -205,7 +205,8 @@ class MainActivity : AppCompatActivity() {
     private fun applyLayoutOrder() {
         val order         = viewModel.layoutOrder.value
         val showTitle     = viewModel.showTitleBar.value
-        val anyPillActive = viewModel.playerPillMinimized.value || viewModel.recorderPillMinimized.value
+        val anyPillActive = viewModel.playerPillMinimized.value   || viewModel.recorderPillMinimized.value
+                || viewModel.alwaysShowPlayerPill.value  || viewModel.alwaysShowRecorderPill.value
         val pillOnlyMode  = !showTitle && anyPillActive
 
         val viewMap = mapOf(
@@ -266,16 +267,19 @@ class MainActivity : AppCompatActivity() {
      */
     private fun observeLayoutOrder() {
         lifecycleScope.launch {
-            combine(
+            val innerFlow = combine(
                 viewModel.layoutOrder,
                 viewModel.showTitleBar,
                 viewModel.playerPillMinimized,
                 viewModel.recorderPillMinimized
-            ) { order, showTitle, _, _ ->
-                order to showTitle
-            }.collect {
-                applyLayoutOrder()
-            }
+            ) { _, _, _, _ -> Unit }
+
+            combine(
+                innerFlow,
+                viewModel.alwaysShowPlayerPill,
+                viewModel.alwaysShowRecorderPill
+            ) { _, _, _ -> Unit }
+                .collect { applyLayoutOrder() }
         }
     }
 
@@ -1199,22 +1203,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         // ── Pill visibility ───────────────────────────────────────────────
-        //
-        // pillVisible = alwaysShow
-        //            || ( (hasContent && minimized) && !(hideOnRecordTab && onRecordTab) )
         lifecycleScope.launch {
-            combine(
+            val innerFlow = combine(
                 viewModel.recordingState,
                 viewModel.recorderPillMinimized,
-                viewModel.hideRecorderOnRecordTab,
+                viewModel.recorderWidgetVisibility,   // ← now reactive
+                viewModel.hideRecorderOnRecordTab
+            ) { state, minimized, visibility, hideOnRecordTab ->
+                // hasContent now uses the reactive `visibility` param, not a stale .value read
+                val hasContent = when (visibility) {
+                    RecorderWidgetVisibility.NEVER           -> false  // alwaysShow overrides below
+                    RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
+                    RecorderWidgetVisibility.ALWAYS          -> true
+                }
+                Triple(minimized, hideOnRecordTab, hasContent)
+            }
+
+            combine(
+                innerFlow,
                 viewModel.currentPage,
                 viewModel.alwaysShowRecorderPill
-            ) { state, minimized, hideOnRecordTab, page, alwaysShow ->
-                val hasContent = when (viewModel.recorderWidgetVisibility.value) {
-                    RecorderWidgetVisibility.NEVER  -> alwaysShow   // only alwaysShow path matters
-                    RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
-                    RecorderWidgetVisibility.ALWAYS -> true
-                }
+            ) { (minimized, hideOnRecordTab, hasContent), page, alwaysShow ->
                 val onRecordTab = page == PAGE_RECORD
                 val tabVisible  = hasContent && minimized && !(hideOnRecordTab && onRecordTab)
                 alwaysShow || tabVisible
