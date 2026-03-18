@@ -24,6 +24,7 @@ import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
 import com.treecast.app.ui.settings.SettingsFragment
+import com.treecast.app.ui.workspace.WorkspaceFragment
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageEjectReceiver
 import com.treecast.app.util.themeColor
@@ -393,7 +394,7 @@ class MainActivity : AppCompatActivity() {
             addFragment(recordFragment,   "Record")
             addFragment(libraryFragment,    "Library")
             addFragment(ListenFragment(),   "Listen")
-            addFragment(ListenFragment(),   "Workspace")
+            addFragment(WorkspaceFragment(),   "Workspace")
         }
         binding.viewPager.adapter = adapter
         binding.viewPager.offscreenPageLimit = 5

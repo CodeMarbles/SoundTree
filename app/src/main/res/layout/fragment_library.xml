@@ -90,6 +90,7 @@
             android:focusable="true" />
 
         <View
+            android:id="@+id/dividerBeforeOrganize"
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:background="?attr/colorSurfaceElevated" />

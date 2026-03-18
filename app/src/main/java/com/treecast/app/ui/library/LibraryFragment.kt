@@ -95,13 +95,26 @@ class LibraryFragment : Fragment() {
         // ── React to Details topic changing (enables the tab) ─────────
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.libraryDetailsTopicId.collect {
-                    updateSubNavSelection(binding.tilePager.currentItem)
-                    // Keep the title in sync if the user is already on the Details page
-                    if (binding.tilePager.currentItem == PAGE_DETAILS) {
-                        updateTopTitle(PAGE_DETAILS)
+
+                launch {
+                    viewModel.libraryDetailsTopicId.collect {
+                        updateSubNavSelection(binding.tilePager.currentItem)
+                        if (binding.tilePager.currentItem == PAGE_DETAILS) {
+                            updateTopTitle(PAGE_DETAILS)
+                        }
                     }
                 }
+
+                launch {
+                    viewModel.futureMode.collect { enabled ->
+                        binding.subNavRecordings.visibility      = if (enabled) View.VISIBLE else View.GONE
+                        binding.dividerBeforeOrganize.visibility = if (enabled) View.VISIBLE else View.GONE
+                        if (!enabled && binding.tilePager.currentItem == PAGE_RECORDINGS) {
+                            binding.tilePager.setCurrentItem(PAGE_ALL, true)
+                        }
+                    }
+                }
+
             }
         }
 

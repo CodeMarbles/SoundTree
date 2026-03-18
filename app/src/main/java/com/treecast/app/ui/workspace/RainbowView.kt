@@ -43,6 +43,10 @@ class RainbowView @JvmOverloads constructor(
     private val arcPaint  = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val skyPaint  = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val ovalRect  = RectF()
+    private val isNightMode: Boolean
+        get() = (context.resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -50,12 +54,12 @@ class RainbowView @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
 
-        // ── Sky background (upper 60 %) ───────────────────────────────
-        skyPaint.color = Color.parseColor("#D6EEFF")
+        // ── Sky background ────────────────────────────────────────────────
+        skyPaint.color = Color.parseColor(if (isNightMode) "#0D1B2A" else "#D6EEFF")
         canvas.drawRect(0f, 0f, w, h * 0.65f, skyPaint)
 
-        // ── Ground (lower 40 %) ───────────────────────────────────────
-        skyPaint.color = Color.parseColor("#E8F5E9")
+        // ── Ground ────────────────────────────────────────────────────────
+        skyPaint.color = Color.parseColor(if (isNightMode) "#0D1A10" else "#E8F5E9")
         canvas.drawRect(0f, h * 0.65f, w, h, skyPaint)
 
         // ── Rainbow arc ───────────────────────────────────────────────
@@ -78,13 +82,13 @@ class RainbowView @JvmOverloads constructor(
         // leaving only the outer rainbow bands visible as a proper arch.
         val innerR = outerR - BAND_COUNT * bandWidth
         ovalRect.set(centreX - innerR, centreY - innerR, centreX + innerR, centreY + innerR)
-        skyPaint.color = Color.parseColor("#D6EEFF")
+        skyPaint.color = Color.parseColor(if (isNightMode) "#0D1B2A" else "#D6EEFF")
         canvas.drawArc(ovalRect, START_ANGLE, SWEEP_ANGLE, true, skyPaint)
 
         // ── Ground rect over the lower half of the arc ────────────────
         // Clips away the bottom half of each arc/filled-pie so only the
         // arch above the horizon shows.
-        skyPaint.color = Color.parseColor("#E8F5E9")
+        skyPaint.color = Color.parseColor(if (isNightMode) "#0D1A10" else "#E8F5E9")
         canvas.drawRect(0f, centreY, w, h, skyPaint)
     }
 }

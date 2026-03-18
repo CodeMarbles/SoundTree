@@ -52,7 +52,7 @@
         <!-- Bottom nav pill backgrounds — dark -->
         <item name="colorNavBgSettings">@color/grey_800</item>
         <item name="colorNavBgRecord">@color/red_930</item>
-        <item name="colorNavBgWorkspace">@color/green_100</item>
+        <item name="colorNavBgWorkspace">@color/green_950</item>
         <item name="colorNavBgLibrary">@color/brown_950</item>
         <item name="colorNavBgListen">@color/blue_910</item>
 
