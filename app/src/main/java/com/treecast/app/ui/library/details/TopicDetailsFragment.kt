@@ -417,7 +417,8 @@ class TopicDetailsFragment : Fragment() {
             TopicPickerBottomSheet.newInstance(
                 selectedTopicId = currentTopic?.parentId,
                 requestKey      = REQUEST_REPARENT,
-                excludedIds     = excluded
+                excludedIds     = excluded,
+                mode            = TopicPickerBottomSheet.Mode.REPARENT
             ).show(childFragmentManager, "reparent_picker_details")
         }
     }

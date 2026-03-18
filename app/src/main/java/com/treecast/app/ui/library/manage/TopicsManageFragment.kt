@@ -94,7 +94,8 @@ class TopicsManageFragment : Fragment() {
                 TopicPickerBottomSheet.newInstance(
                     selectedTopicId = null,
                     requestKey      = REQUEST_REPARENT,
-                    excludedIds     = excluded
+                    excludedIds     = excluded,
+                    mode            = TopicPickerBottomSheet.Mode.REPARENT
                 ).show(childFragmentManager, "reparent_picker")
             },
             onRenameClick = { topicId, currentName ->

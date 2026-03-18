@@ -22,6 +22,12 @@
     <string name="layout_btn_edit">Edit layout</string>
     <string name="layout_btn_apply">Apply</string>
 
+    <!-- Topic picker bottom sheet titles -->
+    <string name="picker_title_select_topic">Select Topic</string>
+    <string name="picker_title_move_to">Move to…</string>
+    <!-- Null-destination row label in reparent context -->
+    <string name="picker_null_row_top_level">Top level</string>
+
     <plurals name="recording_count">
         <item quantity="one">1 recording</item>
         <item quantity="other">%d recordings</item>

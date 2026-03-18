@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,29 +17,48 @@ import com.treecast.app.ui.MainViewModel
 /**
  * A [BottomSheetDialogFragment] that presents the full topic tree for selection.
  *
+ * ── Modes ─────────────────────────────────────────────────────────────────────
+ *
+ * [Mode.PICK] (default) — used when moving a recording to a topic.
+ *   Null destination row reads: 📥  Unsorted
+ *   Sheet title: "Select Topic"
+ *
+ * [Mode.REPARENT] — used when moving a topic to a new parent.
+ *   Null destination row reads: 🌳  Top level
+ *   Sheet title: "Move to…"
+ *   The semantic distinction matters: null in PICK means "no topic assigned";
+ *   null in REPARENT means "make this a root-level topic".
+ *
+ * ── Exclusions ────────────────────────────────────────────────────────────────
+ *
  * Supports an optional [excludedIds] set — any topic whose ID is in that set,
- * and its entire subtree, will be hidden from the list. Used when reparenting
- * a topic to prevent selecting itself or any of its descendants.
+ * and its entire subtree, will be hidden from the list. Used in REPARENT mode
+ * to prevent selecting the topic being moved or any of its descendants.
  */
 class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
+    enum class Mode { PICK, REPARENT }
+
     companion object {
-        const val REQUEST_KEY   = "TopicPickerBottomSheet"
-        const val KEY_TOPIC_ID  = "topicId"
-        const val KEY_REQUEST   = "requestKey"
+        const val REQUEST_KEY      = "TopicPickerBottomSheet"
+        const val KEY_TOPIC_ID     = "topicId"
+        const val KEY_REQUEST      = "requestKey"
         const val KEY_EXCLUDED_IDS = "excludedIds"
-        const val TOPIC_ID_NONE = -1L
+        const val KEY_MODE         = "mode"
+        const val TOPIC_ID_NONE    = -1L
 
         fun newInstance(
             selectedTopicId: Long?,
-            requestKey: String = REQUEST_KEY,
-            excludedIds: Set<Long> = emptySet()
+            requestKey: String  = REQUEST_KEY,
+            excludedIds: Set<Long> = emptySet(),
+            mode: Mode          = Mode.PICK
         ): TopicPickerBottomSheet =
             TopicPickerBottomSheet().apply {
                 arguments = Bundle().apply {
                     putLong(KEY_TOPIC_ID, selectedTopicId ?: TOPIC_ID_NONE)
                     putString(KEY_REQUEST, requestKey)
                     putLongArray(KEY_EXCLUDED_IDS, excludedIds.toLongArray())
+                    putString(KEY_MODE, mode.name)
                 }
             }
 
@@ -51,6 +71,11 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
     private val excludedIds: Set<Long>
         get() = arguments?.getLongArray(KEY_EXCLUDED_IDS)?.toSet() ?: emptySet()
+
+    private val mode: Mode
+        get() = arguments?.getString(KEY_MODE)
+            ?.let { runCatching { Mode.valueOf(it) }.getOrNull() }
+            ?: Mode.PICK
 
     private val viewModel: MainViewModel by activityViewModels()
 
@@ -87,6 +112,13 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             deliverResult(null)
         }
 
+        // ── Mode-specific presentation ────────────────────────────────
+        if (mode == Mode.REPARENT) {
+            view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.picker_title_move_to)
+            view.findViewById<TextView>(R.id.tvNullRowIcon).text = "🌳"
+            view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.picker_null_row_top_level)
+        }
+
         refreshList()
     }
 
@@ -98,8 +130,8 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun refreshList() {
-        val topics = viewModel.allTopics.value
-        val roots  = TreeBuilder.build(topics, emptyList())
+        val topics   = viewModel.allTopics.value
+        val roots    = TreeBuilder.build(topics, emptyList())
         val excluded = excludedIds
         treeAdapter.submitList(buildAdapterItems(roots, 0, excluded))
     }

@@ -16,10 +16,11 @@
         android:paddingHorizontal="20dp">
 
         <TextView
+            android:id="@+id/tvPickerTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Select Topic"
+            android:text="@string/picker_title_select_topic"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -44,6 +45,7 @@
         android:focusable="true">
 
         <TextView
+            android:id="@+id/tvNullRowIcon"
             android:layout_width="28dp"
             android:layout_height="wrap_content"
             android:text="📥"
@@ -51,6 +53,7 @@
             android:gravity="center" />
 
         <TextView
+            android:id="@+id/tvNullRowLabel"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
