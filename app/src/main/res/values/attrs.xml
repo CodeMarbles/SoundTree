@@ -67,6 +67,7 @@
     <attr name="colorWaveformGradientStart" format="color" />
     <attr name="colorWaveformGradientMid"   format="color" />
     <attr name="colorWaveformGradientEnd"   format="color" />
+    <attr name="colorWaveformFade"          format="color" />
     <attr name="colorPlayhead"              format="color" />
 
     <!-- Status & labels -->

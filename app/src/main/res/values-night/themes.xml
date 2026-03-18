@@ -84,6 +84,7 @@
         <item name="colorWaveformGradientStart">@color/purple_600</item>
         <item name="colorWaveformGradientMid">@color/purple_500</item>
         <item name="colorWaveformGradientEnd">@color/purple_300</item>
+        <item name="colorWaveformFade">@color/grey_950</item>
         <item name="colorPlayhead">@color/white</item>
 
         <!-- Status & labels -->

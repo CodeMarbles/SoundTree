@@ -19,6 +19,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.treecast.app.R
 import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
 import java.util.TreeMap
@@ -212,16 +213,23 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         // ── Edge fades ────────────────────────────────────────────────────
         val fadeH = (FADE_HEIGHT_DP * dp).toInt()
+        // Resolve the waveform fade color from the current theme so the fade
+        // blends correctly in both light and dark modes (and future custom themes).
+        val tv = android.util.TypedValue()
+        context.theme.resolveAttribute(R.attr.colorWaveformFade, tv, true)
+        val bgOpaque = (tv.data and 0x00FFFFFF.toInt()) or 0xCC000000.toInt()
+        val bgClear  = tv.data and 0x00FFFFFF.toInt()
+
         topFadeView.background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(0xCC000000.toInt(), 0x00000000)
+            intArrayOf(bgOpaque, bgClear)
         )
         topFadeView.visibility = View.INVISIBLE
         addView(topFadeView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, fadeH, Gravity.TOP))
 
         bottomFadeView.background = GradientDrawable(
             GradientDrawable.Orientation.BOTTOM_TOP,
-            intArrayOf(0xCC000000.toInt(), 0x00000000)
+            intArrayOf(bgOpaque, bgClear)
         )
         bottomFadeView.visibility = View.INVISIBLE
         addView(bottomFadeView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, fadeH, Gravity.BOTTOM))
