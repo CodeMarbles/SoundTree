@@ -64,13 +64,14 @@
         <item name="colorMiniRecorderActive">@color/red_950</item>
 
         <!-- Mini Recorder -->
-        <item name="colorMiniRecorderIdle">@color/red_920</item>
+        <item name="colorMiniRecorderIdle">#191117</item>
         <item name="colorMiniRecorderPaused">@color/amber_980</item>
 
         <!-- Title bar pills -->
         <item name="colorPillPlayerFill">@color/blue_820</item>
         <item name="colorPillPlayerStroke">#2E4899</item>
         <item name="colorPillRecorderPausedFill">@color/amber_960</item>
+        <item name="colorPillRecorderIdleStroke">#7A4A52</item>
 
         <!-- Marks -->
         <item name="colorMarkDefault">@color/pink_700</item>

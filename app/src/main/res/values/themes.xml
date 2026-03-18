@@ -70,6 +70,7 @@
         <item name="colorPillPlayerFill">@color/blue_pill_100</item>
         <item name="colorPillPlayerStroke">#3358CC</item>
         <item name="colorPillRecorderPausedFill">@color/yellow_50</item>
+        <item name="colorPillRecorderIdleStroke">#B07878</item>
 
         <!-- Marks -->
         <item name="colorMarkDefault">@color/pink_700</item>

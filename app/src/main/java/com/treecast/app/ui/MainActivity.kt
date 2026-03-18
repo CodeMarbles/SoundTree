@@ -1,5 +1,6 @@
 package com.treecast.app.ui
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.IntentFilter
@@ -705,6 +706,9 @@ class MainActivity : AppCompatActivity() {
         val idleColor      = themeColor(R.attr.colorMiniRecorderIdle)
         val recordingColor = themeColor(R.attr.colorMiniRecorderActive)   // dark/light red
         val pausedColor = themeColor(R.attr.colorMiniRecorderPaused)      // dark/light yellow
+        val idleAccentColor   = themeColor(R.attr.colorPillRecorderIdleStroke)
+        val recordAccentColor = themeColor(R.attr.colorRecordActive)
+        val pauseAccentColor  = themeColor(R.attr.colorRecordPause)
 
         var lastBgColor = idleColor
 
@@ -715,7 +719,13 @@ class MainActivity : AppCompatActivity() {
                     RecordingService.State.RECORDING -> recordingColor
                     RecordingService.State.PAUSED    -> pausedColor
                 }
-                android.animation.ValueAnimator.ofArgb(lastBgColor, targetColor).apply {
+                val accentColor = when (state) {
+                    RecordingService.State.IDLE      -> idleAccentColor
+                    RecordingService.State.RECORDING -> recordAccentColor
+                    RecordingService.State.PAUSED    -> pauseAccentColor
+                }
+                recorderBinding.recAccentLine.setBackgroundColor(accentColor)
+                ValueAnimator.ofArgb(lastBgColor, targetColor).apply {
                     duration = 300L
                     addUpdateListener {
                         val c = it.animatedValue as Int
@@ -1278,7 +1288,7 @@ class MainActivity : AppCompatActivity() {
                     RecordingService.State.IDLE ->
                         pillBackground(
                             themeColor(R.attr.colorSurfaceBase),
-                            themeColor(R.attr.colorRecordActive)
+                            themeColor(R.attr.colorPillRecorderIdleStroke)
                         )
                     RecordingService.State.RECORDING ->
                         pillBackground(
