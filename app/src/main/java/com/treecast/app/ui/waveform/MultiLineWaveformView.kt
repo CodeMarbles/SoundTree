@@ -1,8 +1,14 @@
 package com.treecast.app.ui.waveform
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.GestureDetector
@@ -16,6 +22,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
 import java.util.TreeMap
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 /**
  * Multi-line waveform visualizer. Renders the waveform across multiple
@@ -232,6 +241,15 @@ class MultiLineWaveformView @JvmOverloads constructor(
         })
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // If a non-Standard style was set before the view was laid out,
+        // the bitmap was built at 1px wide. Rebuild now that we have real dimensions.
+        if (w > 0 && waveformStyle !is WaveformStyle.Standard) {
+            rebuildBackgroundBitmap(waveformStyle)
+        }
+    }
+
     // ── Public data API ───────────────────────────────────────────────────────
 
     /** Set (or replace) the full amplitude array. Triggers a full line rebuild. */
@@ -259,6 +277,13 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         for (lineIndex in minLine..maxLine) {
             notifyLineAt(lineIndex, fullRebuild = false)
+        }
+
+        // If the background is clipped to the unplayed region, the decoration
+        // boundary moves with the playhead — invalidate decorations so onDraw
+        // fires on the next frame without waiting for a scroll event.
+        if (BACKGROUND_UNPLAYED_ONLY && backgroundDecoration != null) {
+            recyclerView.invalidateItemDecorations()
         }
     }
 
@@ -322,6 +347,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
             lastRedrawMs = now
             val lastLineIndex = adapter.itemCount - 1
             if (lastLineIndex >= 0) notifyLineAt(lastLineIndex, fullRebuild = true)
+            if (BACKGROUND_UNPLAYED_ONLY && backgroundDecoration != null) {
+                recyclerView.invalidateItemDecorations()
+            }
         }
     }
 
@@ -570,19 +598,125 @@ class MultiLineWaveformView @JvmOverloads constructor(
     private fun rebuildBackgroundBitmap(style: WaveformStyle) {
         val lineH   = LINE_HEIGHT_DP_TO_PX(context)
         val bitmapW = width.coerceAtLeast(1)
-        val bitmapH = (lineH * BACKGROUND_BITMAP_HEIGHT_LINES).coerceAtLeast(1)
+        val isDark  = (context.resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-        val bmp = Bitmap.createBitmap(bitmapW, bitmapH, Bitmap.Config.ARGB_8888)
-        // val c = Canvas(bmp)
-
-        // TODO: render background for style
-        // when (style) {
-        //     is WaveformStyle.Sky   -> renderSkyBackground(c, bmp.width, bmp.height, style)
-        //     is WaveformStyle.Standard -> { /* unreachable — guarded by caller */ }
-        // }
+        val bmp = when (style) {
+            is WaveformStyle.Sky -> {
+                val nightMode = if (style.invertTheme) !isDark else isDark
+                if (nightMode) buildNightBitmap(bitmapW, lineH)
+                else           buildDayBitmap(bitmapW, lineH)
+            }
+            is WaveformStyle.Standard -> return  // unreachable — guarded by caller
+        }
 
         backgroundBitmap?.recycle()
         backgroundBitmap = bmp
+    }
+
+// ── Night sky ─────────────────────────────────────────────────────────────────
+
+    private fun buildNightBitmap(w: Int, lineH: Int): Bitmap {
+        val bmpH = (lineH * NIGHT_BG_HEIGHT_LINES).toInt()
+        val bmp  = Bitmap.createBitmap(w, bmpH, Bitmap.Config.ARGB_8888)
+        val c    = Canvas(bmp)
+        val d    = resources.displayMetrics.density
+
+        // Sky gradient — near-black at top fading to deep navy at bottom
+        c.drawRect(
+            0f, 0f, w.toFloat(), bmpH.toFloat(),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(
+                    0f, 0f, 0f, bmpH.toFloat(),
+                    intArrayOf(0xFF060618.toInt(), 0xFF0F0F38.toInt(), 0xFF1A1A50.toInt()),
+                    floatArrayOf(0f, 0.45f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+        )
+
+        // Stars — seeded for determinism, wrapped at vertical seams
+        val rng       = Random(STAR_SEED)
+        val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+        repeat(STAR_COUNT) {
+            val x      = rng.nextFloat() * w
+            val y      = rng.nextFloat() * bmpH
+            val radius = (STAR_MIN_RADIUS_DP + rng.nextFloat() *
+                    (STAR_MAX_RADIUS_DP - STAR_MIN_RADIUS_DP)) * d
+            val alpha  = 155 + rng.nextInt(100)       // 155–254: varied brightness
+            val rComp  = 235 + rng.nextInt(21)         // 235–255
+            val gComp  = 235 + rng.nextInt(21)
+            val bComp  = 220 + rng.nextInt(36)         // slightly cooler blue floor
+            starPaint.color = Color.argb(alpha, rComp, gComp, bComp)
+
+            c.drawCircle(x, y, radius, starPaint)
+            // Seam-wrap: mirror at the bottom edge and the top edge so the
+            // tiling cut is invisible as lines scroll into view
+            if (y + radius > bmpH) c.drawCircle(x, y - bmpH, radius, starPaint)
+            if (y - radius < 0f)   c.drawCircle(x, y + bmpH, radius, starPaint)
+        }
+
+        return bmp
+    }
+
+// ── Day sky ───────────────────────────────────────────────────────────────────
+
+    private fun buildDayBitmap(w: Int, lineH: Int): Bitmap {
+        val bmpH = (lineH * DAY_BG_HEIGHT_LINES).toInt()
+        val bmp  = Bitmap.createBitmap(w, bmpH, Bitmap.Config.ARGB_8888)
+        val c    = Canvas(bmp)
+
+        // Four independent cloud strips stacked vertically, one per line height.
+        // Each is a complete composition so no cloud is ever sliced at a seam.
+        CLOUD_SEEDS.forEachIndexed { i, seed ->
+            val stripTop = i * lineH
+            c.save()
+            c.translate(0f, stripTop.toFloat())
+            drawCloudStrip(c, w, lineH, seed)
+            c.restore()
+        }
+
+        return bmp
+    }
+
+    private fun drawCloudStrip(c: Canvas, w: Int, h: Int, seed: Long) {
+        // Bright cerulean sky — peeks through gaps between cloud puffs
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(),
+            Paint().apply { color = 0xFF4FC3F7.toInt() })
+
+        val rng      = Random(seed)
+        val puffPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val oval      = RectF()
+
+        val numClouds = 4 + rng.nextInt(2)   // 4–5 clouds per strip
+        repeat(numClouds) { idx ->
+            // Space centres evenly with slight jitter
+            val fraction = (idx + 0.5f + (rng.nextFloat() - 0.5f) * 0.35f) / numClouds
+            val cx       = fraction * w
+            val cy       = h * (0.35f + rng.nextFloat() * 0.30f)
+            val baseR    = h * (0.35f + rng.nextFloat() * 0.20f)
+            val puffs    = 4 + rng.nextInt(3)   // 4–6 puffs per cloud
+
+            repeat(puffs) { p ->
+                val angle  = (p.toFloat() / puffs) * 2f * Math.PI.toFloat()
+                val spread = baseR * (0.5f + rng.nextFloat() * 0.5f)
+                val px     = cx + cos(angle.toDouble()).toFloat() * spread * 0.9f
+                val py     = cy + sin(angle.toDouble()).toFloat() * spread * 0.45f
+                val pr     = baseR * (0.55f + rng.nextFloat() * 0.45f)
+                val shade  = 245 + rng.nextInt(11)   // 245–255: white to very pale grey
+                val alpha  = 220 + rng.nextInt(35)   // 220–254: slightly translucent edges
+                puffPaint.color = Color.argb(alpha, shade, shade, shade)
+                oval.set(px - pr, py - pr * 0.72f, px + pr, py + pr * 0.72f)
+                c.drawOval(oval, puffPaint)
+            }
+
+            // Bright white centre to unify each cluster
+            puffPaint.color = Color.argb(255, 255, 255, 255)
+            oval.set(cx - baseR * 0.55f, cy - baseR * 0.45f,
+                cx + baseR * 0.55f, cy + baseR * 0.45f)
+            c.drawOval(oval, puffPaint)
+        }
     }
 
     /**
@@ -601,10 +735,14 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         private val srcRect = android.graphics.Rect()
         private val dstRect = android.graphics.Rect()
+        private val backgroundPaint = Paint().apply { alpha = BACKGROUND_ALPHA }
 
         override fun onDraw(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-            val bmp = backgroundBitmap ?: return
-            val lineH = bmp.height / BACKGROUND_BITMAP_HEIGHT_LINES
+            val bmp   = backgroundBitmap ?: return
+            val lineH = LINE_HEIGHT_DP_TO_PX(parent.context)
+            val rulerH = if (BACKGROUND_EXTENDS_UNDER_RULER) 0
+            else (WaveformLineView.RULER_HEIGHT_DP *
+                    parent.context.resources.displayMetrics.density).toInt()
 
             for (i in 0 until parent.childCount) {
                 val child  = parent.getChildAt(i) ?: continue
@@ -614,13 +752,51 @@ class MultiLineWaveformView @JvmOverloads constructor(
                     .takeIf { it != RecyclerView.NO_ID.toInt() } ?: continue
                 val lineItem = adapter.items.getOrNull(adapterPos) ?: continue
 
-                // Vertical slice of the background bitmap for this line.
                 val yOffset = ((lineItem.index * lineH) % bmp.height)
-                    .coerceIn(0, bmp.height - lineH)
+                    .coerceIn(0, (bmp.height - lineH).coerceAtLeast(0))
 
-                srcRect.set(0, yOffset, bmp.width, yOffset + lineH)
-                dstRect.set(child.left, child.top, child.right, child.bottom)
-                c.drawBitmap(bmp, srcRect, dstRect, null)
+                srcRect.set(0, yOffset + rulerH, bmp.width, yOffset + lineH)
+                dstRect.set(child.left, child.top + rulerH, child.right, child.bottom)
+
+                // ── Unplayed-only clip ────────────────────────────────────────────────
+                // When BACKGROUND_UNPLAYED_ONLY is true and playback is active, restrict
+                // the background to the region right of the playhead for this line.
+                val clipLeft: Float = if (BACKGROUND_UNPLAYED_ONLY) {
+                    val boundaryMs: Long = if (showPlayedSplit) {
+                        // Listen tab — boundary is the playhead
+                        if (playheadMs < 0L) return@onDraw  // shouldn't happen but guard it
+                        playheadMs
+                    } else {
+                        // Record tab — boundary is the recording head
+                        totalDurationMs
+                    }
+
+                    when {
+                        boundaryMs <= lineItem.startMs -> child.left.toFloat()   // fully future
+                        boundaryMs >= lineItem.endMs   -> child.right.toFloat()  // fully filled
+                        else -> {
+                            val actualWindowMs   = (lineItem.endMs - lineItem.startMs).coerceAtLeast(1L)
+                            val isSingleLine     = totalDurationMs <= secondsPerLine * 1000L
+                            val filledWidth      = if (scaleToFill && isSingleLine) {
+                                child.width.toFloat()
+                            } else {
+                                child.width * (actualWindowMs.toFloat() / (secondsPerLine * 1000L))
+                            }
+                            val fraction = (boundaryMs - lineItem.startMs).toFloat() / actualWindowMs
+                            child.left + fraction * filledWidth
+                        }
+                    }
+                } else {
+                    child.left.toFloat()
+                }
+
+                if (clipLeft >= child.right) continue  // line is fully played — no background
+
+                c.save()
+                c.clipRect(clipLeft, (child.top + rulerH).toFloat(),
+                    child.right.toFloat(), child.bottom.toFloat())
+                c.drawBitmap(bmp, srcRect, dstRect, backgroundPaint)
+                c.restore()
             }
         }
     }
@@ -634,7 +810,25 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         private fun LINE_HEIGHT_DP_TO_PX(context: Context): Int =
             (LINE_HEIGHT_DP * context.resources.displayMetrics.density).toInt()
-        private const val BACKGROUND_BITMAP_HEIGHT_LINES = 4
+
+        // Night sky
+        private const val NIGHT_BG_HEIGHT_LINES  = 4.5f   // non-integer → repeat cycle = 9 lines
+        private const val STAR_SEED              = 31415L
+        private const val STAR_COUNT             = 130
+        private const val STAR_MIN_RADIUS_DP     = 0.7f
+        private const val STAR_MAX_RADIUS_DP     = 2.2f
+        // Day clouds — one seed per layer; change any to redesign that strip
+        private val CLOUD_SEEDS = longArrayOf(1001L, 2002L, 3003L, 4004L)
+        private const val DAY_BG_HEIGHT_LINES    = 4f
+        // ── Contrast / tuning knobs ───────────────────────────────────────────────────
+        // These are the two values to reach for first when adjusting the visual feel.
+        const val BACKGROUND_ALPHA               = 60   // 0–255; lower = more ghostly sky
+        const val BACKGROUND_EXTENDS_UNDER_RULER = false  // true = sky behind ruler strip too
+
+        // When true, the background scene renders only behind the unplayed portion
+        // of each line — the sky retreats as the playhead advances, giving a
+        // "dreams to reality" transition effect. Set to false to render everywhere.
+        const val BACKGROUND_UNPLAYED_ONLY = true
     }
 }
 

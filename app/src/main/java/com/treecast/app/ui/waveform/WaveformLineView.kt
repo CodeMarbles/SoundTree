@@ -200,7 +200,7 @@ class WaveformLineView @JvmOverloads constructor(
         style = Paint.Style.FILL
         val base = context.themeColor(R.attr.colorWaveformUnplayed)
         color = android.graphics.Color.argb(
-            0xCC,   // ~80 % opaque — background tints through slightly
+            UNPLAYED_BAR_ALPHA,
             android.graphics.Color.red(base),
             android.graphics.Color.green(base),
             android.graphics.Color.blue(base)
@@ -823,5 +823,10 @@ class WaveformLineView @JvmOverloads constructor(
         /** Height of the timestamp ruler strip at the top of each line. */
         const val RULER_HEIGHT_DP = 18
         private const val RAIL_WIDTH_DP = 12f
+
+        // ── Contrast knob (unplayed bars) ─────────────────────────────────────────────
+        // Sync with the argb() call in unplayedBarPaint if changed.
+        // 0xCC = ~80% opaque; set to 0xFF for fully solid unplayed bars.
+        const val UNPLAYED_BAR_ALPHA = 0xFF //0xCC
     }
 }
