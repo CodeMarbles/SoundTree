@@ -123,7 +123,12 @@ class WaveformLineView @JvmOverloads constructor(
      * in a 5-minute window occupies 60% of the width as normal.
      */
     private var scaleToFill: Boolean = false
-    // ── Bitmap cache ──────────────────────────────────────────────────────────
+
+    /** When true, a left-rail timestamp column is drawn on each line. */
+    private var showLineRail: Boolean = false
+
+    /** Width of the left-rail column when active; 0 when inactive. */
+    private val railWidthPx get() = if (showLineRail) RAIL_WIDTH_DP * density else 0f
 
     // ── Bitmap cache ──────────────────────────────────────────────────────────
 
@@ -216,6 +221,13 @@ class WaveformLineView @JvmOverloads constructor(
         isFakeBoldText = true
     }
 
+    private val railLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color     = context.themeColor(R.attr.colorTextSecondary)
+        textSize  = 9f * density
+        textAlign = Paint.Align.CENTER
+        alpha     = 160
+    }
+
     // ── Reusable objects (avoid per-draw allocations) ─────────────────────────
 
     private val rect     = RectF()
@@ -237,7 +249,8 @@ class WaveformLineView @JvmOverloads constructor(
         selectedMarkId:   Long?,
         playheadMs:       Long,
         showPlayedSplit:  Boolean,
-        scaleToFill:       Boolean
+        scaleToFill:      Boolean,
+        showLineRail:     Boolean
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
         if (windowChanged) rulerBitmapDirty = true
@@ -253,6 +266,7 @@ class WaveformLineView @JvmOverloads constructor(
         this.playheadMs       = playheadMs
         this.showPlayedSplit  = showPlayedSplit
         this.scaleToFill      = scaleToFill
+        this.showLineRail     = showLineRail
 
         recomputeFillWidthPx()
 
@@ -271,34 +285,31 @@ class WaveformLineView @JvmOverloads constructor(
     }
 
     fun xToMs(x: Float): Long {
+        val adjustedX = (x - railWidthPx).coerceAtLeast(0f)
         if (fillWidthPx <= 0f) return startMs
         val windowMs = endMs - startMs
-        return (startMs + ((x / fillWidthPx) * windowMs).toLong())
+        return (startMs + ((adjustedX / fillWidthPx) * windowMs).toLong())
             .coerceIn(startMs, endMs)
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
     private fun recomputeFillWidthPx() {
-        // scaleToFill: short clip on Listen tab — stretch to full view width so
-        // a 3-minute recording doesn't render as a tiny stub on the left.
-        // All other cases: proportional fill based on actual audio duration.
+        val availableW = (width - railWidthPx).coerceAtLeast(0f)
         fillWidthPx = if (scaleToFill) {
-            width.toFloat()
+            availableW
         } else {
             val actualWindowMs = (endMs - startMs).coerceAtLeast(1L)
             if (lineWindowMs >= endMs - startMs)
-                (actualWindowMs.toFloat() / lineWindowMs) * width
+                (actualWindowMs.toFloat() / lineWindowMs) * availableW
             else
-                width.toFloat()
+                availableW
         }
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        if (w > 0 && h > 0) {
+        // Gradient spans the waveform area only — must be kept in sync with
+        // availableW so it never bleeds into or skips the rail column.
+        if (availableW > 0f) {
             playedPaint.shader = LinearGradient(
-                0f, 0f, w.toFloat(), 0f,
+                0f, 0f, availableW, 0f,
                 intArrayOf(
                     context.themeColor(R.attr.colorWaveformGradientStart),
                     context.themeColor(R.attr.colorWaveformGradientMid),
@@ -306,7 +317,12 @@ class WaveformLineView @JvmOverloads constructor(
                 ),
                 null, Shader.TileMode.CLAMP
             )
+        }
+    }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && h > 0) {
             recomputeFillWidthPx()
             bitmapDirty      = true
             rulerBitmapDirty = true
@@ -321,25 +337,36 @@ class WaveformLineView @JvmOverloads constructor(
 
         val waveformTop = rulerHeightPx.toFloat()
         val waveformH   = height - rulerHeightPx
+        val rail        = railWidthPx
 
-        // ── Layer 1: waveform bars bitmap ─────────────────────────────
-        if (bitmapDirty || lineBitmap == null) {
-            rebuildWaveformBitmap(waveformH)
+        // ── Rail label ────────────────────────────────────────────────────
+        // Drawn in view coordinates before the translate, centered in the rail
+        // column at the vertical midpoint of the waveform area.
+        if (showLineRail && rail > 0f) {
+            val cx = rail / 2f
+            val cy = waveformTop + waveformH / 2f
+            canvas.save()
+            canvas.rotate(-90f, cx, cy)
+            canvas.drawText(formatMs(startMs), cx, cy + railLabelPaint.textSize / 3f, railLabelPaint)
+            canvas.restore()
         }
+
+        // ── Waveform content (shifted right by rail width) ────────────────
+        // All downstream drawing (bitmaps, marks, playhead) uses coordinates
+        // relative to the waveform area — no internal changes needed.
+        canvas.save()
+        canvas.translate(rail, 0f)
+
+        if (bitmapDirty || lineBitmap == null) rebuildWaveformBitmap(waveformH)
         lineBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
 
-        // ── Layer 2: ruler bitmap (transparent bg, full view height) ──
-        // Blitted over the waveform so grid lines show through both areas.
-        if (rulerBitmapDirty || rulerBitmap == null) {
-            rebuildRulerBitmap()
-        }
+        if (rulerBitmapDirty || rulerBitmap == null) rebuildRulerBitmap()
         rulerBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
 
-        // ── Layer 3a: mark overlay ────────────────────────────────────
         drawMarks(canvas, waveformTop, waveformH.toFloat())
-
-        // ── Layer 3b: playhead + label ────────────────────────────────
         drawPlayhead(canvas, waveformTop, waveformH.toFloat())
+
+        canvas.restore()
     }
 
     // ── Bitmap rebuild ────────────────────────────────────────────────────────
@@ -368,11 +395,12 @@ class WaveformLineView @JvmOverloads constructor(
     private fun rebuildWaveformBitmap(waveformH: Int) {
         if (width == 0 || waveformH <= 0) return
 
-        val bmp = Bitmap.createBitmap(width, waveformH, Bitmap.Config.ARGB_8888)
+        val bitmapW = (width - railWidthPx).toInt().coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(bitmapW, waveformH, Bitmap.Config.ARGB_8888)
         val c   = Canvas(bmp)
 
         // Number of bars that fit across the full view width — fixed for this line.
-        val fullBarCount = (width / stride).toInt().coerceAtLeast(1)
+        val fullBarCount = (bitmapW / stride).toInt().coerceAtLeast(1)
 
         // How many samples a full line represents, anchored to the full line window.
         // Using lineWindowMs (not endMs-startMs) keeps this constant even while the
@@ -469,7 +497,8 @@ class WaveformLineView @JvmOverloads constructor(
     private fun rebuildRulerBitmap() {
         if (width == 0 || height == 0) return
 
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmapW = (width - railWidthPx).toInt().coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(bitmapW, height, Bitmap.Config.ARGB_8888)
         // Default pixel value is 0 (transparent) — no explicit clear needed.
         val c = Canvas(bmp)
 
@@ -669,5 +698,6 @@ class WaveformLineView @JvmOverloads constructor(
     companion object {
         /** Height of the timestamp ruler strip at the top of each line. */
         const val RULER_HEIGHT_DP = 18
+        private const val RAIL_WIDTH_DP = 12f
     }
 }

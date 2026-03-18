@@ -1,9 +1,12 @@
 package com.treecast.app.ui.waveform
 
 import android.content.Context
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -90,6 +93,17 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * When true, a slim left-rail column on each line shows the line's absolute
+     * start timestamp, giving the user time orientation while scrolling.
+     * Intended to be wired to a Settings toggle.
+     */
+    var showLineRail: Boolean = false
+        set(value) {
+            field = value
+            rebuildItemList()
+        }
+
+    /**
      * Called when the user taps a position on any line.
      *
      * @param positionMs  Tapped position in milliseconds (recording-relative).
@@ -132,29 +146,52 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     private val recyclerView  = RecyclerView(context)
     private val adapter       = WaveformLineAdapter()
+    private val topFadeView    = View(context)
+    private val bottomFadeView = View(context)
 
     init {
         recyclerView.layoutManager = LinearLayoutManager(context)
         recyclerView.adapter       = adapter
-        // Remove the default item animator — we don't want flash on overlay updates.
         recyclerView.itemAnimator  = null
+        recyclerView.isVerticalScrollBarEnabled = true
+        // Reserve bottom padding so the last line can always be scrolled clear
+        // of the mark-controls card. clipToPadding=false keeps items visible
+        // while they scroll through the padded zone.
+        val dp = resources.displayMetrics.density
+        recyclerView.setPadding(0, 0, 0, (BOTTOM_PADDING_DP * dp).toInt())
+        recyclerView.clipToPadding = false
         addView(recyclerView, LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        // Auto-scroll: pause when the user drags up; resume when they
-        // reach the bottom again (natural "catch up" gesture).
+        // ── Edge fades ────────────────────────────────────────────────────
+        val fadeH = (FADE_HEIGHT_DP * dp).toInt()
+        topFadeView.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(0xCC000000.toInt(), 0x00000000)
+        )
+        topFadeView.visibility = View.INVISIBLE
+        addView(topFadeView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, fadeH, Gravity.TOP))
+
+        bottomFadeView.background = GradientDrawable(
+            GradientDrawable.Orientation.BOTTOM_TOP,
+            intArrayOf(0xCC000000.toInt(), 0x00000000)
+        )
+        bottomFadeView.visibility = View.INVISIBLE
+        addView(bottomFadeView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, fadeH, Gravity.BOTTOM))
+
+        // ── Scroll listener: auto-scroll pausing + fade visibility ────────
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
-                    autoScrollPaused = true
-                }
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) autoScrollPaused = true
             }
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                if (!rv.canScrollVertically(1)) {
-                    autoScrollPaused = false
-                }
+                val canScrollUp   = rv.canScrollVertically(-1)
+                val canScrollDown = rv.canScrollVertically(1)
+                topFadeView.visibility    = if (canScrollUp)   View.VISIBLE else View.INVISIBLE
+                bottomFadeView.visibility = if (canScrollDown) View.VISIBLE else View.INVISIBLE
+                if (!canScrollDown) autoScrollPaused = false
             }
         })
     }
@@ -415,7 +452,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 selectedMarkId   = selectedMarkId,
                 playheadMs       = playheadMs,
                 showPlayedSplit  = showPlayedSplit,
-                scaleToFill      = lineScaleToFill
+                scaleToFill      = lineScaleToFill,
+                showLineRail     = showLineRail
             )
         }
 
@@ -457,9 +495,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
     companion object {
         const val DEFAULT_SECONDS_PER_LINE = 300   // 5 minutes
         private const val LIVE_REDRAW_INTERVAL_MS = 250L   // ~4 fps
-
-        /** Height of each waveform line in the RecyclerView, in dp. */
-        private const val LINE_HEIGHT_DP = 80
+        private const val LINE_HEIGHT_DP    = 80
+        private const val BOTTOM_PADDING_DP = 56
+        private const val FADE_HEIGHT_DP    = 32
 
         private fun LINE_HEIGHT_DP_TO_PX(context: Context): Int =
             (LINE_HEIGHT_DP * context.resources.displayMetrics.density).toInt()

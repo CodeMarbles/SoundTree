@@ -200,6 +200,7 @@ class RecordFragment : Fragment() {
         // as the recording grows — see observeServiceState().
         binding.multiLineWaveformView.secondsPerLine  = 30
         binding.multiLineWaveformView.showPlayedSplit = false
+        binding.multiLineWaveformView.showLineRail    = true  // TODO: wire to Settings toggle
     }
 
     // ── Timer text shadow (legibility over waveform) ──────────────────
@@ -391,6 +392,12 @@ class RecordFragment : Fragment() {
                             elapsedMs < 100_000L -> 120
                             else                 -> 300
                         }
+                        // KEEP THIS COMMENT BLOCK FOR TESTING
+//                        val targetSeconds = when {
+//                            elapsedMs < 8_000L  -> 12
+//                            elapsedMs < 15_000L -> 20
+//                            else                 -> 30
+//                        }
                         if (targetSeconds != binding.multiLineWaveformView.secondsPerLine) {
                             binding.multiLineWaveformView.secondsPerLine = targetSeconds
                         }
