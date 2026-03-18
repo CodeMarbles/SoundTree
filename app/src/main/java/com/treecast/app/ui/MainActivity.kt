@@ -398,7 +398,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                updateBottomNavSelection(position)
+                val recording = viewModel.recordingState.value != RecordingService.State.IDLE
+                updateBottomNavSelection(position, recording)
                 if (position != PAGE_LIBRARY) {
                     viewModel.setTopTitle(pageTitles[position] ?: "")
                 } else {
@@ -453,23 +454,77 @@ class MainActivity : AppCompatActivity() {
         binding.navRecord.setOnClickListener   { navigateTo(PAGE_RECORD)   }
         binding.navLibrary.setOnClickListener  { navigateTo(PAGE_LIBRARY)  }
         binding.navListen.setOnClickListener   { navigateTo(PAGE_LISTEN)   }
-        updateBottomNavSelection(PAGE_RECORD)
+
+        val recording = viewModel.recordingState.value != RecordingService.State.IDLE
+        updateBottomNavSelection(viewModel.currentPage.value, recording)
+
+
+        // Re-draw nav whenever recording state changes so the Record
+        // pill border appears/disappears independently of tab selection.
+        lifecycleScope.launch {
+            viewModel.recordingState.collect { state ->
+                val recording = state != RecordingService.State.IDLE
+                updateBottomNavSelection(viewModel.currentPage.value, recording)
+            }
+        }
     }
 
-    private fun updateBottomNavSelection(position: Int) {
-        val accent = themeColor(R.attr.colorAccent)
-        val dim    = themeColor(R.attr.colorTextSecondary)
+    private fun updateBottomNavSelection(
+        position:  Int,
+        isRecording: Boolean = false
+    ) {
+        val onActive   = themeColor(R.attr.colorTextPrimary)
+        val dim        = themeColor(R.attr.colorTextSecondary)
+        val radius     = 20f * resources.displayMetrics.density
+        val strokePx   = (2.5f * resources.displayMetrics.density).toInt()
+        val recordRed  = themeColor(R.attr.colorRecordActive)
 
-        fun icon(iv: android.widget.ImageView, label: android.widget.TextView?, active: Boolean) {
-            iv.setColorFilter(if (active) accent else dim)
-            iv.alpha = if (active) 1f else 0.5f
-            label?.setTextColor(if (active) accent else dim)
+        val overshoot  = android.view.animation.OvershootInterpolator(1.8f)
+        val decelerate = android.view.animation.DecelerateInterpolator()
+
+        data class Tab(
+            val pill:   android.widget.LinearLayout,
+            val icon:   android.widget.ImageView,
+            val label:  android.widget.TextView,
+            val bgAttr: Int,
+            val page:   Int
+        )
+
+        listOf(
+            Tab(binding.navSettingsPill, binding.ivSettingsIcon, binding.tvSettingsLabel, R.attr.colorNavBgSettings, PAGE_SETTINGS),
+            Tab(binding.navRecordPill,   binding.ivRecordIcon,   binding.tvRecordLabel,   R.attr.colorNavBgRecord,   PAGE_RECORD),
+            Tab(binding.navLibraryPill,  binding.ivLibraryIcon,  binding.tvLibraryLabel,  R.attr.colorNavBgLibrary,  PAGE_LIBRARY),
+            Tab(binding.navListenPill,   binding.ivListenIcon,   binding.tvListenLabel,   R.attr.colorNavBgListen,   PAGE_LISTEN),
+        ).forEach { tab ->
+            val active      = position == tab.page
+            val showBorder  = isRecording && tab.page == PAGE_RECORD
+            val targetScale = if (active) 1.13f else 0.93f
+            val interp      = if (active) overshoot else decelerate
+
+            // ── Pill background ───────────────────────────────────────────
+            tab.pill.background = when {
+                active || showBorder -> android.graphics.drawable.GradientDrawable().apply {
+                    shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = radius
+                    setColor(if (active) themeColor(tab.bgAttr) else android.graphics.Color.TRANSPARENT)
+                    if (showBorder) setStroke(strokePx, recordRed)
+                }
+                else -> null
+            }
+
+            // ── Scale animation ───────────────────────────────────────────
+            tab.pill.animate()
+                .scaleX(targetScale)
+                .scaleY(targetScale)
+                .setDuration(200)
+                .setInterpolator(interp)
+                .start()
+
+            // ── Icon + label tint ─────────────────────────────────────────
+            tab.icon.setColorFilter(if (active) onActive else dim)
+            tab.icon.alpha  = if (active) 1f else 0.5f
+            tab.label.setTextColor(if (active) onActive else dim)
         }
-
-        icon(binding.ivSettingsIcon, binding.tvSettingsLabel, position == PAGE_SETTINGS)
-        icon(binding.ivRecordIcon,   binding.tvRecordLabel,   position == PAGE_RECORD)
-        icon(binding.ivLibraryIcon,  binding.tvLibraryLabel,  position == PAGE_LIBRARY)
-        icon(binding.ivListenIcon,   binding.tvListenLabel,   position == PAGE_LISTEN)
     }
 
     // ── Public navigation helpers ─────────────────────────────────────

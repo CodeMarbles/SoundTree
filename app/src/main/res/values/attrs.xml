@@ -24,6 +24,12 @@
     <attr name="colorTextPrimary"       format="color" />
     <attr name="colorTextSecondary"     format="color" />
 
+    <!-- Bottom nav per-tab pill backgrounds -->
+    <attr name="colorNavBgSettings" format="color" />
+    <attr name="colorNavBgRecord"   format="color" />
+    <attr name="colorNavBgLibrary"  format="color" />
+    <attr name="colorNavBgListen"   format="color" />
+
     <!-- Recording -->
     <attr name="colorRecordActive"      format="color" />
     <attr name="colorRecordPause"       format="color" />

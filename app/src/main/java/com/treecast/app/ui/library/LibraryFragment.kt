@@ -213,18 +213,46 @@ class LibraryFragment : Fragment() {
     }
 
     private fun updateSubNavSelection(position: Int) {
-        val accent   = requireContext().themeColor(R.attr.colorAccent)
-        val inactive = requireContext().themeColor(R.attr.colorTextSecondary)
+        val onActive       = requireContext().themeColor(R.attr.colorTextPrimary)
+        val inactive       = requireContext().themeColor(R.attr.colorTextSecondary)
+        val pillColor      = requireContext().themeColor(R.attr.colorSurfaceElevated)
+        val radius         = 10f * resources.displayMetrics.density  // tighter than bottom nav's 20dp
         val detailsEnabled = viewModel.libraryDetailsTopicId.value != null
 
+        val overshoot  = android.view.animation.OvershootInterpolator(1.6f)  // slightly softer than bottom nav
+        val decelerate = android.view.animation.DecelerateInterpolator()
+
         fun style(tv: TextView, active: Boolean, enabled: Boolean = true) {
-            tv.setTextColor(if (active) accent else inactive)
+            // ── Background pill ───────────────────────────────────────────
+            tv.background = if (active) {
+                android.graphics.drawable.GradientDrawable().apply {
+                    shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = radius
+                    setColor(pillColor)
+                }
+            } else null
+
+            // ── Text color + weight ───────────────────────────────────────
+            tv.setTextColor(if (active) onActive else inactive)
             tv.setTypeface(null, if (active) Typeface.BOLD else Typeface.NORMAL)
             tv.alpha = when {
                 active  -> 1f
                 enabled -> 0.7f
                 else    -> 0.35f
             }
+
+            // ── Scale bounce ──────────────────────────────────────────────
+            // Slightly more restrained than the bottom nav (1.08/0.95 vs 1.13/0.93)
+            // — text-only tabs don't need as much lift to read clearly.
+            val targetScale = if (active) 1.08f else 0.95f
+            val interp      = if (active) overshoot else decelerate
+
+            tv.animate()
+                .scaleX(targetScale)
+                .scaleY(targetScale)
+                .setDuration(200)
+                .setInterpolator(interp)
+                .start()
         }
 
         style(binding.subNavAll,        position == PAGE_ALL)

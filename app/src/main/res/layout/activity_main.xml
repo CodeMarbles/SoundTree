@@ -113,22 +113,30 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
-                    android:id="@+id/ivSettingsIcon"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_nav_settings"
-                    android:alpha="0.45"
-                    app:tint="?attr/colorTextPrimary" />
-
-                <TextView
-                    android:id="@+id/tvSettingsLabel"
+                <LinearLayout
+                    android:id="@+id/navSettingsPill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Settings"
-                    android:textSize="10sp"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:layout_marginTop="2dp" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivSettingsIcon"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:src="@drawable/ic_nav_settings" />
+
+                    <TextView
+                        android:id="@+id/tvSettingsLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Settings"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -144,22 +152,30 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
-                    android:id="@+id/ivRecordIcon"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_nav_record"
-                    android:alpha="0.45"
-                    app:tint="?attr/colorTextPrimary" />
-
-                <TextView
-                    android:id="@+id/tvRecordLabel"
+                <LinearLayout
+                    android:id="@+id/navRecordPill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Record"
-                    android:textSize="10sp"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:layout_marginTop="2dp" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivRecordIcon"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:src="@drawable/ic_nav_record" />
+
+                    <TextView
+                        android:id="@+id/tvRecordLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Record"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -175,22 +191,30 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
-                    android:id="@+id/ivLibraryIcon"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_nav_library"
-                    android:alpha="0.45"
-                    app:tint="?attr/colorTextPrimary" />
-
-                <TextView
-                    android:id="@+id/tvLibraryLabel"
+                <LinearLayout
+                    android:id="@+id/navLibraryPill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Library"
-                    android:textSize="10sp"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:layout_marginTop="2dp" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivLibraryIcon"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:src="@drawable/ic_nav_library" />
+
+                    <TextView
+                        android:id="@+id/tvLibraryLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Library"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -206,22 +230,30 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <ImageView
-                    android:id="@+id/ivListenIcon"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_nav_listen"
-                    android:alpha="0.45"
-                    app:tint="?attr/colorTextPrimary" />
-
-                <TextView
-                    android:id="@+id/tvListenLabel"
+                <LinearLayout
+                    android:id="@+id/navListenPill"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Listen"
-                    android:textSize="10sp"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:layout_marginTop="2dp" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivListenIcon"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:src="@drawable/ic_nav_listen" />
+
+                    <TextView
+                        android:id="@+id/tvListenLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Listen"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 

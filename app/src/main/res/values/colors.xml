@@ -26,6 +26,7 @@
     <color name="red_700">#D32F2F</color>
     <color name="red_800">#CC2222</color>
     <color name="red_920">#1E1214</color>   <!-- dark: warm red-tinged dark, between grey_900 and red_950 -->
+    <color name="red_930">#211010</color>
     <color name="red_950">#1A0808</color>
 
     <!-- Teal -->
@@ -41,16 +42,17 @@
     <color name="blue_pill_100">#C4D6FF</color>
     <color name="blue_820">#1E2844</color>
     <color name="blue_900">#1A1E2E</color>
+    <color name="blue_910">#161E38</color>
+
+    <color name="navy_900">#1A1A2E</color>
+
     <color name="slate_50">#DDE6FF</color>
+    <color name="slate_500">#6B6B8A</color>
 
     <!-- Light surface scale (for light theme) -->
     <color name="grey_50">#F5F5FA</color>
     <color name="grey_100">#EDEDF4</color>
     <color name="grey_200">#DDDDE8</color>
-
-    <!-- Dark text (for light theme) -->
-    <color name="navy_900">#1A1A2E</color>
-    <color name="slate_500">#6B6B8A</color>
 
     <!-- Warm light tray (mirrors brown_950 for light theme) -->
     <color name="cream_100">#F0EDE8</color>
@@ -59,6 +61,7 @@
     <color name="pink_50">#F8E8EF</color>
 
     <!-- Brown (warm dark) -->
+    <color name="brown_100">#E4D5C5</color>
     <color name="brown_950">#231A14</color>
 
     <!-- Yellows / ambers -->
