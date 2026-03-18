@@ -76,9 +76,11 @@
 
     <!-- Status greens / oranges -->
     <color name="orange_600">#FFA726</color>
+    <color name="green_100">#C8E6C9</color>   <!-- light: soft mint pill background -->
     <color name="green_500">#4CAF50</color>
     <color name="green_800">#2E7D32</color>
     <color name="green_900">#1E7D45</color>
+    <color name="green_950">#0D2211</color>   <!-- dark:  deep forest pill background -->
 
     <!-- Absolute -->
     <color name="white">#FFFFFFFF</color>

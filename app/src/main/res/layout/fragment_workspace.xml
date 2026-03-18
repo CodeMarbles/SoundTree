@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  fragment_workspace.xml
+  Workspace tab — currently a single RainbowView filling a portrait-proportioned
+  card centred on screen. The rainbow arc is drawn in the "face position" of the
+  portrait (upper ~40 % of the frame).
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground">
+
+    <!-- Portrait-proportioned card (3:4 ratio, width = 80 % of screen) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/portraitCard"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:elevation="6dp"
+        app:cardCornerRadius="16dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <!-- RainbowView fills the card; the arc is drawn in the upper portion -->
+        <com.treecast.app.ui.workspace.RainbowView
+            android:id="@+id/rainbowView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.cardview.widget.CardView>
+
+</FrameLayout>

@@ -29,6 +29,7 @@
     <attr name="colorNavBgRecord"   format="color" />
     <attr name="colorNavBgLibrary"  format="color" />
     <attr name="colorNavBgListen"   format="color" />
+    <attr name="colorNavBgWorkspace" format="color" />
 
     <!-- Recording -->
     <attr name="colorRecordActive"      format="color" />

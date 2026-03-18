@@ -43,13 +43,14 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupHeader()
-        setupProcessingSection()
+        setupLayoutSection()
         setupTheme()
+        setupRecordingWidgetSection()
         setupPlaybackSettings()
         setupStorageSection()
+        setupProcessingSection()
+        setupDevOptionsSection()
         loadStats()
-        setupLayoutSection()
-        setupRecordingWidgetSection()
     }
 
     override fun onDestroyView() {
@@ -192,6 +193,13 @@ class SettingsFragment : Fragment() {
         row.addView(tvTime)
         row.addView(tvStatus)
         container.addView(row)
+    }
+
+    private fun setupDevOptionsSection() {
+        binding.switchFutureMode.isChecked = viewModel.futureMode.value
+        binding.switchFutureMode.setOnCheckedChangeListener { _, checked ->
+            viewModel.setFutureMode(checked)
+        }
     }
 
     private fun setupLayoutSection() {

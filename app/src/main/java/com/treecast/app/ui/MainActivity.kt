@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         const val PAGE_RECORD   = 1
         const val PAGE_LIBRARY  = 2
         const val PAGE_LISTEN   = 3
+        const val PAGE_WORKSPACE = 4
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -63,7 +64,8 @@ class MainActivity : AppCompatActivity() {
         PAGE_SETTINGS to "Settings",
         PAGE_RECORD   to "Record",
         PAGE_LIBRARY  to "Library",
-        PAGE_LISTEN   to "Listen"
+        PAGE_LISTEN   to "Listen",
+        PAGE_WORKSPACE to "Workspace"
     )
 
     private var storageEjectReceiver: StorageEjectReceiver? = null
@@ -391,9 +393,10 @@ class MainActivity : AppCompatActivity() {
             addFragment(recordFragment,   "Record")
             addFragment(libraryFragment,    "Library")
             addFragment(ListenFragment(),   "Listen")
+            addFragment(ListenFragment(),   "Workspace")
         }
         binding.viewPager.adapter = adapter
-        binding.viewPager.offscreenPageLimit = 4
+        binding.viewPager.offscreenPageLimit = 5
         binding.viewPager.setCurrentItem(PAGE_RECORD, false)
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -454,10 +457,10 @@ class MainActivity : AppCompatActivity() {
         binding.navRecord.setOnClickListener   { navigateTo(PAGE_RECORD)   }
         binding.navLibrary.setOnClickListener  { navigateTo(PAGE_LIBRARY)  }
         binding.navListen.setOnClickListener   { navigateTo(PAGE_LISTEN)   }
+        binding.navWorkspace.setOnClickListener { navigateTo(PAGE_WORKSPACE) }
 
         val recording = viewModel.recordingState.value != RecordingService.State.IDLE
         updateBottomNavSelection(viewModel.currentPage.value, recording)
-
 
         // Re-draw nav whenever recording state changes so the Record
         // pill border appears/disappears independently of tab selection.
@@ -465,6 +468,12 @@ class MainActivity : AppCompatActivity() {
             viewModel.recordingState.collect { state ->
                 val recording = state != RecordingService.State.IDLE
                 updateBottomNavSelection(viewModel.currentPage.value, recording)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.futureMode.collect { enabled ->
+                binding.navWorkspace.visibility = if (enabled) View.VISIBLE else View.GONE
             }
         }
     }
@@ -495,6 +504,7 @@ class MainActivity : AppCompatActivity() {
             Tab(binding.navRecordPill,   binding.ivRecordIcon,   binding.tvRecordLabel,   R.attr.colorNavBgRecord,   PAGE_RECORD),
             Tab(binding.navLibraryPill,  binding.ivLibraryIcon,  binding.tvLibraryLabel,  R.attr.colorNavBgLibrary,  PAGE_LIBRARY),
             Tab(binding.navListenPill,   binding.ivListenIcon,   binding.tvListenLabel,   R.attr.colorNavBgListen,   PAGE_LISTEN),
+            Tab(binding.navWorkspacePill, binding.ivWorkspaceIcon, binding.tvWorkspaceLabel, R.attr.colorNavBgWorkspace, PAGE_WORKSPACE),
         ).forEach { tab ->
             val active      = position == tab.page
             val showBorder  = isRecording && tab.page == PAGE_RECORD

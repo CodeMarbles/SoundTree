@@ -97,6 +97,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_HIDE_PLAYER_ON_LISTEN_TAB   = "hide_player_on_listen_tab"
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
+        private const val PREF_FUTURE_MODE = "future_mode"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -303,7 +304,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun requestToggleRecordingPause() {
         _toggleRecordingPauseEvent.tryEmit(Unit)
     }
-
 
     fun seekTo(posMs: Long) {
         mediaController?.seekTo(posMs)
@@ -746,6 +746,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setPlayerPillMinimized(minimized: Boolean)  { _playerPillMinimized.value  = minimized }
     fun setRecorderPillMinimized(minimized: Boolean) { _recorderPillMinimized.value = minimized }
 
+    // ── Future Mode (Dev Options) ─────────────────────────────────────
+    private val _futureMode = MutableStateFlow(
+        prefs.getBoolean(PREF_FUTURE_MODE, false)
+    )
+    val futureMode: StateFlow<Boolean> = _futureMode
+
+    fun setFutureMode(enabled: Boolean) {
+        _futureMode.value = enabled
+        prefs.edit().putBoolean(PREF_FUTURE_MODE, enabled).apply()
+    }
 
     // ── Current page (tab index) — driven by MainActivity on every tab change ─
 
