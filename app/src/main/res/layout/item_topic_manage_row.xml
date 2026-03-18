@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Single topic row for the Topics Management tab.
-  Styled to match TopicPickerView: indent → icon → name → count → chevron.
-  No color bar. No action buttons. All management via long-press PopupMenu.
+  Styled to match TopicPickerView: indent → icon → name → count → overflow → chevron.
+  No color bar. No action buttons. All management via long-press or ⋮ PopupMenu.
   Depth-based indentation is applied programmatically (20dp per level).
 -->
 <LinearLayout
@@ -46,7 +46,22 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="2dp" />
 
-    <!-- Collapse/expand chevron — only shown when topic has child topics -->
+    <!-- Overflow ⋮ button — tappable alternative to long-press.
+         Hidden for the static Unsorted row which has no management actions.
+         contentDescription is set programmatically with the topic name. -->
+    <ImageView
+        android:id="@+id/ivOverflow"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@drawable/ic_overflow"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="?attr/colorTextSecondary" />
+
+    <!-- Collapse/expand chevron — only shown when topic has child topics.
+         contentDescription is set programmatically based on collapse state. -->
     <ImageView
         android:id="@+id/ivChevron"
         android:layout_width="36dp"

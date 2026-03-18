@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
-import androidx.recyclerview.widget.ConcatAdapter
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -40,10 +40,11 @@ class UnsortedRowAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind()
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        private val tvIcon:    TextView  = v.findViewById(R.id.tvIcon)
-        private val tvName:    TextView  = v.findViewById(R.id.tvName)
-        private val tvCount:   TextView  = v.findViewById(R.id.tvCount)
-        private val ivChevron: ImageView = v.findViewById(R.id.ivChevron)
+        private val tvIcon:     TextView  = v.findViewById(R.id.tvIcon)
+        private val tvName:     TextView  = v.findViewById(R.id.tvName)
+        private val tvCount:    TextView  = v.findViewById(R.id.tvCount)
+        private val ivOverflow: ImageView = v.findViewById(R.id.ivOverflow)
+        private val ivChevron:  ImageView = v.findViewById(R.id.ivChevron)
 
         fun bind() {
             tvIcon.text = "📥"
@@ -59,7 +60,9 @@ class UnsortedRowAdapter(
                 tvCount.visibility = View.GONE
             }
 
-            ivChevron.visibility = View.INVISIBLE
+            // Unsorted row is purely navigational — no management actions.
+            ivOverflow.visibility = View.GONE
+            ivChevron.visibility  = View.INVISIBLE
             itemView.setOnClickListener { onUnsortedClick() }
             itemView.setOnLongClickListener(null)
         }
@@ -87,12 +90,6 @@ class TopicsManageAdapter(
 
         private const val DEPTH_INDENT_DP = 20f
         private const val BASE_PADDING_DP = 8f
-
-        private const val MENU_NEW_SUBTOPIC = 1
-        private const val MENU_MOVE         = 2
-        private const val MENU_RENAME       = 3
-        private const val MENU_ICON         = 4
-        private const val MENU_DELETE       = 5
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -102,40 +99,49 @@ class TopicsManageAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        private val tvIcon:    TextView  = v.findViewById(R.id.tvIcon)
-        private val tvName:    TextView  = v.findViewById(R.id.tvName)
-        private val tvCount:   TextView  = v.findViewById(R.id.tvCount)
-        private val ivChevron: ImageView = v.findViewById(R.id.ivChevron)
+        private val tvIcon:     TextView  = v.findViewById(R.id.tvIcon)
+        private val tvName:     TextView  = v.findViewById(R.id.tvName)
+        private val tvCount:    TextView  = v.findViewById(R.id.tvCount)
+        private val ivOverflow: ImageView = v.findViewById(R.id.ivOverflow)
+        private val ivChevron:  ImageView = v.findViewById(R.id.ivChevron)
 
         fun bind(item: TreeItem.Node) {
             val topic   = item.treeNode.topic
-            val density = itemView.resources.displayMetrics.density
+            val isEmpty = item.treeNode.recordings.isEmpty() &&
+                    item.treeNode.children.isEmpty()
 
-            // ── Indentation ───────────────────────────────────────────
-            val indentPx = ((BASE_PADDING_DP + item.depth * DEPTH_INDENT_DP) * density).toInt()
+            // ── Indent ────────────────────────────────────────────────
+            val density   = itemView.resources.displayMetrics.density
+            val indentPx  = ((item.depth * DEPTH_INDENT_DP + BASE_PADDING_DP) * density).toInt()
             itemView.setPaddingRelative(indentPx, 0, itemView.paddingEnd, 0)
 
-            // ── Icon + name ───────────────────────────────────────────
+            // ── Content ───────────────────────────────────────────────
             tvIcon.text = topic.icon
             tvName.text = topic.name
             tvName.setTextColor(itemView.context.themeColor(R.attr.colorTextPrimary))
 
-            // ── Recording count ───────────────────────────────────────
-            val count = item.treeNode.recordings.size
-            if (count > 0) {
+            val totalCount = item.treeNode.recordings.size
+            if (totalCount > 0) {
                 tvCount.visibility = View.VISIBLE
                 tvCount.text = itemView.context.resources.getQuantityString(
-                    R.plurals.recording_count, count, count
+                    R.plurals.recording_count, totalCount, totalCount
                 )
             } else {
                 tvCount.visibility = View.GONE
             }
 
-            // ── Chevron: only when topic has children ─────────────────
-            val hasChildTopics = item.treeNode.children.isNotEmpty()
-            if (hasChildTopics) {
+            // ── Overflow ⋮ ────────────────────────────────────────────
+            ivOverflow.visibility = View.VISIBLE
+            ivOverflow.contentDescription = "${topic.name} options"
+            ivOverflow.setOnClickListener { showOptionsMenu(topic.id, topic.name, isEmpty) }
+
+            // ── Chevron ───────────────────────────────────────────────
+            if (item.treeNode.children.isNotEmpty()) {
                 ivChevron.visibility = View.VISIBLE
-                ivChevron.rotation = if (item.isCollapsed) -90f else 0f
+                ivChevron.rotation   = if (item.isCollapsed) -90f else 0f
+                ivChevron.contentDescription =
+                    if (item.isCollapsed) "Expand ${topic.name}"
+                    else                  "Collapse ${topic.name}"
                 ivChevron.setOnClickListener { onCollapseToggle(topic.id, item.isCollapsed) }
             } else {
                 ivChevron.visibility = View.INVISIBLE
@@ -145,31 +151,62 @@ class TopicsManageAdapter(
             // ── Single tap → Details ──────────────────────────────────
             itemView.setOnClickListener { onTopicClick(topic.id) }
 
-            // ── Long press → PopupMenu ────────────────────────────────
-            itemView.setOnLongClickListener { anchor ->
-                val isEmpty = item.treeNode.recordings.isEmpty() &&
-                        item.treeNode.children.isEmpty()
-
-                PopupMenu(anchor.context, anchor).apply {
-                    menu.add(0, MENU_NEW_SUBTOPIC, 0, "New Subtopic")
-                    menu.add(0, MENU_MOVE,         1, "Move")
-                    menu.add(0, MENU_RENAME,       2, "Rename")
-                    menu.add(0, MENU_ICON,         3, "Icon")
-                    if (isEmpty) menu.add(0, MENU_DELETE, 4, "Delete")
-
-                    setOnMenuItemClickListener { menuItem ->
-                        when (menuItem.itemId) {
-                            MENU_NEW_SUBTOPIC -> { onNewSubtopic(topic.id); true }
-                            MENU_MOVE         -> { onMoveClick(topic.id); true }
-                            MENU_RENAME       -> { onRenameClick(topic.id, topic.name); true }
-                            MENU_ICON         -> { onIconClick(topic.id); true }
-                            MENU_DELETE       -> { onDeleteClick(topic.id); true }
-                            else              -> false
-                        }
-                    }
-                    show()
-                }
+            // ── Long press → same menu as overflow ────────────────────
+            itemView.setOnLongClickListener {
+                showOptionsMenu(topic.id, topic.name, isEmpty)
                 true
+            }
+
+            // ── Accessibility actions ─────────────────────────────────
+            setupAccessibilityActions(topic.id, topic.name, isEmpty)
+        }
+
+        // ── Popup menu ────────────────────────────────────────────────
+
+        private fun showOptionsMenu(topicId: Long, topicName: String, isEmpty: Boolean) {
+            PopupMenu(ivOverflow.context, ivOverflow).apply {
+                menuInflater.inflate(R.menu.menu_topic_options, menu)
+                menu.findItem(R.id.action_delete)?.isVisible = isEmpty
+                setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        R.id.action_new_subtopic -> { onNewSubtopic(topicId); true }
+                        R.id.action_move         -> { onMoveClick(topicId); true }
+                        R.id.action_rename       -> { onRenameClick(topicId, topicName); true }
+                        R.id.action_icon         -> { onIconClick(topicId); true }
+                        R.id.action_delete       -> { onDeleteClick(topicId); true }
+                        else                     -> false
+                    }
+                }
+                show()
+            }
+        }
+
+        // ── Accessibility ─────────────────────────────────────────────
+
+        private fun setupAccessibilityActions(
+            topicId: Long,
+            topicName: String,
+            isEmpty: Boolean
+        ) {
+            ViewCompat.addAccessibilityAction(itemView, "New subtopic") { _, _ ->
+                onNewSubtopic(topicId); true
+            }
+            ViewCompat.addAccessibilityAction(itemView, "Move topic") { _, _ ->
+                onMoveClick(topicId); true
+            }
+            ViewCompat.addAccessibilityAction(itemView, "Rename topic") { _, _ ->
+                onRenameClick(topicId, topicName); true
+            }
+            ViewCompat.addAccessibilityAction(itemView, "Change icon") { _, _ ->
+                onIconClick(topicId); true
+            }
+            // Delete is only available for empty topics — skip registering the
+            // action entirely when the topic has content, so it never appears
+            // in TalkBack's actions menu for non-empty rows.
+            if (isEmpty) {
+                ViewCompat.addAccessibilityAction(itemView, "Delete topic") { _, _ ->
+                    onDeleteClick(topicId); true
+                }
             }
         }
     }
