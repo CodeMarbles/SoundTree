@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Single row in the topic hierarchy map on the Details page.
-  Shows: [connector "└"][icon][name (weight=1)][chevron?]
+  Shows: [connector "└"][icon][name (weight=1)][overflow ⋮][chevron?]
 
   Indent is set programmatically based on depth.
-  Chevron is shown only for descendant rows that have child topics.
+  Overflow is hidden for rows that have no management actions (none currently).
+  Chevron is shown only for rows that have child topics.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -15,7 +16,7 @@
     android:gravity="center_vertical"
     android:foreground="?attr/selectableItemBackground">
 
-    <!-- Tree connector (hidden for root/depth-0 items) -->
+    <!-- Tree connector — decorative only, must not be announced by TalkBack -->
     <TextView
         android:id="@+id/tvConnector"
         android:layout_width="wrap_content"
@@ -24,7 +25,8 @@
         android:textColor="?attr/colorTextSecondary"
         android:textSize="14sp"
         android:fontFamily="monospace"
-        android:layout_marginEnd="4dp" />
+        android:layout_marginEnd="4dp"
+        android:importantForAccessibility="no" />
 
     <!-- Topic icon -->
     <TextView
@@ -46,7 +48,22 @@
         android:ellipsize="end"
         android:maxLines="1" />
 
-    <!-- Chevron — only visible on descendant rows that have child topics -->
+    <!-- Overflow ⋮ — shown for rows with management actions, hidden otherwise.
+         contentDescription is set programmatically with the topic name. -->
+    <ImageView
+        android:id="@+id/ivHierarchyOverflow"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@drawable/ic_overflow"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:tint="?attr/colorTextSecondary" />
+
+    <!-- Chevron — only visible on rows that have child topics.
+         contentDescription is set programmatically based on collapse state. -->
     <ImageView
         android:id="@+id/ivHierarchyChevron"
         android:layout_width="36dp"

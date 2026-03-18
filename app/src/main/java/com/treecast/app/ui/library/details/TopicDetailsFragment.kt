@@ -1,12 +1,17 @@
 package com.treecast.app.ui.library.details
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.PopupMenu
 import androidx.core.content.getSystemService
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -22,6 +27,7 @@ import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
+import com.treecast.app.ui.topics.NewTopicDialog
 import com.treecast.app.ui.topics.RecordingsAdapter
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
@@ -53,6 +59,14 @@ class TopicDetailsFragment : Fragment() {
     /** Local collapse state for the hierarchy widget — independent of the main tree. */
     private val hierarchyCollapsedIds = mutableSetOf<Long>()
     private var hierarchyInitializedForTopicId: Long? = null
+
+    /**
+     * ID of the topic whose Move action is in flight from a hierarchy row.
+     * Uses a separate pending ID and request key from [REQUEST_REPARENT]
+     * (btnMoveTopic) so the two pickers never collide.
+     */
+    private var pendingHierarchyReparentTopicId: Long = -1L
+
     private var previousTopicId: Long? = null
 
     /**
@@ -65,6 +79,7 @@ class TopicDetailsFragment : Fragment() {
     companion object {
         private const val REQUEST_REPARENT = "TopicDetails_reparent"
         private const val MOVE_RECORDING_REQUEST = "RecordingMove_Details"
+        private const val REQUEST_HIERARCHY_REPARENT = "TopicDetails_hierarchy_reparent"
     }
 
     override fun onCreateView(
@@ -83,6 +98,7 @@ class TopicDetailsFragment : Fragment() {
         setupSortButton()
         setupEditButton()
         setupMoveButton()
+        setupHierarchyReparentResultListener()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -173,7 +189,10 @@ class TopicDetailsFragment : Fragment() {
             addHierarchyRow(
                 icon = topic.icon, name = topic.name,
                 depth = index, topicId = topic.id,
-                isCurrent = false, hasChildren = false
+                isCurrent = false, hasChildren = false,
+                onOptionsRequested = { anchor ->
+                    showHierarchyTopicOptionsMenu(topic.id, topic.name, anchor)
+                }
             )
         }
 
@@ -184,13 +203,16 @@ class TopicDetailsFragment : Fragment() {
 
         addHierarchyRow(
             icon = currentNode.icon, name = currentNode.name,
-            depth = currentDepth, topicId = null,
+            depth = currentDepth, topicId = topicId,
             isCurrent = true, hasChildren = directChildren.isNotEmpty(),
             isCollapsed = topicId in hierarchyCollapsedIds,
             onChevronClick = {
                 if (topicId in hierarchyCollapsedIds) hierarchyCollapsedIds.remove(topicId)
                 else hierarchyCollapsedIds.add(topicId)
                 buildHierarchyMap(topicId, viewModel.allTopics.value)
+            },
+            onOptionsRequested = { anchor ->
+                showHierarchyTopicOptionsMenu(topicId, currentNode.name, anchor)
             }
         )
 
@@ -249,6 +271,9 @@ class TopicDetailsFragment : Fragment() {
                     else             hierarchyCollapsedIds.add(child.id)
                     val topicId = viewModel.libraryDetailsTopicId.value ?: return@addHierarchyRow
                     buildHierarchyMap(topicId, viewModel.allTopics.value)
+                },
+                onOptionsRequested = { anchor ->
+                    showHierarchyTopicOptionsMenu(child.id, child.name, anchor)
                 }
             )
 
@@ -266,9 +291,10 @@ class TopicDetailsFragment : Fragment() {
         isCurrent: Boolean,
         hasChildren: Boolean,
         isCollapsed: Boolean = false,
-        onChevronClick: (() -> Unit)? = null
+        onChevronClick: (() -> Unit)? = null,
+        onOptionsRequested: ((anchor: View) -> Unit)? = null
     ) {
-        val density = resources.displayMetrics.density
+        val density  = resources.displayMetrics.density
         val indentPx = (depth * 16 * density).toInt()
 
         val row = layoutInflater.inflate(
@@ -277,7 +303,8 @@ class TopicDetailsFragment : Fragment() {
         val tvConnector = row.findViewById<android.widget.TextView>(R.id.tvConnector)
         val tvIcon      = row.findViewById<android.widget.TextView>(R.id.tvHierarchyIcon)
         val tvName      = row.findViewById<android.widget.TextView>(R.id.tvHierarchyName)
-        val ivChevron   = row.findViewById<android.widget.ImageView>(R.id.ivHierarchyChevron)
+        val ivOverflow  = row.findViewById<ImageView>(R.id.ivHierarchyOverflow)
+        val ivChevron   = row.findViewById<ImageView>(R.id.ivHierarchyChevron)
 
         row.setPaddingRelative(indentPx, 0, 0, 0)
 
@@ -285,6 +312,7 @@ class TopicDetailsFragment : Fragment() {
         tvIcon.text = icon
         tvName.text = name
 
+        // ── Row style and navigation click ────────────────────────────────
         when {
             isCurrent -> {
                 tvName.setTypeface(null, android.graphics.Typeface.BOLD)
@@ -301,17 +329,56 @@ class TopicDetailsFragment : Fragment() {
                 }
             }
             else -> {
-                // Sentinel row (e.g. "🌳 Root") — not clickable
                 tvName.setTypeface(null, android.graphics.Typeface.NORMAL)
                 tvName.setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
                 row.isClickable = false
             }
         }
 
-        // Chevron for expandable descendant rows
+        // ── Overflow ⋮ and long-press ─────────────────────────────────────
+        if (onOptionsRequested != null) {
+            ivOverflow.visibility = View.VISIBLE
+            ivOverflow.contentDescription = "$name options"
+            ivOverflow.setOnClickListener { onOptionsRequested(ivOverflow) }
+            row.setOnLongClickListener {
+                onOptionsRequested(ivOverflow)
+                true
+            }
+
+            // Accessibility actions — wired directly to action methods so each
+            // action is independently discoverable without opening the visual menu.
+            if (topicId != null) {
+                val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
+                        viewModel.allRecordings.value.none { it.topicId == topicId }
+
+                ViewCompat.addAccessibilityAction(row, "New subtopic") { _, _ ->
+                    showHierarchyNewSubtopicDialog(topicId); true
+                }
+                ViewCompat.addAccessibilityAction(row, "Move topic") { _, _ ->
+                    showHierarchyMovePicker(topicId); true
+                }
+                ViewCompat.addAccessibilityAction(row, "Rename topic") { _, _ ->
+                    showHierarchyRenameDialog(topicId, name); true
+                }
+                ViewCompat.addAccessibilityAction(row, "Change icon") { _, _ ->
+                    showHierarchyIconPicker(topicId); true
+                }
+                if (isEmpty) {
+                    ViewCompat.addAccessibilityAction(row, "Delete topic") { _, _ ->
+                        showHierarchyDeleteDialog(topicId, name); true
+                    }
+                }
+            }
+        } else {
+            ivOverflow.visibility = View.GONE
+        }
+
+        // ── Chevron ───────────────────────────────────────────────────────
         if (hasChildren && onChevronClick != null) {
             ivChevron.visibility = View.VISIBLE
             ivChevron.rotation = if (isCollapsed) -90f else 0f
+            ivChevron.contentDescription =
+                if (isCollapsed) "Expand $name" else "Collapse $name"
             ivChevron.setOnClickListener { onChevronClick() }
         } else {
             ivChevron.visibility = View.GONE
@@ -421,6 +488,103 @@ class TopicDetailsFragment : Fragment() {
                 mode            = TopicPickerBottomSheet.Mode.REPARENT
             ).show(childFragmentManager, "reparent_picker_details")
         }
+    }
+
+    // ── Hierarchy topic actions ────────────────────────────────────────────
+
+    /**
+     * Listens for the result of TopicPickerBottomSheet launched from a hierarchy
+     * row's Move action. Uses [REQUEST_HIERARCHY_REPARENT] so it never collides
+     * with the btnMoveTopic result listener which uses [REQUEST_REPARENT].
+     */
+    private fun setupHierarchyReparentResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            REQUEST_HIERARCHY_REPARENT, viewLifecycleOwner
+        ) { _, bundle ->
+            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val topicId = pendingHierarchyReparentTopicId.takeIf { it != -1L }
+                ?: return@setFragmentResultListener
+            viewModel.reparentTopic(topicId, newParentId)
+            pendingHierarchyReparentTopicId = -1L
+        }
+    }
+
+    private fun showHierarchyTopicOptionsMenu(topicId: Long, topicName: String, anchor: View) {
+        val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
+                viewModel.allRecordings.value.none { it.topicId == topicId }
+
+        PopupMenu(anchor.context, anchor).apply {
+            menuInflater.inflate(R.menu.menu_topic_options, menu)
+            menu.findItem(R.id.action_delete)?.isVisible = isEmpty
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_new_subtopic -> { showHierarchyNewSubtopicDialog(topicId); true }
+                    R.id.action_move         -> { showHierarchyMovePicker(topicId); true }
+                    R.id.action_rename       -> { showHierarchyRenameDialog(topicId, topicName); true }
+                    R.id.action_icon         -> { showHierarchyIconPicker(topicId); true }
+                    R.id.action_delete       -> { showHierarchyDeleteDialog(topicId, topicName); true }
+                    else                     -> false
+                }
+            }
+            show()
+        }
+    }
+
+    private fun showHierarchyNewSubtopicDialog(parentId: Long) {
+        NewTopicDialog(parentId = parentId) { name, icon, color ->
+            viewModel.createTopic(name, parentId, icon, color)
+        }.show(childFragmentManager, "hierarchy_new_subtopic")
+    }
+
+    private fun showHierarchyMovePicker(topicId: Long) {
+        pendingHierarchyReparentTopicId = topicId
+        val excluded = viewModel.getTopicWithDescendantIds(topicId)
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = viewModel.allTopics.value.find { it.id == topicId }?.parentId,
+            requestKey      = REQUEST_HIERARCHY_REPARENT,
+            excludedIds     = excluded,
+            mode            = TopicPickerBottomSheet.Mode.REPARENT
+        ).show(childFragmentManager, "hierarchy_reparent_picker")
+    }
+
+    private fun showHierarchyRenameDialog(topicId: Long, currentName: String) {
+        val ctx = requireContext()
+        val input = EditText(ctx).apply {
+            setText(currentName)
+            selectAll()
+            setPadding(48, 24, 48, 8)
+        }
+        AlertDialog.Builder(ctx)
+            .setTitle("Rename topic")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = input.text.toString().trim()
+                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
+                if (newName.isNotEmpty() && newName != topic.name) {
+                    viewModel.updateTopic(topic.copy(name = newName))
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showHierarchyIconPicker(topicId: Long) {
+        EmojiPickerBottomSheet { emoji ->
+            val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@EmojiPickerBottomSheet
+            viewModel.updateTopic(topic.copy(icon = emoji))
+        }.show(childFragmentManager, "hierarchy_icon_picker")
+    }
+
+    private fun showHierarchyDeleteDialog(topicId: Long, topicName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete \"$topicName\"?")
+            .setMessage("This topic will be permanently deleted.")
+            .setPositiveButton("Delete") { _, _ ->
+                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
+                viewModel.deleteTopic(topic)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── Recordings list ────────────────────────────────────────────────

@@ -129,6 +129,7 @@ class RecordingsAdapter(
 
             if (isOrphan) {
                 btnInlinePlay.setImageResource(R.drawable.ic_storage_offline)
+                btnInlinePlay.contentDescription = "Storage offline"
                 btnInlinePlay.imageTintList = ColorStateList.valueOf(
                     itemView.context.themeColor(R.attr.colorTextSecondary))
                 itemView.alpha = 0.5f
@@ -144,6 +145,7 @@ class RecordingsAdapter(
                 val isThisPlaying = rec.id == nowPlayingId && isPlaying
                 btnInlinePlay.setImageResource(
                     if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+                btnInlinePlay.contentDescription = if (isThisPlaying) "Pause" else "Play"
                 btnInlinePlay.imageTintList = ColorStateList.valueOf(
                     itemView.context.themeColor(R.attr.colorAccent))
                 itemView.alpha = 1f
