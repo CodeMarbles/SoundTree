@@ -125,6 +125,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
     /** Wall-clock ms of the last bitmap redraw. Used to throttle [pushAmplitude]. */
     private var lastRedrawMs: Long = 0L
 
+    /** True when the user has manually scrolled up; suppresses live auto-scroll. */
+    private var autoScrollPaused = false
+
     // ── Views ─────────────────────────────────────────────────────────────────
 
     private val recyclerView  = RecyclerView(context)
@@ -139,6 +142,21 @@ class MultiLineWaveformView @JvmOverloads constructor(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
+
+        // Auto-scroll: pause when the user drags up; resume when they
+        // reach the bottom again (natural "catch up" gesture).
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    autoScrollPaused = true
+                }
+            }
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                if (!rv.canScrollVertically(1)) {
+                    autoScrollPaused = false
+                }
+            }
+        })
     }
 
     // ── Public data API ───────────────────────────────────────────────────────
@@ -239,6 +257,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         liveAmplitudes.clear()
         totalDurationMs = 0L
         lastRedrawMs    = 0L
+        autoScrollPaused = false
         amplitudes      = null
         markStore.clear()
         selectedMarkId  = null
@@ -269,6 +288,12 @@ class MultiLineWaveformView @JvmOverloads constructor(
         val needed = buildLineItems(totalDurationMs, secondsPerLine)
         if (needed.size > adapter.itemCount) {
             adapter.submitItems(needed)
+            // Auto-scroll to the new last line, unless the user has scrolled up
+            // to review earlier content. Uses smooth scroll so the transition
+            // isn't a jarring jump — at most one line height per expansion.
+            if (!autoScrollPaused) {
+                recyclerView.smoothScrollToPosition(adapter.itemCount - 1)
+            }
         }
     }
 

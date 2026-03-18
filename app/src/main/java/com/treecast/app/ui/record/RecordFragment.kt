@@ -196,10 +196,10 @@ class RecordFragment : Fragment() {
 
     // ── Multi-line waveform ───────────────────────────────────────────
     private fun setupMultiLineWaveform() {
-        binding.multiLineWaveformView.secondsPerLine  = 300   // 5-minute lines
-        binding.multiLineWaveformView.showPlayedSplit = false // no playhead on Record tab
-        // onTimeSelected intentionally not wired — tapping the waveform during
-        // recording has no defined action yet. Wire here when mark-seek is added.
+        // Start at 30s/line. The amplitude collector steps this up dynamically
+        // as the recording grows — see observeServiceState().
+        binding.multiLineWaveformView.secondsPerLine  = 30
+        binding.multiLineWaveformView.showPlayedSplit = false
     }
 
     // ── Timer text shadow (legibility over waveform) ──────────────────
@@ -378,12 +378,27 @@ class RecordFragment : Fragment() {
                 // ── MultiLineWaveformView: live amplitude feed ────────
                 launch {
                     svc.amplitude.collect { amp ->
+                        if (svc.state.value == RecordingService.State.IDLE) return@collect
                         val elapsedMs = svc.elapsedMs.value
+
+                        // Dynamic line length: expand the time window before each boundary
+                        // is hit so the widget doesn't feel cramped at short durations.
+                        //   0s – 24s    → 30s/line
+                        //   25s – 1:40  → 2min/line
+                        //   1:40+       → 5min/line (full)
+                        val targetSeconds = when {
+                            elapsedMs < 25_000L  -> 30
+                            elapsedMs < 100_000L -> 120
+                            else                 -> 300
+                        }
+                        if (targetSeconds != binding.multiLineWaveformView.secondsPerLine) {
+                            binding.multiLineWaveformView.secondsPerLine = targetSeconds
+                        }
+
                         binding.multiLineWaveformView.pushAmplitude(
                             amplitude = amp / 32767f,
                             elapsedMs = elapsedMs
                         )
-                        // Legacy scrolling waveform — kept until replaced.
                         binding.waveformView.pushAmplitude(amp)
                     }
                 }
