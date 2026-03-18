@@ -547,7 +547,11 @@ class WaveformLineView @JvmOverloads constructor(
         if (windowMs <= 0f) return
 
         // Fetch only marks within this line's time window — O(log n + k).
-        val visibleMarks = store.subMap(startMs, true, endMs, false).values
+        // Lower bound: inclusive only for the very first line (startMs == 0) so a
+        // mark exactly at a line boundary isn't double-drawn on two adjacent lines.
+        // Upper bound: inclusive so a mark clamped to the exact recording boundary
+        // (endMs) is always rendered on the last line.
+        val visibleMarks = store.subMap(startMs, startMs == 0L, endMs, true).values
         if (visibleMarks.isEmpty()) return
 
         val selectedId = selectedMarkId

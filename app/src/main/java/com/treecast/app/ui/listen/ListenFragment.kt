@@ -193,32 +193,32 @@ class ListenFragment : Fragment() {
                 launch {
                     viewModel.marks.collect { marks ->
                         renderMarkTimestamps(marks)
-
-                        // Feed the new waveform component.
-                        binding.multiLineWaveform.setMarks(
-                            marks.map { WaveformMark(id = it.id, positionMs = it.positionMs) }
-                        )
+                        // MLW mark rendering is now handled atomically in the
+                        // combined marks+selectedId collector below.
                     }
                 }
 
-                // Selected mark
+                // ── Nudge controls + chip styles ──────────────────────
+                // Combine selectedMarkId and playbackMarkNudgeLocked directly,
+                // matching the pattern MainActivity uses for the Mini Player.
+                // Previously combined with `marks` (which is unrelated to nudge
+                // state) and read nudgeLocked as a snapshot — meaning controls
+                // only re-evaluated when the mark list changed, not when lock
+                // state changed.
                 launch {
                     combine(
                         viewModel.selectedMarkId,
-                        viewModel.marks
-                    ) { selectedId, marks ->
-                        selectedId to marks
-                    }.collect { (selectedId, marks) ->
-                        val selectedMark = marks.firstOrNull { it.id == selectedId }
+                        viewModel.playbackMarkNudgeLocked
+                    ) { selectedId, locked ->
+                        selectedId to locked
+                    }.collect { (selectedId, locked) ->
+                        val hasSelection = selectedId != null
+                        val canNudge     = hasSelection && !locked
+                        val tealColor    = requireContext().themeColor(R.attr.colorMarkSelected)
+                        val greyColor    = requireContext().themeColor(R.attr.colorTextSecondary)
 
-                        binding.multiLineWaveform.setSelectedMarkId(selectedId)
-
-                        // Nudge controls — unchanged logic from before
-                        val canNudge   = viewModel.playbackMarkNudgeLocked.value.not()
-                        val nudgeColor = if (canNudge)
-                            requireContext().themeColor(R.attr.colorMarkSelected)
-                        else
-                            requireContext().themeColor(R.attr.colorTextSecondary)
+                        // Delete only requires a selection — not an unlocked nudge state.
+                        binding.btnDeleteMark.isEnabled = hasSelection
 
                         listOf(
                             binding.btnMarkNudgeBack,
@@ -226,19 +226,38 @@ class ListenFragment : Fragment() {
                             binding.btnMarkCommit
                         ).forEach { v ->
                             v.isEnabled = canNudge
-                            v.imageTintList = android.content.res.ColorStateList.valueOf(nudgeColor)
+                            v.imageTintList = android.content.res.ColorStateList.valueOf(
+                                if (canNudge) tealColor else greyColor
+                            )
                             v.jumpDrawablesToCurrentState()
                         }
+
+                        // Delete only requires a selection — not an unlocked nudge state.
+                        binding.btnDeleteMark.isEnabled = hasSelection
+                        binding.btnDeleteMark.setTextColor(if (hasSelection) tealColor else greyColor)
+                        binding.btnDeleteMark.iconTint = android.content.res.ColorStateList.valueOf(
+                            if (hasSelection) tealColor else greyColor
+                        )
 
                         updateMarkChipStyles()
                     }
                 }
 
-                // Nudge lock state (kept separate so nudge-lock changes don't
-                // force a full mark re-render)
+                // ── MultiLineWaveform: marks + selection (atomic) ──────
+                // Combine both flows so setMarksAndSelectedId is called in
+                // one pass, preventing a flash where a newly selected mark
+                // renders unselected for a frame.
                 launch {
-                    viewModel.playbackMarkNudgeLocked.collect {
-                        updateMarkChipStyles()
+                    combine(
+                        viewModel.marks,
+                        viewModel.selectedMarkId
+                    ) { marks, selectedId ->
+                        marks to selectedId
+                    }.collect { (marks, selectedId) ->
+                        binding.multiLineWaveform.setMarksAndSelectedId(
+                            marks.map { WaveformMark(id = it.id, positionMs = it.positionMs) },
+                            selectedId
+                        )
                     }
                 }
             }
@@ -368,9 +387,11 @@ class ListenFragment : Fragment() {
     // ── Marks panel ───────────────────────────────────────────────────────────
 
     private fun setupMarksPanel() {
-        binding.btnMarkNudgeBack.setOnClickListener    { viewModel.requestNudgeBack() }
-        binding.btnMarkNudgeForward.setOnClickListener { viewModel.requestNudgeForward() }
-        binding.btnMarkCommit.setOnClickListener       { viewModel.commitMarkNudge() }
+        binding.btnMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
+        binding.btnMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
+        binding.btnMarkCommit.setOnClickListener       { viewModel.commitPlaybackMarkNudge() }
+        binding.btnAddMark.setOnClickListener          { viewModel.addMark() }
+        binding.btnDeleteMark.setOnClickListener       { viewModel.deleteSelectedMark() }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -29,6 +29,7 @@ import java.util.TreeMap
  *   [setPlayheadMs]      — call on every playback tick
  *   [setMarks]           — call whenever the mark list changes
  *   [setSelectedMarkId]  — call when mark selection changes
+ *   [setMarksAndSelectedId] — atomic version; prefer this when both change together
  *
  * Live recording (Record tab):
  *   [pushAmplitude]      — call on each recorder amplitude sample
@@ -181,6 +182,27 @@ class MultiLineWaveformView @JvmOverloads constructor(
     fun setSelectedMarkId(id: Long?) {
         if (id == selectedMarkId) return
         selectedMarkId = id
+        notifyAllVisibleLines()
+    }
+
+    /**
+     * Atomically replace the mark list and update the selected mark ID in a
+     * single pass. Prefer this over calling [setMarks] + [setSelectedMarkId]
+     * separately whenever both values originate from the same upstream combine()
+     * — it eliminates the one-frame window where the mark store and the
+     * selection are out of sync (visible as a brief colour flash on the Record
+     * tab when a nudge-forward clamps a mark to the recording boundary).
+     */
+    fun setMarksAndSelectedId(marks: List<WaveformMark>, selectedId: Long?) {
+        markStore.clear()
+        marks.forEach { markStore[it.positionMs] = it }
+        selectedMarkId = selectedId
+        // A mark clamped to elapsedMs can land beyond totalDurationMs when the
+        // throttled pushAmplitude hasn't caught up yet. Bump totalDurationMs here
+        // so the last line's effectiveEndMs always covers every mark position.
+        marks.maxOfOrNull { it.positionMs }?.let { maxPos ->
+            if (maxPos > totalDurationMs) totalDurationMs = maxPos
+        }
         notifyAllVisibleLines()
     }
 

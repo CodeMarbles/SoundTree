@@ -388,24 +388,24 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                // ── MultiLineWaveformView: mark overlays ──────────────
-                launch {
-                    svc.pendingMarksFlow.collect { timestamps ->
-                        binding.multiLineWaveformView.setMarks(
-                            timestamps.map { ts -> WaveformMark(id = ts, positionMs = ts) }
-                        )
-                    }
-                }
-
-                // ── MultiLineWaveformView: selected mark highlight ─────
+                // ── MultiLineWaveformView: marks + selection (atomic) ─
+                // Combine pendingMarksFlow and selectedRecordingMarkIndex so
+                // both are applied in a single notifyAllVisibleLines() call.
+                // This prevents the one-frame colour flash that occurs when a
+                // nudge-forward clamps a mark to elapsedMs: since id == positionMs
+                // on the Record tab, the ID changes on clamp, and two separate
+                // collectors would briefly render the mark as unselected between
+                // the setMarks and setSelectedMarkId calls.
                 launch {
                     combine(
-                        viewModel.recordingMarks,
+                        svc.pendingMarksFlow,
                         viewModel.selectedRecordingMarkIndex
-                    ) { marks, idx ->
-                        marks.getOrNull(idx)
-                    }.collect { selectedTs ->
-                        binding.multiLineWaveformView.setSelectedMarkId(selectedTs)
+                    ) { timestamps, selectedIdx ->
+                        val marks      = timestamps.map { ts -> WaveformMark(id = ts, positionMs = ts) }
+                        val selectedId = timestamps.getOrNull(selectedIdx)
+                        marks to selectedId
+                    }.collect { (marks, selectedId) ->
+                        binding.multiLineWaveformView.setMarksAndSelectedId(marks, selectedId)
                     }
                 }
 
