@@ -355,6 +355,18 @@ class ListenFragment : Fragment() {
     // ── Topic header ──────────────────────────────────────────────────────────
 
     private fun setupTopicHeader() {
+        // ── Result listener — must be registered before the sheet is shown ──
+        childFragmentManager.setFragmentResultListener(
+            TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val recId = viewModel.nowPlaying.value?.recording?.id ?: return@setFragmentResultListener
+            viewModel.moveRecording(recId, topicId)
+            // Optionally update the icon immediately (nowPlaying observer will also catch it)
+            val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+            binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
+        }
+
         binding.tvTopicIcon.setOnClickListener {
             val recording = viewModel.nowPlaying.value?.recording ?: return@setOnClickListener
             TopicPickerBottomSheet.newInstance(recording.topicId)
