@@ -132,11 +132,28 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Bitmap cache ──────────────────────────────────────────────────────────
 
-    /** Pre-rendered waveform bars. Null until first layout + data bind. */
-    private var lineBitmap: Bitmap? = null
+    /**
+     * Pre-rendered waveform bars for the PLAYED region (left of playhead).
+     * Accent gradient. Transparent ARGB_8888 — no background fill.
+     * Null until first layout + data bind.
+     */
+    private var playedBitmap: Bitmap? = null
 
-    /** True when [lineBitmap] needs to be redrawn before next onDraw. */
+    /**
+     * Pre-rendered waveform bars for the UNPLAYED region (right of playhead).
+     * Muted grey. Transparent ARGB_8888 — background shows through.
+     * Null until first layout + data bind.
+     */
+    private var unplayedBitmap: Bitmap? = null
+
+    /**
+     * True when both waveform bitmaps need to be rebuilt before the next onDraw.
+     * Set when amplitude data, dimensions, or [waveformStyle] change.
+     */
     private var bitmapDirty: Boolean = true
+
+    /** Active visual style — controls whether background/unplayed bars vary. */
+    private var waveformStyle: WaveformStyle = WaveformStyle.Standard
 
     /**
      * Pre-rendered ruler layer — tick marks, grid lines, and time labels —
@@ -146,7 +163,7 @@ class WaveformLineView @JvmOverloads constructor(
      * Rebuilt only when [startMs]/[endMs]/[fillWidthPx] change (i.e. at bind
      * time for completed lines; on each new partial-line tick for the live
      * recording boundary). The transparent background means blitting it over
-     * [lineBitmap] is a single GPU compositing pass with no extra overdraw.
+     * [playedBitmap] is a single GPU compositing pass with no extra overdraw.
      */
     private var rulerBitmap: Bitmap? = null
 
@@ -172,11 +189,18 @@ class WaveformLineView @JvmOverloads constructor(
         // Shader set in onSizeChanged once width is known.
     }
 
-    private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    /**
+     * Paint used to draw bars in [unplayedBitmap].
+     *
+     * Uses [colorWaveformUnplayed] at reduced alpha so the background
+     * decoration (if any) subtly shows through the bar shapes themselves.
+     * Adjust alpha here if a future sky style needs more or less bleed-through.
+     */
+    private val unplayedBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        val base  = context.themeColor(R.attr.colorWaveformUnplayed)
+        val base = context.themeColor(R.attr.colorWaveformUnplayed)
         color = android.graphics.Color.argb(
-            0x88,
+            0xCC,   // ~80 % opaque — background tints through slightly
             android.graphics.Color.red(base),
             android.graphics.Color.green(base),
             android.graphics.Color.blue(base)
@@ -250,11 +274,13 @@ class WaveformLineView @JvmOverloads constructor(
         playheadMs:       Long,
         showPlayedSplit:  Boolean,
         scaleToFill:      Boolean,
-        showLineRail:     Boolean
+        showLineRail:     Boolean,
+        waveformStyle:    WaveformStyle = WaveformStyle.Standard
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
         if (windowChanged) rulerBitmapDirty = true
-        val dataChanged   = this.amplitudes !== amplitudes   // reference check: same array = same data
+        val dataChanged   = this.amplitudes !== amplitudes   // reference check
+        val styleChanged  = this.waveformStyle != waveformStyle
 
         this.startMs          = startMs
         this.endMs            = endMs
@@ -267,10 +293,11 @@ class WaveformLineView @JvmOverloads constructor(
         this.showPlayedSplit  = showPlayedSplit
         this.scaleToFill      = scaleToFill
         this.showLineRail     = showLineRail
+        this.waveformStyle    = waveformStyle
 
         recomputeFillWidthPx()
 
-        if (windowChanged || dataChanged) bitmapDirty = true
+        if (windowChanged || dataChanged || styleChanged) bitmapDirty = true
         invalidate()
     }
 
@@ -357,9 +384,47 @@ class WaveformLineView @JvmOverloads constructor(
         canvas.save()
         canvas.translate(rail, 0f)
 
-        if (bitmapDirty || lineBitmap == null) rebuildWaveformBitmap(waveformH)
-        lineBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
+        // ── Rebuild waveform bitmaps if dirty ─────────────────────────────
+        if (bitmapDirty || playedBitmap == null || unplayedBitmap == null) {
+            rebuildPlayedBitmap(waveformH)
+            rebuildUnplayedBitmap(waveformH)
+            bitmapDirty = false
+        }
 
+        // ── Blit waveform layer: clip at playhead if split is active ──────
+        if (!showPlayedSplit || playheadMs < 0L) {
+            // Record tab or no playhead — entire line in played (accent) colours.
+            playedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
+        } else {
+            val px       = computePlayheadX()
+            val top      = waveformTop
+            val bottom   = (waveformTop + waveformH).toFloat()
+
+            when {
+                playheadMs <= startMs -> {
+                    // Entire line is ahead of the playhead — unplayed only.
+                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                }
+                playheadMs >= endMs -> {
+                    // Entire line is behind the playhead — played only.
+                    playedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                }
+                else -> {
+                    // Line straddles the playhead — clip each half separately.
+                    canvas.save()
+                    canvas.clipRect(0f, top, px, bottom)
+                    playedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    canvas.restore()
+
+                    canvas.save()
+                    canvas.clipRect(px, top, fillWidthPx, bottom)
+                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    canvas.restore()
+                }
+            }
+        }
+
+        // ── Ruler (transparent bitmap — sits cleanly over both waveform halves)
         if (rulerBitmapDirty || rulerBitmap == null) rebuildRulerBitmap()
         rulerBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
 
@@ -372,7 +437,7 @@ class WaveformLineView @JvmOverloads constructor(
     // ── Bitmap rebuild ────────────────────────────────────────────────────────
 
     /**
-     * Renders the waveform bars into [lineBitmap].
+     * Renders the played waveform bars into [playedBitmap].
      *
      * ── Stable bucket mapping ─────────────────────────────────────────────────────
      *
@@ -392,7 +457,7 @@ class WaveformLineView @JvmOverloads constructor(
      * full bar count is drawn and every bar has exactly the same sample coverage
      * as it always did.
      */
-    private fun rebuildWaveformBitmap(waveformH: Int) {
+    private fun rebuildPlayedBitmap(waveformH: Int) {
         if (width == 0 || waveformH <= 0) return
 
         val bitmapW = (width - railWidthPx).toInt().coerceAtLeast(1)
@@ -438,9 +503,63 @@ class WaveformLineView @JvmOverloads constructor(
             c.drawRoundRect(rect, cornerPx, cornerPx, playedPaint)
         }
 
-        lineBitmap?.recycle()
-        lineBitmap  = bmp
-        bitmapDirty = false
+        playedBitmap?.recycle()
+        playedBitmap  = bmp
+    }
+
+    /**
+     * Renders the unplayed waveform bars into [unplayedBitmap].
+     *
+     * Uses identical bar geometry as [rebuildPlayedBitmap] — same bucket
+     * mapping, same bar positions — but draws with [unplayedBarPaint] instead
+     * of the accent gradient. The result is a muted grey version of the same
+     * waveform shape.
+     *
+     * The bitmap background is transparent (default for ARGB_8888) so the
+     * background decoration owned by [MultiLineWaveformView] shows through
+     * the gaps between bars and (for partially transparent bar paint) through
+     * the bars themselves.
+     *
+     * ── Style variations (future) ─────────────────────────────────────────────
+     * If a future [WaveformStyle] needs a different unplayed bar treatment —
+     * e.g. bars tinted to complement a specific sky colour — add a `when`
+     * branch here keyed on [waveformStyle] to select an alternate paint or
+     * alpha before drawing.
+     */
+    private fun rebuildUnplayedBitmap(waveformH: Int) {
+        if (width == 0 || waveformH <= 0) return
+
+        val bitmapW = (width - railWidthPx).toInt().coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(bitmapW, waveformH, Bitmap.Config.ARGB_8888)
+        // Transparent by default — background decoration shows through.
+        val c = Canvas(bmp)
+
+        // Bar geometry mirrors rebuildPlayedBitmap exactly.
+        val fullBarCount      = (bitmapW / stride).toInt().coerceAtLeast(1)
+        val fullWindowSamples = (lineWindowMs / 1000.0 * samplesPerSecond).coerceAtLeast(1.0)
+        val samplesPerBar     = fullWindowSamples / fullBarCount
+        val startIdx          = ((startMs / 1000.0) * samplesPerSecond).toInt()
+        val amps              = amplitudes ?: WaveformExtractor.flatFallback(fullBarCount)
+        val centerY           = waveformH / 2f
+        val maxHalf           = centerY * 0.88f
+        val barCount          = (fillWidthPx / stride).toInt().coerceAtLeast(1)
+
+        for (i in 0 until barCount) {
+            val sampleStart = (startIdx + i       * samplesPerBar).toInt().coerceIn(0, amps.size - 1)
+            val sampleEnd   = (startIdx + (i + 1) * samplesPerBar).toInt().coerceIn(0, amps.size)
+            val amp = if (sampleEnd > sampleStart)
+                amps.slice(sampleStart until sampleEnd).max()!!
+            else
+                amps[sampleStart]
+
+            val barHalf = maxHalf * amp.coerceAtLeast(0.05f)
+            val left    = i * stride
+            rect.set(left, centerY - barHalf, left + barWidthPx, centerY + barHalf)
+            c.drawRoundRect(rect, cornerPx, cornerPx, unplayedBarPaint)
+        }
+
+        unplayedBitmap?.recycle()
+        unplayedBitmap = bmp
     }
 
     /**
@@ -609,25 +728,30 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Playhead overlay ──────────────────────────────────────────────────────
 
+    /**
+     * Returns the X pixel coordinate of the playhead within the waveform area
+     * (i.e. relative to the waveform content canvas after rail translation).
+     *
+     * Returns 0f if the playhead is at or before [startMs], [fillWidthPx] if
+     * at or after [endMs].  Callers must guard against [playheadMs] < 0 and
+     * [showPlayedSplit] == false before calling.
+     */
+    private fun computePlayheadX(): Float {
+        val windowMs = (endMs - startMs).toFloat()
+        if (windowMs <= 0f) return 0f
+        return when {
+            playheadMs <= startMs -> 0f
+            playheadMs >= endMs   -> fillWidthPx
+            else -> ((playheadMs - startMs).toFloat() / windowMs) * fillWidthPx
+        }
+    }
+
     private fun drawPlayhead(canvas: Canvas, waveformTop: Float, waveformH: Float) {
         if (!showPlayedSplit || playheadMs < 0L) return
         val windowMs = (endMs - startMs).toFloat()
         if (windowMs <= 0f) return
 
-        val playheadX = when {
-            playheadMs <= startMs -> 0f
-            playheadMs >= endMs   -> fillWidthPx
-            else -> ((playheadMs - startMs).toFloat() / windowMs) * fillWidthPx
-        }
-
-        // Dim the unplayed region to the right of the playhead.
-        if (playheadX < fillWidthPx) {
-            canvas.drawRect(
-                playheadX, waveformTop,
-                fillWidthPx, waveformTop + waveformH,
-                unplayedPaint
-            )
-        }
+        val playheadX = computePlayheadX()
 
         // Don't draw the playhead line if it's off this line entirely.
         if (playheadMs < startMs || playheadMs > endMs) return
@@ -689,8 +813,8 @@ class WaveformLineView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        lineBitmap?.recycle()
-        lineBitmap = null
+        playedBitmap?.recycle()
+        playedBitmap = null
         rulerBitmap?.recycle()
         rulerBitmap = null
     }

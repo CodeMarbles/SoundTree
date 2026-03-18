@@ -1,6 +1,8 @@
 package com.treecast.app.ui.waveform
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.GestureDetector
@@ -104,6 +106,24 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * Visual style applied to every [WaveformLineView] in this widget.
+     *
+     * Changing the style:
+     *   • Notifies all visible lines so they rebuild their bitmaps.
+     *   • Installs or removes the [BackgroundDecoration] on the RecyclerView.
+     *   • Triggers [rebuildBackgroundBitmap] for non-Standard styles.
+     *
+     * Wired from [ListenFragment] by collecting [MainViewModel.waveformStyle].
+     */
+    var waveformStyle: WaveformStyle = WaveformStyle.Standard
+        set(value) {
+            if (field == value) return
+            field = value
+            updateBackgroundDecoration(value)
+            notifyAllVisibleLines()
+        }
+
+    /**
      * Called when the user taps a position on any line.
      *
      * @param positionMs  Tapped position in milliseconds (recording-relative).
@@ -127,6 +147,22 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     /** Currently selected mark. */
     private var selectedMarkId: Long? = null
+
+    // ── Background surface (stylized waveform styles) ──────────────────────
+
+    /**
+     * Background bitmap drawn behind all waveform lines.
+     * Intentionally taller than one line (see [BACKGROUND_BITMAP_HEIGHT_LINES])
+     * so each line sees a different vertical slice, giving more visual variety
+     * on scroll than a single-line tile would.
+     *
+     * Null when [waveformStyle] is [WaveformStyle.Standard] or before the first
+     * layout/style change that triggers [rebuildBackgroundBitmap].
+     */
+    private var backgroundBitmap: Bitmap? = null
+
+    /** The installed decoration, or null when Standard style is active. */
+    private var backgroundDecoration: BackgroundDecoration? = null
 
     // ── Live recording state (Record tab) ─────────────────────────────────────
 
@@ -453,7 +489,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 playheadMs       = playheadMs,
                 showPlayedSplit  = showPlayedSplit,
                 scaleToFill      = lineScaleToFill,
-                showLineRail     = showLineRail
+                showLineRail     = showLineRail,
+                waveformStyle    = waveformStyle
             )
         }
 
@@ -492,6 +529,102 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
     }
 
+    // ── Background decoration ─────────────────────────────────────────────────
+
+    /**
+     * Installs or removes the [BackgroundDecoration] to match [style].
+     * Called whenever [waveformStyle] changes.
+     */
+    private fun updateBackgroundDecoration(style: WaveformStyle) {
+        // Remove any existing decoration first.
+        backgroundDecoration?.let { recyclerView.removeItemDecoration(it) }
+        backgroundDecoration = null
+        backgroundBitmap?.recycle()
+        backgroundBitmap = null
+
+        if (style !is WaveformStyle.Standard) {
+            rebuildBackgroundBitmap(style)
+            BackgroundDecoration().also {
+                backgroundDecoration = it
+                recyclerView.addItemDecoration(it)
+            }
+        }
+    }
+
+    /**
+     * Builds [backgroundBitmap] for the given [style].
+     *
+     * The bitmap is intentionally [BACKGROUND_BITMAP_HEIGHT_LINES] times the
+     * height of a single line.  When the decoration draws each item, it reads
+     * a vertical slice of this bitmap offset by the item's position in the
+     * list — so adjacent lines show different parts of the scene, and the
+     * image only repeats after [BACKGROUND_BITMAP_HEIGHT_LINES] lines.
+     *
+     * TODO: Implement rendering for each WaveformStyle variant:
+     *   WaveformStyle.Sky  — render a day or night sky scene based on
+     *                        the current theme + invertTheme flag.
+     *                        Consider checking Resources.Configuration.uiMode
+     *                        here, or accepting an isDarkTheme: Boolean param
+     *                        passed from ListenFragment's collect block.
+     */
+    private fun rebuildBackgroundBitmap(style: WaveformStyle) {
+        val lineH   = LINE_HEIGHT_DP_TO_PX(context)
+        val bitmapW = width.coerceAtLeast(1)
+        val bitmapH = (lineH * BACKGROUND_BITMAP_HEIGHT_LINES).coerceAtLeast(1)
+
+        val bmp = Bitmap.createBitmap(bitmapW, bitmapH, Bitmap.Config.ARGB_8888)
+        // val c = Canvas(bmp)
+
+        // TODO: render background for style
+        // when (style) {
+        //     is WaveformStyle.Sky   -> renderSkyBackground(c, bmp.width, bmp.height, style)
+        //     is WaveformStyle.Standard -> { /* unreachable — guarded by caller */ }
+        // }
+
+        backgroundBitmap?.recycle()
+        backgroundBitmap = bmp
+    }
+
+    /**
+     * RecyclerView.ItemDecoration that paints [backgroundBitmap] behind each
+     * waveform line before the item views are drawn.
+     *
+     * For each visible item, the decoration reads a vertical slice of
+     * [backgroundBitmap] whose Y offset is:
+     *
+     *   yOffset = (lineIndex * lineHeightPx) % backgroundBitmap.height
+     *
+     * This makes the background scroll continuously with the list content
+     * while repeating only every [BACKGROUND_BITMAP_HEIGHT_LINES] lines.
+     */
+    private inner class BackgroundDecoration : RecyclerView.ItemDecoration() {
+
+        private val srcRect = android.graphics.Rect()
+        private val dstRect = android.graphics.Rect()
+
+        override fun onDraw(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
+            val bmp = backgroundBitmap ?: return
+            val lineH = bmp.height / BACKGROUND_BITMAP_HEIGHT_LINES
+
+            for (i in 0 until parent.childCount) {
+                val child  = parent.getChildAt(i) ?: continue
+                val holder = parent.getChildViewHolder(child)
+                        as? WaveformLineAdapter.LineViewHolder ?: continue
+                val adapterPos = holder.bindingAdapterPosition
+                    .takeIf { it != RecyclerView.NO_ID.toInt() } ?: continue
+                val lineItem = adapter.items.getOrNull(adapterPos) ?: continue
+
+                // Vertical slice of the background bitmap for this line.
+                val yOffset = ((lineItem.index * lineH) % bmp.height)
+                    .coerceIn(0, bmp.height - lineH)
+
+                srcRect.set(0, yOffset, bmp.width, yOffset + lineH)
+                dstRect.set(child.left, child.top, child.right, child.bottom)
+                c.drawBitmap(bmp, srcRect, dstRect, null)
+            }
+        }
+    }
+
     companion object {
         const val DEFAULT_SECONDS_PER_LINE = 300   // 5 minutes
         private const val LIVE_REDRAW_INTERVAL_MS = 250L   // ~4 fps
@@ -501,6 +634,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         private fun LINE_HEIGHT_DP_TO_PX(context: Context): Int =
             (LINE_HEIGHT_DP * context.resources.displayMetrics.density).toInt()
+        private const val BACKGROUND_BITMAP_HEIGHT_LINES = 4
     }
 }
 

@@ -43,8 +43,9 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupHeader()
-        setupLayoutSection()
         setupTheme()
+        setupWaveformStyleSettings()
+        setupLayoutSection()
         setupRecordingWidgetSection()
         setupPlaybackSettings()
         setupStorageSection()
@@ -382,6 +383,53 @@ class SettingsFragment : Fragment() {
         binding.btnThemeSystem.setOnClickListener { select("system") }
         binding.btnThemeLight.setOnClickListener  { select("light")  }
         binding.btnThemeDark.setOnClickListener   { select("dark")   }
+    }
+
+    private fun setupWaveformStyleSettings() {
+
+        val switchStylized = binding.switchStylizedWaveforms
+        val switchInvert   = binding.switchInvertWaveformTheme
+        val rowInvert      = binding.rowInvertWaveformTheme
+
+        // ── Helper: dim + disable the invert row when parent toggle is off ────
+        fun applyInvertRowState(stylizedEnabled: Boolean) {
+            rowInvert.alpha      = if (stylizedEnabled) 1f else 0.38f
+            switchInvert.isEnabled = stylizedEnabled
+        }
+
+        // ── Seed initial state from ViewModel ────────────────────────────────
+        switchStylized.isChecked = viewModel.stylizedWaveforms.value
+        switchInvert.isChecked   = viewModel.invertWaveformTheme.value
+        applyInvertRowState(viewModel.stylizedWaveforms.value)
+
+        // ── Observe ───────────────────────────────────────────────────────────
+        // Collect in STARTED scope so UI stays in sync if another surface
+        // changes the prefs (unlikely today, but correct practice).
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.stylizedWaveforms.collect { enabled ->
+                        if (switchStylized.isChecked != enabled) switchStylized.isChecked = enabled
+                        applyInvertRowState(enabled)
+                    }
+                }
+                launch {
+                    viewModel.invertWaveformTheme.collect { inverted ->
+                        if (switchInvert.isChecked != inverted) switchInvert.isChecked = inverted
+                    }
+                }
+            }
+        }
+
+        // ── User interaction ──────────────────────────────────────────────────
+        switchStylized.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setStylizedWaveforms(isChecked)
+            applyInvertRowState(isChecked)
+        }
+
+        switchInvert.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setInvertWaveformTheme(isChecked)
+        }
     }
 
     private fun setupPlaybackSettings() {

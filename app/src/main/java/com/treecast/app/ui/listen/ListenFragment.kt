@@ -54,7 +54,7 @@ class ListenFragment : Fragment() {
         setupTransportControls()
         setupTopicHeader()
         setupMarksPanel()
-        setupMultiLineWaveform()   // ← new
+        setupMultiLineWaveform()
         observeNowPlaying()
         observeMarks()
         observeWaveform()
@@ -111,11 +111,18 @@ class ListenFragment : Fragment() {
     private fun observeWaveform() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.waveformState.collect { pair ->
-                    val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
-                    if (pair != null && pair.first == currentId) {
-                        // Feed both the old and new waveform views.
-                        binding.multiLineWaveform.setAmplitudes(pair.second)
+                launch {
+                    viewModel.waveformState.collect { pair ->
+                        val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
+                        if (pair != null && pair.first == currentId) {
+                            // Feed both the old and new waveform views.
+                            binding.multiLineWaveform.setAmplitudes(pair.second)
+                        }
+                    }
+                }
+                launch {
+                    viewModel.waveformStyle.collect { style ->
+                        binding.multiLineWaveform.waveformStyle = style
                     }
                 }
             }

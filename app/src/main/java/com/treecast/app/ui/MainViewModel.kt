@@ -30,6 +30,7 @@ import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.service.PlaybackCommands
 import com.treecast.app.service.PlaybackService
 import com.treecast.app.service.RecordingService
+import com.treecast.app.ui.waveform.WaveformStyle
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
@@ -98,6 +99,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         private const val PREF_FUTURE_MODE = "future_mode"
+        private const val PREF_STYLIZED_WAVEFORMS    = "stylized_waveforms"
+        private const val PREF_INVERT_WAVEFORM_THEME = "invert_waveform_theme"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -607,6 +610,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _themeMode.value = mode
         prefs.edit().putString(PREF_THEME_MODE, mode).apply()
     }
+
+    // ── Waveform style ────────────────────────────────────────────────
+//
+// Two independent boolean prefs combine into a single WaveformStyle
+// value for the UI to observe. Keeping them separate in SharedPrefs
+// lets us add future styles without migrating existing preference data.
+
+    private val _stylizedWaveforms = MutableStateFlow(
+        prefs.getBoolean(PREF_STYLIZED_WAVEFORMS, false)
+    )
+    val stylizedWaveforms: StateFlow<Boolean> = _stylizedWaveforms
+
+    fun setStylizedWaveforms(enabled: Boolean) {
+        _stylizedWaveforms.value = enabled
+        prefs.edit().putBoolean(PREF_STYLIZED_WAVEFORMS, enabled).apply()
+    }
+
+    private val _invertWaveformTheme = MutableStateFlow(
+        prefs.getBoolean(PREF_INVERT_WAVEFORM_THEME, false)
+    )
+    val invertWaveformTheme: StateFlow<Boolean> = _invertWaveformTheme
+
+    fun setInvertWaveformTheme(enabled: Boolean) {
+        _invertWaveformTheme.value = enabled
+        prefs.edit().putBoolean(PREF_INVERT_WAVEFORM_THEME, enabled).apply()
+    }
+
+    /**
+     * Current waveform style — derived from the two boolean prefs above.
+     * Collect this in [ListenFragment] and push it to [MultiLineWaveformView].
+     * [WaveformStyle.Standard] is the no-background fallback; [WaveformStyle.Sky]
+     * enables the background decoration with the day/night sky.
+     */
+    val waveformStyle: StateFlow<WaveformStyle> = combine(
+        _stylizedWaveforms, _invertWaveformTheme
+    ) { stylized, invert ->
+        if (stylized) WaveformStyle.Sky(invertTheme = invert) else WaveformStyle.Standard
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, WaveformStyle.Standard)
+
 
     // ── Layout order ──────────────────────────────────────────────────
     //
