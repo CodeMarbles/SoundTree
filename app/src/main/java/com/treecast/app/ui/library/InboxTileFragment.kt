@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.treecast.app.databinding.FragmentInboxTileBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,16 @@ class InboxTileFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var adapter: RecordingsAdapter
+
+    /**
+     * ID of the recording whose Move action is in flight.
+     * Unique request key prevents cross-fragment result delivery in the ViewPager2.
+     */
+    private var pendingMoveRecordingId: Long = -1L
+
+    companion object {
+        private const val MOVE_REQUEST_KEY = "RecordingMove_Inbox"
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,8 +45,37 @@ class InboxTileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupMoveResultListener()
+        setupAdapter()
+        setupObservers()
+    }
+
+    // ── Move flow ─────────────────────────────────────────────────────────────
+
+    private fun setupMoveResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            MOVE_REQUEST_KEY, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
+            viewModel.moveRecording(recId, topicId)
+            pendingMoveRecordingId = -1L
+        }
+    }
+
+    private fun requestMove(recordingId: Long, currentTopicId: Long?) {
+        pendingMoveRecordingId = recordingId
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = currentTopicId,
+            requestKey      = MOVE_REQUEST_KEY
+        ).show(childFragmentManager, "recording_move_picker_inbox")
+    }
+
+    // ── Adapter setup ─────────────────────────────────────────────────────────
+
+    private fun setupAdapter() {
         adapter = RecordingsAdapter(
-            onPlayPause = { rec ->
+            onPlayPause     = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
                 if (nowPlaying?.recording?.id == rec.id) {
                     viewModel.togglePlayPause()
@@ -46,17 +86,21 @@ class InboxTileFragment : Fragment() {
                     }
                 }
             },
-            onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
-            onDelete = { rec -> viewModel.deleteRecording(rec) },
-            onSelect = { id -> viewModel.selectRecording(id) },
+            onRename        = { id, title -> viewModel.renameRecording(id, title) },
+            onMoveRequested = { recordingId, currentTopicId -> requestMove(recordingId, currentTopicId) },
+            onDelete        = { rec -> viewModel.deleteRecording(rec) },
+            onSelect        = { id -> viewModel.selectRecording(id) },
         )
 
         binding.recyclerInbox.apply {
             this.adapter = this@InboxTileFragment.adapter
             layoutManager = LinearLayoutManager(requireContext())
         }
+    }
 
+    // ── Observers ─────────────────────────────────────────────────────────────
+
+    private fun setupObservers() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -78,7 +122,7 @@ class InboxTileFragment : Fragment() {
                 launch {
                     viewModel.inbox.collect { recs ->
                         adapter.submitList(recs)
-                        binding.tvEmpty.visibility = if (recs.isEmpty()) View.VISIBLE else View.GONE
+                        binding.tvEmpty.visibility     = if (recs.isEmpty()) View.VISIBLE else View.GONE
                         binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
                     }
                 }

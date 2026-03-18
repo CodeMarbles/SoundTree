@@ -55,8 +55,16 @@ class TopicDetailsFragment : Fragment() {
     private var hierarchyInitializedForTopicId: Long? = null
     private var previousTopicId: Long? = null
 
+    /**
+     * ID of the recording whose Move action is in flight.
+     * Set when the user taps "Move to topic…" on a recording row; cleared
+     * after the bottom sheet result is delivered.
+     */
+    private var pendingMoveRecordingId: Long = -1L
+
     companion object {
         private const val REQUEST_REPARENT = "TopicDetails_reparent"
+        private const val MOVE_RECORDING_REQUEST = "RecordingMove_Details"
     }
 
     override fun onCreateView(
@@ -70,6 +78,7 @@ class TopicDetailsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupRecordingMoveResultListener()
         setupRecordingsAdapter()
         setupSortButton()
         setupEditButton()
@@ -415,6 +424,30 @@ class TopicDetailsFragment : Fragment() {
 
     // ── Recordings list ────────────────────────────────────────────────
 
+    /**
+     * Listens for the result of TopicPickerBottomSheet shown by a recording's
+     * "Move to topic…" action. Uses a separate request key from [REQUEST_REPARENT]
+     * so topic-move and recording-move results never collide.
+     */
+    private fun setupRecordingMoveResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            MOVE_RECORDING_REQUEST, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
+            viewModel.moveRecording(recId, topicId)
+            pendingMoveRecordingId = -1L
+        }
+    }
+
+    private fun requestRecordingMove(recordingId: Long, currentTopicId: Long?) {
+        pendingMoveRecordingId = recordingId
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = currentTopicId,
+            requestKey      = MOVE_RECORDING_REQUEST
+        ).show(childFragmentManager, "recording_move_picker_details")
+    }
+
     private fun setupRecordingsAdapter() {
         recordingsAdapter = RecordingsAdapter(
             onPlayPause = { rec ->
@@ -429,7 +462,9 @@ class TopicDetailsFragment : Fragment() {
                 }
             },
             onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
+            onMoveRequested = { recordingId, currentTopicId ->
+                requestRecordingMove(recordingId, currentTopicId)
+            },
             onDelete = { rec -> viewModel.deleteRecording(rec) },
             onSelect = { id -> viewModel.selectRecording(id) },
         )

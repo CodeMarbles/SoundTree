@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Recording row (Inbox / RecordingsAdapter).
+  Recording row — unified layout for all Recording list contexts.
 
-  Ripple is on foreground (not background) so the adapter can set a
-  selection-tint on the root background without killing touch feedback.
-  Matches the same pattern used by item_tree_leaf.xml in Topics.
+  Used by RecordingsAdapter in:
+    • All Recordings tab   (showTopicIcon = true  → tvTopicIcon visible)
+    • Inbox / Unsorted tab (showTopicIcon = false → tvTopicIcon gone)
+    • Topic Details tab    (showTopicIcon = false → tvTopicIcon gone)
+
+  The old expand tray (expandedControls, ivChevron, btnRename, btnMove,
+  btnDelete, inlineTopicPicker) has been removed. Actions are now surfaced
+  via long-press or the ivOverflow (⋮) button, both triggering a PopupMenu.
+
+  NOTE: ic_overflow should be a 24dp "more_vert" vector asset.
+  Add via Android Studio → New → Vector Asset → search "more_vert".
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -22,6 +30,7 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="12dp">
 
+        <!-- Play / Pause button -->
         <ImageView
             android:id="@+id/btnInlinePlay"
             android:layout_width="36dp"
@@ -33,6 +42,19 @@
             android:focusable="true"
             app:tint="?attr/colorAccent" />
 
+        <!-- Topic icon — shown only when showTopicIcon=true (All Recordings context).
+             Set by adapter; hidden by default to keep non-All rows clean. -->
+        <TextView
+            android:id="@+id/tvTopicIcon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:textSize="16sp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:visibility="gone" />
+
+        <!-- NEW badge — shown for recordings < 30 min old -->
         <TextView
             android:id="@+id/tvNewBadge"
             android:layout_width="wrap_content"
@@ -48,6 +70,7 @@
             android:layout_marginEnd="6dp"
             android:visibility="gone" />
 
+        <!-- Title + meta — takes all remaining horizontal space -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -73,91 +96,21 @@
 
         </LinearLayout>
 
+        <!-- Overflow ⋮ button — tappable alternative to long-press.
+             contentDescription provides TalkBack label; the adapter also
+             registers named AccessibilityActions on the row itself for
+             full swipe-gesture support. -->
         <ImageView
-            android:id="@+id/ivChevron"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_chevron_down"
-            android:rotation="-90"
-            app:tint="?attr/colorTextSecondary"
-            android:layout_marginStart="8dp" />
-
-    </LinearLayout>
-
-    <!-- ── Expandable controls ────────────────────────────────── -->
-    <LinearLayout
-        android:id="@+id/expandedControls"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone"
-        android:paddingHorizontal="16dp"
-        android:paddingBottom="8dp"
-        android:background="?attr/colorControlsTray">
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?attr/colorSurfaceElevated"
-            android:layout_marginBottom="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRename"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:text="Rename"
-                android:textSize="11sp"
-                android:textColor="?attr/colorTextPrimary"
-                app:icon="@drawable/ic_rename"
-                app:iconSize="16dp"
-                app:iconTint="?attr/colorTextPrimary"
-                app:iconGravity="textStart"
-                app:cornerRadius="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnMove"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:text="Move"
-                android:textSize="11sp"
-                android:textColor="?attr/colorTextPrimary"
-                app:icon="@drawable/ic_move"
-                app:iconSize="16dp"
-                app:iconTint="?attr/colorTextPrimary"
-                app:iconGravity="textStart"
-                app:cornerRadius="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDelete"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:text="Delete"
-                android:textSize="11sp"
-                android:textColor="?attr/colorDestructive"
-                app:icon="@drawable/ic_delete"
-                app:iconSize="16dp"
-                app:iconTint="?attr/colorDestructive"
-                app:iconGravity="textStart"
-                app:cornerRadius="8dp" />
-
-        </LinearLayout>
-
-        <com.treecast.app.ui.common.TopicPickerView
-            android:id="@+id/inlineTopicPicker"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
+            android:id="@+id/ivOverflow"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_overflow"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Recording options"
+            app:tint="?attr/colorTextSecondary" />
 
     </LinearLayout>
 

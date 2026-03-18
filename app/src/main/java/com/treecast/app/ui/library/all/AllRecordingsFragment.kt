@@ -14,13 +14,20 @@ import com.treecast.app.databinding.FragmentAllRecordingsBinding
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.launch
 
 /**
  * ALL tab — flat chronological list of every recording.
  *
- * A sort toggle button at the top switches between newest-first and oldest-first.
- * Each row shows the topic icon to the left of the recording info.
+ * Uses [RecordingsAdapter] with showTopicIcon = true so each row shows
+ * the topic icon to the left of the recording info.
+ *
+ * Move flow: the adapter fires [onMoveRequested]; this fragment stores the
+ * pending recording ID, shows [TopicPickerBottomSheet], and handles the
+ * result via [MOVE_REQUEST_KEY]. The unique request key prevents cross-
+ * fragment result delivery in the shared ViewPager2.
  */
 class AllRecordingsFragment : Fragment() {
 
@@ -28,10 +35,21 @@ class AllRecordingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: MainViewModel by activityViewModels()
-    private lateinit var adapter: AllRecordingsAdapter
+    private lateinit var adapter: RecordingsAdapter
 
     /** true = newest first (default), false = oldest first */
     private var newestFirst = true
+
+    /**
+     * ID of the recording whose Move action is in flight.
+     * Set when the user taps "Move to topic…"; cleared after the result
+     * is delivered (or implicitly replaced by a subsequent move request).
+     */
+    private var pendingMoveRecordingId: Long = -1L
+
+    companion object {
+        private const val MOVE_REQUEST_KEY = "RecordingMove_All"
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,8 +62,39 @@ class AllRecordingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = AllRecordingsAdapter(
-            onPlayPause = { rec ->
+        setupMoveResultListener()
+        setupAdapter()
+        setupSortButton()
+        setupObservers()
+    }
+
+    // ── Move flow ─────────────────────────────────────────────────────────────
+
+    private fun setupMoveResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            MOVE_REQUEST_KEY, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
+            viewModel.moveRecording(recId, topicId)
+            pendingMoveRecordingId = -1L
+        }
+    }
+
+    private fun requestMove(recordingId: Long, currentTopicId: Long?) {
+        pendingMoveRecordingId = recordingId
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = currentTopicId,
+            requestKey      = MOVE_REQUEST_KEY
+        ).show(childFragmentManager, "recording_move_picker_all")
+    }
+
+    // ── Adapter setup ─────────────────────────────────────────────────────────
+
+    private fun setupAdapter() {
+        adapter = RecordingsAdapter(
+            showTopicIcon   = true,
+            onPlayPause     = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
                 if (nowPlaying?.recording?.id == rec.id) {
                     viewModel.togglePlayPause()
@@ -56,23 +105,41 @@ class AllRecordingsFragment : Fragment() {
                     }
                 }
             },
-            onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMove   = { id, topicId -> viewModel.moveRecording(id, topicId) },
-            onDelete = { rec -> viewModel.deleteRecording(rec) },
-            onSelect = { id -> viewModel.selectRecording(id) },
+            onRename        = { id, title -> viewModel.renameRecording(id, title) },
+            onMoveRequested = { recordingId, currentTopicId -> requestMove(recordingId, currentTopicId) },
+            onDelete        = { rec -> viewModel.deleteRecording(rec) },
+            onSelect        = { id -> viewModel.selectRecording(id) },
         )
 
         binding.recyclerAllRecordings.apply {
             this.adapter = this@AllRecordingsFragment.adapter
             layoutManager = LinearLayoutManager(requireContext())
         }
+    }
 
+    // ── Sort button ───────────────────────────────────────────────────────────
+
+    private fun setupSortButton() {
         binding.btnSortOrder.setOnClickListener {
             newestFirst = !newestFirst
             updateSortButtonLabel()
             submitSorted(viewModel.allRecordings.value)
         }
+    }
 
+    private fun updateSortButtonLabel() {
+        binding.btnSortOrder.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
+    }
+
+    private fun submitSorted(recordings: List<RecordingEntity>) {
+        val sorted = if (newestFirst) recordings.sortedByDescending { it.createdAt }
+        else             recordings.sortedBy { it.createdAt }
+        adapter.submitList(sorted)
+    }
+
+    // ── Observers ─────────────────────────────────────────────────────────────
+
+    private fun setupObservers() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -92,30 +159,17 @@ class AllRecordingsFragment : Fragment() {
                     }
                 }
                 launch {
-                    viewModel.orphanVolumeUuids.collect { uuids ->
-                        adapter.orphanVolumeUuids = uuids
-                    }
-                }
-                launch {
                     viewModel.selectedRecordingId.collect { id ->
                         adapter.selectedRecordingId = id
                     }
                 }
+                launch {
+                    viewModel.orphanVolumeUuids.collect { uuids ->
+                        adapter.orphanVolumeUuids = uuids
+                    }
+                }
             }
         }
-    }
-
-    private fun submitSorted(recordings: List<RecordingEntity>) {
-        val sorted = if (newestFirst) {
-            recordings.sortedByDescending { it.createdAt }
-        } else {
-            recordings.sortedBy { it.createdAt }
-        }
-        adapter.submitList(sorted)
-    }
-
-    private fun updateSortButtonLabel() {
-        binding.btnSortOrder.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
     }
 
     override fun onDestroyView() {
