@@ -41,6 +41,8 @@ class LibraryFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var tileAdapter: LibraryTilesAdapter
 
+    private val topicNavHistory = ArrayDeque<Long>()
+
     companion object {
         const val PAGE_ALL        = 0
         const val PAGE_UNSORTED   = 1
@@ -132,6 +134,7 @@ class LibraryFragment : Fragment() {
      * and navigates to it.
      */
     fun openTopicDetails(topicId: Long) {
+        topicNavHistory.clear()  // ← fresh entry from Topics tab resets history
         viewModel.setLibraryDetailsTopic(topicId)
         binding.tilePager.setCurrentItem(PAGE_DETAILS, true)
     }
@@ -142,6 +145,7 @@ class LibraryFragment : Fragment() {
      * through the Topics tab.
      */
     fun navigateToTopicDetails(topicId: Long) {
+        viewModel.libraryDetailsTopicId.value?.let { topicNavHistory.addLast(it) }
         viewModel.setLibraryDetailsTopic(topicId)
         // Stay on PAGE_DETAILS; TopicDetailsFragment observes the ID and re-renders.
     }
@@ -177,8 +181,13 @@ class LibraryFragment : Fragment() {
     fun handleBackPress(): Boolean {
         return when (binding.tilePager.currentItem) {
             PAGE_DETAILS -> {
-                binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
-                true
+                if (topicNavHistory.isNotEmpty()) {
+                    viewModel.setLibraryDetailsTopic(topicNavHistory.removeLast())
+                    true  // consumed — stay on Details, show previous topic
+                } else {
+                    binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+                    true  // consumed — exit Details to Topics tab
+                }
             }
             PAGE_UNSORTED, PAGE_ALL, PAGE_RECORDINGS -> {
                 binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
