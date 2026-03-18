@@ -34,6 +34,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
+import com.treecast.app.util.RecordingTitleHelper
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
@@ -76,6 +77,12 @@ class RecordFragment : Fragment() {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             recordingService = (binder as RecordingService.RecordingBinder).getService()
             isBound = true
+
+            // Restore rename state so UI reflects what the service knows, even after recreation
+            currentRecordingDisplayName = recordingService!!.getPendingDisplayName()
+            userHasRenamedRecording     = recordingService!!.getPendingUserHasRenamed()
+
+
             observeServiceState()
             if (pendingQuickRecord) {
                 pendingQuickRecord = false
@@ -564,19 +571,15 @@ class RecordFragment : Fragment() {
             .setPositiveButton("OK") { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty()) {
-                    // User provided a name — use it verbatim on save.
                     currentRecordingDisplayName = newName
-                    userHasRenamedRecording = true
+                    userHasRenamedRecording     = true
                     binding.tvRecordingName.text = newName
+                    recordingService?.setDisplayName(newName, true)
                 } else {
-                    // User cleared the field — fall back to a fresh auto-generated
-                    // timestamp and treat the recording as un-renamed so stopAndSave()
-                    // will prepend the "Recording – " prefix.
-                    val generated = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-                        .format(Date(System.currentTimeMillis()))
-                    currentRecordingDisplayName = generated
-                    userHasRenamedRecording = false
-                    binding.tvRecordingName.text = generated
+                    currentRecordingDisplayName = RecordingTitleHelper.generateStamp()
+                    userHasRenamedRecording     = false
+                    binding.tvRecordingName.text = currentRecordingDisplayName
+                    recordingService?.setDisplayName(currentRecordingDisplayName, false)
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -639,8 +642,9 @@ class RecordFragment : Fragment() {
     /** Calls through to the service after all pre-flight checks pass. */
     private fun doStartRecording(svc: RecordingService) {
         // Reset the display name to the current timestamp and clear any prior rename.
-        currentRecordingDisplayName = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-            .format(Date(System.currentTimeMillis()))
+        currentRecordingDisplayName = RecordingTitleHelper.generateStamp()
+        svc.setDisplayName(currentRecordingDisplayName, userRenamed = false)
+
         userHasRenamedRecording = false
         svc.startRecording(topicId = viewModel.recordingTopicId.value)
     }
@@ -661,14 +665,7 @@ class RecordFragment : Fragment() {
 
             // If the user renamed the recording, use their title verbatim.
             // If they didn't rename (auto-timestamp default), apply the "Recording – " prefix.
-            val title = when {
-                userHasRenamedRecording && currentRecordingDisplayName.isNotEmpty() ->
-                    currentRecordingDisplayName
-                currentRecordingDisplayName.isNotEmpty() ->
-                    "Recording – $currentRecordingDisplayName"
-                else ->
-                    "Recording – $stamp"
-            }
+            val title = RecordingTitleHelper.resolve(result.displayName, result.userHasRenamed)
 
             val savedDeferred = viewModel.saveRecordingWithMarks(
                 filePath          = result.filePath,

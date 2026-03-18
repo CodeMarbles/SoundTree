@@ -15,6 +15,7 @@ import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.service.RecordingService.StopResult
 import com.treecast.app.ui.MainActivity
+import com.treecast.app.util.RecordingTitleHelper
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
@@ -70,7 +71,9 @@ class RecordingService : Service() {
         val filePath: String?,
         val durationMs: Long,
         val markTimestamps: List<Long>,   // elapsed-ms values, not wall-clock
-        val storageVolumeUuid: String
+        val storageVolumeUuid: String,
+        val displayName: String,
+        val userHasRenamed: Boolean
     )
 
     /**
@@ -123,6 +126,20 @@ class RecordingService : Service() {
     // and ACTION_SET_TOPIC. Used when saving from the notification so the
     // recording lands in the correct topic even if the UI is not alive.
     private var pendingTopicId: Long? = null
+
+    // ── Display name tracking ──────────────────────────────────────────
+    // Mirrors pendingTopicId. RecordFragment pushes the user's chosen name
+    // here via setDisplayName() so saveFromNotification() can use it.
+    private var pendingDisplayName: String = ""
+    private var pendingUserHasRenamed: Boolean = false
+
+    fun setDisplayName(name: String, userRenamed: Boolean) {
+        pendingDisplayName  = name
+        pendingUserHasRenamed = userRenamed
+    }
+
+    fun getPendingDisplayName(): String = pendingDisplayName
+    fun getPendingUserHasRenamed(): Boolean = pendingUserHasRenamed
 
     // ── Storage ───────────────────────────────────────────────────────
     /**
@@ -226,6 +243,9 @@ class RecordingService : Service() {
         _pendingMarkCount.value = 0
         _pendingMarksFlow.value = emptyList()
 
+        pendingDisplayName    = ""
+        pendingUserHasRenamed = false
+
         mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
         } else {
@@ -302,12 +322,19 @@ class RecordingService : Service() {
         _pendingMarkCount.value = 0
         _pendingMarksFlow.value = emptyList()
 
-        return StopResult(
-            filePath       = path,
-            durationMs     = duration,
-            markTimestamps = marks,
-            storageVolumeUuid = uuid
+        var result = StopResult(
+            filePath            = path,
+            durationMs          = duration,
+            markTimestamps      = marks,
+            storageVolumeUuid   = uuid,
+            displayName         = pendingDisplayName,
+            userHasRenamed      = pendingUserHasRenamed
         )
+
+        pendingDisplayName    = ""
+        pendingUserHasRenamed = false
+
+        return result
     }
 
     /**
@@ -445,9 +472,7 @@ class RecordingService : Service() {
         val filePath     = result.filePath
         val durationMs   = result.durationMs
         val fileSizeBytes = File(filePath).length()
-        val title        = "Recording – ${
-            SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date())
-        }"
+        val title = RecordingTitleHelper.resolve(pendingDisplayName, pendingUserHasRenamed)
         val marks        = result.markTimestamps
 
         val repo         = (applicationContext as TreeCastApp).repository
