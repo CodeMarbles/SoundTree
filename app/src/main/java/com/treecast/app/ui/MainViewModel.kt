@@ -351,7 +351,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val controller = mediaController ?: break
                 val pos = controller.currentPosition
                 _nowPlaying.value = _nowPlaying.value?.copy(positionMs = pos)
-                repo.updatePlayback(recordingId, pos, false)
             }
         }
     }
@@ -499,10 +498,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _marks.value = emptyList()
         _selectedMarkId.value = null
     }
-
-
-    fun updatePlayback(id: Long, posMs: Long, listened: Boolean) =
-        viewModelScope.launch { repo.updatePlayback(id, posMs, listened) }
 
     // ── Topics ────────────────────────────────────────────────────────
     val allTopics: StateFlow<List<TopicEntity>> = repo.getAllTopics()
