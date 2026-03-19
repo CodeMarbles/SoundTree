@@ -115,21 +115,31 @@ class ListenFragment : Fragment() {
 
     private fun snapTo(state: SplitterState) {
         val target = if (state == SplitterState.SNAP_DOWN) {
-            0.62f
-        } else {
-            // Compute the minimum safe guide percent so the splitter always
-            // lands *below* the bottom of Zone A. A hardcoded value (e.g. 0.18)
-            // fails when Zone A is taller than 18% of the screen — the waveform
-            // gets zero height. Instead we measure Zone A's actual bottom pixel
-            // and convert to a percent, then add a small buffer so the waveform
-            // is always at least partially visible.
+            applyChipLayoutMode(SplitterState.SNAP_DOWN)
+            val density       = resources.displayMetrics.density
+            val scaledDensity = resources.displayMetrics.scaledDensity
+            // Chip row height: 12sp text + 4dp*2 chip padding + 4dp*2 chip margin
+            //                  + 8dp FlowLayout paddingTop + 4dp FlowLayout paddingBottom
+            // NOTE:  This is a calculated constant and will need to be updated if we adjust
+            //        styling/layout on anything in the pill row or below.
+            val chipRowPx = (12f * scaledDensity) + (28f * density)
             val parentH = binding.root.height.toFloat()
             if (parentH > 0f) {
-                val bufferPx = (24 * resources.displayMetrics.density)
+                val belowPx = binding.splitterBar.height + chipRowPx +
+                        binding.pinnedBottomArea.height
+                ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.85f)
+            } else {
+                0.62f
+            }
+        } else {
+            applyChipLayoutMode(SplitterState.SNAP_UP)
+            val parentH = binding.root.height.toFloat()
+            if (parentH > 0f) {
+                val bufferPx = 24 * resources.displayMetrics.density
                 val minPx    = binding.pinnedTopArea.bottom + binding.splitterBar.height + bufferPx
                 (minPx / parentH).coerceIn(0.20f, 0.55f)
             } else {
-                0.30f   // safe fallback if root hasn't been laid out yet
+                0.30f
             }
         }
 
@@ -146,34 +156,47 @@ class ListenFragment : Fragment() {
                 override fun onAnimationEnd(animation: Animator) {
                     splitterState = state
                     binding.multiLineWaveform.fadesEnabled = (state == SplitterState.SNAP_DOWN)
-                    applyChipLayoutMode(state)
                 }
             })
         }.start()
     }
 
     /**
-     * Switches the chip FlowLayout between single-row (snap-up) and
-     * multi-row wrapping (snap-down) modes.
+     * Switches the chip FlowLayout between single-row (snap-down) and
+     * multi-row wrapping (snap-up) modes.
      *
-     * In snap-down mode the FlowLayout's width is set to the scroller's pixel
-     * width so wrapping works correctly — HorizontalScrollView always measures
-     * children with UNSPECIFIED width, which would cause the FlowLayout to see
-     * 0dp and never wrap.
+     * In snap-down mode (waveform dominant), Zone D is small — the strip
+     * uses WRAP_CONTENT so it can exceed the scroller width and scroll
+     * horizontally as a single row.
      *
-     * In snap-up mode WRAP_CONTENT is restored so the strip can grow beyond
-     * the scroller width and be scrolled horizontally.
+     * In snap-up mode (marks dominant), Zone D is large — the strip width
+     * is fixed to the scroller's pixel width so the FlowLayout can wrap
+     * correctly into multiple rows. (HorizontalScrollView measures children
+     * with UNSPECIFIED width, which would cause FlowLayout to see 0dp and
+     * never wrap without this override.)
      */
     private fun applyChipLayoutMode(state: SplitterState) {
+        val scrollerParams = binding.markChipScroller.layoutParams
+                as ConstraintLayout.LayoutParams
+
         if (state == SplitterState.SNAP_DOWN) {
-            // Waveform dominant — Zone D is small. Single scrolling strip.
+            // Waveform dominant — let the scroller shrink to its content height
+            // and pin it to the bottom of Zone D so it hugs Zone E.
+            scrollerParams.height = ConstraintLayout.LayoutParams.WRAP_CONTENT
+            scrollerParams.verticalBias = 1.0f
+            binding.markChipScroller.layoutParams = scrollerParams
+
             binding.markTimestampList.singleRow = true
             binding.markTimestampList.updateLayoutParams {
                 width = ViewGroup.LayoutParams.WRAP_CONTENT
             }
             binding.markTimestampList.post { scrollToLastPassedChip() }
         } else {
-            // Marks dominant — Zone D is large. Multi-row wrapping.
+            // Marks dominant — restore fill so Zone D uses all available space.
+            scrollerParams.height = 0 // MATCH_CONSTRAINT
+            scrollerParams.verticalBias = 0.5f
+            binding.markChipScroller.layoutParams = scrollerParams
+
             binding.markTimestampList.singleRow = false
             binding.markTimestampList.updateLayoutParams {
                 width = binding.markChipScroller.width
