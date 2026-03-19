@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Decorative rounded-rect pill used as the drag handle inside the splitter bar
+  on the Listen tab. Colour is a neutral mid-grey at ~40% alpha so it reads
+  on both light and dark themes without needing a theme attribute.
+  Destination: res/drawable/bg_drag_handle_pill.xml
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="2dp" />
+    <solid android:color="#66888888" />
+</shape>

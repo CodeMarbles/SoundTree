@@ -1,5 +1,9 @@
 package com.treecast.app.ui.listen
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.GestureDetector
@@ -8,8 +12,11 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -41,6 +48,13 @@ class ListenFragment : Fragment() {
     private val markChips = mutableMapOf<Long, TextView>()
     private var lastPassedMarkId: Long? = null
 
+    // ── Splitter state ────────────────────────────────────────────────────────
+
+    private enum class SplitterState { SNAP_DOWN, SNAP_UP }
+    private var splitterState = SplitterState.SNAP_DOWN
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -52,6 +66,7 @@ class ListenFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupTransportControls()
+        setupSplitter()
         setupTopicHeader()
         setupMarksPanel()
         setupMultiLineWaveform()
@@ -79,6 +94,40 @@ class ListenFragment : Fragment() {
                 WaveformTapType.LONG_PRESS -> { /* reserved for future use */ }
             }
         }
+    }
+
+    // ── Splitter ───────────────────────────────────────────────────────────────
+
+    private fun setupSplitter() {
+        binding.btnSnapDown.setOnClickListener { snapTo(SplitterState.SNAP_DOWN) }
+        binding.btnSnapUp.setOnClickListener   { snapTo(SplitterState.SNAP_UP) }
+
+        binding.btnPlaybackSpeed.setOnClickListener {
+            Toast.makeText(requireContext(), "Playback Speed", Toast.LENGTH_SHORT).show()
+        }
+        binding.btnSleepTimer.setOnClickListener {
+            Toast.makeText(requireContext(), "Sleep Timer", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun snapTo(state: SplitterState) {
+        val target = if (state == SplitterState.SNAP_DOWN) 0.62f else 0.18f
+        val guideline = binding.splitterGuideline
+        val currentPercent =
+            (guideline.layoutParams as ConstraintLayout.LayoutParams).guidePercent
+        ValueAnimator.ofFloat(currentPercent, target).apply {
+            duration = 220L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                guideline.setGuidelinePercent(anim.animatedValue as Float)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    splitterState = state
+                    binding.multiLineWaveform.fadesEnabled = (state == SplitterState.SNAP_DOWN)
+                }
+            })
+        }.start()
     }
 
     // ── Transport ──────────────────────────────────────────────────────────────
@@ -115,7 +164,6 @@ class ListenFragment : Fragment() {
                     viewModel.waveformState.collect { pair ->
                         val currentId = viewModel.nowPlaying.value?.recording?.id ?: return@collect
                         if (pair != null && pair.first == currentId) {
-                            // Feed both the old and new waveform views.
                             binding.multiLineWaveform.setAmplitudes(pair.second)
                         }
                     }
@@ -148,6 +196,8 @@ class ListenFragment : Fragment() {
 
     private fun updateUi(state: NowPlayingState?) {
         // ── Show/hide empty state vs player ───────────────────────────────────
+        // playerContent is a ConstraintLayout Group referencing all five zones;
+        // setting its visibility propagates to all referenced views atomically.
         binding.emptyState.visibility    = if (state == null) View.VISIBLE else View.GONE
         binding.playerContent.visibility = if (state == null) View.GONE    else View.VISIBLE
 
@@ -155,7 +205,8 @@ class ListenFragment : Fragment() {
             binding.tvTitle.text     = "Nothing playing"
             binding.tvPosition.text  = "0:00"
             binding.tvRemaining.text = "-0:00"
-            binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            // btnPlayPause is now a MaterialButton — use setIconResource, not setImageResource
+            binding.btnPlayPause.setIconResource(R.drawable.ic_play)
             binding.seekBar.progress = 0
             binding.multiLineWaveform.setPlayheadMs(-1L)
             return
@@ -167,7 +218,7 @@ class ListenFragment : Fragment() {
         binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
         binding.tvCategory.text  = topic?.name ?: getString(R.string.label_unsorted)
 
-        binding.btnPlayPause.setImageResource(
+        binding.btnPlayPause.setIconResource(
             if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
 
         if (!isSeeking) {
@@ -179,7 +230,6 @@ class ListenFragment : Fragment() {
             binding.tvPosition.text  = formatMs(pos)
             binding.tvRemaining.text = "-${formatMs(dur - pos)}"
 
-            // New waveform (ms-based) — also keep duration in sync
             binding.multiLineWaveform.setDurationMs(dur)
             binding.multiLineWaveform.setPlayheadMs(pos)
         }
@@ -201,22 +251,19 @@ class ListenFragment : Fragment() {
     private fun observeMarks() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Mark list
+
+                // Mark list → re-render chips
                 launch {
                     viewModel.marks.collect { marks ->
                         renderMarkTimestamps(marks)
-                        // MLW mark rendering is now handled atomically in the
+                        // MLWV mark rendering is handled atomically in the
                         // combined marks+selectedId collector below.
                     }
                 }
 
-                // ── Nudge controls + chip styles ──────────────────────
-                // Combine selectedMarkId and playbackMarkNudgeLocked directly,
-                // matching the pattern MainActivity uses for the Mini Player.
-                // Previously combined with `marks` (which is unrelated to nudge
-                // state) and read nudgeLocked as a snapshot — meaning controls
-                // only re-evaluated when the mark list changed, not when lock
-                // state changed.
+                // ── Nudge controls + chip styles + card show/hide ──────────
+                // Combines selectedMarkId and playbackMarkNudgeLocked so both
+                // control states are evaluated together in one pass.
                 launch {
                     combine(
                         viewModel.selectedMarkId,
@@ -229,36 +276,52 @@ class ListenFragment : Fragment() {
                         val tealColor    = requireContext().themeColor(R.attr.colorMarkSelected)
                         val greyColor    = requireContext().themeColor(R.attr.colorTextSecondary)
 
-                        // Delete only requires a selection — not an unlocked nudge state.
-                        binding.btnDeleteMark.isEnabled = hasSelection
-
+                        // ── Zone 7b row: nudge buttons ────────────────────
                         listOf(
                             binding.btnMarkNudgeBack,
-                            binding.btnMarkNudgeForward,
-                            binding.btnMarkCommit
+                            binding.btnMarkNudgeForward
                         ).forEach { v ->
                             v.isEnabled = canNudge
-                            v.imageTintList = android.content.res.ColorStateList.valueOf(
+                            v.imageTintList = ColorStateList.valueOf(
                                 if (canNudge) tealColor else greyColor
                             )
                             v.jumpDrawablesToCurrentState()
                         }
 
-                        // Delete only requires a selection — not an unlocked nudge state.
-                        binding.btnDeleteMark.isEnabled = hasSelection
-                        binding.btnDeleteMark.setTextColor(if (hasSelection) tealColor else greyColor)
-                        binding.btnDeleteMark.iconTint = android.content.res.ColorStateList.valueOf(
+                        // Zone 7b: delete (selection required, nudge lock irrelevant)
+                        binding.btnMarkDelete.isEnabled = hasSelection
+                        binding.btnMarkDelete.imageTintList = ColorStateList.valueOf(
                             if (hasSelection) tealColor else greyColor
                         )
+                        binding.btnMarkDelete.jumpDrawablesToCurrentState()
+
+                        // Zone 7b: confirm card (requires canNudge to avoid committing
+                        // while the lock is active)
+                        binding.btnMarkConfirm.isEnabled = canNudge
+                        binding.btnMarkConfirm.setCardBackgroundColor(
+                            if (canNudge) tealColor else greyColor
+                        )
+
+                        // ── Zone 7a card: show/hide + timestamp ───────────
+                        if (hasSelection) {
+                            val mark = viewModel.marks.value
+                                .firstOrNull { it.id == selectedId }
+                            if (mark != null) {
+                                binding.tvMarkTimestamp.text = formatMs(mark.positionMs)
+                            }
+                            binding.markExtendedControls.visibility = View.VISIBLE
+                        } else {
+                            binding.markExtendedControls.visibility = View.GONE
+                        }
 
                         updateMarkChipStyles()
                     }
                 }
 
-                // ── MultiLineWaveform: marks + selection (atomic) ──────
-                // Combine both flows so setMarksAndSelectedId is called in
-                // one pass, preventing a flash where a newly selected mark
-                // renders unselected for a frame.
+                // ── MultiLineWaveform: marks + selection (atomic) ──────────
+                // Combine both flows so setMarksAndSelectedId is called in one
+                // pass — prevents a frame where a newly selected mark renders
+                // unselected between setMarks and setSelectedMarkId calls.
                 launch {
                     combine(
                         viewModel.marks,
@@ -367,14 +430,14 @@ class ListenFragment : Fragment() {
     // ── Topic header ──────────────────────────────────────────────────────────
 
     private fun setupTopicHeader() {
-        // ── Result listener — must be registered before the sheet is shown ──
+        // Result listener must be registered before the sheet is shown.
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
         ) { _, bundle ->
             val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
             val recId = viewModel.nowPlaying.value?.recording?.id ?: return@setFragmentResultListener
             viewModel.moveRecording(recId, topicId)
-            // Optionally update the icon immediately (nowPlaying observer will also catch it)
+            // Optimistic icon update — nowPlaying observer will also sync it.
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
             binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
         }
@@ -411,11 +474,20 @@ class ListenFragment : Fragment() {
     // ── Marks panel ───────────────────────────────────────────────────────────
 
     private fun setupMarksPanel() {
+        // ── Zone 7b persistent row ────────────────────────────────────────────
         binding.btnMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
         binding.btnMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
-        binding.btnMarkCommit.setOnClickListener       { viewModel.commitPlaybackMarkNudge() }
+        binding.btnMarkDelete.setOnClickListener       { viewModel.deleteSelectedMark() }
+        binding.btnMarkConfirm.setOnClickListener      { viewModel.commitPlaybackMarkNudge() }
         binding.btnAddMark.setOnClickListener          { viewModel.addMark() }
-        binding.btnDeleteMark.setOnClickListener       { viewModel.deleteSelectedMark() }
+
+        // ── Zone 7a extended controls card ───────────────────────────────────
+        // Card buttons share the same ViewModel calls as the row. The card is
+        // only visible when a mark is selected, so no grey/active styling needed.
+        binding.cardMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
+        binding.cardMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
+        binding.cardMarkDelete.setOnClickListener       { viewModel.deleteSelectedMark() }
+        binding.cardMarkConfirm.setOnClickListener      { viewModel.commitPlaybackMarkNudge() }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

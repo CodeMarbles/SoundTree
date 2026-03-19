@@ -1,405 +1,678 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<!--
+  fragment_listen.xml — Listen Tab refactor
+  Root is ConstraintLayout (replaces NestedScrollView).
+
+  Five constraint-anchored zones:
+    A. pinnedTopArea    — header + seek row + transport + stubs
+    B. multiLineWaveform — fills space between A and C
+    C. splitterBar      — 28dp, pinned to splitterGuideline
+    D. markTimestampList — fills space between C and E
+    E. pinnedBottomArea — mark extended controls card + action row
+
+  A ConstraintLayout Group with id=playerContent references all five zone
+  views so that updateUi() can toggle them with a single visibility call,
+  matching the old binding.playerContent pattern.
+
+  Empty state is an unconstrained centered overlay on top of everything.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorBackground"
-    android:fillViewport="true">
+    android:background="?attr/colorBackground">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="24dp">
+    <!-- ── Horizontal guideline that drives the waveform/chip split ── -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/splitterGuideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.62" />
 
-        <!-- ── Empty state ─────────────────────────────────────── -->
+    <!-- ════════════════════════════════════════════════════════════════
+         Zone A — Pinned top area
+         Constrained: top→parent, start/end→parent. wrap_content height.
+         ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/pinnedTopArea"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- ── 3a. Compound header ─────────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/emptyState"
-            android:layout_width="0dp"
+            android:id="@+id/topicHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="visible"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="4dp">
 
+            <!-- Topic icon — tap to re-assign topic -->
             <TextView
+                android:id="@+id/tvTopicIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🎧"
-                android:textSize="56sp"
-                android:layout_marginBottom="16dp" />
+                android:textSize="36sp"
+                android:includeFontPadding="false"
+                android:layout_marginEnd="10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true" />
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- Title area — tap to rename -->
+            <LinearLayout
+                android:id="@+id/layoutTitleArea"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Nothing playing yet"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="2dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tap play on a recording in the Library to start listening."
-                android:textColor="?attr/colorTextSecondary"
-                android:textSize="14sp"
-                android:textAlignment="center" />
+                <TextView
+                    android:id="@+id/tvCategory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/tvTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:ellipsize="end"
+                    android:maxLines="2" />
+
+            </LinearLayout>
+
+            <!-- Chevron: kept GONE — two separate click targets replace it -->
+            <ImageView
+                android:id="@+id/ivTopicHeaderChevron"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_chevron_down"
+                android:rotation="-90"
+                android:visibility="gone"
+                app:tint="?attr/colorTextSecondary" />
 
         </LinearLayout>
 
-        <!-- ── Player content ──────────────────────────────────── -->
+        <!-- ── 3b. Date / duration row ───────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/playerContent"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="2dp">
+
+            <TextView
+                android:id="@+id/tvRecordedAt"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- ── 3b. Seek bar ──────────────────────────────────────────── -->
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="10dp"
+            android:layout_marginTop="2dp"
+            android:progressTint="?attr/colorAccent"
+            android:thumbTint="?attr/colorAccent" />
+
+        <!-- ── 3b. Time labels row ───────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:id="@+id/tvPosition"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="0:00"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvRemaining"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-0:00"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- ── 3c. Primary transport row ─────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingVertical="4dp">
+
+            <!-- Jump to previous mark -->
+            <ImageView
+                android:id="@+id/btnJumpPrev"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_jump_prev_mark"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Jump to previous mark"
+                app:tint="?attr/colorMarkDefault" />
+
+            <!-- Skip back (fixed scrub interval) -->
+            <ImageView
+                android:id="@+id/btnSkipBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_skip_back"
+                android:padding="10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Skip back"
+                app:tint="?attr/colorTextPrimary" />
+
+            <!-- Play / Pause — 72dp circle, MaterialButton (slightly smaller than Record's 80dp) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlayPause"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:backgroundTint="?attr/colorAccent"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text=""
+                android:contentDescription="Play / Pause"
+                app:icon="@drawable/ic_play"
+                app:iconSize="30dp"
+                app:iconTint="@color/white"
+                app:iconGravity="textStart"
+                app:cornerRadius="36dp" />
+
+            <!-- Skip forward (fixed scrub interval) -->
+            <ImageView
+                android:id="@+id/btnSkipForward"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_skip_forward"
+                android:padding="10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Skip forward"
+                app:tint="?attr/colorTextPrimary" />
+
+            <!-- Jump to next mark -->
+            <ImageView
+                android:id="@+id/btnJumpNext"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_jump_next_mark"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Jump to next mark"
+                app:tint="?attr/colorMarkDefault" />
+
+        </LinearLayout>
+
+        <!-- ── 3d. Secondary stub row ─────────────────────────────────
+             Playback Speed and Sleep Timer stubs. Both fire toasts for now.
+             ─────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlaybackSpeed"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1x"
+                android:textSize="13sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSleepTimer"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Zzz"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Zone B — MultiLineWaveformView
+         Constrained: top→bottomOf(pinnedTopArea), bottom→topOf(splitterBar).
+         height=0dp fills available space automatically.
+         ════════════════════════════════════════════════════════════════ -->
+    <com.treecast.app.ui.waveform.MultiLineWaveformView
+        android:id="@+id/multiLineWaveform"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="14dp"
+        app:layout_constraintTop_toBottomOf="@id/pinnedTopArea"
+        app:layout_constraintBottom_toTopOf="@id/splitterBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Zone C — Splitter bar
+         28dp tall, constrained top→splitterGuideline.
+         Contains: snap-down btn | spacer | handle pill | spacer | snap-up btn
+         ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/splitterBar"
+        android:layout_width="0dp"
+        android:layout_height="28dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="?attr/colorSurfaceElevated"
+        app:layout_constraintTop_toTopOf="@id/splitterGuideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/btnSnapDown"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_chevron_down"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Expand waveform"
+            app:tint="?attr/colorTextSecondary" />
+
+        <!-- Left spacer — centres the handle pill -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Decorative handle pill -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:background="@drawable/bg_drag_handle_pill" />
+
+        <!-- Right spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageView
+            android:id="@+id/btnSnapUp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_chevron_up"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Expand marks"
+            app:tint="?attr/colorTextSecondary" />
+
+    </LinearLayout>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Zone D — Mark chip area (FlowLayout)
+         Constrained: top→bottomOf(splitterBar), bottom→topOf(pinnedBottomArea).
+         height=0dp clips chips naturally when snap-up shrinks the zone.
+         No changes to chip rendering or GestureDetector — ported unchanged.
+         ════════════════════════════════════════════════════════════════ -->
+    <com.treecast.app.ui.listen.FlowLayout
+        android:id="@+id/markTimestampList"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="true"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp"
+        app:layout_constraintTop_toBottomOf="@id/splitterBar"
+        app:layout_constraintBottom_toTopOf="@id/pinnedBottomArea"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Zone E — Pinned bottom area
+         Constrained: bottom→parent, start/end→parent. wrap_content height.
+
+         7a. markExtendedControls card — GONE by default, shown on chip tap
+             (mark selection). Ports Record tab card 1:1. Card buttons use
+             card* IDs to avoid conflicts with the persistent row (7b).
+         7b. Mark action row — always visible. Left half: nudge / delete /
+             confirm (greyed when no selection). Right half: MARK pill button.
+         ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/pinnedBottomArea"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- ── 7a. Mark extended controls card ───────────────────────
+             Appears on mark selection (unlike Record tab, which shows it
+             on mark drop). Shows selected mark's timestamp for context.
+             ─────────────────────────────────────────────────────────── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/markExtendedControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginBottom="4dp"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp">
 
             <LinearLayout
-                android:id="@+id/topicHeader"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="40dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingVertical="4dp"
-                android:layout_marginBottom="8dp"
-                android:visibility="visible">
+                android:paddingHorizontal="10dp">
 
-                <!-- Topic icon — always tappable; opens Topic Picker to re-assign topic -->
+                <!-- Timestamp of the selected mark -->
                 <TextView
-                    android:id="@+id/tvTopicIcon"
+                    android:id="@+id/tvMarkTimestamp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="40sp"
-                    android:lineHeight="48sp"
-                    android:layout_marginEnd="12dp"
-                    android:includeFontPadding="false"
+                    android:text="0:00"
+                    android:textColor="?attr/colorMarkSelected"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace" />
+
+                <!-- Spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Nudge back ← -->
+                <ImageView
+                    android:id="@+id/cardMarkNudgeBack"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="2dp"
+                    android:src="@drawable/ic_mark_nudge_back"
+                    android:padding="6dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:focusable="true" />
+                    android:focusable="true"
+                    android:contentDescription="Move mark back"
+                    app:tint="?attr/colorMarkSelected" />
 
-                <!-- Title area — tapping opens rename dialog for the current recording -->
-                <LinearLayout
-                    android:id="@+id/layoutTitleArea"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center_vertical"
-                    android:background="?attr/selectableItemBackground"
+                <!-- Nudge forward → -->
+                <ImageView
+                    android:id="@+id/cardMarkNudgeForward"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="2dp"
+                    android:src="@drawable/ic_mark_nudge_forward"
+                    android:padding="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:paddingVertical="2dp">
+                    android:contentDescription="Move mark forward"
+                    app:tint="?attr/colorMarkSelected" />
 
-                    <TextView
-                        android:id="@+id/tvCategory"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:ellipsize="end"
-                        android:maxLines="1" />
-
-                    <TextView
-                        android:id="@+id/tvTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:ellipsize="end"
-                        android:maxLines="2" />
-
-                </LinearLayout>
-
-                <!-- Chevron removed: two separate click targets replace the single-row tap -->
+                <!-- Delete -->
                 <ImageView
-                    android:id="@+id/ivTopicHeaderChevron"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:rotation="-90"
-                    android:visibility="gone"
+                    android:id="@+id/cardMarkDelete"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="4dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_delete"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Delete mark"
+                    app:tint="?attr/colorMarkSelected" />
+
+                <!-- Confirm ✓ — pill card, same as Record tab -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardMarkConfirm"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="?attr/colorMarkSelected"
+                    app:cardCornerRadius="7dp"
+                    app:cardElevation="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="5dp"
+                        android:src="@drawable/ic_check"
+                        app:tint="#FFFFFF"
+                        android:scaleType="fitCenter" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ── 7b. Mark action row ────────────────────────────────────
+             Always visible. Left half: nudge/delete/confirm (greyed when
+             no mark selected). Right half: MARK pill button.
+             ─────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Left half — nudge / delete / confirm -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="8dp">
+
+                <ImageView
+                    android:id="@+id/btnMarkNudgeBack"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_mark_nudge_back"
+                    android:padding="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Move mark back"
                     app:tint="?attr/colorTextSecondary" />
 
-            </LinearLayout>
+                <ImageView
+                    android:id="@+id/btnMarkNudgeForward"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_mark_nudge_forward"
+                    android:padding="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Move mark forward"
+                    app:tint="?attr/colorTextSecondary" />
 
-            <com.treecast.app.ui.waveform.MultiLineWaveformView
-                android:id="@+id/multiLineWaveform"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp" />
+                <ImageView
+                    android:id="@+id/btnMarkDelete"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_delete"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Delete mark"
+                    app:tint="?attr/colorTextSecondary" />
 
-            <!-- Date + Duration on one row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="20dp">
+                <!-- Confirm card — greyed via setCardBackgroundColor() in fragment -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnMarkConfirm"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginStart="2dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="?attr/colorTextSecondary"
+                    app:cardCornerRadius="7dp"
+                    app:cardElevation="0dp">
 
-                <TextView
-                    android:id="@+id/tvRecordedAt"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="12sp" />
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="5dp"
+                        android:src="@drawable/ic_check"
+                        app:tint="#FFFFFF"
+                        android:scaleType="fitCenter" />
 
-                <TextView
-                    android:id="@+id/tvDuration"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="12sp" />
-
-            </LinearLayout>
-
-            <!-- Seek bar -->
-            <SeekBar
-                android:id="@+id/seekBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:progressTint="?attr/colorAccent"
-                android:thumbTint="?attr/colorAccent"
-                android:layout_marginBottom="4dp" />
-
-            <!-- Time row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="24dp">
-
-                <TextView
-                    android:id="@+id/tvPosition"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="0:00"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/tvRemaining"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-0:00"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="12sp" />
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
 
-            <!-- Transport controls -->
+            <!-- Right half — MARK pill -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:orientation="horizontal"
                 android:gravity="center"
-                android:layout_marginBottom="28dp">
+                android:paddingHorizontal="8dp">
 
-                <!-- Skip back (fixed scrub interval) -->
-                <ImageView
-                    android:id="@+id/btnSkipBack"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/ic_skip_back"
-                    android:padding="10dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:contentDescription="Skip back"
-                    app:tint="?attr/colorTextPrimary" />
-
-                <!-- Jump to previous mark -->
-                <ImageView
-                    android:id="@+id/btnJumpPrev"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:layout_marginHorizontal="8dp"
-                    android:src="@drawable/ic_jump_prev_mark"
-                    android:padding="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:contentDescription="Jump to previous mark"
-                    app:tint="?attr/colorMarkDefault" />
-
-                <!-- Play / Pause -->
-                <ImageView
-                    android:id="@+id/btnPlayPause"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
-                    android:src="@drawable/ic_play"
-                    android:padding="14dp"
-                    android:backgroundTint="?attr/colorAccent"
-                    android:background="@drawable/bg_circle_accent"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:contentDescription="Play / Pause"
-                    app:tint="@color/white" />
-
-                <!-- Jump to next mark -->
-                <ImageView
-                    android:id="@+id/btnJumpNext"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:layout_marginHorizontal="8dp"
-                    android:src="@drawable/ic_jump_next_mark"
-                    android:padding="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:contentDescription="Jump to next mark"
-                    app:tint="?attr/colorMarkDefault" />
-
-                <!-- Skip forward (fixed scrub interval) -->
-                <ImageView
-                    android:id="@+id/btnSkipForward"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/ic_skip_forward"
-                    android:padding="10dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:contentDescription="Skip forward"
-                    app:tint="?attr/colorTextPrimary" />
-
-            </LinearLayout>
-
-            <!-- Page 1: Marks -->
-            <LinearLayout
-                android:id="@+id/marksPanel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="?attr/colorMarkSurface"
-                android:paddingHorizontal="12dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="4dp"
-                android:visibility="visible">
-
-                <!-- ── Chip flow area ──────────────────────────── -->
-                <com.treecast.app.ui.listen.FlowLayout
-                    android:id="@+id/markTimestampList"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddMark"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="36dp"
-                    android:paddingBottom="8dp" />
-
-                <!-- ── Button row ──────────────────────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingTop="4dp">
-
-                    <!-- Delete — less prominent, left side -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnDeleteMark"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Delete"
-                        android:textSize="13sp"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:enabled="false"
-                        app:icon="@drawable/ic_delete"
-                        app:iconSize="16dp"
-                        app:iconTint="?attr/colorTextSecondary"
-                        app:iconGravity="textStart"
-                        app:cornerRadius="8dp" />
-
-                    <!-- Nudge back ← -->
-                    <ImageView
-                        android:id="@+id/btnMarkNudgeBack"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="4dp"
-                        android:src="@drawable/ic_mark_nudge_back"
-                        android:padding="6dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:enabled="false"
-                        android:contentDescription="Move mark back"
-                        app:tint="?attr/colorMarkSelected" />
-
-                    <!-- Commit ✓ -->
-                    <ImageView
-                        android:id="@+id/btnMarkCommit"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="2dp"
-                        android:src="@drawable/ic_check"
-                        android:padding="6dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:enabled="false"
-                        android:contentDescription="Confirm mark position"
-                        app:tint="?attr/colorMarkSelected" />
-
-                    <!-- Spacer pushes Mark button to the right -->
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
-
-                    <!-- Nudge forward → -->
-                    <ImageView
-                        android:id="@+id/btnMarkNudgeForward"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="2dp"
-                        android:src="@drawable/ic_mark_nudge_forward"
-                        android:padding="6dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:enabled="false"
-                        android:contentDescription="Move mark forward"
-                        app:tint="?attr/colorMarkSelected" />
-
-                    <!-- Spacer pushes Mark button to the right -->
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
-
-                    <!-- Mark — prominent filled pill -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnAddMark"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Mark"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.12"
-                        android:textColor="@color/white"
-                        android:backgroundTint="?attr/colorMarkAction"
-                        app:icon="@drawable/ic_mark"
-                        app:iconSize="16dp"
-                        app:iconTint="@color/white"
-                        app:iconGravity="textStart"
-                        app:cornerRadius="20dp" />
-
-                </LinearLayout>
+                    android:layout_height="48dp"
+                    android:text="MARK"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.12"
+                    android:textColor="@color/white"
+                    android:backgroundTint="?attr/colorMarkDefault"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    app:icon="@drawable/ic_mark"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/white"
+                    app:iconGravity="textStart"
+                    app:cornerRadius="24dp" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
-</androidx.core.widget.NestedScrollView>
+    <!-- ════════════════════════════════════════════════════════════════
+         Player content Group
+         References all five zone view IDs so that updateUi() can toggle
+         all player content with a single binding.playerContent.visibility
+         call — same API as the old playerContent LinearLayout.
+         ════════════════════════════════════════════════════════════════ -->
+    <androidx.constraintlayout.widget.Group
+        android:id="@+id/playerContent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:constraint_referenced_ids="pinnedTopArea,multiLineWaveform,splitterBar,markTimestampList,pinnedBottomArea" />
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Empty state — centered overlay, unchanged from previous layout.
+         Lives inside the ConstraintLayout unconstrained to the zones.
+         ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="visible"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎧"
+            android:textSize="56sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nothing playing yet"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap play on a recording in the Library to start listening."
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="14sp"
+            android:textAlignment="center" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -117,6 +117,22 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * When false, top and bottom edge fades are suppressed regardless of scroll
+     * state. Set to false when the splitter snaps up (waveform shrinks to one
+     * line — fades are meaningless at that height), and back to true on
+     * snap-down or free drag.
+     * Call sites: [ListenFragment.snapTo].
+     */
+    var fadesEnabled: Boolean = true
+        set(value) {
+            field = value
+            if (!value) {
+                topFadeView.visibility    = View.INVISIBLE
+                bottomFadeView.visibility = View.INVISIBLE
+            }
+        }
+
+    /**
      * Visual style applied to every [WaveformLineView] in this widget.
      *
      * Changing the style:
@@ -258,10 +274,13 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 if (newState == RecyclerView.SCROLL_STATE_DRAGGING) autoScrollPaused = true
             }
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                val canScrollUp   = rv.canScrollVertically(-1)
                 val canScrollDown = rv.canScrollVertically(1)
-                topFadeView.visibility    = if (canScrollUp)   View.VISIBLE else View.INVISIBLE
-                bottomFadeView.visibility = if (canScrollDown) View.VISIBLE else View.INVISIBLE
+                if (fadesEnabled) {
+                    val canScrollUp = rv.canScrollVertically(-1)
+                    topFadeView.visibility    = if (canScrollUp)   View.VISIBLE else View.INVISIBLE
+                    bottomFadeView.visibility = if (canScrollDown) View.VISIBLE else View.INVISIBLE
+                }
+                // autoScrollPaused reset must run even when fades are disabled.
                 if (!canScrollDown) autoScrollPaused = false
             }
         })
