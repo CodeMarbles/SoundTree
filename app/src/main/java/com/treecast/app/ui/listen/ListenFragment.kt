@@ -344,6 +344,7 @@ class ListenFragment : Fragment() {
             binding.seekBar.progress       = 0
             binding.seekBarBottom.max      = 1
             binding.seekBarBottom.progress = 0
+            binding.seekBarAreaBottom.visibility = View.GONE
             binding.tvPosition.text        = "0:00"
             binding.tvRemaining.text       = "-0:00"
             binding.tvPositionBottom.text  = "0:00"

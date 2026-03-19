@@ -420,6 +420,16 @@
 
     </LinearLayout>
 
+    <!-- Barrier sits at the bottom of seekBarAreaBottom when VISIBLE,
+         falls back to splitterBar bottom when seekBarAreaBottom is GONE.
+         markChipScroller always constrains to this, never to either view directly. -->
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/seekStripBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="splitterBar,seekBarAreaBottom" />
+
     <!-- ════════════════════════════════════════════════════════════════
          Zone D — Mark chip area
          HorizontalScrollView + FlowLayout, unchanged from rev 2.
@@ -431,7 +441,7 @@
         android:scrollbars="none"
         android:overScrollMode="never"
         android:fillViewport="false"
-        app:layout_constraintTop_toBottomOf="@id/seekBarAreaBottom"
+        app:layout_constraintTop_toBottomOf="@id/seekStripBarrier"
         app:layout_constraintBottom_toTopOf="@id/pinnedBottomArea"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -577,7 +587,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:constraint_referenced_ids="pinnedTopArea,multiLineWaveform,splitterBar,seekBarAreaBottom,markChipScroller,pinnedBottomArea" />
+        app:constraint_referenced_ids="pinnedTopArea,multiLineWaveform,splitterBar,markChipScroller,pinnedBottomArea" />
 
     <!-- ════════════════════════════════════════════════════════════════
          Empty state
