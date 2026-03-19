@@ -18,6 +18,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.GestureDetectorCompat
+import androidx.core.view.doOnLayout
+import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -70,6 +72,8 @@ class ListenFragment : Fragment() {
         setupTopicHeader()
         setupMarksPanel()
         setupMultiLineWaveform()
+        // Initialise chip layout once the scroller has been measured.
+        binding.markChipScroller.doOnLayout { applyChipLayoutMode(SplitterState.SNAP_DOWN) }
         observeNowPlaying()
         observeMarks()
         observeWaveform()
@@ -84,14 +88,13 @@ class ListenFragment : Fragment() {
 
     private fun setupMultiLineWaveform() {
         binding.multiLineWaveform.scaleToFill = true
-        // 5-minute lines on the Listen tab — adjust when zoom controls arrive.
-        binding.multiLineWaveform.secondsPerLine   = 300
+        binding.multiLineWaveform.secondsPerLine   = 300 // 5 minutes
         binding.multiLineWaveform.showPlayedSplit  = true
 
         binding.multiLineWaveform.onTimeSelected = { positionMs, type ->
             when (type) {
                 WaveformTapType.TAP        -> viewModel.seekTo(positionMs)
-                WaveformTapType.LONG_PRESS -> { /* reserved for future use */ }
+                WaveformTapType.LONG_PRESS -> { /* reserved */ }
             }
         }
     }
@@ -111,7 +114,25 @@ class ListenFragment : Fragment() {
     }
 
     private fun snapTo(state: SplitterState) {
-        val target = if (state == SplitterState.SNAP_DOWN) 0.62f else 0.18f
+        val target = if (state == SplitterState.SNAP_DOWN) {
+            0.62f
+        } else {
+            // Compute the minimum safe guide percent so the splitter always
+            // lands *below* the bottom of Zone A. A hardcoded value (e.g. 0.18)
+            // fails when Zone A is taller than 18% of the screen — the waveform
+            // gets zero height. Instead we measure Zone A's actual bottom pixel
+            // and convert to a percent, then add a small buffer so the waveform
+            // is always at least partially visible.
+            val parentH = binding.root.height.toFloat()
+            if (parentH > 0f) {
+                val bufferPx = (24 * resources.displayMetrics.density)
+                val minPx    = binding.pinnedTopArea.bottom + binding.splitterBar.height + bufferPx
+                (minPx / parentH).coerceIn(0.20f, 0.55f)
+            } else {
+                0.30f   // safe fallback if root hasn't been laid out yet
+            }
+        }
+
         val guideline = binding.splitterGuideline
         val currentPercent =
             (guideline.layoutParams as ConstraintLayout.LayoutParams).guidePercent
@@ -125,9 +146,40 @@ class ListenFragment : Fragment() {
                 override fun onAnimationEnd(animation: Animator) {
                     splitterState = state
                     binding.multiLineWaveform.fadesEnabled = (state == SplitterState.SNAP_DOWN)
+                    applyChipLayoutMode(state)
                 }
             })
         }.start()
+    }
+
+    /**
+     * Switches the chip FlowLayout between single-row (snap-up) and
+     * multi-row wrapping (snap-down) modes.
+     *
+     * In snap-down mode the FlowLayout's width is set to the scroller's pixel
+     * width so wrapping works correctly — HorizontalScrollView always measures
+     * children with UNSPECIFIED width, which would cause the FlowLayout to see
+     * 0dp and never wrap.
+     *
+     * In snap-up mode WRAP_CONTENT is restored so the strip can grow beyond
+     * the scroller width and be scrolled horizontally.
+     */
+    private fun applyChipLayoutMode(state: SplitterState) {
+        if (state == SplitterState.SNAP_DOWN) {
+            // Waveform dominant — Zone D is small. Single scrolling strip.
+            binding.markTimestampList.singleRow = true
+            binding.markTimestampList.updateLayoutParams {
+                width = ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+            binding.markTimestampList.post { scrollToLastPassedChip() }
+        } else {
+            // Marks dominant — Zone D is large. Multi-row wrapping.
+            binding.markTimestampList.singleRow = false
+            binding.markTimestampList.updateLayoutParams {
+                width = binding.markChipScroller.width
+            }
+            binding.markChipScroller.scrollTo(0, 0)
+        }
     }
 
     // ── Transport ──────────────────────────────────────────────────────────────
@@ -205,7 +257,6 @@ class ListenFragment : Fragment() {
             binding.tvTitle.text     = "Nothing playing"
             binding.tvPosition.text  = "0:00"
             binding.tvRemaining.text = "-0:00"
-            // btnPlayPause is now a MaterialButton — use setIconResource, not setImageResource
             binding.btnPlayPause.setIconResource(R.drawable.ic_play)
             binding.seekBar.progress = 0
             binding.multiLineWaveform.setPlayheadMs(-1L)
@@ -234,7 +285,7 @@ class ListenFragment : Fragment() {
             binding.multiLineWaveform.setPlayheadMs(pos)
         }
 
-        // Highlight the last-passed mark chip
+        // Highlight the last-passed mark chip and scroll to it in snap-up mode.
         val marks = viewModel.marks.value
         if (marks.isNotEmpty()) {
             val pos    = state.positionMs
@@ -242,6 +293,7 @@ class ListenFragment : Fragment() {
             if (passed?.id != lastPassedMarkId) {
                 lastPassedMarkId = passed?.id
                 updateMarkChipStyles()
+                scrollToLastPassedChip()
             }
         }
     }
@@ -261,9 +313,7 @@ class ListenFragment : Fragment() {
                     }
                 }
 
-                // ── Nudge controls + chip styles + card show/hide ──────────
-                // Combines selectedMarkId and playbackMarkNudgeLocked so both
-                // control states are evaluated together in one pass.
+                // Nudge controls + chip styles.
                 launch {
                     combine(
                         viewModel.selectedMarkId,
@@ -276,7 +326,7 @@ class ListenFragment : Fragment() {
                         val tealColor    = requireContext().themeColor(R.attr.colorMarkSelected)
                         val greyColor    = requireContext().themeColor(R.attr.colorTextSecondary)
 
-                        // ── Zone 7b row: nudge buttons ────────────────────
+                        // ── Zone 7 row: nudge buttons ────────────────────
                         listOf(
                             binding.btnMarkNudgeBack,
                             binding.btnMarkNudgeForward
@@ -288,31 +338,19 @@ class ListenFragment : Fragment() {
                             v.jumpDrawablesToCurrentState()
                         }
 
-                        // Zone 7b: delete (selection required, nudge lock irrelevant)
+                        // Zone 7: delete (selection required, nudge lock irrelevant)
                         binding.btnMarkDelete.isEnabled = hasSelection
                         binding.btnMarkDelete.imageTintList = ColorStateList.valueOf(
                             if (hasSelection) tealColor else greyColor
                         )
                         binding.btnMarkDelete.jumpDrawablesToCurrentState()
 
-                        // Zone 7b: confirm card (requires canNudge to avoid committing
+                        // Zone 7: confirm card (requires canNudge to avoid committing
                         // while the lock is active)
                         binding.btnMarkConfirm.isEnabled = canNudge
                         binding.btnMarkConfirm.setCardBackgroundColor(
                             if (canNudge) tealColor else greyColor
                         )
-
-                        // ── Zone 7a card: show/hide + timestamp ───────────
-                        if (hasSelection) {
-                            val mark = viewModel.marks.value
-                                .firstOrNull { it.id == selectedId }
-                            if (mark != null) {
-                                binding.tvMarkTimestamp.text = formatMs(mark.positionMs)
-                            }
-                            binding.markExtendedControls.visibility = View.VISIBLE
-                        } else {
-                            binding.markExtendedControls.visibility = View.GONE
-                        }
 
                         updateMarkChipStyles()
                     }
@@ -346,8 +384,7 @@ class ListenFragment : Fragment() {
         container.removeAllViews()
         markChips.clear()
 
-        val density  = resources.displayMetrics.density
-        val duration = viewModel.nowPlaying.value?.durationMs ?: 1L
+        val density = resources.displayMetrics.density
 
         marks.forEach { mark ->
             val chip = TextView(requireContext()).apply {
@@ -427,6 +464,19 @@ class ListenFragment : Fragment() {
         }
     }
 
+    /**
+     * Scrolls the chip strip so the last-passed chip is visible.
+     * Only acts in snap-up (single-row) mode — in snap-down multi-row mode
+     * chips fill the full width and no horizontal scroll is needed.
+     */
+    private fun scrollToLastPassedChip() {
+        if (splitterState != SplitterState.SNAP_DOWN) return
+        val chip = markChips[lastPassedMarkId] ?: return
+        val leadPx = (32 * resources.displayMetrics.density).toInt()
+        val scrollX = (chip.left - leadPx).coerceAtLeast(0)
+        binding.markChipScroller.smoothScrollTo(scrollX, 0)
+    }
+
     // ── Topic header ──────────────────────────────────────────────────────────
 
     private fun setupTopicHeader() {
@@ -480,14 +530,6 @@ class ListenFragment : Fragment() {
         binding.btnMarkDelete.setOnClickListener       { viewModel.deleteSelectedMark() }
         binding.btnMarkConfirm.setOnClickListener      { viewModel.commitPlaybackMarkNudge() }
         binding.btnAddMark.setOnClickListener          { viewModel.addMark() }
-
-        // ── Zone 7a extended controls card ───────────────────────────────────
-        // Card buttons share the same ViewModel calls as the row. The card is
-        // only visible when a mark is selected, so no grey/active styling needed.
-        binding.cardMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
-        binding.cardMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
-        binding.cardMarkDelete.setOnClickListener       { viewModel.deleteSelectedMark() }
-        binding.cardMarkConfirm.setOnClickListener      { viewModel.commitPlaybackMarkNudge() }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

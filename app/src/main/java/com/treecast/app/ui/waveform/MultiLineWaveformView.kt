@@ -330,7 +330,17 @@ class MultiLineWaveformView @JvmOverloads constructor(
         if (waveformDisplayConfig.unplayedOnly && backgroundDecoration != null) {
             recyclerView.invalidateItemDecorations()
         }
+
+        // Snap-up mode: the RecyclerView is shrunk to roughly one line height
+        // so autoScrollPaused must be bypassed — always keep the playhead line
+        // visible. scrollToMs() calls smoothScrollToPosition() which is a no-op
+        // when the target item is already on screen, so there is no overhead
+        // while the playhead stays on the same line.
+        if (!fadesEnabled && positionMs >= 0L) {
+            scrollToMs(positionMs)
+        }
     }
+
 
     /** Replace the entire mark list. */
     fun setMarks(marks: List<WaveformMark>) {
