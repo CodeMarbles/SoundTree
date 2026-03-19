@@ -27,7 +27,7 @@
         app:layout_constraintBottom_toTopOf="@id/bottomPinnedArea">
 
         <!-- ── Compound header ────────────────────────────────────────
-             Unchanged — topic zone + recording name zone.
+             topic zone + recording name zone.
              ─────────────────────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/compoundHeader"

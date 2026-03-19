@@ -33,7 +33,6 @@
 
     <!-- ════════════════════════════════════════════════════════════════
          Zone A — Pinned top area
-         Padding/margins compressed throughout.
          ════════════════════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/pinnedTopArea"
@@ -152,6 +151,7 @@
 
         <!-- ── Time labels row ───────────────────────────────────────── -->
         <LinearLayout
+            android:id="@+id/timeLabelsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -186,17 +186,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_horizontal|center_vertical"
+            android:gravity="center_vertical"
             android:paddingTop="2dp"
             android:paddingBottom="4dp">
 
-            <!-- Speed stub — TextButton, left outer -->
+            <!-- Speed stub — hugs left edge -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlaybackSpeed"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
+                android:layout_gravity="center_vertical"
                 android:text="1x"
                 android:textSize="12sp"
                 android:minWidth="0dp"
@@ -204,11 +204,17 @@
                 android:paddingHorizontal="6dp"
                 android:paddingVertical="4dp" />
 
+            <!-- Left spacer: pushes central controls to centre -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
             <!-- Jump to previous mark -->
             <ImageView
                 android:id="@+id/btnJumpPrev"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:src="@drawable/ic_jump_prev_mark"
                 android:padding="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -220,39 +226,40 @@
             <!-- Skip back -->
             <ImageView
                 android:id="@+id/btnSkipBack"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_skip_back"
-                android:padding="9dp"
+                android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
                 android:contentDescription="Skip back"
                 app:tint="?attr/colorTextPrimary" />
 
-            <!-- Play / Pause — 60dp circle (25% taller than 48dp skip buttons) -->
+            <!-- Play / Pause — matches skip button size; corner radius = half width -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayPause"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:backgroundTint="?attr/colorAccent"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text=""
                 android:contentDescription="Play / Pause"
                 app:icon="@drawable/ic_play"
-                app:iconSize="26dp"
+                app:iconPadding = "0dp"
+                app:iconSize="22dp"
                 app:iconTint="@color/white"
                 app:iconGravity="textStart"
-                app:cornerRadius="30dp" />
+                app:cornerRadius="24dp" />
 
             <!-- Skip forward -->
             <ImageView
                 android:id="@+id/btnSkipForward"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_skip_forward"
-                android:padding="9dp"
+                android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
@@ -262,8 +269,8 @@
             <!-- Jump to next mark -->
             <ImageView
                 android:id="@+id/btnJumpNext"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:src="@drawable/ic_jump_next_mark"
                 android:padding="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -272,13 +279,19 @@
                 android:contentDescription="Jump to next mark"
                 app:tint="?attr/colorMarkDefault" />
 
-            <!-- Sleep timer stub — TextButton, right outer -->
+            <!-- Right spacer: symmetric with left spacer -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Sleep timer stub — hugs right edge -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSleepTimer"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
+                android:layout_gravity="center_vertical"
                 android:text="Zzz"
                 android:textSize="12sp"
                 android:minWidth="0dp"
@@ -359,6 +372,55 @@
     </LinearLayout>
 
     <!-- ════════════════════════════════════════════════════════════════
+         Zone D.5 — Inline seek strip (SNAP_UP only)
+         [position | seekbar | remaining] in a single row, sitting between
+         the splitter bar and the mark chip scroller.
+         GONE in SNAP_DOWN; VISIBLE in SNAP_UP via applyChipLayoutMode().
+         ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/seekBarAreaBottom"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/splitterBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvPositionBottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0:00"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:layout_marginEnd="6dp" />
+
+        <SeekBar
+            android:id="@+id/seekBarBottom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:progressTint="?attr/colorAccent"
+            android:thumbTint="?attr/colorAccent" />
+
+        <TextView
+            android:id="@+id/tvRemainingBottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-0:00"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:layout_marginStart="6dp" />
+
+    </LinearLayout>
+
+    <!-- ════════════════════════════════════════════════════════════════
          Zone D — Mark chip area
          HorizontalScrollView + FlowLayout, unchanged from rev 2.
          ════════════════════════════════════════════════════════════════ -->
@@ -369,7 +431,7 @@
         android:scrollbars="none"
         android:overScrollMode="never"
         android:fillViewport="false"
-        app:layout_constraintTop_toBottomOf="@id/splitterBar"
+        app:layout_constraintTop_toBottomOf="@id/seekBarAreaBottom"
         app:layout_constraintBottom_toTopOf="@id/pinnedBottomArea"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -515,7 +577,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:constraint_referenced_ids="pinnedTopArea,multiLineWaveform,splitterBar,markChipScroller,pinnedBottomArea" />
+        app:constraint_referenced_ids="pinnedTopArea,multiLineWaveform,splitterBar,seekBarAreaBottom,markChipScroller,pinnedBottomArea" />
 
     <!-- ════════════════════════════════════════════════════════════════
          Empty state

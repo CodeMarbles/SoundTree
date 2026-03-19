@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.doOnLayout
+import androidx.core.view.doOnNextLayout
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -67,16 +68,20 @@ class ListenFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupTransportControls()
-        setupSplitter()
         setupTopicHeader()
-        setupMarksPanel()
+        setupTransportControls()
         setupMultiLineWaveform()
-        // Initialise chip layout once the scroller has been measured.
-        binding.markChipScroller.doOnLayout { applyChipLayoutMode(SplitterState.SNAP_DOWN) }
+
+        setupSplitter()
+        setupSnapUpTracking()
+
+        setupMarksPanel()
         observeNowPlaying()
         observeMarks()
         observeWaveform()
+
+        // Initialise chip layout once the scroller has been measured.
+        binding.markChipScroller.doOnLayout { applyChipLayoutMode(SplitterState.SNAP_DOWN) }
     }
 
     override fun onDestroyView() {
@@ -113,36 +118,62 @@ class ListenFragment : Fragment() {
         }
     }
 
+    private fun setupSnapUpTracking() {
+        // Re-anchor the SNAP_UP guideline if root height changes (e.g. mini-recorder
+        // widget appears or disappears while we're in marks-dominant mode).
+        binding.root.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
+            if (bottom != oldBottom && splitterState == SplitterState.SNAP_UP) {
+                binding.splitterGuideline.setGuidelinePercent(calcSnapUpPercent())
+            }
+        }
+    }
+
     private fun snapTo(state: SplitterState) {
-        val target = if (state == SplitterState.SNAP_DOWN) {
+        if (state == SplitterState.SNAP_DOWN) {
             applyChipLayoutMode(SplitterState.SNAP_DOWN)
             val density       = resources.displayMetrics.density
             val scaledDensity = resources.displayMetrics.scaledDensity
-            // Chip row height: 12sp text + 4dp*2 chip padding + 4dp*2 chip margin
-            //                  + 8dp FlowLayout paddingTop + 4dp FlowLayout paddingBottom
-            // NOTE:  This is a calculated constant and will need to be updated if we adjust
-            //        styling/layout on anything in the pill row or below.
             val chipRowPx = (12f * scaledDensity) + (28f * density)
             val parentH = binding.root.height.toFloat()
-            if (parentH > 0f) {
+            val target = if (parentH > 0f) {
                 val belowPx = binding.splitterBar.height + chipRowPx +
+                        binding.seekBarAreaBottom.height +   // 0 since it's GONE — explicit for clarity
                         binding.pinnedBottomArea.height
                 ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.85f)
             } else {
                 0.62f
             }
+            animateGuideline(target, SplitterState.SNAP_DOWN)
         } else {
             applyChipLayoutMode(SplitterState.SNAP_UP)
-            val parentH = binding.root.height.toFloat()
-            if (parentH > 0f) {
-                val bufferPx = 24 * resources.displayMetrics.density
-                val minPx    = binding.pinnedTopArea.bottom + binding.splitterBar.height + bufferPx
-                (minPx / parentH).coerceIn(0.20f, 0.55f)
-            } else {
-                0.30f
+            // Zone A has just shrunk (seekBar + labels gone). Wait for a layout
+            // pass so pinnedTopArea.height reflects its new compressed size.
+            binding.pinnedTopArea.doOnNextLayout {
+                animateGuideline(calcSnapUpPercent(), SplitterState.SNAP_UP)
             }
         }
+    }
 
+    /**
+     * Calculates the guideline percent for SNAP_UP: Zone A (now seekbar-free) +
+     * splitter bar + one waveform row, expressed as a fraction of root height.
+     *
+     * Using pinnedTopArea.height rather than .bottom makes this independent of
+     * activity-level chrome (mini-recorder, mini-player) that can shift the
+     * fragment's position within the window.
+     */
+    private fun calcSnapUpPercent(): Float {
+        val parentH = binding.root.height.toFloat()
+        if (parentH <= 0f) return 0.30f
+        val rowH = binding.multiLineWaveform.lineHeightPx
+            .takeIf { it > 0 } ?: (64 * resources.displayMetrics.density).toInt()
+        val targetPx = binding.pinnedTopArea.height.toFloat() +
+                binding.splitterBar.height.toFloat() +
+                rowH.toFloat()
+        return (targetPx / parentH).coerceIn(0.15f, 0.65f)
+    }
+
+    private fun animateGuideline(target: Float, endState: SplitterState) {
         val guideline = binding.splitterGuideline
         val currentPercent =
             (guideline.layoutParams as ConstraintLayout.LayoutParams).guidePercent
@@ -154,8 +185,8 @@ class ListenFragment : Fragment() {
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    splitterState = state
-                    binding.multiLineWaveform.fadesEnabled = (state == SplitterState.SNAP_DOWN)
+                    splitterState = endState
+                    binding.multiLineWaveform.fadesEnabled = (endState == SplitterState.SNAP_DOWN)
                 }
             })
         }.start()
@@ -180,6 +211,11 @@ class ListenFragment : Fragment() {
                 as ConstraintLayout.LayoutParams
 
         if (state == SplitterState.SNAP_DOWN) {
+            // Show Zone A seek strip; hide Zone D.5
+            binding.seekBar.visibility        = View.VISIBLE
+            binding.timeLabelsRow.visibility  = View.VISIBLE
+            binding.seekBarAreaBottom.visibility = View.GONE
+
             // Waveform dominant — let the scroller shrink to its content height
             // and pin it to the bottom of Zone D so it hugs Zone E.
             scrollerParams.height = ConstraintLayout.LayoutParams.WRAP_CONTENT
@@ -192,6 +228,11 @@ class ListenFragment : Fragment() {
             }
             binding.markTimestampList.post { scrollToLastPassedChip() }
         } else {
+            // Hide Zone A seek strip; show Zone D.5
+            binding.seekBar.visibility        = View.GONE
+            binding.timeLabelsRow.visibility  = View.GONE
+            binding.seekBarAreaBottom.visibility = View.VISIBLE
+
             // Marks dominant — restore fill so Zone D uses all available space.
             scrollerParams.height = 0 // MATCH_CONSTRAINT
             scrollerParams.verticalBias = 0.5f
@@ -214,7 +255,7 @@ class ListenFragment : Fragment() {
         binding.btnJumpPrev.setOnClickListener    { viewModel.jumpToPrevMark() }
         binding.btnJumpNext.setOnClickListener    { viewModel.jumpToNextMark() }
 
-        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        val seekListener = fun(seekBar: SeekBar) = object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) { isSeeking = true }
             override fun onStopTrackingTouch(sb: SeekBar) {
                 isSeeking = false
@@ -223,11 +264,29 @@ class ListenFragment : Fragment() {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     val dur = viewModel.nowPlaying.value?.durationMs ?: return
-                    binding.tvPosition.text  = formatMs(progress.toLong())
-                    binding.tvRemaining.text = "-${formatMs(dur - progress)}"
+                    // Keep whichever sibling seekbar is currently visible in sync.
+                    syncSeekUi(progress.toLong(), dur)
                 }
             }
-        })
+        }
+        binding.seekBar.setOnSeekBarChangeListener(seekListener(binding.seekBar))
+        binding.seekBarBottom.setOnSeekBarChangeListener(seekListener(binding.seekBarBottom))
+    }
+
+    private fun syncSeekMax(durationMs: Long) {
+        binding.seekBar.max       = durationMs.toInt()
+        binding.seekBarBottom.max = durationMs.toInt()
+    }
+
+    /** Updates both seekbars and both label pairs from a single position value. */
+    private fun syncSeekUi(positionMs: Long, durationMs: Long) {
+        val dur = durationMs.coerceAtLeast(1L)
+        binding.seekBar.progress       = positionMs.toInt()
+        binding.seekBarBottom.progress = positionMs.toInt()
+        binding.tvPosition.text        = formatMs(positionMs)
+        binding.tvRemaining.text       = "-${formatMs(dur - positionMs)}"
+        binding.tvPositionBottom.text  = formatMs(positionMs)
+        binding.tvRemainingBottom.text = "-${formatMs(dur - positionMs)}"
     }
 
     // ── Waveform observers ────────────────────────────────────────────────────
@@ -277,11 +336,18 @@ class ListenFragment : Fragment() {
         binding.playerContent.visibility = if (state == null) View.GONE    else View.VISIBLE
 
         if (state == null) {
-            binding.tvTitle.text     = "Nothing playing"
-            binding.tvPosition.text  = "0:00"
-            binding.tvRemaining.text = "-0:00"
+            binding.tvTitle.text           = "Nothing playing"
+            binding.tvRecordedAt.text      = ""
+            binding.tvDuration.text        = ""
             binding.btnPlayPause.setIconResource(R.drawable.ic_play)
-            binding.seekBar.progress = 0
+            binding.seekBar.max            = 1
+            binding.seekBar.progress       = 0
+            binding.seekBarBottom.max      = 1
+            binding.seekBarBottom.progress = 0
+            binding.tvPosition.text        = "0:00"
+            binding.tvRemaining.text       = "-0:00"
+            binding.tvPositionBottom.text  = "0:00"
+            binding.tvRemainingBottom.text = "-0:00"
             binding.multiLineWaveform.setPlayheadMs(-1L)
             return
         }
@@ -299,10 +365,11 @@ class ListenFragment : Fragment() {
             val dur = state.durationMs.coerceAtLeast(1L)
             val pos = state.positionMs
 
-            binding.seekBar.max      = dur.toInt()
-            binding.seekBar.progress = pos.toInt()
-            binding.tvPosition.text  = formatMs(pos)
-            binding.tvRemaining.text = "-${formatMs(dur - pos)}"
+            syncSeekMax(dur)
+            syncSeekUi(state.positionMs, dur)
+
+            binding.tvRecordedAt.text = formatDate(state.recording.createdAt)
+            binding.tvDuration.text   = formatMs(state.recording.durationMs)
 
             binding.multiLineWaveform.setDurationMs(dur)
             binding.multiLineWaveform.setPlayheadMs(pos)
@@ -562,4 +629,8 @@ class ListenFragment : Fragment() {
         return if (m >= 60) "%d:%02d:%02d".format(m / 60, m % 60, s % 60)
         else "%d:%02d".format(m, s % 60)
     }
+
+    private fun formatDate(epochMs: Long): String =
+        java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date(epochMs))
 }

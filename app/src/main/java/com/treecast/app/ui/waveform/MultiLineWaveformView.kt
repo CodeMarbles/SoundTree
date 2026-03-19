@@ -133,6 +133,13 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * Height of a single waveform row in pixels.
+     * Returns 0 if no rows have been laid out yet (safe fallback in callers).
+     */
+    val lineHeightPx: Int
+        get() = recyclerView.getChildAt(0)?.height ?: 0
+
+    /**
      * Visual style applied to every [WaveformLineView] in this widget.
      *
      * Changing the style:
