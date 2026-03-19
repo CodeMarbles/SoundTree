@@ -26,6 +26,7 @@ import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class SettingsFragment : Fragment() {
 
@@ -447,7 +448,7 @@ class SettingsFragment : Fragment() {
 
         switchInvert.isChecked  = viewModel.invertWaveformTheme.value
         // Slider is 0–100 (integer-step); config stores 0f–1f
-        sliderAlpha.value       = (initialConfig.backgroundAlpha * 100f).coerceIn(0f, 100f)
+        sliderAlpha.value = (initialConfig.backgroundAlpha * 100f).roundToInt().toFloat().coerceIn(0f, 100f)
         switchRuler.isChecked   = initialConfig.extendsUnderRuler
         switchUnplayed.isChecked = initialConfig.unplayedOnly
 
@@ -467,7 +468,7 @@ class SettingsFragment : Fragment() {
                 }
                 launch {
                     viewModel.waveformDisplayConfig.collect { cfg ->
-                        val sliderTarget = (cfg.backgroundAlpha * 100f).coerceIn(0f, 100f)
+                        val sliderTarget = (cfg.backgroundAlpha * 100f).roundToInt().toFloat().coerceIn(0f, 100f)
                         if (sliderAlpha.value != sliderTarget) sliderAlpha.value = sliderTarget
                         if (switchRuler.isChecked    != cfg.extendsUnderRuler) switchRuler.isChecked    = cfg.extendsUnderRuler
                         if (switchUnplayed.isChecked != cfg.unplayedOnly)       switchUnplayed.isChecked = cfg.unplayedOnly
