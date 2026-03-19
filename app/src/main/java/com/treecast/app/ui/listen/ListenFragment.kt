@@ -125,6 +125,11 @@ class ListenFragment : Fragment() {
                         binding.multiLineWaveform.waveformStyle = style
                     }
                 }
+                launch {
+                    viewModel.waveformDisplayConfig.collect { cfg ->
+                        binding.multiLineWaveform.waveformDisplayConfig = cfg
+                    }
+                }
             }
         }
     }

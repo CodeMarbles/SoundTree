@@ -14,6 +14,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.WorkInfo
+import com.google.android.material.slider.Slider
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.ui.MainViewModel
@@ -387,30 +388,76 @@ class SettingsFragment : Fragment() {
 
     private fun setupWaveformStyleSettings() {
 
-        val switchStylized = binding.switchStylizedWaveforms
-        val switchInvert   = binding.switchInvertWaveformTheme
-        val rowInvert      = binding.rowInvertWaveformTheme
+        // ── View refs ─────────────────────────────────────────────────────────
+        val btnStyleStandard   = binding.btnWaveformStyleStandard
+        val btnStyleSky        = binding.btnWaveformStyleSky
+        val btnStyleSkyLights  = binding.btnWaveformStyleSkyLights
+        val rowSubOptions      = binding.rowWaveformSubOptions
+        val switchInvert       = binding.switchInvertWaveformTheme
+        val rowInvert          = binding.rowInvertWaveformTheme
+        val sliderAlpha        = binding.sliderWaveformBgAlpha
+        val rowAlpha           = binding.rowWaveformBgAlpha
+        val switchRuler        = binding.switchWaveformExtendsUnderRuler
+        val switchUnplayed     = binding.switchWaveformUnplayedOnly
 
-        // ── Helper: dim + disable the invert row when parent toggle is off ────
-        fun applyInvertRowState(stylizedEnabled: Boolean) {
-            rowInvert.alpha      = if (stylizedEnabled) 1f else 0.38f
-            switchInvert.isEnabled = stylizedEnabled
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        // Map button view → style key string for clean dispatch
+        val btnToKey = mapOf(
+            btnStyleStandard  to MainViewModel.STYLE_STANDARD,
+            btnStyleSky       to MainViewModel.STYLE_SKY,
+            btnStyleSkyLights to MainViewModel.STYLE_SKY_LIGHTS,
+        )
+
+        /** Update the three-button selector highlight to match [activeKey]. */
+        fun applyStyleButtonVisuals(activeKey: String) {
+            val activeText = requireContext().themeColor(R.attr.colorTextPrimary)
+            val activeBackground = requireContext().themeColor(R.attr.colorSurfaceElevated)
+            val inactiveText = requireContext().themeColor(R.attr.colorTextSecondary)
+
+            btnToKey.forEach { (btn, key) ->
+                val isActive = key == activeKey
+                btn.setTextColor(if (isActive) activeText else inactiveText)
+                btn.setTypeface(null, if (isActive) android.graphics.Typeface.BOLD
+                else android.graphics.Typeface.NORMAL)
+                btn.setBackgroundColor(if (isActive) activeBackground
+                else android.graphics.Color.TRANSPARENT)
+            }
         }
 
-        // ── Seed initial state from ViewModel ────────────────────────────────
-        switchStylized.isChecked = viewModel.stylizedWaveforms.value
-        switchInvert.isChecked   = viewModel.invertWaveformTheme.value
-        applyInvertRowState(viewModel.stylizedWaveforms.value)
+        /** Dim and disable the sub-options block when Standard is selected. */
+        fun applySubOptionState(styleKey: String) {
+            val themed = styleKey != MainViewModel.STYLE_STANDARD
+            rowSubOptions.alpha = if (themed) 1f else 0.38f
+            switchInvert.isEnabled = themed
+            sliderAlpha.isEnabled  = themed
+            switchRuler.isEnabled  = themed
+            switchUnplayed.isEnabled = themed
+            // Invert row itself mirrors the same dimming
+            rowInvert.alpha = if (themed) 1f else 0.38f
+            rowAlpha.alpha  = if (themed) 1f else 0.38f
+        }
 
-        // ── Observe ───────────────────────────────────────────────────────────
-        // Collect in STARTED scope so UI stays in sync if another surface
-        // changes the prefs (unlikely today, but correct practice).
+        // ── Seed from ViewModel ───────────────────────────────────────────────
+        val initialKey    = viewModel.waveformStyleKey.value
+        val initialConfig = viewModel.waveformDisplayConfig.value
+
+        applyStyleButtonVisuals(initialKey)
+        applySubOptionState(initialKey)
+
+        switchInvert.isChecked  = viewModel.invertWaveformTheme.value
+        // Slider is 0–100 (integer-step); config stores 0f–1f
+        sliderAlpha.value       = (initialConfig.backgroundAlpha * 100f).coerceIn(0f, 100f)
+        switchRuler.isChecked   = initialConfig.extendsUnderRuler
+        switchUnplayed.isChecked = initialConfig.unplayedOnly
+
+        // ── Observe — keep UI in sync if prefs change from another surface ────
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.stylizedWaveforms.collect { enabled ->
-                        if (switchStylized.isChecked != enabled) switchStylized.isChecked = enabled
-                        applyInvertRowState(enabled)
+                    viewModel.waveformStyleKey.collect { key ->
+                        applyStyleButtonVisuals(key)
+                        applySubOptionState(key)
                     }
                 }
                 launch {
@@ -418,17 +465,42 @@ class SettingsFragment : Fragment() {
                         if (switchInvert.isChecked != inverted) switchInvert.isChecked = inverted
                     }
                 }
+                launch {
+                    viewModel.waveformDisplayConfig.collect { cfg ->
+                        val sliderTarget = (cfg.backgroundAlpha * 100f).coerceIn(0f, 100f)
+                        if (sliderAlpha.value != sliderTarget) sliderAlpha.value = sliderTarget
+                        if (switchRuler.isChecked    != cfg.extendsUnderRuler) switchRuler.isChecked    = cfg.extendsUnderRuler
+                        if (switchUnplayed.isChecked != cfg.unplayedOnly)       switchUnplayed.isChecked = cfg.unplayedOnly
+                    }
+                }
             }
         }
 
         // ── User interaction ──────────────────────────────────────────────────
-        switchStylized.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setStylizedWaveforms(isChecked)
-            applyInvertRowState(isChecked)
+        btnToKey.forEach { (btn, key) ->
+            btn.setOnClickListener {
+                viewModel.setWaveformStyleKey(key)
+            }
         }
 
         switchInvert.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setInvertWaveformTheme(isChecked)
+        }
+
+        // Slider: commit to ViewModel only on touch-up to avoid rapid pref writes
+        sliderAlpha.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {}
+            override fun onStopTrackingTouch(slider: Slider) {
+                viewModel.setBgAlpha(slider.value / 100f)
+            }
+        })
+
+        switchRuler.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setBgExtendsUnderRuler(isChecked)
+        }
+
+        switchUnplayed.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setBgUnplayedOnly(isChecked)
         }
     }
 

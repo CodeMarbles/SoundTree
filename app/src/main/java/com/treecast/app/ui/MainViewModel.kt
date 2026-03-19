@@ -30,6 +30,7 @@ import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.service.PlaybackCommands
 import com.treecast.app.service.PlaybackService
 import com.treecast.app.service.RecordingService
+import com.treecast.app.ui.waveform.WaveformDisplayConfig
 import com.treecast.app.ui.waveform.WaveformStyle
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.StorageVolumeHelper
@@ -99,8 +100,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         private const val PREF_FUTURE_MODE = "future_mode"
-        private const val PREF_STYLIZED_WAVEFORMS    = "stylized_waveforms"
+
+        // ── Waveform style prefs ──────────────────────────────────────────────
+        //
+        // PREF_STYLIZED_WAVEFORMS is the legacy boolean pref (v1).  It is never
+        // written again — only read once during migration in
+        // readOrMigrateWaveformStyleKey().  The source of truth is now the string
+        // pref PREF_WAVEFORM_STYLE.
+        private const val PREF_STYLIZED_WAVEFORMS    = "stylized_waveforms"      // read-only (migration)
+        private const val PREF_WAVEFORM_STYLE        = "waveform_style"          // "standard" | "sky" | "sky_lights"
         private const val PREF_INVERT_WAVEFORM_THEME = "invert_waveform_theme"
+
+        // ── Waveform display config prefs ─────────────────────────────────────
+        private const val PREF_BG_ALPHA               = "waveform_bg_alpha"
+        private const val PREF_BG_EXTENDS_UNDER_RULER = "waveform_bg_extends_under_ruler"
+        private const val PREF_BG_UNPLAYED_ONLY       = "waveform_bg_unplayed_only"
+
+        // ── Waveform style key constants ──────────────────────────────────────
+        // Public so SettingsFragment can reference them without string literals.
+        const val STYLE_STANDARD   = "standard"
+        const val STYLE_SKY        = "sky"
+        const val STYLE_SKY_LIGHTS = "sky_lights"
     }
 
     // ── Session ───────────────────────────────────────────────────────
@@ -611,20 +631,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putString(PREF_THEME_MODE, mode).apply()
     }
 
-    // ── Waveform style ────────────────────────────────────────────────
-//
-// Two independent boolean prefs combine into a single WaveformStyle
-// value for the UI to observe. Keeping them separate in SharedPrefs
-// lets us add future styles without migrating existing preference data.
+    // ── Waveform style ────────────────────────────────────────────────────────
+    //
+    // The active style is stored as a string pref ("standard" | "sky" |
+    // "sky_lights") so that adding a new style never requires a pref migration.
+    //
+    // On first launch after the v1→v2 migration, readOrMigrateWaveformStyleKey()
+    // checks the legacy boolean pref (PREF_STYLIZED_WAVEFORMS) and seeds the new
+    // string pref accordingly, then never reads the boolean pref again.
+    //
+    // The invertTheme sub-option is a single boolean shared by all themed styles.
+    // Whichever style is active, invertTheme swaps its day/night variant.
+    //
+    // waveformDisplayConfig carries the three draw-time settings (alpha, ruler
+    // coverage, unplayed-only clip).  Changing these does NOT require a bitmap
+    // rebuild — only invalidateItemDecorations() in MultiLineWaveformView.
+    //
+    // ── Compatibility shim ────────────────────────────────────────────────────
+    // stylizedWaveforms (Boolean) is kept as a derived read-only property so
+    // that SettingsFragment continues to compile until step 7 rewrites it.
+    // It will be removed when the RadioGroup style picker lands.
 
-    private val _stylizedWaveforms = MutableStateFlow(
-        prefs.getBoolean(PREF_STYLIZED_WAVEFORMS, false)
-    )
-    val stylizedWaveforms: StateFlow<Boolean> = _stylizedWaveforms
+    private fun readOrMigrateWaveformStyleKey(): String {
+        val stored = prefs.getString(PREF_WAVEFORM_STYLE, null)
+        if (stored != null) return stored
+        // Legacy migration: if the old boolean was true the user had Sky active.
+        val legacy = prefs.getBoolean(PREF_STYLIZED_WAVEFORMS, false)
+        val migrated = if (legacy) STYLE_SKY else STYLE_STANDARD
+        prefs.edit().putString(PREF_WAVEFORM_STYLE, migrated).apply()
+        return migrated
+    }
 
-    fun setStylizedWaveforms(enabled: Boolean) {
-        _stylizedWaveforms.value = enabled
-        prefs.edit().putBoolean(PREF_STYLIZED_WAVEFORMS, enabled).apply()
+    private val _waveformStyleKey = MutableStateFlow(readOrMigrateWaveformStyleKey())
+
+    val waveformStyleKey: StateFlow<String> = _waveformStyleKey
+
+    fun setWaveformStyleKey(key: String) {
+        _waveformStyleKey.value = key
+        prefs.edit().putString(PREF_WAVEFORM_STYLE, key).apply()
     }
 
     private val _invertWaveformTheme = MutableStateFlow(
@@ -637,17 +681,79 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean(PREF_INVERT_WAVEFORM_THEME, enabled).apply()
     }
 
+    // ── Waveform display config ───────────────────────────────────────────────
+
+    private val _bgAlpha = MutableStateFlow(
+        prefs.getFloat(PREF_BG_ALPHA, WaveformDisplayConfig.DEFAULT_BACKGROUND_ALPHA)
+    )
+
+    fun setBgAlpha(alpha: Float) {
+        _bgAlpha.value = alpha
+        prefs.edit().putFloat(PREF_BG_ALPHA, alpha).apply()
+    }
+
+    private val _bgExtendsUnderRuler = MutableStateFlow(
+        prefs.getBoolean(PREF_BG_EXTENDS_UNDER_RULER, WaveformDisplayConfig.DEFAULT_EXTENDS_UNDER_RULER)
+    )
+
+    fun setBgExtendsUnderRuler(extends: Boolean) {
+        _bgExtendsUnderRuler.value = extends
+        prefs.edit().putBoolean(PREF_BG_EXTENDS_UNDER_RULER, extends).apply()
+    }
+
+    private val _bgUnplayedOnly = MutableStateFlow(
+        prefs.getBoolean(PREF_BG_UNPLAYED_ONLY, WaveformDisplayConfig.DEFAULT_UNPLAYED_ONLY)
+    )
+
+    fun setBgUnplayedOnly(unplayedOnly: Boolean) {
+        _bgUnplayedOnly.value = unplayedOnly
+        prefs.edit().putBoolean(PREF_BG_UNPLAYED_ONLY, unplayedOnly).apply()
+    }
+
     /**
-     * Current waveform style — derived from the two boolean prefs above.
-     * Collect this in [ListenFragment] and push it to [MultiLineWaveformView].
-     * [WaveformStyle.Standard] is the no-background fallback; [WaveformStyle.Sky]
-     * enables the background decoration with the day/night sky.
+     * Draw-time display parameters for the background decoration.
+     * Collect this in [ListenFragment] alongside [waveformStyle] and push it to
+     * [MultiLineWaveformView].  Changes here do not require a bitmap rebuild.
+     */
+    val waveformDisplayConfig: StateFlow<WaveformDisplayConfig> = combine(
+        _bgAlpha, _bgExtendsUnderRuler, _bgUnplayedOnly
+    ) { alpha, ruler, unplayed ->
+        WaveformDisplayConfig(
+            backgroundAlpha    = alpha,
+            extendsUnderRuler  = ruler,
+            unplayedOnly       = unplayed,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, WaveformDisplayConfig())
+
+    // ── Derived WaveformStyle ─────────────────────────────────────────────────
+
+    /**
+     * Current waveform style.  Collect this in [ListenFragment] and push it to
+     * [MultiLineWaveformView.waveformStyle].  Changes here trigger a full
+     * background bitmap rebuild in the view.
      */
     val waveformStyle: StateFlow<WaveformStyle> = combine(
-        _stylizedWaveforms, _invertWaveformTheme
-    ) { stylized, invert ->
-        if (stylized) WaveformStyle.Sky(invertTheme = invert) else WaveformStyle.Standard
+        _waveformStyleKey, _invertWaveformTheme
+    ) { key, invert ->
+        when (key) {
+            STYLE_SKY        -> WaveformStyle.Sky(invertTheme = invert)
+            STYLE_SKY_LIGHTS -> WaveformStyle.SkyLights(invertTheme = invert)
+            else             -> WaveformStyle.Standard
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, WaveformStyle.Standard)
+
+    // ── Compatibility shim — remove in step 7 ────────────────────────────────
+
+    /**
+     * True when any non-Standard style is active.  Kept only so SettingsFragment
+     * compiles until its waveform section is rewritten in step 7.
+     * Do not add new call sites.
+     */
+    @Deprecated("Use waveformStyleKey / waveformStyle directly after step 7.")
+    val stylizedWaveforms: StateFlow<Boolean> = _waveformStyleKey
+        .map { it != STYLE_STANDARD }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
 
 
     // ── Layout order ──────────────────────────────────────────────────

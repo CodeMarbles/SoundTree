@@ -24,6 +24,7 @@ import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
 import java.util.TreeMap
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -134,6 +135,22 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * Draw-time display parameters for the background decoration.
+     *
+     * Changing this does NOT require a bitmap rebuild — it calls
+     * [RecyclerView.invalidateItemDecorations] immediately so the next frame
+     * picks up the new values.
+     *
+     * Wired from [ListenFragment] by collecting [MainViewModel.waveformDisplayConfig].
+     */
+    var waveformDisplayConfig: WaveformDisplayConfig = WaveformDisplayConfig()
+        set(value) {
+            if (field == value) return
+            field = value
+            if (backgroundDecoration != null) recyclerView.invalidateItemDecorations()
+        }
+
+    /**
      * Called when the user taps a position on any line.
      *
      * @param positionMs  Tapped position in milliseconds (recording-relative).
@@ -161,15 +178,16 @@ class MultiLineWaveformView @JvmOverloads constructor(
     // ── Background surface (stylized waveform styles) ──────────────────────
 
     /**
-     * Background bitmap drawn behind all waveform lines.
-     * Intentionally taller than one line (see [BACKGROUND_BITMAP_HEIGHT_LINES])
-     * so each line sees a different vertical slice, giving more visual variety
-     * on scroll than a single-line tile would.
+     * Background scene for the current [waveformStyle].
+     *
+     * Wraps the rendered [Bitmap] together with its tile height (as a multiple
+     * of one line height) so the decoration always has the correct offset
+     * formula regardless of which renderer built it.
      *
      * Null when [waveformStyle] is [WaveformStyle.Standard] or before the first
-     * layout/style change that triggers [rebuildBackgroundBitmap].
+     * layout pass triggers [rebuildBackgroundBitmap].
      */
-    private var backgroundBitmap: Bitmap? = null
+    private var backgroundBitmap: BackgroundBitmap? = null
 
     /** The installed decoration, or null when Standard style is active. */
     private var backgroundDecoration: BackgroundDecoration? = null
@@ -290,7 +308,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         // If the background is clipped to the unplayed region, the decoration
         // boundary moves with the playhead — invalidate decorations so onDraw
         // fires on the next frame without waiting for a scroll event.
-        if (BACKGROUND_UNPLAYED_ONLY && backgroundDecoration != null) {
+        if (waveformDisplayConfig.unplayedOnly && backgroundDecoration != null) {
             recyclerView.invalidateItemDecorations()
         }
     }
@@ -355,7 +373,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
             lastRedrawMs = now
             val lastLineIndex = adapter.itemCount - 1
             if (lastLineIndex >= 0) notifyLineAt(lastLineIndex, fullRebuild = true)
-            if (BACKGROUND_UNPLAYED_ONLY && backgroundDecoration != null) {
+            if (waveformDisplayConfig.unplayedOnly && backgroundDecoration != null) {
                 recyclerView.invalidateItemDecorations()
             }
         }
@@ -575,7 +593,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         // Remove any existing decoration first.
         backgroundDecoration?.let { recyclerView.removeItemDecoration(it) }
         backgroundDecoration = null
-        backgroundBitmap?.recycle()
+        backgroundBitmap?.bitmap?.recycle()
         backgroundBitmap = null
 
         if (style !is WaveformStyle.Standard) {
@@ -588,143 +606,41 @@ class MultiLineWaveformView @JvmOverloads constructor(
     }
 
     /**
-     * Builds [backgroundBitmap] for the given [style].
+     * Builds [backgroundBitmap] for the given [style] by dispatching to the
+     * appropriate renderer.
      *
-     * The bitmap is intentionally [BACKGROUND_BITMAP_HEIGHT_LINES] times the
-     * height of a single line.  When the decoration draws each item, it reads
-     * a vertical slice of this bitmap offset by the item's position in the
-     * list — so adjacent lines show different parts of the scene, and the
-     * image only repeats after [BACKGROUND_BITMAP_HEIGHT_LINES] lines.
+     * Each renderer returns a [BackgroundBitmap] that bundles the raw [Bitmap]
+     * with its tile height (as a multiple of one line height).  The decoration
+     * uses this to compute the Y offset for each line:
      *
-     * TODO: Implement rendering for each WaveformStyle variant:
-     *   WaveformStyle.Sky  — render a day or night sky scene based on
-     *                        the current theme + invertTheme flag.
-     *                        Consider checking Resources.Configuration.uiMode
-     *                        here, or accepting an isDarkTheme: Boolean param
-     *                        passed from ListenFragment's collect block.
+     *   yOffset = (lineIndex * lineHeightPx) % bitmap.height
+     *
+     * Called when [waveformStyle] changes and from [onSizeChanged] to handle
+     * the case where the first style assignment happened before layout.
      */
     private fun rebuildBackgroundBitmap(style: WaveformStyle) {
         val lineH   = LINE_HEIGHT_DP_TO_PX(context)
-        val bitmapW = width.coerceAtLeast(1)
+        val w       = width.coerceAtLeast(1)
+        val density = resources.displayMetrics.density
         val isDark  = (context.resources.configuration.uiMode and
                 Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-        val bmp = when (style) {
+        val result: BackgroundBitmap = when (style) {
             is WaveformStyle.Sky -> {
-                val nightMode = if (style.invertTheme) !isDark else isDark
-                if (nightMode) buildNightBitmap(bitmapW, lineH)
-                else           buildDayBitmap(bitmapW, lineH)
+                val night = if (style.invertTheme) !isDark else isDark
+                if (night) SkyBackgroundRenderer.buildNight(w, lineH, density)
+                else       SkyBackgroundRenderer.buildDay(w, lineH, density)
+            }
+            is WaveformStyle.SkyLights -> {
+                val night = if (style.invertTheme) !isDark else isDark
+                if (night) SkyLightsBackgroundRenderer.buildAurora(w, lineH, density)
+                else       SkyLightsBackgroundRenderer.buildRainbow(w, lineH, density)
             }
             is WaveformStyle.Standard -> return  // unreachable — guarded by caller
         }
 
-        backgroundBitmap?.recycle()
-        backgroundBitmap = bmp
-    }
-
-// ── Night sky ─────────────────────────────────────────────────────────────────
-
-    private fun buildNightBitmap(w: Int, lineH: Int): Bitmap {
-        val bmpH = (lineH * NIGHT_BG_HEIGHT_LINES).toInt()
-        val bmp  = Bitmap.createBitmap(w, bmpH, Bitmap.Config.ARGB_8888)
-        val c    = Canvas(bmp)
-        val d    = resources.displayMetrics.density
-
-        // Sky gradient — near-black at top fading to deep navy at bottom
-        c.drawRect(
-            0f, 0f, w.toFloat(), bmpH.toFloat(),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(
-                    0f, 0f, 0f, bmpH.toFloat(),
-                    intArrayOf(0xFF060618.toInt(), 0xFF0F0F38.toInt(), 0xFF1A1A50.toInt()),
-                    floatArrayOf(0f, 0.45f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-        )
-
-        // Stars — seeded for determinism, wrapped at vertical seams
-        val rng       = Random(STAR_SEED)
-        val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-
-        repeat(STAR_COUNT) {
-            val x      = rng.nextFloat() * w
-            val y      = rng.nextFloat() * bmpH
-            val radius = (STAR_MIN_RADIUS_DP + rng.nextFloat() *
-                    (STAR_MAX_RADIUS_DP - STAR_MIN_RADIUS_DP)) * d
-            val alpha  = 155 + rng.nextInt(100)       // 155–254: varied brightness
-            val rComp  = 235 + rng.nextInt(21)         // 235–255
-            val gComp  = 235 + rng.nextInt(21)
-            val bComp  = 220 + rng.nextInt(36)         // slightly cooler blue floor
-            starPaint.color = Color.argb(alpha, rComp, gComp, bComp)
-
-            c.drawCircle(x, y, radius, starPaint)
-            // Seam-wrap: mirror at the bottom edge and the top edge so the
-            // tiling cut is invisible as lines scroll into view
-            if (y + radius > bmpH) c.drawCircle(x, y - bmpH, radius, starPaint)
-            if (y - radius < 0f)   c.drawCircle(x, y + bmpH, radius, starPaint)
-        }
-
-        return bmp
-    }
-
-// ── Day sky ───────────────────────────────────────────────────────────────────
-
-    private fun buildDayBitmap(w: Int, lineH: Int): Bitmap {
-        val bmpH = (lineH * DAY_BG_HEIGHT_LINES).toInt()
-        val bmp  = Bitmap.createBitmap(w, bmpH, Bitmap.Config.ARGB_8888)
-        val c    = Canvas(bmp)
-
-        // Four independent cloud strips stacked vertically, one per line height.
-        // Each is a complete composition so no cloud is ever sliced at a seam.
-        CLOUD_SEEDS.forEachIndexed { i, seed ->
-            val stripTop = i * lineH
-            c.save()
-            c.translate(0f, stripTop.toFloat())
-            drawCloudStrip(c, w, lineH, seed)
-            c.restore()
-        }
-
-        return bmp
-    }
-
-    private fun drawCloudStrip(c: Canvas, w: Int, h: Int, seed: Long) {
-        // Bright cerulean sky — peeks through gaps between cloud puffs
-        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(),
-            Paint().apply { color = 0xFF4FC3F7.toInt() })
-
-        val rng      = Random(seed)
-        val puffPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        val oval      = RectF()
-
-        val numClouds = 4 + rng.nextInt(2)   // 4–5 clouds per strip
-        repeat(numClouds) { idx ->
-            // Space centres evenly with slight jitter
-            val fraction = (idx + 0.5f + (rng.nextFloat() - 0.5f) * 0.35f) / numClouds
-            val cx       = fraction * w
-            val cy       = h * (0.35f + rng.nextFloat() * 0.30f)
-            val baseR    = h * (0.35f + rng.nextFloat() * 0.20f)
-            val puffs    = 4 + rng.nextInt(3)   // 4–6 puffs per cloud
-
-            repeat(puffs) { p ->
-                val angle  = (p.toFloat() / puffs) * 2f * Math.PI.toFloat()
-                val spread = baseR * (0.5f + rng.nextFloat() * 0.5f)
-                val px     = cx + cos(angle.toDouble()).toFloat() * spread * 0.9f
-                val py     = cy + sin(angle.toDouble()).toFloat() * spread * 0.45f
-                val pr     = baseR * (0.55f + rng.nextFloat() * 0.45f)
-                val shade  = 245 + rng.nextInt(11)   // 245–255: white to very pale grey
-                val alpha  = 220 + rng.nextInt(35)   // 220–254: slightly translucent edges
-                puffPaint.color = Color.argb(alpha, shade, shade, shade)
-                oval.set(px - pr, py - pr * 0.72f, px + pr, py + pr * 0.72f)
-                c.drawOval(oval, puffPaint)
-            }
-
-            // Bright white centre to unify each cluster
-            puffPaint.color = Color.argb(255, 255, 255, 255)
-            oval.set(cx - baseR * 0.55f, cy - baseR * 0.45f,
-                cx + baseR * 0.55f, cy + baseR * 0.45f)
-            c.drawOval(oval, puffPaint)
-        }
+        backgroundBitmap?.bitmap?.recycle()
+        backgroundBitmap = result
     }
 
     /**
@@ -743,14 +659,22 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         private val srcRect = android.graphics.Rect()
         private val dstRect = android.graphics.Rect()
-        private val backgroundPaint = Paint().apply { alpha = BACKGROUND_ALPHA }
+        // Alpha is applied fresh on every draw so live slider changes take effect
+        // without waiting for a style change or bitmap rebuild.
+        private val backgroundPaint = Paint()
 
         override fun onDraw(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-            val bmp   = backgroundBitmap ?: return
-            val lineH = LINE_HEIGHT_DP_TO_PX(parent.context)
-            val rulerH = if (BACKGROUND_EXTENDS_UNDER_RULER) 0
-            else (WaveformLineView.RULER_HEIGHT_DP *
-                    parent.context.resources.displayMetrics.density).toInt()
+            val bgBmp = backgroundBitmap ?: return
+            val bmp   = bgBmp.bitmap
+            val cfg   = waveformDisplayConfig
+
+            // Update paint alpha from current config on every draw call.
+            backgroundPaint.alpha = (cfg.backgroundAlpha * 255f).roundToInt().coerceIn(0, 255)
+
+            val lineH  = LINE_HEIGHT_DP_TO_PX(parent.context)
+            val density = parent.context.resources.displayMetrics.density
+            val rulerH = if (cfg.extendsUnderRuler) 0
+            else (WaveformLineView.RULER_HEIGHT_DP * density).toInt()
 
             for (i in 0 until parent.childCount) {
                 val child  = parent.getChildAt(i) ?: continue
@@ -766,29 +690,30 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 srcRect.set(0, yOffset + rulerH, bmp.width, yOffset + lineH)
                 dstRect.set(child.left, child.top + rulerH, child.right, child.bottom)
 
-                // ── Unplayed-only clip ────────────────────────────────────────────────
-                // When BACKGROUND_UNPLAYED_ONLY is true and playback is active, restrict
-                // the background to the region right of the playhead for this line.
-                val clipLeft: Float = if (BACKGROUND_UNPLAYED_ONLY) {
+                // ── Unplayed-only clip ────────────────────────────────────
+                // When unplayedOnly is true, restrict the background to the
+                // region right of the playhead (Listen tab) or recording head
+                // (Record tab) for this line.
+                val clipLeft: Float = if (cfg.unplayedOnly) {
                     val boundaryMs: Long = if (showPlayedSplit) {
-                        // Listen tab — boundary is the playhead
-                        if (playheadMs < 0L) return@onDraw  // shouldn't happen but guard it
+                        if (playheadMs < 0L) return  // guard: no playhead yet
                         playheadMs
                     } else {
-                        // Record tab — boundary is the recording head
-                        totalDurationMs
+                        totalDurationMs   // Record tab — boundary is the live head
                     }
                     val isSingleLine = totalDurationMs <= secondsPerLine * 1000L
-                    val windowMs = if (scaleToFill && isSingleLine) totalDurationMs else secondsPerLine * 1000L
+                    val windowMs = if (scaleToFill && isSingleLine) totalDurationMs
+                    else secondsPerLine * 1000L
                     when {
-                        boundaryMs <= lineItem.startMs -> child.left.toFloat()
-                        boundaryMs >= lineItem.startMs + windowMs -> child.right.toFloat()
+                        boundaryMs <= lineItem.startMs ->
+                            child.left.toFloat()
+                        boundaryMs >= lineItem.startMs + windowMs ->
+                            child.right.toFloat()
                         else -> {
-                            val density = parent.context.resources.displayMetrics.density
-                            val railPx = if (showLineRail) WaveformLineView.RAIL_WIDTH_DP * density else 0f
-                            val barStridePx = WaveformLineView.BAR_STRIDE_DP * density
-                            val availableWidth = child.width - railPx
-                            val rawX = (boundaryMs - lineItem.startMs).toFloat() / windowMs * availableWidth
+                            val railPx       = if (showLineRail) WaveformLineView.RAIL_WIDTH_DP * density else 0f
+                            val barStridePx  = WaveformLineView.BAR_STRIDE_DP * density
+                            val availableW   = child.width - railPx
+                            val rawX         = (boundaryMs - lineItem.startMs).toFloat() / windowMs * availableW
                             child.left + railPx + (rawX / barStridePx).toInt() * barStridePx
                         }
                     }
@@ -796,7 +721,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
                     child.left.toFloat()
                 }
 
-                if (clipLeft >= child.right) continue  // line is fully played — no background
+                if (clipLeft >= child.right) continue  // fully played — skip
 
                 c.save()
                 c.clipRect(clipLeft, (child.top + rulerH).toFloat(),
@@ -809,32 +734,13 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     companion object {
         const val DEFAULT_SECONDS_PER_LINE = 300   // 5 minutes
-        private const val LIVE_REDRAW_INTERVAL_MS = 50L //20fps   // ~4 fps
+        private const val LIVE_REDRAW_INTERVAL_MS = 250L  // ~4 fps
         private const val LINE_HEIGHT_DP    = 80
         private const val BOTTOM_PADDING_DP = 56
         private const val FADE_HEIGHT_DP    = 32
 
         private fun LINE_HEIGHT_DP_TO_PX(context: Context): Int =
             (LINE_HEIGHT_DP * context.resources.displayMetrics.density).toInt()
-
-        // Night sky
-        private const val NIGHT_BG_HEIGHT_LINES  = 4.5f   // non-integer → repeat cycle = 9 lines
-        private const val STAR_SEED              = 31415L
-        private const val STAR_COUNT             = 130
-        private const val STAR_MIN_RADIUS_DP     = 0.7f
-        private const val STAR_MAX_RADIUS_DP     = 2.2f
-        // Day clouds — one seed per layer; change any to redesign that strip
-        private val CLOUD_SEEDS = longArrayOf(1001L, 2002L, 3003L, 4004L)
-        private const val DAY_BG_HEIGHT_LINES    = 4f
-        // ── Contrast / tuning knobs ───────────────────────────────────────────────────
-        // These are the two values to reach for first when adjusting the visual feel.
-        const val BACKGROUND_ALPHA               = 130   // 0–255; lower = more ghostly sky
-        const val BACKGROUND_EXTENDS_UNDER_RULER = true  // true = sky behind ruler strip too
-
-        // When true, the background scene renders only behind the unplayed portion
-        // of each line — the sky retreats as the playhead advances, giving a
-        // "dreams to reality" transition effect. Set to false to render everywhere.
-        const val BACKGROUND_UNPLAYED_ONLY = true
     }
 }
 
