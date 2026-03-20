@@ -60,6 +60,9 @@ import kotlinx.coroutines.withContext
  *   already perform mark-jumping via MarkAwarePlayer.
  */
 class PlaybackService : MediaSessionService() {
+    companion object {
+        private const val MARK_FORWARD_DEAD_ZONE_MS = 500L
+    }
 
     private var mediaSession: MediaSession? = null
     private lateinit var repo: TreeCastRepository
@@ -88,7 +91,7 @@ class PlaybackService : MediaSessionService() {
     private inner class MarkAwarePlayer(player: Player) : ForwardingPlayer(player) {
 
         override fun getAvailableCommands(): Player.Commands {
-            val hasNextMark = cachedMarks.any { it.positionMs > currentPosition + 500L }
+            val hasNextMark = cachedMarks.any { it.positionMs > currentPosition + MARK_FORWARD_DEAD_ZONE_MS }
             return super.getAvailableCommands().buildUpon()
                 .add(COMMAND_SEEK_TO_PREVIOUS)
                 .apply { if (hasNextMark) add(COMMAND_SEEK_TO_NEXT) }
@@ -98,7 +101,7 @@ class PlaybackService : MediaSessionService() {
         override fun isCommandAvailable(command: @Player.Command Int): Boolean {
             if (command == COMMAND_SEEK_TO_PREVIOUS) return true
             if (command == COMMAND_SEEK_TO_NEXT) {
-                return cachedMarks.any { it.positionMs > currentPosition + 500L }
+                return cachedMarks.any { it.positionMs > currentPosition + MARK_FORWARD_DEAD_ZONE_MS }
             }
             return super.isCommandAvailable(command)
         }
@@ -150,7 +153,7 @@ class PlaybackService : MediaSessionService() {
 
         val targetMs: Long? = if (forward) {
             cachedMarks
-                .filter { it.positionMs > currentPos + 500L }   // forward keeps 500ms
+                .filter { it.positionMs > currentPos + MARK_FORWARD_DEAD_ZONE_MS }
                 .minByOrNull { it.positionMs }?.positionMs
         } else {
             Log.d("TC_DEBUG", "currentPos: " + currentPos.toString() + ", thresholdMs" + thresholdMs.toString())
