@@ -64,6 +64,7 @@ class LibraryFragment : Fragment() {
 
         tileAdapter = LibraryTilesAdapter(this)
         binding.tilePager.adapter = tileAdapter
+        binding.tilePager.isUserInputEnabled = false
         binding.tilePager.offscreenPageLimit = 4
 
         // ── Sub-nav clicks ────────────────────────────────────────────

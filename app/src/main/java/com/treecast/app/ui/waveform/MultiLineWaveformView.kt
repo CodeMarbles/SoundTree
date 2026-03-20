@@ -121,7 +121,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
      * state. Set to false when the splitter snaps up (waveform shrinks to one
      * line — fades are meaningless at that height), and back to true on
      * snap-down or free drag.
-     * Call sites: [ListenFragment.snapTo].
+     * Call sites: [ListenFragment.snapTo], [ListenFragment.handleSplitterTouch].
      */
     var fadesEnabled: Boolean = true
         set(value) {
@@ -131,6 +131,19 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 bottomFadeView.visibility = View.INVISIBLE
             }
         }
+
+    /**
+     * When false, playhead position updates no longer drive the RecyclerView
+     * scroll position. Fades and scroll style (pinned vs smooth) remain
+     * governed independently by [fadesEnabled].
+     *
+     * Set to false on free-drag entry so the waveform stays wherever the user
+     * left it while they interact with the marks panel. Restored to true by
+     * both chevron snap paths.
+     *
+     * Call sites: [ListenFragment.handleSplitterTouch], [ListenFragment.snapTo].
+     */
+    var autoScrollEnabled: Boolean = true
 
     /**
      * Height of a single waveform row in pixels.
@@ -343,7 +356,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
         // visible. scrollToMs() calls smoothScrollToPosition() which is a no-op
         // when the target item is already on screen, so there is no overhead
         // while the playhead stays on the same line.
-        if (!fadesEnabled && positionMs >= 0L) {
+        // autoScrollEnabled is false during free drag so the waveform stays
+        // wherever the user left it regardless of playhead movement.
+        if (!fadesEnabled && autoScrollEnabled && positionMs >= 0L) {
             scrollToMs(positionMs)
         }
     }

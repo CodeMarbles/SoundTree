@@ -11,6 +11,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.SeekBar
@@ -55,8 +56,16 @@ class ListenFragment : Fragment() {
 
     // ── Splitter state ────────────────────────────────────────────────────────
 
-    private enum class SplitterState { SNAP_DOWN, SNAP_UP }
+    private enum class SplitterState { SNAP_DOWN, SNAP_UP, FREE }
     private var splitterState = SplitterState.SNAP_DOWN
+
+    // ── Drag state ────────────────────────────────────────────────────────────
+
+    private var dragActive    = false
+    private var dragStartRawY = 0f
+    private val touchSlop by lazy {
+        android.view.ViewConfiguration.get(requireContext()).scaledTouchSlop
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -118,14 +127,29 @@ class ListenFragment : Fragment() {
         binding.btnSleepTimer.setOnClickListener {
             Toast.makeText(requireContext(), "Sleep Timer", Toast.LENGTH_SHORT).show()
         }
+        binding.splitterBar.setOnTouchListener { _, event -> handleSplitterTouch(event) }
     }
 
     private fun setupSnapUpTracking() {
         // Re-anchor the SNAP_UP guideline if root height changes (e.g. mini-recorder
         // widget appears or disappears while we're in marks-dominant mode).
         binding.root.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
-            if (bottom != oldBottom && splitterState == SplitterState.SNAP_UP) {
-                binding.splitterGuideline.setGuidelinePercent(calcSnapUpPercent())
+            if (bottom == oldBottom) return@addOnLayoutChangeListener
+            when (splitterState) {
+                SplitterState.SNAP_UP -> {
+                    binding.splitterGuideline.setGuidelinePercent(calcSnapUpPercent())
+                }
+                SplitterState.FREE -> {
+                    // Preserve the pixel-space position of the bar when chrome
+                    // appears/disappears (e.g. mini-recorder) during free drag.
+                    val currentPercent = (binding.splitterGuideline.layoutParams
+                            as ConstraintLayout.LayoutParams).guidePercent
+                    val pixelY  = currentPercent * oldBottom
+                    binding.splitterGuideline.setGuidelinePercent(
+                        (pixelY / bottom).coerceIn(0.05f, 0.85f)
+                    )
+                }
+                else -> { /* SNAP_DOWN — guideline is at a calculated position, no adjustment needed */ }
             }
         }
     }
@@ -154,6 +178,46 @@ class ListenFragment : Fragment() {
                 animateGuideline(calcSnapUpPercent(), SplitterState.SNAP_UP)
             }
         }
+    }
+
+    private fun handleSplitterTouch(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+
+            MotionEvent.ACTION_DOWN -> {
+                dragActive = false
+                dragStartRawY = event.rawY
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (!dragActive) {
+                    if (Math.abs(event.rawY - dragStartRawY) < touchSlop) return true
+                    // Crossed slop — commit to drag
+                    dragActive = true
+                    // Switch layout to marks-dominant immediately, no animation
+                    if (splitterState == SplitterState.SNAP_DOWN) {
+                        applyChipLayoutMode(SplitterState.SNAP_UP)
+                    }
+                    binding.multiLineWaveform.fadesEnabled = false
+                    splitterState = SplitterState.FREE
+                    binding.multiLineWaveform.autoScrollEnabled = false
+                }
+
+                // Track finger → guideline percent
+                val loc = IntArray(2)
+                binding.root.getLocationOnScreen(loc)
+                val fingerY = event.rawY - loc[1]
+                val percent = (fingerY / binding.root.height).coerceIn(0.15f, 0.85f)
+                binding.splitterGuideline.setGuidelinePercent(percent)
+                return true
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                dragActive = false
+                return true
+            }
+        }
+        return false
     }
 
     /**
@@ -189,6 +253,7 @@ class ListenFragment : Fragment() {
                 override fun onAnimationEnd(animation: Animator) {
                     splitterState = endState
                     binding.multiLineWaveform.fadesEnabled = (endState == SplitterState.SNAP_DOWN)
+                    binding.multiLineWaveform.autoScrollEnabled = true
                 }
             })
         }.start()
