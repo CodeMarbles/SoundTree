@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -5,31 +6,38 @@
     android:viewportHeight="24">
 
     <!--
-      📍 →  Nudge last mark forwards.
-      Flag/mark shape on the left, right-pointing chevron on the right.
+      ic_mark (diamond + stem, scaled 70%) on the left,
+      right-pointing chevron on the right.
+      Nudge last mark forwards.
     -->
 
-    <!-- Stem of mark flag -->
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:pathData="M9,5 L9,19" />
+    <!-- ic_mark shape: scaled to 70%, centred at (7, 8) -->
+    <group
+        android:scaleX="0.7"
+        android:scaleY="0.7"
+        android:translateX="-1.4"
+        android:translateY="2.4">
 
-    <!-- Flag on the mark stem -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M9,5 L15,8.5 L9,12 Z" />
+        <!-- Stem -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M11,13 L13,13 L13,22
+                Q13,23 12,23 Q11,23 11,22 Z" />
 
-    <!-- Right arrow chevron -->
+        <!-- Diamond -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M12,2 L18,8 L12,14 L6,8 Z" />
+
+    </group>
+
+    <!-- Right-pointing chevron arrow -->
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FF000000"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M18,6 L24,12 L18,18"
-        android:translateX="-4" />
+        android:pathData="M15,7 L21,12 L15,17" />
 
 </vector>
