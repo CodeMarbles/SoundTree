@@ -333,6 +333,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _nowPlaying.value = _nowPlaying.value?.copy(positionMs = posMs)
     }
 
+    // ── Mark-jump event — signals MLWV scroll in any SNAP_* mode ─────────────
+
+    private val _markJumpMs = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    /** Emitted by every "jump to mark" action. Collected by ListenFragment. */
+    val markJumpMs: SharedFlow<Long> = _markJumpMs
+
+    /**
+     * Like [seekTo] but also fires [markJumpMs] so the Listen tab's MLWV
+     * can jump-scroll to the correct bar regardless of splitter state.
+     * Use this everywhere the seek target IS a mark position.
+     */
+    fun seekToMark(posMs: Long) {
+        seekTo(posMs)
+        _markJumpMs.tryEmit(posMs)
+    }
+
     fun skipBack() {
         val currentPos = mediaController?.currentPosition
             ?: _nowPlaying.value?.positionMs
@@ -351,17 +367,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun jumpToPrevMark() {
+        val posMs = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs ?: return
+        // Compute locally so we can do an optimistic _nowPlaying update and
+        // emit markJumpMs immediately — no 500ms polling lag for MLWV scroll.
+        // The command below ensures PlaybackService's threshold-aware calculation
+        // wins for the actual audible seek.
+        val thresholdMs = 1500L  // mirrors PlaybackService default
+        val targetMs = _marks.value
+            .filter { it.positionMs < posMs - thresholdMs }
+            .maxByOrNull { it.positionMs }?.positionMs ?: 0L
+        seekToMark(targetMs)
         mediaController?.sendCustomCommand(
-            SessionCommand(PlaybackCommands.JUMP_PREV_MARK, Bundle.EMPTY),
-            Bundle.EMPTY
-        )
+            SessionCommand(PlaybackCommands.JUMP_PREV_MARK, Bundle.EMPTY), Bundle.EMPTY)
     }
 
     fun jumpToNextMark() {
+        val posMs = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs ?: return
+        val targetMs = _marks.value
+            .filter { it.positionMs > posMs + 500L }
+            .minByOrNull { it.positionMs }?.positionMs ?: return
+        seekToMark(targetMs)
         mediaController?.sendCustomCommand(
-            SessionCommand(PlaybackCommands.JUMP_NEXT_MARK, Bundle.EMPTY),
-            Bundle.EMPTY
-        )
+            SessionCommand(PlaybackCommands.JUMP_NEXT_MARK, Bundle.EMPTY), Bundle.EMPTY)
     }
 
     // ── Position polling ──────────────────────────────────────────────
@@ -1026,7 +1055,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .maxByOrNull { it.positionMs }
             ?: _marks.value.minByOrNull { it.positionMs }
         if (mark != null) {
-            seekTo(mark.positionMs)
+            seekToMark(mark.positionMs)
             _selectedMarkId.value = mark.id
             _playbackMarkNudgeLocked.value = false
         }
@@ -1042,7 +1071,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .filter { it.positionMs > posMs + 500L }
             .minByOrNull { it.positionMs }
         if (mark != null) {
-            seekTo(mark.positionMs)
+            seekToMark(mark.positionMs)
             _selectedMarkId.value = mark.id
             _playbackMarkNudgeLocked.value = false
         }

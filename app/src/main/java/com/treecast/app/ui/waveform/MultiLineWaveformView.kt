@@ -433,7 +433,30 @@ class MultiLineWaveformView @JvmOverloads constructor(
     /** Smoothly scroll so that the line containing [positionMs] is visible. */
     fun scrollToMs(positionMs: Long) {
         val adapterPos = adapterPositionForMs(positionMs)
-        if (adapterPos >= 0) recyclerView.smoothScrollToPosition(adapterPos)
+        if (adapterPos < 0) return
+        if (!fadesEnabled) {
+            // Snap-up (single-line view): always pin the target item to offset 0.
+            // scrollToPositionWithOffset is immediate and fully deterministic —
+            // it eliminates the oscillation caused by repeated smoothScrollToPosition
+            // calls when the RecyclerView height slightly exceeds one line height.
+            (recyclerView.layoutManager as? LinearLayoutManager)
+                ?.scrollToPositionWithOffset(adapterPos, 0)
+        } else {
+            recyclerView.smoothScrollToPosition(adapterPos)
+        }
+    }
+
+    /**
+     * Immediately scroll so the line containing [positionMs] sits flush at
+     * offset 0 (top edge of the RecyclerView). Bypasses [autoScrollPaused]
+     * so it works in both SNAP_UP and SNAP_DOWN regardless of prior user
+     * scrolling. Use this only for programmatic mark-jump navigation.
+     */
+    fun jumpScrollToMs(positionMs: Long) {
+        val adapterPos = adapterPositionForMs(positionMs)
+        if (adapterPos < 0) return
+        (recyclerView.layoutManager as? LinearLayoutManager)
+            ?.scrollToPositionWithOffset(adapterPos, 0)
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────

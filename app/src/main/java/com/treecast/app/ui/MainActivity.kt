@@ -616,7 +616,7 @@ class MainActivity : AppCompatActivity() {
             val mark = viewModel.marks.value.firstOrNull { it.id == markId }
                 ?: return@tap
             viewModel.selectMark(markId)
-            viewModel.seekTo(mark.positionMs)
+            viewModel.seekToMark(mark.positionMs)
             // Selecting via tap unlocks nudging (mirrors jump-and-select behaviour)
             viewModel.unlockPlaybackMarkNudge()
         }

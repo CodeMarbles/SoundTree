@@ -324,6 +324,11 @@ class ListenFragment : Fragment() {
                 launch {
                     viewModel.nowPlaying.collect { state -> updateUi(state) }
                 }
+                launch {
+                    viewModel.markJumpMs.collect { targetMs ->
+                        binding.multiLineWaveform.jumpScrollToMs(targetMs)
+                    }
+                }
             }
         }
     }
@@ -506,7 +511,7 @@ class ListenFragment : Fragment() {
                             return true
                         }
                         override fun onDoubleTap(e: MotionEvent): Boolean {
-                            viewModel.seekTo(mark.positionMs)
+                            viewModel.seekToMark(mark.positionMs)
                             viewModel.selectMark(mark.id)
                             viewModel.unlockPlaybackMarkNudge()
                             return true
