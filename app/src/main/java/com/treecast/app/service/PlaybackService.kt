@@ -2,7 +2,6 @@ package com.treecast.app.service
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
@@ -21,6 +20,7 @@ import com.treecast.app.TreeCastApp
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.service.PlaybackService.MarkAwarePlayer
+import com.treecast.app.util.MarkJumpLogic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,7 +61,6 @@ import kotlinx.coroutines.withContext
  */
 class PlaybackService : MediaSessionService() {
     companion object {
-        private const val MARK_FORWARD_DEAD_ZONE_MS = 500L
     }
 
     private var mediaSession: MediaSession? = null
@@ -91,7 +90,9 @@ class PlaybackService : MediaSessionService() {
     private inner class MarkAwarePlayer(player: Player) : ForwardingPlayer(player) {
 
         override fun getAvailableCommands(): Player.Commands {
-            val hasNextMark = cachedMarks.any { it.positionMs > currentPosition + MARK_FORWARD_DEAD_ZONE_MS }
+            val hasNextMark = MarkJumpLogic.findTarget(
+                cachedMarks.map { it.positionMs }, currentPosition, forward = true, rewindThresholdMs = 0L
+            ) is MarkJumpLogic.JumpTarget.ToMark
             return super.getAvailableCommands().buildUpon()
                 .add(COMMAND_SEEK_TO_PREVIOUS)
                 .apply { if (hasNextMark) add(COMMAND_SEEK_TO_NEXT) }
@@ -101,7 +102,7 @@ class PlaybackService : MediaSessionService() {
         override fun isCommandAvailable(command: @Player.Command Int): Boolean {
             if (command == COMMAND_SEEK_TO_PREVIOUS) return true
             if (command == COMMAND_SEEK_TO_NEXT) {
-                return cachedMarks.any { it.positionMs > currentPosition + MARK_FORWARD_DEAD_ZONE_MS }
+                return cachedMarks.any { it.positionMs > currentPosition + MarkJumpLogic.FORWARD_DEAD_ZONE_MS }
             }
             return super.isCommandAvailable(command)
         }
@@ -147,27 +148,24 @@ class PlaybackService : MediaSessionService() {
      * Jump-next does nothing when no later mark exists.
      */
     private suspend fun jumpMark(forward: Boolean) {
-        val player     = mediaSession?.player ?: return
-        val currentPos = withContext(Dispatchers.Main) { player.currentPosition }
-        val thresholdMs = (prefs.getFloat("mark_rewind_threshold_secs", 1.5f) * 1000f).toLong()
-
-        val targetMs: Long? = if (forward) {
-            cachedMarks
-                .filter { it.positionMs > currentPos + MARK_FORWARD_DEAD_ZONE_MS }
-                .minByOrNull { it.positionMs }?.positionMs
-        } else {
-            Log.d("TC_DEBUG", "currentPos: " + currentPos.toString() + ", thresholdMs" + thresholdMs.toString())
-            cachedMarks
-                .filter { it.positionMs < currentPos - thresholdMs }
-                .maxByOrNull { it.positionMs }?.positionMs
-                ?: 0L
+        val player = mediaSession?.player ?: return
+        val posMs  = withContext(Dispatchers.Main) { player.currentPosition }
+        val threshMs = (prefs.getFloat(
+            MarkJumpLogic.PREF_REWIND_THRESHOLD_SECS,
+            MarkJumpLogic.DEFAULT_REWIND_THRESHOLD_SECS
+        ) * 1000f).toLong()
+        val target = MarkJumpLogic.findTarget(
+            marks             = cachedMarks.map { it.positionMs },
+            currentPositionMs = posMs,
+            forward           = forward,
+            rewindThresholdMs = threshMs
+        )
+        val seekTo = when (target) {
+            is MarkJumpLogic.JumpTarget.ToMark       -> target.positionMs
+            is MarkJumpLogic.JumpTarget.ToTrackStart -> 0L
+            is MarkJumpLogic.JumpTarget.NoTarget     -> return
         }
-
-        Log.d("TC_DEBUG", "targetMs:" + targetMs.toString())
-
-        if (targetMs != null) {
-            withContext(Dispatchers.Main) { player.seekTo(targetMs) }
-        }
+        withContext(Dispatchers.Main) { player.seekTo(seekTo) }
     }
 
     /** Inserts a new mark at the current playback position. */

@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,7 +12,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -27,12 +25,12 @@ import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.data.repository.TreeBuilder
 import com.treecast.app.data.repository.TreeCastRepository
 import com.treecast.app.data.repository.TreeItem
-import com.treecast.app.service.PlaybackCommands
 import com.treecast.app.service.PlaybackService
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.waveform.WaveformDisplayConfig
 import com.treecast.app.ui.waveform.WaveformStyle
 import com.treecast.app.util.AppVolume
+import com.treecast.app.util.MarkJumpLogic
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
@@ -90,7 +88,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_DEFAULT_STORAGE_UUID = "default_storage_uuid"
         private const val PREF_LAYOUT_ORDER    = "layout_element_order"
         private const val PREF_SHOW_TITLE_BAR  = "show_title_bar"
-        private const val PREF_MARK_REWIND_THRESHOLD = "mark_rewind_threshold_secs"
         private const val PREF_RECORDER_WIDGET_VISIBILITY  = "recorder_widget_visibility"
         private const val PREF_PLAYER_WIDGET_VISIBILITY   = "player_widget_visibility"
         private const val PREF_ALWAYS_SHOW_PLAYER_PILL    = "always_show_player_pill"
@@ -346,6 +343,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val markJumpMs: SharedFlow<Long> = _markJumpMs
 
     /**
+     * Single entry point for all playback mark jumps.
+     *
+     * @param forward  true = jump to next mark; false = jump to prev (or track start).
+     * @param select   true = select the landed mark and unlock nudging (mini player);
+     *                 false = seek only, no selection change (Listen tab).
+     */
+    fun jumpMark(forward: Boolean, select: Boolean) {
+        val posMs = mediaController?.currentPosition
+            ?: _nowPlaying.value?.positionMs ?: return
+        when (val target = MarkJumpLogic.findTarget(
+            marks             = _marks.value.map { it.positionMs },
+            currentPositionMs = posMs,
+            forward           = forward,
+            rewindThresholdMs = markRewindThresholdMs
+        )) {
+            is MarkJumpLogic.JumpTarget.ToMark -> {
+                seekToMark(target.positionMs)
+                if (select) {
+                    _marks.value.firstOrNull { it.positionMs == target.positionMs }
+                        ?.let { mark ->
+                            _selectedMarkId.value = mark.id
+                            _playbackMarkNudgeLocked.value = false
+                        }
+                }
+            }
+            is MarkJumpLogic.JumpTarget.ToTrackStart -> seekToMark(0L)
+            is MarkJumpLogic.JumpTarget.NoTarget     -> { /* next-jump with no marks ahead; no-op */ }
+        }
+    }
+
+    /**
      * Like [seekTo] but also fires [markJumpMs] so the Listen tab's MLWV
      * can jump-scroll to the correct bar regardless of splitter state.
      * Use this everywhere the seek target IS a mark position.
@@ -354,6 +382,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         seekTo(posMs)
         _markJumpMs.tryEmit(posMs)
     }
+
+
 
     fun skipBack() {
         val currentPos = mediaController?.currentPosition
@@ -370,24 +400,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: return
         val target = (currentPos + scrubForwardSecs.value * 1000L).coerceAtMost(dur)
         seekTo(target)
-    }
-
-    fun jumpToPrevMark() {
-        val posMs = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs ?: return
-        val targetMs = _marks.value
-            .filter { it.positionMs < posMs - markRewindThresholdMs }
-            .maxByOrNull { it.positionMs }?.positionMs ?: 0L
-        seekToMark(targetMs)
-    }
-
-    fun jumpToNextMark() {
-        val posMs = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs ?: return
-        val targetMs = _marks.value
-            .filter { it.positionMs > posMs + 500L }
-            .minByOrNull { it.positionMs }?.positionMs ?: return
-        seekToMark(targetMs)
     }
 
     // ── Position polling ──────────────────────────────────────────────
@@ -631,12 +643,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private val _markRewindThresholdSecs =
-        MutableStateFlow(prefs.getFloat(PREF_MARK_REWIND_THRESHOLD, 1.5f))
+        MutableStateFlow(prefs.getFloat(MarkJumpLogic.PREF_REWIND_THRESHOLD_SECS, MarkJumpLogic.DEFAULT_REWIND_THRESHOLD_SECS))
     val markRewindThresholdSecs: StateFlow<Float> = _markRewindThresholdSecs
     fun setMarkRewindThresholdSecs(secs: Float) {
         val v = secs.coerceIn(0.5f, 5.0f)
         _markRewindThresholdSecs.value = v
-        prefs.edit().putFloat(PREF_MARK_REWIND_THRESHOLD, v).apply()
+        prefs.edit().putFloat(MarkJumpLogic.PREF_REWIND_THRESHOLD_SECS, v).apply()
     }
 
     // ── Jump to Library on save ───────────────────────────────────────
@@ -952,6 +964,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var marksJob: Job? = null
 
+    /**
+     * True when a real mark exists behind the playhead (prev jump will land on a mark).
+     * False means prev jump falls back to track start — button stays enabled but turns white.
+     */
+    val hasMarkBehind: StateFlow<Boolean> = combine(
+        _marks, _nowPlaying, markRewindThresholdSecs
+    ) { marks, state, threshSecs ->
+        val posMs  = state?.positionMs ?: 0L
+        val thresh = (threshSecs * 1000f).toLong()
+        val target = MarkJumpLogic.findTarget(
+            marks             = marks.map { it.positionMs },
+            currentPositionMs = posMs,
+            forward           = false,
+            rewindThresholdMs = thresh
+        )
+        target is MarkJumpLogic.JumpTarget.ToMark
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /**
+     * True when at least one mark exists ahead of the playhead.
+     * False means next-jump does nothing — button is disabled and dimmed.
+     */
+    val hasMarkAhead: StateFlow<Boolean> = combine(
+        _marks, _nowPlaying
+    ) { marks, state ->
+        val posMs  = state?.positionMs ?: 0L
+        val target = MarkJumpLogic.findTarget(
+            marks             = marks.map { it.positionMs },
+            currentPositionMs = posMs,
+            forward           = true,
+            rewindThresholdMs = 0L
+        )
+        target is MarkJumpLogic.JumpTarget.ToMark
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     private fun startObservingMarks(recordingId: Long) {
         marksJob?.cancel()
         marksJob = viewModelScope.launch {
@@ -1034,46 +1081,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Playback mark nudge ───────────────────────────────────────────────────
-// Separate from the recording nudge (which operates on in-memory pending marks).
-// Playback nudge writes directly to the DB; commit just clears selection.
+    // Separate from the recording nudge (which operates on in-memory pending marks).
+    // Playback nudge writes directly to the DB; commit just clears selection.
 
     private val _playbackMarkNudgeLocked = MutableStateFlow(true)
     val playbackMarkNudgeLocked: StateFlow<Boolean> = _playbackMarkNudgeLocked
-
-    /**
-     * Jumps to and selects the nearest mark before the current position.
-     * Falls back to the first mark if nothing precedes the playhead.
-     */
-
-    fun jumpAndSelectPrevMark() {
-        val posMs = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs ?: return
-        val mark = _marks.value
-            .filter { it.positionMs < posMs - markRewindThresholdMs }
-            .maxByOrNull { it.positionMs }
-            ?: _marks.value.minByOrNull { it.positionMs }
-        if (mark != null) {
-            seekToMark(mark.positionMs)
-            _selectedMarkId.value = mark.id
-            _playbackMarkNudgeLocked.value = false
-        }
-    }
-
-    /**
-     * Jumps to and selects the nearest mark after the current position.
-     */
-    fun jumpAndSelectNextMark() {
-        val posMs = mediaController?.currentPosition
-            ?: _nowPlaying.value?.positionMs ?: return
-        val mark = _marks.value
-            .filter { it.positionMs > posMs + 500L }
-            .minByOrNull { it.positionMs }
-        if (mark != null) {
-            seekToMark(mark.positionMs)
-            _selectedMarkId.value = mark.id
-            _playbackMarkNudgeLocked.value = false
-        }
-    }
 
     fun nudgePlaybackMarkBack() {
         if (_playbackMarkNudgeLocked.value) return
@@ -1201,9 +1213,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .combine(_processingRefreshTick) { workInfos, _ -> workInfos }
             .combine(allRecordings) { workInfos, recordings -> workInfos to recordings }
             .combine(allTopics)     { (workInfos, recordings), topics ->
-                val recordingById = recordings.associateBy { it.id }
-                val topicById     = topics.associateBy { it.id }
-
                 fun infoFor(wi: WorkInfo) = ProcessingJobInfo(
                     id          = wi.id,
                     recordingId = WaveformWorker.recordingIdFromTags(wi.tags) ?: -1L,

@@ -35,7 +35,9 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.ui.waveform.WaveformTapType
 import com.treecast.app.util.Icons
+import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
+
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -252,8 +254,8 @@ class ListenFragment : Fragment() {
         binding.btnPlayPause.setOnClickListener   { viewModel.togglePlayPause() }
         binding.btnSkipBack.setOnClickListener    { viewModel.skipBack() }
         binding.btnSkipForward.setOnClickListener { viewModel.skipForward() }
-        binding.btnJumpPrev.setOnClickListener    { viewModel.jumpToPrevMark() }
-        binding.btnJumpNext.setOnClickListener    { viewModel.jumpToNextMark() }
+        binding.btnJumpPrev.setOnClickListener { viewModel.jumpMark(forward = false, select = false) }
+        binding.btnJumpNext.setOnClickListener { viewModel.jumpMark(forward = true,  select = false) }
 
         val seekListener = fun(seekBar: SeekBar) = object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) { isSeeking = true }
@@ -468,6 +470,19 @@ class ListenFragment : Fragment() {
                             selectedId
                         )
                     }
+                }
+
+                launch {
+                    combine(viewModel.hasMarkBehind, viewModel.hasMarkAhead) { behind, ahead -> behind to ahead }
+                        .collect { (hasBehind, hasAhead) ->
+                            val prevColor = requireContext().themeColor(if (hasBehind) R.attr.colorMarkDefault else R.attr.colorTextPrimary)
+                            binding.btnJumpPrev.imageTintList = ColorStateList.valueOf(prevColor)
+
+                            binding.btnJumpNext.isEnabled     = hasAhead
+                            binding.btnJumpNext.alpha         = if (hasAhead) 1f else UiConstants.ALPHA_DISABLED
+                            val nextColor = requireContext().themeColor(if (hasAhead) R.attr.colorMarkDefault else R.attr.colorTextPrimary)
+                            binding.btnJumpNext.imageTintList = ColorStateList.valueOf(nextColor)
+                        }
                 }
             }
         }

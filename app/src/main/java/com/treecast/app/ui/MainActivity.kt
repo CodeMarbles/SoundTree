@@ -28,6 +28,7 @@ import com.treecast.app.ui.settings.SettingsFragment
 import com.treecast.app.ui.workspace.WorkspaceFragment
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageEjectReceiver
+import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -598,8 +599,8 @@ class MainActivity : AppCompatActivity() {
 
         // ── Mark cluster buttons ──────────────────────────────────────────
         p.btnMiniAddMark.setOnClickListener      { viewModel.addMark() }
-        p.btnMiniJumpPrev.setOnClickListener     { viewModel.jumpAndSelectPrevMark() }
-        p.btnMiniJumpNext.setOnClickListener     { viewModel.jumpAndSelectNextMark() }
+        p.btnMiniJumpPrev.setOnClickListener { viewModel.jumpMark(forward = false, select = true) }
+        p.btnMiniJumpNext.setOnClickListener { viewModel.jumpMark(forward = true,  select = true) }
         p.btnMiniMarkNudgeBack.setOnClickListener    { viewModel.nudgePlaybackMarkBack() }
         p.btnMiniMarkNudgeForward.setOnClickListener { viewModel.nudgePlaybackMarkForward() }
         p.btnMiniMarkCommit.setOnClickListener       { viewModel.commitPlaybackMarkNudge() }
@@ -697,6 +698,19 @@ class MainActivity : AppCompatActivity() {
                         v.alpha = if (canNudge) 1f else 0.3f
                         v.imageTintList = ColorStateList.valueOf(if (canNudge) tealColor else greyColor)
                     }
+                }
+        }
+
+        lifecycleScope.launch {
+            combine(viewModel.hasMarkBehind, viewModel.hasMarkAhead) { behind, ahead -> behind to ahead }
+                .collect { (hasBehind, hasAhead) ->
+                    val prevColor = themeColor(if (hasBehind) R.attr.colorMarkDefault else R.attr.colorTextPrimary)
+                    p.btnMiniJumpPrev.imageTintList = ColorStateList.valueOf(prevColor)
+
+                    p.btnMiniJumpNext.isEnabled     = hasAhead
+                    p.btnMiniJumpNext.alpha         = if (hasAhead) 1f else UiConstants.ALPHA_DISABLED
+                    val nextColor = themeColor(if (hasAhead) R.attr.colorMarkDefault else R.attr.colorTextPrimary)
+                    p.btnMiniJumpNext.imageTintList = ColorStateList.valueOf(nextColor)
                 }
         }
     }
