@@ -403,6 +403,7 @@ class MainActivity : AppCompatActivity() {
             addFragment(WorkspaceFragment(),   "Workspace")
         }
         binding.viewPager.adapter = adapter
+        binding.viewPager.isUserInputEnabled = false
         binding.viewPager.offscreenPageLimit = 5
         binding.viewPager.setCurrentItem(PAGE_RECORD, false)
 
