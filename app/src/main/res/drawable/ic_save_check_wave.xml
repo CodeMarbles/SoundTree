@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Save icon — large green checkmark with a modulated 5-cycle sine wave,
+  rotated –15° around (6,8).  Left edge stays at x=2; wave extends right
+  to x=15.333, sweeping across most of the icon's upper field.
+
+  Bezier geometry (viewport 24×24):
+    y_center = 8, x 2→15.333 (13.333-unit span, 5 cycles)
+    Half-period = 1.333 units, k = 0.3642 × 1.333 ≈ 0.486
+    x-nodes: 2 | 3.333 | 4.667 | 6.0 | 7.333 | 8.667 | 10.0 | 11.333 | 12.667 | 14.0 | 15.333
+
+    Gaussian-tapered amplitudes (outside → in):
+      ±0.8, ±1.6, ±2.6, ±3.6, ±4.8, ±4.8, ±3.6, ±2.6, ±1.6, ±0.8
+    Signs (alternating from left):
+      +0.8  –1.6  +2.6  –3.6  +4.8  –4.8  +3.6  –2.6  +1.6  –0.8
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ── Large green checkmark (dominant element) ── -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#4CAF50"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3,16 L9,22 L21,8" />
+
+    <!-- ── 5-cycle tapered wave, –15° into the crook ── -->
+    <group
+        android:pivotX="6"
+        android:pivotY="8"
+        android:rotation="-15">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="
+                M2,8
+                C 2.486,7.2   2.847,7.2   3.333,8
+                C 3.819,9.6   4.181,9.6   4.667,8
+                C 5.153,5.4   5.514,5.4   6.0,8
+                C 6.486,11.6  6.847,11.6  7.333,8
+                C 7.819,3.2   8.181,3.2   8.667,8
+                C 9.153,12.8  9.514,12.8  10.0,8
+                C 10.486,4.4  10.847,4.4  11.333,8
+                C 11.819,10.6 12.181,10.6 12.667,8
+                C 13.153,6.4  13.514,6.4  14.0,8
+                C 14.486,8.8  14.847,8.8  15.333,8" />
+    </group>
+
+</vector>

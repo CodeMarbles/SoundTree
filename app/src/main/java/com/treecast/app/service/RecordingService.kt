@@ -579,7 +579,7 @@ class RecordingService : Service() {
             this, REQUEST_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
         )
         val saveAction = NotificationCompat.Action(
-            R.drawable.ic_save_mic_crook, "Save", savePi
+            R.drawable.ic_save_check_wave, "Save", savePi
         )
 
         // ── Drop Mark action ──────────────────────────────────────────

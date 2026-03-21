@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Save icon — extreme variant. Large green checkmark with an 8-cycle
+  modulated sine wave, rotated –35° around (6,8), sweeping from the
+  upper-left crook all the way to the top-right corner of the viewport.
+
+  The wave exits through the top edge near the checkmark's right tip —
+  closest calculated gap is ~0.7 viewport-units between stroke edges.
+
+  Bezier geometry (viewport 24×24):
+    y_center = 8,  x: 2 → 23.333  (8 full cycles, half-period = 1.333)
+    k = 0.3642 × 1.333 = 0.486  (bezier control offset for sine approx)
+    x-nodes: 2, 3.333, 4.667, 6.0, 7.333, 8.667, 10.0, 11.333,
+             12.667, 14.0, 15.333, 16.667, 18.0, 19.333, 20.667, 22.0, 23.333
+
+  Asymmetric Gaussian envelope — crests and troughs use different maxima
+  so the wave leans toward the checkmark without clipping the top edge:
+    Upward  crests (peak y = 8 − amp): Gaussian max = 4.0
+    Downward troughs (peak y = 8 + amp): Gaussian max = 8.3
+    Sigma = 4.5, centred at half-cycle 8.5 (x_local ≈ 13.3)
+
+  Half-cycle peak y values (alternating +up / −down from y=8):
+    i=1  up  → 7.0     i=2  down → 10.9
+    i=3  up  → 6.1     i=4  down → 13.0
+    i=5  up  → 5.0     i=6  down → 15.1
+    i=7  up  → 4.2     i=8  down → 16.2
+    i=9  up  → 4.0     i=10 down → 15.9
+    i=11 up  → 4.6     i=12 down → 14.1
+    i=13 up  → 5.6     i=14 down → 11.9
+    i=15 up  → 6.6     i=16 down → 10.1
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ── Large green checkmark (dominant element) ── -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#4CAF50"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3,16 L9,22 L21,8" />
+
+    <!-- ── 8-cycle asymmetric-Gaussian wave, –35° into the crook ── -->
+    <group
+        android:pivotX="6"
+        android:pivotY="8"
+        android:rotation="-35">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="
+                M2,8
+                C 2.486,7.0   2.847,7.0   3.333,8
+                C 3.819,10.9  4.181,10.9  4.667,8
+                C 5.153,6.1   5.514,6.1   6.0,8
+                C 6.486,13.0  6.847,13.0  7.333,8
+                C 7.819,5.0   8.181,5.0   8.667,8
+                C 9.153,15.1  9.514,15.1  10.0,8
+                C 10.486,4.2  10.847,4.2  11.333,8
+                C 11.819,16.2 12.181,16.2 12.667,8
+                C 13.153,4.0  13.514,4.0  14.0,8
+                C 14.486,15.9 14.847,15.9 15.333,8
+                C 15.819,4.6  16.181,4.6  16.667,8
+                C 17.153,14.1 17.514,14.1 18.0,8
+                C 18.486,5.6  18.847,5.6  19.333,8
+                C 19.819,11.9 20.181,11.9 20.667,8
+                C 21.153,6.6  21.514,6.6  22.0,8
+                C 22.486,10.1 22.847,10.1 23.333,8" />
+    </group>
+
+</vector>

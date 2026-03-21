@@ -491,7 +491,7 @@ class RecordFragment : Fragment() {
                     //iconTint = ColorStateList.valueOf(Color.WHITE)
 
                     text = "REC"
-                    textSize = 18f
+                    textSize = 22f
                 }
                 // Flanking buttons + hint label hidden
                 binding.btnCancel.visibility    = View.GONE
@@ -516,7 +516,7 @@ class RecordFragment : Fragment() {
                     backgroundTintList = ColorStateList.valueOf(requireContext().themeColor(R.attr.colorRecordPause))
 
                     setIconResource(R.drawable.ic_pause)
-                    iconSize = toDp(48f)
+                    iconSize = toDp(60f)
                     iconTint = ColorStateList.valueOf(Color.WHITE)
                     iconPadding = 0
 
@@ -543,7 +543,7 @@ class RecordFragment : Fragment() {
                     backgroundTintList = ColorStateList.valueOf(Color.BLUE)
 
                     setIconResource(R.drawable.ic_resume_circle)
-                    iconSize = toDp(24f)
+                    iconSize = toDp(28f)
                     iconGravity = MaterialButton.ICON_GRAVITY_TEXT_TOP
                     iconPadding = toDp(5f)
                     iconTint = ColorStateList.valueOf(Color.WHITE)
