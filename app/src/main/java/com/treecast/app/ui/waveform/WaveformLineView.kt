@@ -643,8 +643,12 @@ class WaveformLineView @JvmOverloads constructor(
 
             // ── Left boundary (always drawn) ──────────────────────────────────
             drawTickLine(0f)
-            rulerPaint.textAlign = Paint.Align.LEFT
-            c.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
+            // When the rail is active it already shows startMs as a rotated label —
+            // skip the horizontal duplicate here.
+            if (!showLineRail) {
+                rulerPaint.textAlign = Paint.Align.LEFT
+                c.drawText(formatMs(startMs), edgePadPx, labelY, rulerPaint)
+            }
 
             // ── Right boundary (only when line is wide enough) ────────────────
             if (fillWidthPx >= rightBoundaryMinPx) {

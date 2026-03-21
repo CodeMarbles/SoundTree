@@ -106,6 +106,7 @@ class ListenFragment : Fragment() {
         binding.multiLineWaveform.scaleToFill = true
         binding.multiLineWaveform.secondsPerLine   = 300 // 5 minutes
         binding.multiLineWaveform.showPlayedSplit  = true
+        binding.multiLineWaveform.showLineRail     = true
 
         binding.multiLineWaveform.onTimeSelected = { positionMs, type ->
             when (type) {
