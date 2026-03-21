@@ -456,10 +456,10 @@ class RecordFragment : Fragment() {
 
     private fun observeLock() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.isLocked.collect { locked ->
-                        binding.btnLockScreen.alpha = if (locked) 0.3f else 1f
+                        binding.btnLockScreen.alpha = if (locked) 0f else 1f
                     }
                 }
             }
@@ -469,8 +469,15 @@ class RecordFragment : Fragment() {
     private fun observeWaveformStyle() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.waveformStyle.collect { style ->
-                    binding.multiLineWaveformView.waveformStyle = style
+                launch {
+                    viewModel.waveformStyle.collect { style ->
+                        binding.multiLineWaveformView.waveformStyle = style
+                    }
+                }
+                launch {
+                    viewModel.waveformDisplayConfig.collect { cfg ->
+                        binding.multiLineWaveformView.waveformDisplayConfig = cfg
+                    }
                 }
             }
         }

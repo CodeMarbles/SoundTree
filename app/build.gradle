@@ -7,7 +7,7 @@ plugins {
 
 def major = 0
 def minor = 4
-def patch = 22
+def patch = 23
 
 android {
     namespace 'com.treecast.app'
