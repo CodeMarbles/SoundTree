@@ -259,20 +259,20 @@ class MiniRecorderTimelineView @JvmOverloads constructor(
         val barBottom  = barCy + barH / 2f
         val barRadius  = barH / 2f
 
-        // ── 1. Track ──────────────────────────────────────────────────
+        // ── Track ──────────────────────────────────────────────────
         trackRect.set(0f, barTop, w, barBottom)
         canvas.drawRoundRect(trackRect, barRadius, barRadius, trackPaint)
 
         if (elapsedMs > 0) {
-            // ── 2. Fill ───────────────────────────────────────────────
+            // ── Fill ───────────────────────────────────────────────
             trackRect.set(0f, barTop, w, barBottom)
             canvas.drawRoundRect(trackRect, barRadius, barRadius, fillPaint)
 
             if (isRecording) {
-                // ── 3. Waveform envelope ──────────────────────────────
+                // ── Waveform envelope ──────────────────────────────
                 drawWaveEnvelope(canvas, w, barCy, barTop, barBottom)
 
-                // ── 4. Shimmer ────────────────────────────────────────
+                // ── Shimmer ────────────────────────────────────────
                 drawShimmer(canvas, w, barTop, barBottom, barRadius)
             }
         }
@@ -300,34 +300,27 @@ class MiniRecorderTimelineView @JvmOverloads constructor(
             canvas.drawCircle(dotCx, barCy, dotRadius * 0.85f, pulsePaint)
         }
 
-        val markW      = density * 3f          // line thickness — tweak to taste
-        val markHalf   = barH * 2.5f           // half of 3× bar height
-        val markCorner = markW / 2f            // fully rounded caps
+        val mark = TimelineMarkStyle.compute(density, barH)
 
         // ── Mark dots ──────────────────────────────────────────────
         for (i in markTimestamps.indices) {
             val ts   = markTimestamps[i]
             val frac = if (elapsedMs > 0) (ts.toFloat() / elapsedMs).coerceIn(0f, 1f) else 0f
             //val cx   = (frac * w).coerceIn(dotRadius, w - dotRadius)
-            val cx   = (frac * w).coerceIn(dotRadius, w - markW / 2f)
+            val cx   = (frac * w).coerceIn(mark.halfW, w - mark.halfW)
             dotCxList.add(cx)
 
 //            canvas.drawCircle(cx, barCy, dotRadius,
 //                if (i == activeIndex) selectedDotPaint else dotPaint)
-            markRect.set(
-                cx - markW / 2f,
-                barCy - markHalf,
-                cx + markW / 2f,
-                barCy + markHalf
-            )
-            canvas.drawRoundRect(markRect, markCorner, markCorner, if (i == activeIndex) selectedDotPaint else dotPaint)
+            markRect.set(cx - mark.halfW, barCy - mark.halfH, cx + mark.halfW, barCy + mark.halfH)
+            canvas.drawRoundRect(markRect, mark.corner, mark.corner, if (i == activeIndex) selectedDotPaint else dotPaint)
 
-            // ── 6. Floating timestamp label ───────────────────────────
+            // ── Floating timestamp label ───────────────────────────
             if (i == activeIndex && showLastMarkTimestamp) {
-                val labelText  = formatMs(ts)
-                val textHalfW  = labelPaint.measureText(labelText) / 2f
-                val labelX     = cx.coerceIn(textHalfW + density * 2f, w - textHalfW - density * 2f)
-                val labelY     = barTop - dotRadius - density * 5f
+                val labelText = formatMs(ts)
+                val textHalfW = labelPaint.measureText(labelText) / 2f
+                val labelX    = cx.coerceIn(textHalfW + density * 2f, w - textHalfW - density * 2f)
+                val labelY    = (barCy - mark.halfH) - density * 5f
                 canvas.drawText(labelText, labelX, labelY, labelPaint)
             }
         }

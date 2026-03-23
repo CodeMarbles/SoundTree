@@ -20,19 +20,19 @@ import kotlin.math.abs
  *  - The track is always full-width (total duration = full bar).
  *  - A semi-transparent accent fill shows how much has been played.
  *  - A solid accent playhead dot rides on top of the fill edge.
- *  - Mark dots sit at their fraction of total duration.
+ *  - Mark lines sit at their fraction of total duration.
  *  - The selected mark is drawn in colorMarkSelected (teal); all others
  *    in colorMarkDefault (pink).
  *  - A floating timestamp label sits above the selected mark, always
  *    visible when a mark is selected (no config toggle needed).
  *
  * Touch behaviour:
- *   - Tap within 20dp of a mark dot → [onMarkTapped] fires with the mark's DB id.
- *   - Tap anywhere else             → [onSeekRequested] fires with a 0f..1f fraction.
+ *   - Tap within 20dp of a mark line → [onMarkTapped] fires with the mark's DB id.
+ *   - Tap anywhere else              → [onSeekRequested] fires with a 0f..1f fraction.
  *
  * Public API (call from MainActivity):
- *   timeline.setProgress(fraction)           // 0f..1f, called on playback tick
- *   timeline.setMarks(fracs, ids)            // parallel lists, called on marks Flow emit
+ *   timeline.setProgress(fraction)            // 0f..1f, called on playback tick
+ *   timeline.setMarks(fracs, ids)             // parallel lists, called on marks Flow emit
  *   timeline.setSelectedMark(id, timestampMs) // called when selectedMarkId changes
  */
 class MiniPlayerTimelineView @JvmOverloads constructor(
@@ -51,16 +51,16 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
 
     // ── Callbacks ─────────────────────────────────────────────────────
 
-    /** Fired when the user taps near a mark dot. Argument = mark's DB id. */
+    /** Fired when the user taps near a mark line. Argument = mark's DB id. */
     var onMarkTapped: ((id: Long) -> Unit)? = null
 
     /** Fired when the user taps an empty area. Argument = 0f..1f seek fraction. */
     var onSeekRequested: ((fraction: Float) -> Unit)? = null
 
-    // ── Cached dot list for hit-testing (populated in onDraw) ─────────
+    // ── Cached mark list for hit-testing (populated in onDraw) ────────
 
-    private data class DotInfo(val cx: Float, val id: Long)
-    private val dotList = mutableListOf<DotInfo>()
+    private data class MarkInfo(val cx: Float, val id: Long)
+    private val markList = mutableListOf<MarkInfo>()
 
     // ── Paints ────────────────────────────────────────────────────────
 
@@ -100,6 +100,7 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
     }
 
     private val trackRect = RectF()
+    private val markRect  = RectF()
 
     // ── Public API ────────────────────────────────────────────────────
 
@@ -136,10 +137,10 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
         // accidentally navigating to Listen tab on a timeline tap).
         if (event.action != MotionEvent.ACTION_UP) return true
 
-        val touchX = event.x
+        val touchX  = event.x
         val hitSlop = resources.displayMetrics.density * 20f
 
-        val hit = dotList.minByOrNull { abs(it.cx - touchX) }
+        val hit = markList.minByOrNull { abs(it.cx - touchX) }
         if (hit != null && abs(hit.cx - touchX) <= hitSlop) {
             onMarkTapped?.invoke(hit.id)
         } else {
@@ -149,17 +150,17 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
         return true
     }
 
-    // ── Draw ─────────────────────────────────────────────────────────
+    // ── Draw ──────────────────────────────────────────────────────────
 
     override fun onDraw(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
+        val w       = width.toFloat()
+        val h       = height.toFloat()
         val density = resources.displayMetrics.density
 
-        // ── Geometry — mirrors MiniRecorderTimelineView ───────────────
+        // ── Geometry ──────────────────────────────────────────────────
         // Reserve space at the top for the floating timestamp label when
         // a mark is selected; bar is vertically centred in the remaining space.
-        val hasLabel = selectedMarkMs != null && selectedMarkId != null
+        val hasLabel   = selectedMarkMs != null && selectedMarkId != null
         val labelAreaH = if (hasLabel) density * 13f else 0f
 
         val barH      = (density * 4f).coerceAtMost((h - labelAreaH) * 0.45f)
@@ -180,36 +181,37 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
         }
 
         // ── Playhead dot ──────────────────────────────────────────────
-        val playheadR = barH * 0.9f
+        val playheadR  = barH * 0.9f
         val playheadCx = (progressFraction * w).coerceIn(playheadR, w - playheadR)
         canvas.drawCircle(playheadCx, barCy, playheadR, playheadPaint)
 
-        // ── Mark dots ─────────────────────────────────────────────────
-        dotList.clear()
-        val dotRadius = barH * 1.2f
+        // ── Mark lines ────────────────────────────────────────────────
+        markList.clear()
+        val mark = TimelineMarkStyle.compute(density, barH)
 
         for (i in markFractions.indices) {
-            val frac = markFractions[i]
-            val id   = markIds[i]
-            val cx   = (frac * w).coerceIn(dotRadius, w - dotRadius)
+            val frac  = markFractions[i]
+            val id    = markIds[i]
+            val cx    = (frac * w).coerceIn(mark.halfW, w - mark.halfW)
             val paint = if (id == selectedMarkId) dotSelectedPaint else dotDefaultPaint
-            canvas.drawCircle(cx, barCy, dotRadius, paint)
-            dotList.add(DotInfo(cx, id))
+
+            markRect.set(cx - mark.halfW, barCy - mark.halfH, cx + mark.halfW, barCy + mark.halfH)
+            canvas.drawRoundRect(markRect, mark.corner, mark.corner, paint)
+            markList.add(MarkInfo(cx, id))
         }
 
         // ── Floating timestamp label above selected mark ───────────────
         val labelMs = selectedMarkMs
         if (hasLabel && labelMs != null) {
-            val selIdx = markIds.indexOf(selectedMarkId)
+            val selIdx  = markIds.indexOf(selectedMarkId)
             val selFrac = markFractions.getOrNull(selIdx)
             if (selFrac != null) {
                 val labelText = formatMs(labelMs)
-                val halfW = labelPaint.measureText(labelText) / 2f
-                val labelCx = (selFrac * w)
+                val halfW     = labelPaint.measureText(labelText) / 2f
+                val labelCx   = (selFrac * w)
                     .coerceIn(halfW + density * 2f, w - halfW - density * 2f)
-                // Baseline sits a few dp above the top of the dot
-                val dotTop = barCy - dotRadius
-                val labelY = dotTop - density * 3f
+                // Baseline sits a few dp above the top of the mark line
+                val labelY = (barCy - mark.halfH) - density * 3f
                 canvas.drawText(labelText, labelCx, labelY, labelPaint)
             }
         }
