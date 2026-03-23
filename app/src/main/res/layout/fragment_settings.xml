@@ -1,18 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
+<!--
+  fragment_settings.xml
+  Tabbed settings layout: Display · Behavior · Storage · Tools
+  Root changes from ScrollView → LinearLayout so the tab bar is fixed at top
+  and only the active tab's ScrollView scrolls. All existing view IDs are
+  preserved so SettingsFragment.kt binding calls require no changes except
+  the addition of setupTabs().
+-->
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="?attr/colorBackground">
 
+    <!-- ── Always-visible header ──────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingHorizontal="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="10dp">
 
-        <!-- App identity -->
         <TextView
             android:id="@+id/tvAppIdentity"
             android:layout_width="wrap_content"
@@ -20,1909 +31,2058 @@
             android:textColor="?attr/colorTextPrimary"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginBottom="2dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Personal podcast · voice journal"
             android:textColor="?attr/colorTextSecondary"
-            android:textSize="13sp"
-            android:layout_marginBottom="32dp" />
-
-        <!-- ── Appearance card ──────────────────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="APPEARANCE"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:paddingHorizontal="4dp"
-            android:paddingBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- ── Theme ───────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Theme"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Follow system, or lock to light or dark"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <!-- Three-way toggle: System / Light / Dark -->
-                    <LinearLayout
-                        android:id="@+id/themeToggleGroup"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:orientation="horizontal"
-                        android:background="@drawable/bg_picker"
-                        android:padding="3dp">
-
-                        <TextView
-                            android:id="@+id/btnThemeSystem"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="Auto"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/btnThemeLight"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="Light"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/btnThemeDark"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="Dark"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Waveform background style ─────────────────────── -->
-                <!-- Style picker: three-button segmented selector         -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Waveform background"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Decorative scene behind the waveform bars"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <!-- Three-button picker: Standard / Sky / SkyLights -->
-                    <!-- Styled identically to the existing theme picker row -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:orientation="horizontal"
-                        android:background="?attr/colorSurfaceBase"
-                        android:layout_marginStart="12dp">
-
-                        <TextView
-                            android:id="@+id/btnWaveformStyleStandard"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="Off"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/btnWaveformStyleSky"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="Sky"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/btnWaveformStyleSkyLights"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:text="SkyLights"
-                            android:textSize="12sp"
-                            android:gravity="center"
-                            android:paddingHorizontal="10dp"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- Sub-options block — faded when Standard is selected -->
-                <LinearLayout
-                    android:id="@+id/rowWaveformSubOptions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?attr/colorSurfaceElevated"
-                        android:layout_marginHorizontal="16dp" />
-
-                    <!-- Swap day/night variant -->
-                    <LinearLayout
-                        android:id="@+id/rowInvertWaveformTheme"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="32dp"
-                        android:paddingEnd="16dp"
-                        android:paddingVertical="14dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Swap day / night variant"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="15sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Use the night scene in light mode and vice versa"
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/switchInvertWaveformTheme"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="false" />
-
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?attr/colorSurfaceElevated"
-                        android:layout_marginHorizontal="16dp" />
-
-                    <!-- Background opacity slider -->
-                    <LinearLayout
-                        android:id="@+id/rowWaveformBgAlpha"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="32dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="10dp"
-                        android:paddingBottom="4dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Opacity"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/sliderWaveformBgAlpha"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
-                        android:layout_marginEnd="16dp"
-                        android:layout_marginBottom="8dp"
-                        android:valueFrom="0"
-                        android:valueTo="100"
-                        android:stepSize="1"
-                        app:labelBehavior="gone" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?attr/colorSurfaceElevated"
-                        android:layout_marginHorizontal="16dp" />
-
-                    <!-- Extends under ruler -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="32dp"
-                        android:paddingEnd="16dp"
-                        android:paddingVertical="14dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Extend behind ruler"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="15sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Show the background behind the timestamp strip"
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/switchWaveformExtendsUnderRuler"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="true" />
-
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?attr/colorSurfaceElevated"
-                        android:layout_marginHorizontal="16dp" />
-
-                    <!-- Unplayed only -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="32dp"
-                        android:paddingEnd="16dp"
-                        android:paddingVertical="14dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Unplayed region only"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="15sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="The scene retreats as you listen, and as you record."
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="12sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/switchWaveformUnplayedOnly"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="true" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── UI Layout ───────────────── -->
-                <LinearLayout
-                    android:id="@+id/cardLayout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="?attr/colorSurfaceBase"
-                    android:layout_marginBottom="12dp">
-
-                    <!-- Section header row -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginStart="12dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Layout"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <!-- Show title bar toggle (inline with header) -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingHorizontal="16dp"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Title bar"
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="12sp"
-                                android:layout_marginEnd="6dp" />
-
-                            <androidx.appcompat.widget.SwitchCompat
-                                android:id="@+id/switchShowTitleBar"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:checked="true" />
-
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Widget + Edit/Apply button row -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="6dp"
-                        app:cardBackgroundColor="?attr/colorSurfaceElevated"
-                        app:cardCornerRadius="6dp"
-                        app:cardElevation="0dp"
-                        android:paddingHorizontal="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingHorizontal="16dp"
-                            android:paddingVertical="16dp">
-
-                            <!-- Edit layout / Apply button -->
-                            <TextView
-                                android:id="@+id/btnEditLayout"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Edit layout"
-                                android:textSize="13sp"
-                                android:textColor="?attr/colorAccent"
-                                android:paddingHorizontal="12dp"
-                                android:paddingVertical="8dp"
-                                android:background="?attr/selectableItemBackground"
-                                android:clickable="true"
-                                android:focusable="true" />
-
-                            <!-- Spacer -->
-                            <View
-                                android:layout_width="0dp"
-                                android:layout_height="1dp"
-                                android:layout_weight="1" />
-
-                            <!-- The reorder widget — fixed 170dp wide -->
-                            <com.treecast.app.ui.settings.LayoutReorderWidget
-                                android:id="@+id/layoutReorderWidget"
-                                android:layout_width="170dp"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                </LinearLayout>
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Recording card ─────────────────────────────────── -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="RECORDING"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp" >
-            <!-- ── Recording Widget ─────────────────── -->
-            <LinearLayout
-                android:id="@+id/cardRecordingWidget"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="?attr/colorSurfaceBase"
-                android:layout_marginBottom="12dp">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Recording Widget visibility (3-state) ──────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="6dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Recording Widget"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="When to show the widget above the nav bar"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="10dp" />
-
-                    <com.google.android.material.button.MaterialButtonToggleGroup
-                        android:id="@+id/toggleRecorderVisibility"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:singleSelection="true"
-                        app:selectionRequired="true">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRecorderVisNever"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="Never"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRecorderVisWhileRecording"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="RECORDING"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRecorderVisAlways"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="Always"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Hide on Record Tab (enabled when not Never) ─────── -->
-                <LinearLayout
-                    android:id="@+id/rowHideRecorderOnRecordTab"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Hide on Record Tab"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Don't show widget while Record tab is active"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchHideRecorderOnRecordTab"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-                <!-- ── Always show recorder shortcut ─────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Always show recorder shortcut"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Keep the title-bar pill visible at all times"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchAlwaysShowRecorderPill"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Mark nudge seconds -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Mark Nudge"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Seconds shifted per nudge tap"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnMarkNudgeMinus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="−"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                    <TextView
-                        android:id="@+id/tvMarkNudgeSecs"
-                        android:layout_width="52dp"
-                        android:layout_height="36dp"
-                        android:gravity="center"
-                        android:text="5s"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnMarkNudgePlus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="+"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Playback card ─────────────────────────────────── -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="PLAYBACK"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp" >
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- ── Playback Widget visibility (3-state) ──────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="6dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Playback Widget"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="When to show the widget above the nav bar"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="10dp" />
-
-                    <com.google.android.material.button.MaterialButtonToggleGroup
-                        android:id="@+id/togglePlayerVisibility"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:singleSelection="true"
-                        app:selectionRequired="true">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnPlayerVisNever"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="Never"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnPlayerVisWhilePlaying"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="PLAYING"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnPlayerVisAlways"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:text="Always"
-                            android:textSize="10sp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp" />
-
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Hide Listen Widget on Listen Tab ─────────── -->
-                <LinearLayout
-                    android:id="@+id/rowHidePlayerOnListenTab"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Hide on Listen Tab"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Don't show widget while Listen tab is active"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchHidePlayerOnListenTab"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Always show player shortcut ────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Always show player shortcut"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Keep the title-bar pill visible at all times"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switchAlwaysShowPlayerPill"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Switch to Listen on play ───────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Switch to Listen on play"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Automatically open the Listen tab when playback starts"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switchAutoNavigate"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="false" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Jump to Library on save toggle ──────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Jump to recording after saving"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Open Library and select the recording when you finish saving"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switchJumpToLibrary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Scrub Back length ───────────────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Scrub Back"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Seconds to jump back when ⏪ is tapped"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScrubBackMinus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="−"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                    <TextView
-                        android:id="@+id/tvScrubBackSecs"
-                        android:layout_width="48dp"
-                        android:layout_height="36dp"
-                        android:gravity="center"
-                        android:text="15"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScrubBackPlus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="+"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Scrub Forward length ────────────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Scrub Forward"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Seconds to jump forward when ⏩ is tapped"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScrubForwardMinus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="−"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                    <TextView
-                        android:id="@+id/tvScrubForwardSecs"
-                        android:layout_width="48dp"
-                        android:layout_height="36dp"
-                        android:gravity="center"
-                        android:text="15"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScrubForwardPlus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="+"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- ── Mark Rewind Threshold ──────────────────── -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Mark Rewind Threshold"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Grace period before jump-back moves to the previous mark"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnMarkRewindMinus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="−"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                    <TextView
-                        android:id="@+id/tvMarkRewindSecs"
-                        android:layout_width="52dp"
-                        android:layout_height="36dp"
-                        android:gravity="center"
-                        android:text="1.5s"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnMarkRewindPlus"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:text="+"
-                        android:textSize="18sp"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        app:strokeColor="?attr/colorSurfaceElevated"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Storage card ──────────────────────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="STORAGE"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- Label row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="14dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Default recording storage"
-                            android:textColor="?attr/colorTextPrimary"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="New recordings will be saved here"
-                            android:textColor="?attr/colorTextSecondary"
-                            android:textSize="12sp"
-                            android:layout_marginTop="2dp" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- Dynamic volume selector — populated by SettingsFragment -->
-                <!-- Each volume gets a row injected at runtime via addStorageVolumeRow() -->
-                <LinearLayout
-                    android:id="@+id/storageVolumeContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="8dp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Total used storage summary row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Total used by TreeCast"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvTotalUsed"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Recording Recovery ──────────────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="RECORDING RECOVERY"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- Recoverable row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Recoverable"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvOrphanRecoverableSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Unrecoverable row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Unrecoverable"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvOrphanCorruptSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Review button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnReviewOrphans"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="4dp"
-                    android:text="Review orphaned recordings"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorAccent" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Processing ──────────────────────────────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="PROCESSING JOBS"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp" />
-
-        <LinearLayout
-            android:id="@+id/cardProcessing"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="?attr/colorSurfaceBase"
-            android:layout_marginBottom="12dp">
-
-            <!-- Spinner: visible only while a job is running -->
-            <ProgressBar
-                android:id="@+id/processingSpinner"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:visibility="gone" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="?attr/colorSurfaceElevated"
-                android:layout_marginHorizontal="16dp" />
-
-            <!-- Reprocess all button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnReprocessWaveforms"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="4dp"
-                android:text="Regenerate all waveforms"
-                android:textSize="13sp"
-                android:textColor="?attr/colorAccent" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="?attr/colorSurfaceElevated"
-                android:layout_marginHorizontal="16dp" />
-
-            <!-- Active job row (hidden when nothing is running) -->
-            <LinearLayout
-                android:id="@+id/rowActiveJob"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="10dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Analysing…"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/tvActiveJobTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:textSize="13sp"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-            </LinearLayout>
-
-            <!-- Pending jobs container -->
-            <LinearLayout
-                android:id="@+id/containerPending"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="2dp"
-                    android:text="Pending"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="11sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.08" />
-
-                <LinearLayout
-                    android:id="@+id/listPendingJobs"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="4dp" />
-
-            </LinearLayout>
-
-            <!-- Recently completed jobs container -->
-            <LinearLayout
-                android:id="@+id/containerRecent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="2dp"
-                    android:text="Completed"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="11sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.08" />
-
-                <LinearLayout
-                    android:id="@+id/listRecentJobs"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="4dp" />
-
-            </LinearLayout>
-
-            <!-- Idle state -->
-            <TextView
-                android:id="@+id/tvProcessingIdle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="10dp"
-                android:text="No jobs running"
-                android:textColor="?attr/colorTextSecondary"
-                android:textSize="13sp"
-                android:visibility="visible" />
-
-        </LinearLayout>
-
-        <!-- ── Dev Options section ──────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEV OPTIONS"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- Future Mode toggle -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Future Mode"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="14sp" />
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switchFutureMode"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="false" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Stats section ────────────────────────────────────── -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="STATS"
-            android:textColor="?attr/colorTextSecondary"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="?attr/colorSurfaceBase"
-            app:cardCornerRadius="@dimen/settings_card_corner_radius"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <!-- Total recorded time -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Total recorded time"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvTotalRecordedTime"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Last session -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Last session"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvLastOpened"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Listened count -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Recordings listened"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvListenedCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Number of topics -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Topics"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvTopicCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorSurfaceElevated"
-                    android:layout_marginHorizontal="16dp" />
-
-                <!-- Total storage used -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Total storage used"
-                        android:textColor="?attr/colorTextSecondary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvStatsTotalStorage"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="?attr/colorTextPrimary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
+            android:textSize="13sp" />
 
     </LinearLayout>
 
-</ScrollView>
+    <!-- ── Tab bar ────────────────────────────────────────────────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="4dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        app:cardCornerRadius="10dp"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:padding="3dp">
+
+            <TextView
+                android:id="@+id/tabDisplay"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Display"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tabBehavior"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Behavior"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tabStorage"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Storage"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tabTools"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Tools"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ── Tab content (FrameLayout holds all 4 ScrollViews) ─────── -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ═══════════════════════════════════════════════════════════
+             DISPLAY TAB  (landing tab — visible by default)
+             Contains: Appearance, Waveform style, Layout, Widgets, App info
+             ═══════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/scrollDisplay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorBackground"
+            android:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <!-- ── APPEARANCE section ────────────────────────────── -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="APPEARANCE"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:paddingHorizontal="4dp"
+                    android:paddingBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Theme picker -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Theme"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:orientation="horizontal"
+                                android:background="?attr/colorSurfaceBase"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnThemeSystem"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="System"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnThemeLight"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="Light"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnThemeDark"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="Dark"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Waveform style -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Waveform background"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Decorative scene behind the waveform bars"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:orientation="horizontal"
+                                android:background="?attr/colorSurfaceBase"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnWaveformStyleStandard"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="Off"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnWaveformStyleSky"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="Sky"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnWaveformStyleSkyLights"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="SkyLights"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- Waveform sub-options (faded when Standard) -->
+                        <LinearLayout
+                            android:id="@+id/rowWaveformSubOptions"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <!-- Swap day/night -->
+                            <LinearLayout
+                                android:id="@+id/rowInvertWaveformTheme"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="32dp"
+                                android:paddingEnd="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Swap day / night variant"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Invert which variant appears in each theme"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.switchmaterial.SwitchMaterial
+                                    android:id="@+id/switchInvertWaveformTheme"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <!-- Background opacity -->
+                            <LinearLayout
+                                android:id="@+id/rowWaveformBgAlpha"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="32dp"
+                                android:paddingEnd="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Background opacity"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="How vivid the scene appears"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.slider.Slider
+                                    android:id="@+id/sliderWaveformBgAlpha"
+                                    android:layout_width="120dp"
+                                    android:layout_height="wrap_content"
+                                    android:valueFrom="0"
+                                    android:valueTo="100"
+                                    android:stepSize="1"
+                                    android:layout_marginStart="16dp" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <!-- Extends under ruler -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="32dp"
+                                android:paddingEnd="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Extends under ruler"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Scene continues behind the timestamp strip"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.switchmaterial.SwitchMaterial
+                                    android:id="@+id/switchWaveformExtendsUnderRuler"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checked="true" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <!-- Unplayed region only -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="32dp"
+                                android:paddingEnd="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Unplayed region only"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="The scene retreats as you listen, and as you record"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.switchmaterial.SwitchMaterial
+                                    android:id="@+id/switchWaveformUnplayedOnly"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checked="true" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Layout section (inside Appearance card) -->
+                        <LinearLayout
+                            android:id="@+id/cardLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/colorSurfaceBase"
+                            android:layout_marginBottom="12dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="14dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Layout"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Title bar"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginEnd="6dp" />
+
+                                <androidx.appcompat.widget.SwitchCompat
+                                    android:id="@+id/switchShowTitleBar"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checked="true" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="6dp"
+                                app:cardBackgroundColor="?attr/colorSurfaceElevated"
+                                app:cardCornerRadius="6dp"
+                                app:cardElevation="0dp"
+                                android:paddingHorizontal="16dp">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical"
+                                    android:paddingHorizontal="16dp"
+                                    android:paddingVertical="16dp">
+
+                                    <TextView
+                                        android:id="@+id/btnEditLayout"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Edit layout"
+                                        android:textSize="13sp"
+                                        android:textColor="?attr/colorAccent"
+                                        android:paddingHorizontal="12dp"
+                                        android:paddingVertical="8dp"
+                                        android:background="?attr/selectableItemBackground"
+                                        android:clickable="true"
+                                        android:focusable="true" />
+
+                                    <View
+                                        android:layout_width="0dp"
+                                        android:layout_height="1dp"
+                                        android:layout_weight="1" />
+
+                                    <com.treecast.app.ui.settings.LayoutReorderWidget
+                                        android:id="@+id/layoutReorderWidget"
+                                        android:layout_width="170dp"
+                                        android:layout_height="wrap_content" />
+
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ── WIDGETS section ───────────────────────────────── -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="WIDGETS"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Recording widget -->
+                        <LinearLayout
+                            android:id="@+id/cardRecordingWidget"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/colorSurfaceBase">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="14dp"
+                                android:paddingBottom="6dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Recording Widget"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="When to show the widget above the nav bar"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginBottom="10dp" />
+
+                                <com.google.android.material.button.MaterialButtonToggleGroup
+                                    android:id="@+id/toggleRecorderVisibility"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    app:singleSelection="true"
+                                    app:selectionRequired="true">
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRecorderVisNever"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Never"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRecorderVisWhileRecording"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Recording"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRecorderVisAlways"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Always"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <LinearLayout
+                                android:id="@+id/rowHideRecorderOnRecordTab"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Hide on Record Tab"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Don't show widget while Record tab is active"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <androidx.appcompat.widget.SwitchCompat
+                                    android:id="@+id/switchHideRecorderOnRecordTab"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Always show recorder shortcut"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Keep pill visible in title bar at all times"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <androidx.appcompat.widget.SwitchCompat
+                                    android:id="@+id/switchAlwaysShowRecorderPill"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Thick separator between widget sections -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:background="?attr/colorSurfaceElevated" />
+
+                        <!-- Playback widget -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/colorSurfaceBase">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="14dp"
+                                android:paddingBottom="6dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Playback Widget"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="When to show the widget above the nav bar"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp"
+                                    android:layout_marginBottom="10dp" />
+
+                                <com.google.android.material.button.MaterialButtonToggleGroup
+                                    android:id="@+id/togglePlayerVisibility"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    app:singleSelection="true"
+                                    app:selectionRequired="true">
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnPlayerVisNever"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Never"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnPlayerVisWhilePlaying"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Playing"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnPlayerVisAlways"
+                                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                        android:layout_width="0dp"
+                                        android:layout_height="36dp"
+                                        android:layout_weight="1"
+                                        android:text="Always"
+                                        android:textSize="10sp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp" />
+
+                                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <LinearLayout
+                                android:id="@+id/rowHidePlayerOnListenTab"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Hide on Listen Tab"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Don't show widget while Listen tab is active"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.switchmaterial.SwitchMaterial
+                                    android:id="@+id/switchHidePlayerOnListenTab"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="14dp">
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Always show player shortcut"
+                                        android:textColor="?attr/colorTextPrimary"
+                                        android:textSize="15sp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Keep pill visible in title bar at all times"
+                                        android:textColor="?attr/colorTextSecondary"
+                                        android:textSize="12sp"
+                                        android:layout_marginTop="2dp" />
+
+                                </LinearLayout>
+
+                                <com.google.android.material.switchmaterial.SwitchMaterial
+                                    android:id="@+id/switchAlwaysShowPlayerPill"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ── APP section (stats card, moved up from bottom) ── -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="STATS"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Total recorded time"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvTotalRecordedTime"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Recordings"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvRecordingCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Topics"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvTopicCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Last session"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvLastOpened"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Recordings listened"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvListenedCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Total storage used"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvStatsTotalStorage"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             BEHAVIOR TAB
+             Contains: Navigation, Controls (scrub / mark)
+             ═══════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/scrollBehavior"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorBackground"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <!-- NAVIGATION section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="NAVIGATION"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Switch to Listen on play -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Switch to Listen on play"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Navigate to Listen tab when playback starts"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/switchAutoNavigate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Jump to library on save -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Jump to Library on save"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Navigate to Library tab after saving a recording"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/switchJumpToLibrary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- CONTROLS section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CONTROLS"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Scrub back -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Scrub back"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Seconds to rewind on skip-back tap"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnScrubBackMinus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="−"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                            <TextView
+                                android:id="@+id/tvScrubBackSecs"
+                                android:layout_width="52dp"
+                                android:layout_height="36dp"
+                                android:gravity="center"
+                                android:text="15"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnScrubBackPlus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="+"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Scrub forward -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Scrub forward"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Seconds to advance on skip-forward tap"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnScrubForwardMinus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="−"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                            <TextView
+                                android:id="@+id/tvScrubForwardSecs"
+                                android:layout_width="52dp"
+                                android:layout_height="36dp"
+                                android:gravity="center"
+                                android:text="15"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnScrubForwardPlus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="+"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Mark rewind threshold -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Mark rewind threshold"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Rewind to mark when tapping within this window"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMarkRewindMinus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="−"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                            <TextView
+                                android:id="@+id/tvMarkRewindSecs"
+                                android:layout_width="52dp"
+                                android:layout_height="36dp"
+                                android:gravity="center"
+                                android:text="1.5s"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMarkRewindPlus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="+"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Mark nudge -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Mark nudge"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Seconds to shift a mark when nudging"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMarkNudgeMinus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="−"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                            <TextView
+                                android:id="@+id/tvMarkNudgeSecs"
+                                android:layout_width="52dp"
+                                android:layout_height="36dp"
+                                android:gravity="center"
+                                android:text="5s"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMarkNudgePlus"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:text="+"
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:strokeColor="?attr/colorSurfaceElevated"
+                                app:cornerRadius="18dp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             STORAGE TAB
+             Contains: Volume selector, Recording recovery
+             ═══════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/scrollStorage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorBackground"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <!-- STORAGE section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="STORAGE"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Default recording storage"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="New recordings will be saved here"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Dynamic volume selector — rows injected at runtime -->
+                        <LinearLayout
+                            android:id="@+id/storageVolumeContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingBottom="8dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Total used -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Total used by TreeCast"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvTotalUsed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- RECOVERY section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="RECOVERY"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Recoverable"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvOrphanRecoverableSummary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Unrecoverable"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvOrphanCorruptSummary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReviewOrphans"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="4dp"
+                            android:text="Review orphaned recordings"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorAccent" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TOOLS TAB
+             Contains: Processing jobs (waveform regeneration), Dev options
+             ═══════════════════════════════════════════════════════════ -->
+        <ScrollView
+            android:id="@+id/scrollTools"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorBackground"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <!-- PROCESSING JOBS section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="PROCESSING JOBS"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:id="@+id/cardProcessing"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Header row: spinner + regenerate button -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="4dp">
+
+                            <ProgressBar
+                                android:id="@+id/processingSpinner"
+                                style="?android:attr/progressBarStyleSmall"
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:layout_marginEnd="8dp"
+                                android:visibility="gone" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnReprocessWaveforms"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Regenerate all waveforms"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorAccent" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!-- Active job row -->
+                        <LinearLayout
+                            android:id="@+id/rowActiveJob"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="10dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Analysing…"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvActiveJobTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="12sp" />
+
+                        </LinearLayout>
+
+                        <!-- Pending jobs container -->
+                        <LinearLayout
+                            android:id="@+id/containerPending"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:id="@+id/listPendingJobs"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingBottom="4dp" />
+
+                        </LinearLayout>
+
+                        <!-- Recent jobs container -->
+                        <LinearLayout
+                            android:id="@+id/containerRecent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:id="@+id/listRecentJobs"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingBottom="4dp" />
+
+                        </LinearLayout>
+
+                        <!-- Idle state -->
+                        <TextView
+                            android:id="@+id/tvProcessingIdle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="10dp"
+                            android:text="No jobs running"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="13sp"
+                            android:visibility="visible" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- DEV OPTIONS section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="DEV OPTIONS"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Future Mode"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="14sp" />
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchFutureMode"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="false" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+    </FrameLayout>
+
+</LinearLayout>
