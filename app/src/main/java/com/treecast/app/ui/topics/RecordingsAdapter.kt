@@ -151,7 +151,7 @@ class RecordingsAdapter(
                 itemView.alpha = 1f
                 btnInlinePlay.setOnClickListener { onPlayPause(rec) }
 
-                val isNew = System.currentTimeMillis() - rec.createdAt < NEW_THRESHOLD_MS
+                val isNew = System.currentTimeMillis() - rec.dbInsertedAt < NEW_THRESHOLD_MS
                 tvNewBadge.visibility = if (isNew) View.VISIBLE else View.GONE
             }
 

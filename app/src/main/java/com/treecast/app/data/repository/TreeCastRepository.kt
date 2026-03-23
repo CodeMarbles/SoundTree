@@ -93,7 +93,8 @@ class TreeCastRepository(context: Context) {
         title: String,
         topicId: Long? = null,
         markTimestamps: List<Long>,
-        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
+        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
+        createdAt: Long = System.currentTimeMillis()
     ): Long {
         val recordingId = recordingDao.insert(
             RecordingEntity(
@@ -102,7 +103,8 @@ class TreeCastRepository(context: Context) {
                 fileSizeBytes     = fileSizeBytes,
                 title             = title,
                 topicId           = topicId,
-                storageVolumeUuid = storageVolumeUuid
+                storageVolumeUuid = storageVolumeUuid,
+                createdAt         = createdAt
             )
         )
         if (markTimestamps.isNotEmpty()) {

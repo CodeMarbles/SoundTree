@@ -216,6 +216,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
                 topicId           = item.selectedTopicId,
                 markTimestamps    = emptyList(),
                 storageVolumeUuid = volumeUuid,
+                createdAt         = recordedAtFromFile(item.file),
             ).await()
 
             WaveformWorker.enqueue(
@@ -304,6 +305,17 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
         StorageVolumeHelper.getVolumes(requireContext())
             .firstOrNull { runCatching { file.canonicalPath.startsWith(it.rootDir.canonicalPath) }.getOrDefault(false) }
             ?.uuid ?: StorageVolumeHelper.UUID_PRIMARY
+
+    /**
+     * Parses the epoch-millis recording date from a TC_yyyyMMdd_HHmmss filename.
+     * Falls back to the file's last-modified time if parsing fails, so we always
+     * have a better answer than System.currentTimeMillis().
+     */
+    private fun recordedAtFromFile(file: File): Long =
+        runCatching {
+            val stamp = file.nameWithoutExtension.removePrefix("TC_")
+            java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).parse(stamp)!!.time
+        }.getOrElse { file.lastModified().takeIf { it > 0L } ?: System.currentTimeMillis() }
 
     private fun formatDuration(ms: Long): String {
         val totalSecs = ms / 1000

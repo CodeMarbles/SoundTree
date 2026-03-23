@@ -22,7 +22,7 @@ import com.treecast.app.data.entities.TopicEntity
         RecordingEntity::class,
         MarkEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -115,6 +115,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v6 → v7: Add db_inserted_at column to recordings.
+         *
+         * Backfilled with created_at so existing rows are consistent —
+         * for all pre-existing recordings these two values are synonymous.
+         * The "NEW" badge (< 30 min threshold) will correctly not fire for
+         * any existing row since db_inserted_at will be older than 30 min.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE recordings ADD COLUMN db_inserted_at INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "UPDATE recordings SET db_inserted_at = created_at"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -122,7 +141,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "treecast.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

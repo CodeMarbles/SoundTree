@@ -97,5 +97,13 @@ data class RecordingEntity(
      * processed after the v4→v5 migration.
      */
     @ColumnInfo(name = "waveform_status")
-    val waveformStatus: Int = WaveformStatus.PENDING
+    val waveformStatus: Int = WaveformStatus.PENDING,
+
+    /**
+     * Wall-clock time this row was inserted into the database.
+     * Used exclusively for bookkeeping and the "NEW" badge in [RecordingsAdapter].
+     * Use [createdAt] for display, sorting, and all feature logic.
+     */
+    @ColumnInfo(name = "db_inserted_at")
+    val dbInsertedAt: Long = System.currentTimeMillis()
 )

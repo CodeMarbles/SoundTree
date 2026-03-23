@@ -501,7 +501,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         title: String,
         topicId: Long? = null,
         markTimestamps: List<Long>,
-        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY
+        storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
+        createdAt: Long = System.currentTimeMillis()
     ): Deferred<Long> = viewModelScope.async {
         val recordingId = repo.saveRecordingWithMarks(
             filePath          = filePath,
@@ -510,7 +511,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             title             = title,
             topicId           = topicId,
             markTimestamps    = markTimestamps,
-            storageVolumeUuid = storageVolumeUuid
+            storageVolumeUuid = storageVolumeUuid,
+            createdAt         = createdAt
         )
         WaveformWorker.enqueue(
             context     = getApplication(),
