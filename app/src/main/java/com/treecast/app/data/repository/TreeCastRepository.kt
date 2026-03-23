@@ -146,6 +146,14 @@ class TreeCastRepository(context: Context) {
     fun getFavourites(): Flow<List<RecordingEntity>> = recordingDao.getFavourites()
     fun searchRecordings(q: String): Flow<List<RecordingEntity>> = recordingDao.search(q)
 
+    /**
+     * Returns the set of all file paths currently registered in the database.
+     * Used by [com.treecast.app.util.OrphanRecordingScanner] at startup to
+     * distinguish known recordings from orphaned files on disk.
+     */
+    suspend fun getKnownFilePaths(): Set<String> =
+        recordingDao.getAllFilePaths().toHashSet()
+
     // ── Combined tree flow ───────────────────────────────────────────
     fun getTreeFlow(): Flow<List<TreeNode>> = combine(
         topicDao.getAllTopics(),

@@ -45,13 +45,12 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SAVED_RECORDING_ID = "saved_recording_id"
         const val EXTRA_SAVED_TOPIC_ID     = "saved_topic_id"
 
-        // TODO: On app startup, scan the recordings directory for .m4a files
-        //  that have no corresponding row in the recordings table (orphaned by
-        //  a mid-save process death). For each orphan found, offer the user a
-        //  prompt to import it (auto-generating a title from the file timestamp)
-        //  or delete it. This guards against the rare case where the process is
-        //  killed between RecordingService finalising the audio file and the
-        //  Room insert completing. See SplashActivity for the startup hook point.
+        // Orphan-recovery extras: set by SplashActivity when OrphanRecordingScanner
+        // finds TC_*.m4a files on disk with no matching database row.
+        // MainActivity reads these in onCreate and shows OrphanRecoveryDialogFragment.
+        const val EXTRA_ORPHAN_PLAYABLE_PATHS         = "orphan_playable_paths"
+        const val EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS  = "orphan_playable_durations_ms"
+        const val EXTRA_ORPHAN_CORRUPT_PATHS          = "orphan_corrupt_paths"
 
         const val PAGE_SETTINGS = 0
         const val PAGE_RECORD   = 1
@@ -125,6 +124,8 @@ class MainActivity : AppCompatActivity() {
             intent.getBooleanExtra(EXTRA_QUICK_RECORD, false) ->
                 binding.viewPager.currentItem = PAGE_RECORD
         }
+
+        checkAndShowOrphanRecovery()
     }
 
     override fun onStart() {
@@ -183,6 +184,48 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectRecording(recordingId)
         navigateToLibraryForRecording(topicId)
+    }
+
+    /**
+     * If [SplashActivity] found orphaned recording files, reconstructs the
+     * [OrphanRecording] list from the intent extras and shows
+     * [OrphanRecoveryDialogFragment].
+     *
+     * Called once from [onCreate]. The fragment handles its own dismiss when
+     * all items have been acted on; no further lifecycle management is needed here.
+     */
+    private fun checkAndShowOrphanRecovery() {
+        val playablePaths     = intent.getStringArrayListExtra(EXTRA_ORPHAN_PLAYABLE_PATHS)
+        val playableDurations = intent.getLongArrayExtra(EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS)
+        val corruptPaths      = intent.getStringArrayListExtra(EXTRA_ORPHAN_CORRUPT_PATHS)
+
+        if (playablePaths.isNullOrEmpty() && corruptPaths.isNullOrEmpty()) return
+
+        val orphans = buildList {
+            playablePaths?.forEachIndexed { i, path ->
+                val duration = playableDurations?.getOrElse(i) { 0L } ?: 0L
+                add(
+                    com.treecast.app.util.OrphanRecording(
+                        file           = java.io.File(path),
+                        suggestedTitle = "",   // re-derived inside the dialog
+                        durationMs     = duration,
+                    )
+                )
+            }
+            corruptPaths?.forEach { path ->
+                add(
+                    com.treecast.app.util.OrphanRecording(
+                        file           = java.io.File(path),
+                        suggestedTitle = "",
+                        durationMs     = 0L,
+                    )
+                )
+            }
+        }
+
+        com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment
+            .newInstance(orphans)
+            .show(supportFragmentManager, "orphan_recovery")
     }
 
     // ── Layout order ──────────────────────────────────────────────────

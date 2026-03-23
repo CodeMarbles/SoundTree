@@ -32,4 +32,16 @@
         <item quantity="one">1 recording</item>
         <item quantity="other">%d recordings</item>
     </plurals>
+
+
+    <!-- Orphan recovery dialog subtitle -->
+    <plurals name="orphan_subtitle_recoverable">
+        <item quantity="one">%d recoverable recording</item>
+        <item quantity="other">%d recoverable recordings</item>
+    </plurals>
+
+    <plurals name="orphan_subtitle_corrupt">
+        <item quantity="one">%d incomplete recording</item>
+        <item quantity="other">%d incomplete recordings</item>
+    </plurals>
 </resources>
