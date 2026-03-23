@@ -1411,6 +1411,115 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ── Recording Recovery ──────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RECORDING RECOVERY"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="?attr/colorSurfaceBase"
+            app:cardCornerRadius="@dimen/settings_card_corner_radius"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="4dp">
+
+                <!-- Recoverable row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Recoverable"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvOrphanRecoverableSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Unrecoverable row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Unrecoverable"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvOrphanCorruptSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Review button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReviewOrphans"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="Review orphaned recordings"
+                    android:textSize="13sp"
+                    android:textColor="?attr/colorAccent" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- ── Processing ──────────────────────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"

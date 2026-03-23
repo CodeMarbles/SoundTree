@@ -31,6 +31,8 @@ import com.treecast.app.ui.waveform.WaveformDisplayConfig
 import com.treecast.app.ui.waveform.WaveformStyle
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.MarkJumpLogic
+import com.treecast.app.util.OrphanRecording
+import com.treecast.app.util.OrphanRecordingScanner
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
@@ -1177,6 +1179,49 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _waveformState.value = recordingId to amps
         }
     }
+
+    // ── Orphan recordings ─────────────────────────────────────────────────────
+    //
+    // Populated by MainActivity on startup from the SplashActivity intent extras,
+    // so the Settings card always shows accurate counts even when the recovery
+    // dialog is not shown (zero orphans).
+    //
+    // Re-populated by rescanOrphans() which OrphanRecoveryDialogFragment calls
+    // on dismiss, so any recoveries or deletions the user just made are reflected
+    // immediately in the Settings card.
+
+    private val _orphanRecordings = MutableStateFlow<List<OrphanRecording>>(emptyList())
+    val orphanRecordings: StateFlow<List<OrphanRecording>> = _orphanRecordings.asStateFlow()
+
+    /**
+     * Called by [com.treecast.app.ui.MainActivity] immediately after reading
+     * the orphan intent extras at startup.  Populates [orphanRecordings] from
+     * the already-computed list so no extra I/O is needed here.
+     *
+     * Always called — even when [orphans] is empty — so the Settings card
+     * updates to "None" rather than remaining on the initial "—" placeholder.
+     */
+    fun setOrphanResults(orphans: List<OrphanRecording>) {
+        _orphanRecordings.value = orphans
+    }
+
+    /**
+     * Re-scans all recording directories and refreshes [orphanRecordings].
+     *
+     * Called by [com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment]
+     * on dismiss so that counts and sizes in the Settings card reflect any
+     * recoveries or deletions the user just made.
+     *
+     * The scan runs on [kotlinx.coroutines.Dispatchers.IO] inside
+     * [OrphanRecordingScanner]; this function is safe to call from any thread.
+     */
+    fun rescanOrphans() {
+        viewModelScope.launch {
+            val knownPaths = repo.getKnownFilePaths()
+            _orphanRecordings.value = OrphanRecordingScanner.scan(getApplication(), knownPaths)
+        }
+    }
+
 
     // ── Processing status refresh tick ────────────────────────────────
     //

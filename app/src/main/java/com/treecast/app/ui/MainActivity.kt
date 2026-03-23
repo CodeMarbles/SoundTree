@@ -24,14 +24,17 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.listen.ListenFragment
 import com.treecast.app.ui.record.RecordFragment
+import com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment
 import com.treecast.app.ui.settings.SettingsFragment
 import com.treecast.app.ui.workspace.WorkspaceFragment
 import com.treecast.app.util.Icons
+import com.treecast.app.util.OrphanRecording
 import com.treecast.app.util.StorageEjectReceiver
 import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -187,35 +190,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * If [SplashActivity] found orphaned recording files, reconstructs the
-     * [OrphanRecording] list from the intent extras and shows
-     * [OrphanRecoveryDialogFragment].
+     * Reads orphan-recording extras placed by [com.treecast.app.ui.SplashActivity],
+     * publishes the results to [MainViewModel.setOrphanResults] unconditionally
+     * (so the Settings card always shows accurate counts), then shows
+     * [OrphanRecoveryDialogFragment] only when the list is non-empty.
      *
-     * Called once from [onCreate]. The fragment handles its own dismiss when
-     * all items have been acted on; no further lifecycle management is needed here.
+     * Called once from [onCreate].
      */
     private fun checkAndShowOrphanRecovery() {
-        val playablePaths     = intent.getStringArrayListExtra(EXTRA_ORPHAN_PLAYABLE_PATHS)
-        val playableDurations = intent.getLongArrayExtra(EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS)
-        val corruptPaths      = intent.getStringArrayListExtra(EXTRA_ORPHAN_CORRUPT_PATHS)
-
-        if (playablePaths.isNullOrEmpty() && corruptPaths.isNullOrEmpty()) return
+        val playablePaths     = intent.getStringArrayListExtra(EXTRA_ORPHAN_PLAYABLE_PATHS).orEmpty()
+        val playableDurations = intent.getLongArrayExtra(EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS) ?: LongArray(0)
+        val corruptPaths      = intent.getStringArrayListExtra(EXTRA_ORPHAN_CORRUPT_PATHS).orEmpty()
 
         val orphans = buildList {
-            playablePaths?.forEachIndexed { i, path ->
-                val duration = playableDurations?.getOrElse(i) { 0L } ?: 0L
+            playablePaths.forEachIndexed { i, path ->
                 add(
-                    com.treecast.app.util.OrphanRecording(
-                        file           = java.io.File(path),
+                    OrphanRecording(
+                        file           = File(path),
                         suggestedTitle = "",   // re-derived inside the dialog
-                        durationMs     = duration,
+                        durationMs     = playableDurations.getOrElse(i) { 0L },
                     )
                 )
             }
-            corruptPaths?.forEach { path ->
+            corruptPaths.forEach { path ->
                 add(
-                    com.treecast.app.util.OrphanRecording(
-                        file           = java.io.File(path),
+                    OrphanRecording(
+                        file           = File(path),
                         suggestedTitle = "",
                         durationMs     = 0L,
                     )
@@ -223,7 +223,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment
+        // Always publish — SettingsFragment observes this to show counts/sizes.
+        viewModel.setOrphanResults(orphans)
+
+        if (orphans.isEmpty()) return
+
+        OrphanRecoveryDialogFragment
             .newInstance(orphans)
             .show(supportFragmentManager, "orphan_recovery")
     }

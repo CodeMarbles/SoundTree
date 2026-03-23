@@ -177,6 +177,7 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
 
     override fun onDismiss(dialog: android.content.DialogInterface) {
         stopPreview()
+        viewModel.rescanOrphans()
         super.onDismiss(dialog)
     }
 

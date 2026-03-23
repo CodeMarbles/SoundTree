@@ -21,7 +21,9 @@ import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.PlayerWidgetVisibility
 import com.treecast.app.ui.ProcessingStatus
 import com.treecast.app.ui.RecorderWidgetVisibility
+import com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment
 import com.treecast.app.util.AppVolume
+import com.treecast.app.util.OrphanRecording
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -51,6 +53,7 @@ class SettingsFragment : Fragment() {
         setupRecordingWidgetSection()
         setupPlaybackSettings()
         setupStorageSection()
+        setupRecordingRecoverySection()
         setupProcessingSection()
         setupDevOptionsSection()
         loadStats()
@@ -68,6 +71,37 @@ class SettingsFragment : Fragment() {
 
     private fun setupHeader() {
         binding.tvAppIdentity.text = getString(R.string.app_identity, getString(R.string.app_name), getString(R.string.app_emoji))
+    }
+
+    private fun setupRecordingRecoverySection() {
+        binding.btnReviewOrphans.setOnClickListener {
+            OrphanRecoveryDialogFragment
+                .newInstance(viewModel.orphanRecordings.value)
+                .show(parentFragmentManager, "orphan_recovery")
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.orphanRecordings.collect { orphans ->
+                    renderOrphanSummary(orphans)
+                }
+            }
+        }
+    }
+
+    private fun renderOrphanSummary(orphans: List<OrphanRecording>) {
+        val recoverable   = orphans.filter { it.isPlayable }
+        val unrecoverable = orphans.filter { !it.isPlayable }
+        binding.tvOrphanRecoverableSummary.text = formatOrphanSummary(recoverable)
+        binding.tvOrphanCorruptSummary.text     = formatOrphanSummary(unrecoverable)
+    }
+
+    private fun formatOrphanSummary(orphans: List<OrphanRecording>): String {
+        if (orphans.isEmpty()) return "None"
+        val count      = orphans.size
+        val totalBytes = orphans.sumOf { it.file.length() }
+        val label      = if (count == 1) "1 recording" else "$count recordings"
+        return "$label · ${AppVolume.formatBytes(totalBytes)}"
     }
 
     private fun setupProcessingSection() {
