@@ -11,7 +11,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.SeekBar
@@ -38,7 +37,6 @@ import com.treecast.app.ui.waveform.WaveformTapType
 import com.treecast.app.util.Icons
 import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
-
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -92,7 +90,11 @@ class ListenFragment : Fragment() {
         observeWaveform()
 
         // Initialise chip layout once the scroller has been measured.
-        binding.markChipScroller.doOnLayout { applyChipLayoutMode(SplitterState.SNAP_DOWN) }
+        // in onViewCreated, replace the existing doOnLayout call:
+        binding.root.doOnLayout {
+            binding.splitterGuideline.setGuidelinePercent(calcSnapDownPercent())
+            applyChipLayoutMode(SplitterState.SNAP_DOWN)
+        }
     }
 
     override fun onDestroyView() {
@@ -157,20 +159,7 @@ class ListenFragment : Fragment() {
 
     private fun snapTo(state: SplitterState) {
         if (state == SplitterState.SNAP_DOWN) {
-            applyChipLayoutMode(SplitterState.SNAP_DOWN)
-            val density       = resources.displayMetrics.density
-            val scaledDensity = resources.displayMetrics.scaledDensity
-            val chipRowPx = (12f * scaledDensity) + (28f * density)
-            val parentH = binding.root.height.toFloat()
-            val target = if (parentH > 0f) {
-                val belowPx = binding.splitterBar.height + chipRowPx +
-                        binding.seekBarAreaBottom.height +   // 0 since it's GONE — explicit for clarity
-                        binding.pinnedBottomArea.height
-                ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.85f)
-            } else {
-                0.62f
-            }
-            animateGuideline(target, SplitterState.SNAP_DOWN)
+            animateGuideline(calcSnapDownPercent(), SplitterState.SNAP_DOWN)
         } else {
             applyChipLayoutMode(SplitterState.SNAP_UP)
             // Zone A has just shrunk (seekBar + labels gone). Wait for a layout
@@ -238,6 +227,19 @@ class ListenFragment : Fragment() {
                 binding.splitterBar.height.toFloat() +
                 rowH.toFloat()
         return (targetPx / parentH).coerceIn(0.15f, 0.65f)
+    }
+
+    private fun calcSnapDownPercent(): Float {
+        val density       = resources.displayMetrics.density
+        val scaledDensity = resources.displayMetrics.scaledDensity
+        val chipRowPx     = (12f * scaledDensity) + (28f * density)
+        val parentH       = binding.root.height.toFloat()
+        return if (parentH > 0f) {
+            val belowPx = binding.splitterBar.height + chipRowPx + binding.pinnedBottomArea.height
+            ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.85f)
+        } else {
+            0.62f
+        }
     }
 
     private fun animateGuideline(target: Float, endState: SplitterState) {
