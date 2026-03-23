@@ -33,7 +33,7 @@ class TreeCastRepository(context: Context) {
 
     suspend fun getLastSession(): SessionEntity? = sessionDao.getLastSession()
     suspend fun getLastClosedSession(): SessionEntity? = sessionDao.getLastClosedSession()
-    suspend fun getTotalRecordingTime(): Long = sessionDao.getTotalRecordingTime()
+    suspend fun getTotalRecordingTime(): Long = recordingDao.getTotalDurationMs()
 
     // ── Topics ──────────────────────────────────────────────────────
     suspend fun createTopic(

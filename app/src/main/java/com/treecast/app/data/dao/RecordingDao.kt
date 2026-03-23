@@ -75,6 +75,10 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE storage_volume_uuid = :uuid ORDER BY created_at DESC")
     fun getByVolume(uuid: String): Flow<List<RecordingEntity>>
 
+    /** Total duration of all recordings in milliseconds. */
+    @Query("SELECT COALESCE(SUM(duration_ms), 0) FROM recordings")
+    suspend fun getTotalDurationMs(): Long
+
     // ── Waveform ──────────────────────────────────────────────────────────────
 
     @Query("UPDATE recordings SET waveform_status = :status WHERE id = :id")

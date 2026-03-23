@@ -126,10 +126,6 @@ class SettingsFragment : Fragment() {
         selectTab(Tab.DISPLAY)
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // All methods below are unchanged from the original SettingsFragment
-    // ─────────────────────────────────────────────────────────────────
-
     private fun setupHeader() {
         binding.tvAppIdentity.text = getString(R.string.app_identity, getString(R.string.app_name), getString(R.string.app_emoji))
     }
@@ -820,9 +816,7 @@ class SettingsFragment : Fragment() {
                 // listens to something while Settings is open
                 launch {
                     viewModel.allRecordings.collect { recordings ->
-                        val listened = recordings.count { it.isListened }
-                        val total    = recordings.size
-                        binding.tvListenedCount.text = "$listened / $total"
+                        binding.tvRecordingCount.text = recordings.size.toString()
                     }
                 }
 
