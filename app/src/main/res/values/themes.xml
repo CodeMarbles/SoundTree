@@ -111,4 +111,8 @@
         <item name="backgroundTint">@color/grey_100</item>
     </style>
 
+    <style name="Animation.TreeCast.SlideUpDown" parent="android:Animation">
+        <item name="android:windowEnterAnimation">@anim/slide_in_up</item>
+        <item name="android:windowExitAnimation">@anim/slide_out_down</item>
+    </style>
 </resources>
