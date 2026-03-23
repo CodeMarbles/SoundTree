@@ -23,7 +23,9 @@
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="4dp"
         android:text="Unsaved Recordings Found"
-        android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+        android:textColor="?attr/colorTextPrimary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <!-- Dynamically updated: "2 recoverable · 1 incomplete" -->
     <TextView
@@ -33,15 +35,23 @@
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="16dp"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="13sp" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerOrphans"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:nestedScrollingEnabled="true"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp" />
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerOrphans"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:clipToPadding="false"
+            android:paddingBottom="8dp" />
+
+    </ScrollView>
 
 </LinearLayout>

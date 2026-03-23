@@ -10,7 +10,7 @@
     android:paddingTop="16dp"
     android:paddingBottom="4dp">
 
-    <!-- Duration + file size row -->
+    <!-- Play + duration + file size row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -18,45 +18,55 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="10dp">
 
+        <ImageView
+            android:id="@+id/btnPlay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_play"
+            android:padding="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Play preview"
+            app:tint="?attr/colorAccent" />
+
         <TextView
             android:id="@+id/tvDuration"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="?attr/colorPrimary" />
+            android:textColor="?attr/colorAccent"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvFileSize"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp" />
 
     </LinearLayout>
 
     <!-- Editable title -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilTitle"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+    <EditText
+        android:id="@+id/etTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Title"
         android:layout_marginBottom="10dp"
-        app:boxCornerRadiusBottomEnd="8dp"
-        app:boxCornerRadiusBottomStart="8dp"
-        app:boxCornerRadiusTopEnd="8dp"
-        app:boxCornerRadiusTopStart="8dp">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text|textCapSentences"
-            android:maxLines="1"
-            android:imeOptions="actionDone" />
-
-    </com.google.android.material.textfield.TextInputLayout>
+        android:inputType="text|textCapSentences"
+        android:maxLines="1"
+        android:imeOptions="actionDone"
+        android:textColor="?attr/colorTextPrimary"
+        android:textSize="14sp"
+        android:hint="Title"
+        android:textColorHint="?attr/colorTextSecondary"
+        android:background="@drawable/bg_pill_teal_stroke"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp" />
 
     <!-- Topic picker + Save / Delete row -->
     <LinearLayout
@@ -66,10 +76,9 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="16dp">
 
-        <!-- Topic picker: grows to fill available space -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPickTopic"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -80,7 +89,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDelete"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
@@ -88,6 +97,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRecover"
+            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Save" />
@@ -98,6 +108,6 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant" />
+        android:background="?attr/colorSurfaceElevated" />
 
 </LinearLayout>

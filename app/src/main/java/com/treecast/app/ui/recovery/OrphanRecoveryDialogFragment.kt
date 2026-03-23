@@ -1,10 +1,12 @@
 package com.treecast.app.ui.recovery
 
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -28,23 +30,26 @@ import java.io.File
  *
  * Receives two parallel lists from [com.treecast.app.ui.MainActivity]:
  *   - Playable orphans:  fully-finalised M4A files with no DB row.
- *                        Offered with an editable title, a topic picker,
- *                        a Save button and a Delete button.
+ *                        Offered with a play/pause preview button, an editable
+ *                        title, a topic picker, a Save button and a Delete button.
  *   - Corrupt orphans:   files whose MOOV atom is absent (MediaRecorder.stop()
  *                        was never called). Only a Delete button is offered.
  *                        See [com.treecast.app.util.OrphanRecordingScanner.probePlayable]
  *                        for the future repair insertion point.
  *
+ * Preview playback uses a dedicated [MediaPlayer] instance managed entirely
+ * within this fragment. Orphan recordings have no DB rows so they cannot use
+ * the app's [com.treecast.app.service.PlaybackService] / ExoPlayer path.
+ * Only one item plays at a time; the player is released when the sheet dismisses.
+ *
  * The sheet starts fully expanded when there are items to handle.
  * It dismisses itself automatically once every item has been acted on.
- *
- * Topic picker flow:
- * The sheet uses a single [TopicPickerBottomSheet] result listener keyed by
- * [TOPIC_REQUEST_KEY]. Before showing the picker, [pendingPickerIndex] is set
- * to the adapter position of the item that triggered it, so the result can be
- * routed back to the correct row.
  */
 class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
+
+    // Use the full app theme so MaterialButton styles and custom colour attrs
+    // resolve correctly. Mirrors EmojiPickerBottomSheet.
+    override fun getTheme(): Int = R.style.Theme_TreeCast_BottomSheet
 
     // ── Construction ──────────────────────────────────────────────────
 
@@ -55,10 +60,6 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
 
         const val TOPIC_REQUEST_KEY = "OrphanRecoveryTopicPicker"
 
-        /**
-         * Build the fragment from the scan results emitted by
-         * [com.treecast.app.util.OrphanRecordingScanner.scan].
-         */
         fun newInstance(orphans: List<OrphanRecording>): OrphanRecoveryDialogFragment {
             val playable = orphans.filter { it.isPlayable }
             val corrupt  = orphans.filter { !it.isPlayable }
@@ -79,19 +80,15 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
 
-    /** Combined adapter items — sealed union of playable and corrupt rows. */
     private sealed class Item {
-        /** A playable orphan: finalised M4A with no DB row. */
         data class Playable(
             val file: File,
             val suggestedTitle: String,
             val durationMs: Long,
-            /** Mutable: updated when user types or picks a topic. */
             var editedTitle: String,
             var selectedTopicId: Long? = null,
         ) : Item()
 
-        /** A corrupt orphan: MOOV atom absent, not directly recoverable. */
         data class Corrupt(
             val file: File,
             val suggestedTitle: String,
@@ -104,6 +101,52 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
     /** Position of the playable row currently waiting on a topic picker result. */
     private var pendingPickerIndex: Int = -1
 
+    // ── Preview playback ───────────────────────────────────────────────
+
+    /** Single MediaPlayer shared across all preview play actions. */
+    private var mediaPlayer: MediaPlayer? = null
+
+    /** Absolute path of the file currently loaded into [mediaPlayer], or null. */
+    private var currentlyPlayingPath: String? = null
+
+    private fun togglePreview(path: String, position: Int) {
+        val mp = mediaPlayer
+
+        if (currentlyPlayingPath == path && mp != null) {
+            // Same file — toggle play/pause.
+            if (mp.isPlaying) mp.pause() else mp.start()
+            adapter.notifyItemChanged(position)
+            return
+        }
+
+        // Different file (or no file loaded) — stop whatever was playing.
+        stopPreview()
+
+        val newMp = MediaPlayer()
+        try {
+            newMp.setDataSource(path)
+            newMp.prepare()
+            newMp.start()
+            newMp.setOnCompletionListener {
+                currentlyPlayingPath = null
+                adapter.notifyItemChanged(position)
+            }
+            mediaPlayer         = newMp
+            currentlyPlayingPath = path
+        } catch (_: Exception) {
+            newMp.release()
+            mediaPlayer         = null
+            currentlyPlayingPath = null
+        }
+        adapter.notifyItemChanged(position)
+    }
+
+    private fun stopPreview() {
+        mediaPlayer?.runCatching { if (isPlaying) stop(); release() }
+        mediaPlayer          = null
+        currentlyPlayingPath = null
+    }
+
     // ── Lifecycle ─────────────────────────────────────────────────────
 
     override fun onCreateView(
@@ -115,7 +158,6 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Start fully expanded — there is work to do.
         (dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet))?.let {
             BottomSheetBehavior.from(it).state = BottomSheetBehavior.STATE_EXPANDED
         }
@@ -124,41 +166,46 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
 
         adapter = OrphanAdapter()
         view.findViewById<RecyclerView>(R.id.recyclerOrphans).apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter       = this@OrphanRecoveryDialogFragment.adapter
-            isNestedScrollingEnabled = true
+            layoutManager            = LinearLayoutManager(requireContext())
+            adapter                  = this@OrphanRecoveryDialogFragment.adapter
+            isNestedScrollingEnabled = false
         }
 
         updateSubtitle(view)
         setupTopicPickerResult()
     }
 
+    override fun onDismiss(dialog: android.content.DialogInterface) {
+        stopPreview()
+        super.onDismiss(dialog)
+    }
+
+    override fun onDestroyView() {
+        stopPreview()
+        super.onDestroyView()
+    }
+
     // ── Item list construction ─────────────────────────────────────────
 
     private fun buildItemList() {
         val args = requireArguments()
-
         val playablePaths     = args.getStringArrayList(ARG_PLAYABLE_PATHS).orEmpty()
         val playableDurations = args.getLongArray(ARG_PLAYABLE_DURATIONS) ?: LongArray(0)
         val corruptPaths      = args.getStringArrayList(ARG_CORRUPT_PATHS).orEmpty()
 
         playablePaths.forEachIndexed { i, path ->
-            val file     = File(path)
-            val duration = playableDurations.getOrElse(i) { 0L }
-            val title    = suggestedTitleFrom(file)
+            val file  = File(path)
+            val title = suggestedTitleFrom(file)
             items += Item.Playable(
                 file           = file,
                 suggestedTitle = title,
-                durationMs     = duration,
+                durationMs     = playableDurations.getOrElse(i) { 0L },
                 editedTitle    = title,
             )
         }
-
         corruptPaths.forEach { path ->
-            items += Item.Corrupt(
-                file           = File(path),
-                suggestedTitle = suggestedTitleFrom(File(path)),
-            )
+            val file = File(path)
+            items += Item.Corrupt(file = file, suggestedTitle = suggestedTitleFrom(file))
         }
     }
 
@@ -171,14 +218,11 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
             val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
             val idx = pendingPickerIndex.takeIf { it in items.indices } ?: return@setFragmentResultListener
             pendingPickerIndex = -1
-
             val item = items[idx] as? Item.Playable ?: return@setFragmentResultListener
             item.selectedTopicId = topicId
-
-            // Update the topic button label to reflect the selection.
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
             val label = if (topic != null) "${topic.icon}  ${topic.name}" else "📥  Unsorted"
-            adapter.notifyItemChanged(idx, label)  // payload = new label string
+            adapter.notifyItemChanged(idx, label)
         }
     }
 
@@ -186,9 +230,10 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
 
     private fun onRecover(index: Int) {
         val item = items[index] as? Item.Playable ?: return
-        val title = item.editedTitle.trim().ifEmpty { item.suggestedTitle }
+        if (currentlyPlayingPath == item.file.absolutePath) stopPreview()
 
-        val volumeUuid = volumeUuidForFile(item.file)
+        val title         = item.editedTitle.trim().ifEmpty { item.suggestedTitle }
+        val volumeUuid    = volumeUuidForFile(item.file)
 
         viewLifecycleOwner.lifecycleScope.launch {
             val recordingId = viewModel.saveRecordingWithMarks(
@@ -197,7 +242,7 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
                 fileSizeBytes     = item.file.length(),
                 title             = title,
                 topicId           = item.selectedTopicId,
-                markTimestamps    = emptyList(),   // marks are lost on crash
+                markTimestamps    = emptyList(),
                 storageVolumeUuid = volumeUuid,
             ).await()
 
@@ -206,14 +251,15 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
                 recordingId = recordingId,
                 filePath    = item.file.absolutePath,
             )
-
             removeItem(index)
         }
     }
 
     private fun onDelete(index: Int) {
         val file = when (val item = items[index]) {
-            is Item.Playable -> item.file
+            is Item.Playable -> item.file.also {
+                if (currentlyPlayingPath == it.absolutePath) stopPreview()
+            }
             is Item.Corrupt  -> item.file
         }
         file.delete()
@@ -260,8 +306,7 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
     private fun volumeUuidForFile(file: File): String =
         StorageVolumeHelper.getVolumes(requireContext())
             .firstOrNull { runCatching { file.canonicalPath.startsWith(it.rootDir.canonicalPath) }.getOrDefault(false) }
-            ?.uuid
-            ?: StorageVolumeHelper.UUID_PRIMARY
+            ?.uuid ?: StorageVolumeHelper.UUID_PRIMARY
 
     private fun formatDuration(ms: Long): String {
         val totalSecs = ms / 1000
@@ -280,17 +325,15 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
         private val TYPE_CORRUPT  = 1
 
         override fun getItemCount(): Int = items.size
-
         override fun getItemViewType(position: Int): Int =
             if (items[position] is Item.Playable) TYPE_PLAYABLE else TYPE_CORRUPT
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
-            return if (viewType == TYPE_PLAYABLE) {
+            return if (viewType == TYPE_PLAYABLE)
                 PlayableVH(inflater.inflate(R.layout.item_orphan_playable, parent, false))
-            } else {
+            else
                 CorruptVH(inflater.inflate(R.layout.item_orphan_corrupt, parent, false))
-            }
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -306,10 +349,7 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
             payloads: List<Any>,
         ) {
             if (payloads.isNotEmpty() && holder is PlayableVH) {
-                // Partial rebind: just update the topic button label.
-                (payloads.first() as? String)?.let { label ->
-                    holder.btnPickTopic.text = label
-                }
+                (payloads.first() as? String)?.let { holder.btnPickTopic.text = it }
                 return
             }
             onBindViewHolder(holder, position)
@@ -318,6 +358,7 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
         // ── ViewHolders ───────────────────────────────────────────────
 
         inner class PlayableVH(v: View) : RecyclerView.ViewHolder(v) {
+            val btnPlay:      ImageView     = v.findViewById(R.id.btnPlay)
             val etTitle:      EditText      = v.findViewById(R.id.etTitle)
             val tvDuration:   TextView      = v.findViewById(R.id.tvDuration)
             val tvFileSize:   TextView      = v.findViewById(R.id.tvFileSize)
@@ -334,12 +375,22 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
                     item.editedTitle = etTitle.text.toString()
                 }
 
+                // Play icon reflects current playback state for this item.
+                val isThisPlaying = currentlyPlayingPath == item.file.absolutePath
+                        && mediaPlayer?.isPlaying == true
+                btnPlay.setImageResource(
+                    if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play
+                )
+                btnPlay.setOnClickListener {
+                    item.editedTitle = etTitle.text.toString()
+                    togglePreview(item.file.absolutePath, bindingAdapterPosition)
+                }
+
                 val topic = viewModel.allTopics.value.firstOrNull { it.id == item.selectedTopicId }
                 btnPickTopic.text = if (topic != null) "${topic.icon}  ${topic.name}" else "📥  Unsorted"
-
                 btnPickTopic.setOnClickListener {
-                    item.editedTitle    = etTitle.text.toString()
-                    pendingPickerIndex  = position
+                    item.editedTitle   = etTitle.text.toString()
+                    pendingPickerIndex = position
                     TopicPickerBottomSheet.newInstance(
                         selectedTopicId = item.selectedTopicId,
                         requestKey      = TOPIC_REQUEST_KEY,
@@ -350,23 +401,17 @@ class OrphanRecoveryDialogFragment : BottomSheetDialogFragment() {
                     item.editedTitle = etTitle.text.toString()
                     onRecover(bindingAdapterPosition)
                 }
-
-                btnDelete.setOnClickListener {
-                    onDelete(bindingAdapterPosition)
-                }
+                btnDelete.setOnClickListener { onDelete(bindingAdapterPosition) }
             }
         }
 
         inner class CorruptVH(v: View) : RecyclerView.ViewHolder(v) {
-            val tvFilename: TextView      = v.findViewById(R.id.tvFilename)
+            val tvFilename: TextView       = v.findViewById(R.id.tvFilename)
             val btnDelete:  MaterialButton = v.findViewById(R.id.btnDelete)
 
-            fun bind(item: Item.Corrupt, position: Int) {
+            fun bind(item: Item.Corrupt, @Suppress("UNUSED_PARAMETER") position: Int) {
                 tvFilename.text = item.suggestedTitle
-
-                btnDelete.setOnClickListener {
-                    onDelete(bindingAdapterPosition)
-                }
+                btnDelete.setOnClickListener { onDelete(bindingAdapterPosition) }
             }
         }
     }

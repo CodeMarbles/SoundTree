@@ -28,7 +28,8 @@
                 android:id="@+id/tvFilename"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="14sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -38,14 +39,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="Incomplete — recording was interrupted"
-                android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textColor="?attr/colorError" />
+                android:textColor="?attr/colorDestructive"
+                android:textSize="12sp" />
 
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDelete"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Delete" />
@@ -56,6 +57,6 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant" />
+        android:background="?attr/colorSurfaceElevated" />
 
 </LinearLayout>

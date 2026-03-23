@@ -102,5 +102,6 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings ORDER BY created_at ASC")
     suspend fun getAllOnce(): List<RecordingEntity>
 
-    @Query("SELECT file_path FROM recordings") suspend fun getAllFilePaths(): List<String>
+    @Query("SELECT file_path FROM recordings")
+    suspend fun getAllFilePaths(): List<String>
 }
