@@ -300,6 +300,7 @@ class RecordFragment : Fragment() {
                             viewModel.setRecordingElapsedMs(0L)
                             viewModel.setRecordingMarks(emptyList())
                             viewModel.resetMarkNudgeLock()
+                            viewModel.setLiveAmplitude(0f)
                         }
                     }
                 }
@@ -415,6 +416,7 @@ class RecordFragment : Fragment() {
                             elapsedMs = elapsedMs
                         )
                         binding.waveformView.pushAmplitude(amp)
+                        viewModel.setLiveAmplitude(amp / 32767f)
                     }
                 }
 

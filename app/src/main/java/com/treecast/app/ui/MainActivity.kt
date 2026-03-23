@@ -913,6 +913,12 @@ class MainActivity : AppCompatActivity() {
                     recorderBinding.tvMiniRecElapsed.text = formatMs(elapsed)
                 }
         }
+        // Feed live amplitude samples into the timeline for waveform + shimmer.
+        lifecycleScope.launch {
+            viewModel.liveAmplitude.collect { amp ->
+                recorderBinding.miniRecTimeline.pushAmplitude(amp)
+            }
+        }
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
                 recorderBinding.miniRecTimeline.isRecording =

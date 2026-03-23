@@ -177,6 +177,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val recordingElapsedMs: StateFlow<Long> = _recordingElapsedMs
     fun setRecordingElapsedMs(ms: Long) { _recordingElapsedMs.value = ms }
 
+    // Live mic amplitude (0f–1f) — pushed by RecordFragment on every sample tick.
+    // Consumed by MainActivity to drive the Mini Recorder timeline's waveform
+    // and shimmer. Reset to 0 when recording stops.
+    private val _liveAmplitude = MutableStateFlow(0f)
+    val liveAmplitude: StateFlow<Float> = _liveAmplitude.asStateFlow()
+    fun setLiveAmplitude(amplitude: Float) { _liveAmplitude.value = amplitude }
+
     // Current pending mark timestamps — pushed by RecordFragment.
     private val _recordingMarks = MutableStateFlow<List<Long>>(emptyList())
     val recordingMarks: StateFlow<List<Long>> = _recordingMarks
