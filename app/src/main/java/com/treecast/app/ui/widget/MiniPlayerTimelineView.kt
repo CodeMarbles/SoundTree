@@ -180,11 +180,6 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
             canvas.drawRoundRect(trackRect, barRadius, barRadius, fillPaint)
         }
 
-        // ── Playhead dot ──────────────────────────────────────────────
-        val playheadR  = barH * 0.9f
-        val playheadCx = (progressFraction * w).coerceIn(playheadR, w - playheadR)
-        canvas.drawCircle(playheadCx, barCy, playheadR, playheadPaint)
-
         // ── Mark lines ────────────────────────────────────────────────
         markList.clear()
         val mark = TimelineMarkStyle.compute(density, barH)
@@ -199,6 +194,11 @@ class MiniPlayerTimelineView @JvmOverloads constructor(
             canvas.drawRoundRect(markRect, mark.corner, mark.corner, paint)
             markList.add(MarkInfo(cx, id))
         }
+
+        // ── Playhead dot ──────────────────────────────────────────────
+        val playheadR  = barH * 0.9f
+        val playheadCx = (progressFraction * w).coerceIn(playheadR, w - playheadR)
+        canvas.drawCircle(playheadCx, barCy, playheadR, playheadPaint)
 
         // ── Floating timestamp label above selected mark ───────────────
         val labelMs = selectedMarkMs
