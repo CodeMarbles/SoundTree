@@ -213,10 +213,11 @@ class RecordFragment : Fragment() {
 
         // ── Mark tap → select that mark + show its controls ──────────────────
         binding.multiLineWaveformView.onMarkTapped = { markId ->
-            viewModel.marks.value.firstOrNull { it.id == markId }?.let { mark ->
-                viewModel.selectMark(markId)
-                viewModel.unlockPlaybackMarkNudge()
-                viewModel.seekToMark(mark.positionMs)
+            val marks = viewModel.recordingMarks.value
+            val idx   = marks.indexOf(markId)
+            if (idx >= 0) {
+                viewModel.selectRecordingMark(idx)
+                showMarkControls(marks[idx])
             }
         }
 
