@@ -19,7 +19,6 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.doOnLayout
-import androidx.core.view.doOnNextLayout
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -61,6 +60,7 @@ class ListenFragment : Fragment() {
 
     private var dragActive    = false
     private var dragStartRawY = 0f
+    private var pendingSnapRunnable: Runnable? = null
     private val touchSlop by lazy {
         android.view.ViewConfiguration.get(requireContext()).scaledTouchSlop
     }
@@ -143,39 +143,46 @@ class ListenFragment : Fragment() {
     }
 
     private fun setupSnapUpTracking() {
-        // Re-anchor the SNAP_UP guideline if root height changes (e.g. mini-recorder
-        // widget appears or disappears while we're in marks-dominant mode).
         binding.root.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
             if (bottom == oldBottom) return@addOnLayoutChangeListener
             when (splitterState) {
                 SplitterState.SNAP_UP -> {
                     binding.splitterGuideline.setGuidelinePercent(calcSnapUpPercent())
                 }
+                SplitterState.SNAP_DOWN -> {
+                    // Mini-recorder / mini-player appearing after initial layout
+                    // changes root height — recalculate snap-down position.
+                    binding.splitterGuideline.setGuidelinePercent(calcSnapDownPercent())
+                }
                 SplitterState.FREE -> {
-                    // Preserve the pixel-space position of the bar when chrome
-                    // appears/disappears (e.g. mini-recorder) during free drag.
                     val currentPercent = (binding.splitterGuideline.layoutParams
                             as ConstraintLayout.LayoutParams).guidePercent
-                    val pixelY  = currentPercent * oldBottom
+                    val pixelY = currentPercent * oldBottom
                     binding.splitterGuideline.setGuidelinePercent(
                         (pixelY / bottom).coerceIn(0.05f, 0.85f)
                     )
                 }
-                else -> { /* SNAP_DOWN — guideline is at a calculated position, no adjustment needed */ }
             }
         }
     }
 
     private fun snapTo(state: SplitterState) {
+        // Always cancel any pending deferred animation — prevents stale callbacks
+        // from a previous snapTo() firing during the wrong state transition.
+        pendingSnapRunnable?.let { binding.pinnedTopArea.removeCallbacks(it) }
+        pendingSnapRunnable = null
+
         if (state == SplitterState.SNAP_DOWN) {
+            applyChipLayoutMode(SplitterState.SNAP_DOWN)
             animateGuideline(calcSnapDownPercent(), SplitterState.SNAP_DOWN)
         } else {
             applyChipLayoutMode(SplitterState.SNAP_UP)
-            // Zone A has just shrunk (seekBar + labels gone). Wait for a layout
-            // pass so pinnedTopArea.height reflects its new compressed size.
-            binding.pinnedTopArea.doOnNextLayout {
-                animateGuideline(calcSnapUpPercent(), SplitterState.SNAP_UP)
-            }
+            // post() always fires (unlike doOnNextLayout which silently no-ops if
+            // pinnedTopArea didn't actually change). One Looper pass is enough for
+            // the visibility changes above to be measured before we read the height.
+            val r = Runnable { animateGuideline(calcSnapUpPercent(), SplitterState.SNAP_UP) }
+            pendingSnapRunnable = r
+            binding.pinnedTopArea.post(r)
         }
     }
 
@@ -239,13 +246,14 @@ class ListenFragment : Fragment() {
     }
 
     private fun calcSnapDownPercent(): Float {
-        val density       = resources.displayMetrics.density
-        val scaledDensity = resources.displayMetrics.scaledDensity
-        val chipRowPx     = (12f * scaledDensity) + (28f * density)
-        val parentH       = binding.root.height.toFloat()
+        val density = resources.displayMetrics.density
+        val parentH = binding.root.height.toFloat()
         return if (parentH > 0f) {
-            val belowPx = binding.splitterBar.height + chipRowPx + binding.pinnedBottomArea.height
-            ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.85f)
+            // One chip row: ~44dp actual + 4dp safety = 48dp, density-only so
+            // it doesn't creep down at large font-scale settings.
+            val oneChipRowPx = 48f * density
+            val belowPx = binding.splitterBar.height + oneChipRowPx + binding.pinnedBottomArea.height
+            ((parentH - belowPx) / parentH).coerceIn(0.30f, 0.80f)
         } else {
             0.62f
         }

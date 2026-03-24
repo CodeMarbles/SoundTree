@@ -4,11 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RectF
-import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.GestureDetector
@@ -26,10 +22,7 @@ import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
 import com.treecast.app.util.themeColor
 import java.util.TreeMap
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.random.Random
 
 /**
  * Multi-line waveform visualizer. Renders the waveform across multiple
@@ -690,6 +683,11 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         override fun onBindViewHolder(holder: LineViewHolder, position: Int) {
             bindLineViewHolder(holder, position)
+        }
+
+        override fun onViewAttachedToWindow(holder: LineViewHolder) {
+            super.onViewAttachedToWindow(holder)
+            holder.updateOverlay(selectedMarkId, playheadMs, candidateMarkMs)
         }
 
         fun bindLineViewHolder(holder: LineViewHolder, position: Int) {
