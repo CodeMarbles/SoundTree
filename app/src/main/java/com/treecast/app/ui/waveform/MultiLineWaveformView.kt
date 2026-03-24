@@ -17,11 +17,14 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.treecast.app.R
 import com.treecast.app.ui.waveform.MultiLineWaveformView.WaveformLineAdapter
 import com.treecast.app.util.WaveformExtractor
+import com.treecast.app.util.themeColor
 import java.util.TreeMap
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -79,6 +82,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
     var secondsPerLine: Int = DEFAULT_SECONDS_PER_LINE
         set(value) {
             field = value
+            setCandidateMarkMs(null)
             rebuildItemList()
         }
 
@@ -194,6 +198,25 @@ class MultiLineWaveformView @JvmOverloads constructor(
      */
     var onTimeSelected: ((positionMs: Long, type: WaveformTapType) -> Unit)? = null
 
+    /**
+     * Called when the user taps within [MARK_HIT_SLOP_DP] of an existing mark.
+     * Fires instead of [onTimeSelected].
+     * @param markId  The [WaveformMark.id] of the tapped mark.
+     */
+    var onMarkTapped: ((markId: Long) -> Unit)? = null
+
+    /**
+     * Called when the user taps "Add mark" on the candidate banner.
+     * @param positionMs  The candidate position to confirm.
+     */
+    var onCandidateConfirm: ((positionMs: Long) -> Unit)? = null
+
+    /**
+     * Called when the user taps "✕" on the candidate banner or the candidate
+     * is otherwise cancelled. No position argument — the candidate is gone.
+     */
+    var onCandidateCancel: (() -> Unit)? = null
+
     // ── Internal state ────────────────────────────────────────────────────────
 
     /** Full-resolution amplitude array for the recording. Shared reference. */
@@ -210,6 +233,9 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
     /** Currently selected mark. */
     private var selectedMarkId: Long? = null
+
+    /** Candidate mark position. Drives grey indicator + confirmation banner. */
+    private var candidateMarkMs: Long? = null
 
     // ── Background surface (stylized waveform styles) ──────────────────────
 
@@ -248,6 +274,11 @@ class MultiLineWaveformView @JvmOverloads constructor(
     private val adapter       = WaveformLineAdapter()
     private val topFadeView    = View(context)
     private val bottomFadeView = View(context)
+    // ── Candidate banner (overlaid at top of FrameLayout) ─────────────────────
+    private val candidateBannerLabel: TextView
+    private val candidateBannerConfirm: TextView
+    private val candidateBannerCancel:  TextView
+    private val candidateBanner: LinearLayout
 
     init {
         recyclerView.layoutManager = LinearLayoutManager(context)
@@ -287,6 +318,69 @@ class MultiLineWaveformView @JvmOverloads constructor(
         )
         bottomFadeView.visibility = View.INVISIBLE
         addView(bottomFadeView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, fadeH, Gravity.BOTTOM))
+
+        // ── Candidate mark confirmation banner ───────────────────────────────────
+        // Overlaid at the top-center of the FrameLayout. Visible only when a
+        // candidate mark position is pending confirmation on the Record tab.
+        candidateBannerLabel = TextView(context).apply {
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 13f
+            setPadding((4 * dp).toInt(), 0, (10 * dp).toInt(), 0)
+        }
+
+        candidateBannerConfirm = TextView(context).apply {
+            text = "✓"
+            textSize = 16f
+            setTextColor(context.themeColor(R.attr.colorAccent))
+            setPadding((8 * dp).toInt(), (2 * dp).toInt(), (8 * dp).toInt(), (2 * dp).toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 999f * dp
+                setColor(android.graphics.Color.argb(60, 255, 255, 255))
+            }
+            setOnClickListener {
+                candidateMarkMs?.let { ms -> onCandidateConfirm?.invoke(ms) }
+                setCandidateMarkMs(null)
+            }
+        }
+
+        candidateBannerCancel = TextView(context).apply {
+            text = "✕"
+            textSize = 14f
+            setTextColor(android.graphics.Color.argb(180, 220, 220, 220))
+            setPadding((8 * dp).toInt(), (2 * dp).toInt(), (4 * dp).toInt(), (2 * dp).toInt())
+            setOnClickListener {
+                onCandidateCancel?.invoke()
+                setCandidateMarkMs(null)
+            }
+        }
+
+        candidateBanner = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity     = Gravity.CENTER_VERTICAL
+            background  = android.graphics.drawable.GradientDrawable().apply {
+                shape         = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius  = 999f * dp
+                setColor(android.graphics.Color.argb(230, 45, 45, 55))
+                setStroke((1f * dp).toInt(), android.graphics.Color.argb(160, 130, 130, 150))
+            }
+            setPadding((12 * dp).toInt(), (5 * dp).toInt(), (8 * dp).toInt(), (5 * dp).toInt())
+            elevation = 4 * dp
+            addView(candidateBannerLabel)
+            addView(candidateBannerConfirm)
+            addView(candidateBannerCancel.also {
+                (it.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart = (6 * dp).toInt()
+            })
+            visibility = View.GONE
+        }
+
+        addView(
+            candidateBanner,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity   = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                topMargin = (10 * dp).toInt()
+            }
+        )
 
         // ── Scroll listener: auto-scroll pausing + fade visibility ────────
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -363,6 +457,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
     }
 
+    // ── Marks ───────────────────────────────────────
 
     /** Replace the entire mark list. */
     fun setMarks(marks: List<WaveformMark>) {
@@ -397,6 +492,34 @@ class MultiLineWaveformView @JvmOverloads constructor(
             if (maxPos > totalDurationMs) totalDurationMs = maxPos
         }
         notifyAllVisibleLines()
+    }
+
+    /**
+     * Sets or clears the candidate mark position.
+     *
+     * When set, draws a grey provisional mark indicator on the appropriate
+     * waveform line and shows the confirmation banner at the top of the view.
+     * Passing null hides the banner and clears the indicator.
+     *
+     * Auto-cleared when [secondsPerLine] changes (line layout shifts).
+     */
+    fun setCandidateMarkMs(positionMs: Long?) {
+        candidateMarkMs = positionMs
+        if (positionMs != null) {
+            candidateBannerLabel.text = "Add mark at ${formatCandidateMs(positionMs)}"
+            candidateBanner.visibility = View.VISIBLE
+        } else {
+            candidateBanner.visibility = View.GONE
+        }
+        notifyAllVisibleLines()
+    }
+
+    private fun formatCandidateMs(ms: Long): String {
+        val totalSecs = ms / 1000
+        val h = totalSecs / 3600
+        val m = (totalSecs % 3600) / 60
+        val s = totalSecs % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
     }
 
     // ── Live recording API (Record tab) ───────────────────────────────────────
@@ -507,7 +630,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         for (i in 0 until recyclerView.childCount) {
             val vh = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
                     as? WaveformLineAdapter.LineViewHolder
-            vh?.updateOverlay(selectedMarkId, playheadMs)
+            vh?.updateOverlay(selectedMarkId, playheadMs, candidateMarkMs)
         }
     }
 
@@ -524,7 +647,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
         if (fullRebuild) {
             adapter.bindLineViewHolder(vh, adapterPos)
         } else {
-            vh.updateOverlay(selectedMarkId, playheadMs)
+            vh.updateOverlay(selectedMarkId, playheadMs, candidateMarkMs)
         }
     }
 
@@ -618,7 +741,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 showPlayedSplit  = showPlayedSplit,
                 scaleToFill      = lineScaleToFill,
                 showLineRail     = showLineRail,
-                waveformStyle    = waveformStyle
+                waveformStyle    = waveformStyle,
+                candidateMarkMs  = candidateMarkMs,
             )
         }
 
@@ -639,7 +763,13 @@ class MultiLineWaveformView @JvmOverloads constructor(
                     }
 
                     private fun fireTimeSelected(x: Float, type: WaveformTapType) {
-                        onTimeSelected?.invoke(lineView.xToMs(x), type)
+                        val hitslopPx = lineView.resources.displayMetrics.density * MARK_HIT_SLOP_DP
+                        val hitMarkId = lineView.findMarkNear(x, hitslopPx)
+                        if (hitMarkId != null) {
+                            onMarkTapped?.invoke(hitMarkId)
+                        } else {
+                            onTimeSelected?.invoke(lineView.xToMs(x), type)
+                        }
                     }
                 }
             )
@@ -651,8 +781,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 }
             }
 
-            fun updateOverlay(selectedMarkId: Long?, playheadMs: Long) {
-                lineView.updateOverlay(selectedMarkId, playheadMs)
+            fun updateOverlay(selectedMarkId: Long?, playheadMs: Long, candidateMarkMs: Long?) {
+                lineView.updateOverlay(selectedMarkId, playheadMs, candidateMarkMs)
             }
         }
     }
@@ -815,6 +945,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
 
         private fun LINE_HEIGHT_DP_TO_PX(context: Context): Int =
             (LINE_HEIGHT_DP * context.resources.displayMetrics.density).toInt()
+
+        private const val MARK_HIT_SLOP_DP = 12f
     }
 }
 

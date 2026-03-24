@@ -102,6 +102,19 @@ class WaveformLineView @JvmOverloads constructor(
     private var selectedMarkId: Long? = null
 
     /**
+     * Candidate mark position (Record tab only). Drawn in a muted grey to
+     * indicate a provisional "add mark here?" position before the user confirms.
+     * Null when no candidate is active.
+     */
+    private var candidateMarkMs: Long? = null
+
+    private val markCandidatePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.argb(180, 150, 150, 160)
+        strokeWidth = context.resources.displayMetrics.density * 1.5f
+        style = Paint.Style.FILL_AND_STROKE
+    }
+
+    /**
      * Current playhead position in milliseconds, across the whole recording.
      * -1 means "no playhead" (e.g. record tab where there's no seek position).
      * Only rendered when this value falls within [startMs]..[endMs].
@@ -275,7 +288,8 @@ class WaveformLineView @JvmOverloads constructor(
         showPlayedSplit:  Boolean,
         scaleToFill:      Boolean,
         showLineRail:     Boolean,
-        waveformStyle:    WaveformStyle = WaveformStyle.Standard
+        waveformStyle:    WaveformStyle = WaveformStyle.Standard,
+        candidateMarkMs:  Long? = null
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
         if (windowChanged) rulerBitmapDirty = true
@@ -294,6 +308,7 @@ class WaveformLineView @JvmOverloads constructor(
         this.scaleToFill      = scaleToFill
         this.showLineRail     = showLineRail
         this.waveformStyle    = waveformStyle
+        this.candidateMarkMs = candidateMarkMs
 
         recomputeFillWidthPx()
 
@@ -302,12 +317,13 @@ class WaveformLineView @JvmOverloads constructor(
     }
 
     /**
-     * Lightweight update — only mark selection or playhead changed.
+     * Lightweight update — only mark selection, playhead, or candidate changed.
      * Does NOT dirty the bitmap; just triggers a cheap overlay redraw.
      */
-    fun updateOverlay(selectedMarkId: Long?, playheadMs: Long) {
-        this.selectedMarkId = selectedMarkId
-        this.playheadMs     = playheadMs
+    fun updateOverlay(selectedMarkId: Long?, playheadMs: Long, candidateMarkMs: Long? = null) {
+        this.selectedMarkId  = selectedMarkId
+        this.playheadMs      = playheadMs
+        this.candidateMarkMs = candidateMarkMs
         invalidate()
     }
 
@@ -317,6 +333,37 @@ class WaveformLineView @JvmOverloads constructor(
         val windowMs = endMs - startMs
         return (startMs + ((adjustedX / fillWidthPx) * windowMs).toLong())
             .coerceIn(startMs, endMs)
+    }
+
+    /**
+     * Returns the [WaveformMark.id] of the mark closest to [x] within [hitslopPx]
+     * pixels, or null if no mark is that close.
+     *
+     * Mirrors the hit-test logic in [MiniPlayerTimelineView]. Used by
+     * [MultiLineWaveformView.WaveformLineAdapter.LineViewHolder] to decide
+     * whether a tap selects an existing mark or falls through to [onTimeSelected].
+     */
+    fun findMarkNear(x: Float, hitslopPx: Float): Long? {
+        val store = markStore ?: return null
+        if (store.isEmpty()) return null
+        val windowMs = (endMs - startMs).toFloat()
+        if (windowMs <= 0f || fillWidthPx <= 0f) return null
+
+        val visibleMarks = store.subMap(startMs, startMs == 0L, endMs, true).values
+
+        var bestId   = -1L
+        var bestDist = Float.MAX_VALUE
+
+        for (mark in visibleMarks) {
+            val markX = railWidthPx + ((mark.positionMs - startMs).toFloat() / windowMs) * fillWidthPx
+            val dist  = kotlin.math.abs(markX - x)
+            if (dist < bestDist) {
+                bestDist = dist
+                bestId   = mark.id
+            }
+        }
+
+        return if (bestDist <= hitslopPx && bestId != -1L) bestId else null
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
@@ -708,7 +755,8 @@ class WaveformLineView @JvmOverloads constructor(
 
         val selectedId = selectedMarkId
 
-        // TODO: I feel like we can optimize this more.  Like...we dont need to walk the list twice?
+        // This felt inefficent on first pass, but the timespans involved are max 5 minutes.  If the
+        // above (val visibleMarks = ...) above is fast, this is fast (probably max like 30 items realistically).
         // Draw unselected marks first, selected on top.
         for (pass in 0..1) {
             for (mark in visibleMarks) {
@@ -726,6 +774,20 @@ class WaveformLineView @JvmOverloads constructor(
                 markPath.lineTo(x, waveformTop + markTriHeightPx)
                 markPath.close()
                 canvas.drawPath(markPath, paint)
+            }
+        }
+
+        // ── Candidate mark (grey, Record tab only) ────────────────────────────
+        candidateMarkMs?.let { candMs ->
+            if (candMs in startMs..endMs) {
+                val x = ((candMs - startMs).toFloat() / windowMs) * fillWidthPx
+                canvas.drawLine(x, waveformTop, x, waveformTop + waveformH, markCandidatePaint)
+                markPath.rewind()
+                markPath.moveTo(x - markTriSizePx, waveformTop)
+                markPath.lineTo(x + markTriSizePx, waveformTop)
+                markPath.lineTo(x, waveformTop + markTriHeightPx)
+                markPath.close()
+                canvas.drawPath(markPath, markCandidatePaint)
             }
         }
     }

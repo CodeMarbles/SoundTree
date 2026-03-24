@@ -32,6 +32,7 @@ import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.waveform.WaveformMark
+import com.treecast.app.ui.waveform.WaveformTapType
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.Icons
 import com.treecast.app.util.RecordingTitleHelper
@@ -209,6 +210,33 @@ class RecordFragment : Fragment() {
         binding.multiLineWaveformView.secondsPerLine  = 30
         binding.multiLineWaveformView.showPlayedSplit = false
         binding.multiLineWaveformView.showLineRail    = true  // TODO: wire to Settings toggle
+
+        // ── Mark tap → select that mark + show its controls ──────────────────
+        binding.multiLineWaveformView.onMarkTapped = { markId ->
+            viewModel.marks.value.firstOrNull { it.id == markId }?.let { mark ->
+                viewModel.selectMark(markId)
+                viewModel.unlockPlaybackMarkNudge()
+                viewModel.seekToMark(mark.positionMs)
+            }
+        }
+
+        // ── Empty-space tap → place candidate mark ────────────────────────────
+        // Only active when a recording is in progress (not IDLE).
+        binding.multiLineWaveformView.onTimeSelected = { positionMs, type ->
+            if (type == WaveformTapType.TAP &&
+                recordingService?.state?.value != RecordingService.State.IDLE) {
+                binding.multiLineWaveformView.setCandidateMarkMs(positionMs)
+            }
+        }
+
+        // ── Candidate confirmed → insert mark at historical position ──────────
+        binding.multiLineWaveformView.onCandidateConfirm = { positionMs ->
+            recordingService?.addMarkAt(positionMs)
+            // The pendingMarksFlow collector will auto-update the MLWV mark list.
+        }
+
+        // ── Candidate cancelled → nothing to do (banner already hidden by MLWV) ─
+        binding.multiLineWaveformView.onCandidateCancel = { /* no-op */ }
     }
 
     // ── Timer text shadow (legibility over waveform) ──────────────────
@@ -301,6 +329,7 @@ class RecordFragment : Fragment() {
                             viewModel.setRecordingMarks(emptyList())
                             viewModel.resetMarkNudgeLock()
                             viewModel.setLiveAmplitude(0f)
+                            binding.multiLineWaveformView.setCandidateMarkMs(null)
                         }
                     }
                 }

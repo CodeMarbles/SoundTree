@@ -116,6 +116,15 @@ class ListenFragment : Fragment() {
                 WaveformTapType.LONG_PRESS -> { /* reserved */ }
             }
         }
+
+        // ── Mark tap → select mark and seek to it ────────────────────────────
+        binding.multiLineWaveform.onMarkTapped = { markId ->
+            viewModel.marks.value.firstOrNull { it.id == markId }?.let { mark ->
+                viewModel.selectMark(markId)
+                viewModel.unlockPlaybackMarkNudge()
+                viewModel.seekToMark(mark.positionMs)
+            }
+        }
     }
 
     // ── Splitter ───────────────────────────────────────────────────────────────

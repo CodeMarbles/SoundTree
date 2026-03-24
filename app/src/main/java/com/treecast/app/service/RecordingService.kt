@@ -381,6 +381,26 @@ class RecordingService : Service() {
     }
 
     /**
+     * Inserts a mark at an arbitrary historical position.
+     *
+     * The timestamp is clamped to [0, elapsedMs] so it can never be placed
+     * in the future. Marks are kept in ascending time order so the pendingMarks
+     * list stays consistent with the service's existing sorted assumptions.
+     *
+     * Called from [RecordFragment] when the user confirms a candidate mark
+     * they placed by tapping a historical position on the MLWV.
+     */
+    fun addMarkAt(positionMs: Long) {
+        if (_state.value == State.IDLE) return
+        val clamped = positionMs.coerceIn(0L, _elapsedMs.value)
+        val insertIdx = pendingMarks.indexOfFirst { it > clamped }
+            .let { if (it == -1) pendingMarks.size else it }
+        pendingMarks.add(insertIdx, clamped)
+        _pendingMarkCount.value = pendingMarks.size
+        _pendingMarksFlow.value = pendingMarks.toList()
+    }
+
+    /**
      * Moves the mark at [markIndex] backwards by [secs] seconds.
      * Floors at 0. No-op if index is out of range.
      * Pass [markIndex] = -1 to target the last mark (convenience default).
