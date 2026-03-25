@@ -122,8 +122,14 @@ class InboxTileFragment : Fragment() {
                 }
                 launch {
                     viewModel.inbox.collect { recs ->
-                        adapter.submitList(recs)
-                        binding.tvEmpty.visibility     = if (recs.isEmpty()) View.VISIBLE else View.GONE
+                        adapter.submitList(recs) {
+                            val selectedId = viewModel.selectedRecordingId.value
+                            if (selectedId != -1L) {
+                                val pos = recs.indexOfFirst { it.id == selectedId }
+                                if (pos != -1) binding.recyclerInbox.scrollToPosition(pos)
+                            }
+                        }
+                        binding.tvEmpty.visibility = if (recs.isEmpty()) View.VISIBLE else View.GONE
                         binding.tvCount.text = if (recs.isEmpty()) "" else "${recs.size} unorganised"
                     }
                 }

@@ -659,8 +659,23 @@ class TopicDetailsFragment : Fragment() {
         } else {
             recordings.sortedBy { it.createdAt }
         }
-        recordingsAdapter.submitList(sorted)
         recordingsAdapter.topics = viewModel.allTopics.value
+        recordingsAdapter.submitList(sorted) {
+            val selectedId = viewModel.selectedRecordingId.value
+            if (selectedId != -1L) {
+                val pos = sorted.indexOfFirst { it.id == selectedId }
+                if (pos != -1) {
+                    binding.recyclerTopicRecordings.post {
+                        val itemView = (binding.recyclerTopicRecordings.layoutManager as? LinearLayoutManager)
+                            ?.findViewByPosition(pos)
+                        if (itemView != null) {
+                            val scrollY = binding.recyclerTopicRecordings.top + itemView.top
+                            binding.nestedScrollView.smoothScrollTo(0, scrollY)
+                        }
+                    }
+                }
+            }
+        }
         binding.tvNoRecordings.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
     }
 
