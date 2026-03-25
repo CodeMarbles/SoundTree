@@ -15,6 +15,7 @@ import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
+import com.treecast.app.util.emojiToColor
 import kotlinx.coroutines.launch
 
 class TopicsFragment : Fragment() {
@@ -58,7 +59,7 @@ class TopicsFragment : Fragment() {
             },
             onTopicIconChange = { topic ->
                 EmojiPickerBottomSheet { emoji ->
-                    viewModel.updateTopic(topic.copy(icon = emoji))
+                    viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
                 }.show(childFragmentManager, "emoji_picker")
             },
             onRename = { id, title -> viewModel.renameRecording(id, title) },

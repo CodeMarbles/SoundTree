@@ -7,7 +7,7 @@ plugins {
 
 def major = 0
 def minor = 5
-def patch = 9
+def patch = 10
 
 android {
     namespace 'com.treecast.app'
@@ -60,6 +60,7 @@ dependencies {
     // Room Database
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
+    implementation 'androidx.palette:palette-ktx:1.0.0'
     ksp 'androidx.room:room-compiler:2.6.1'
 
     // Lifecycle / ViewModel

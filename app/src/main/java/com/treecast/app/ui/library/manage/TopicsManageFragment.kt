@@ -21,6 +21,7 @@ import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.NewTopicDialog
+import com.treecast.app.util.emojiToColor
 import kotlinx.coroutines.launch
 
 /**
@@ -105,7 +106,7 @@ class TopicsManageFragment : Fragment() {
                 EmojiPickerBottomSheet { emoji ->
                     val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         ?: return@EmojiPickerBottomSheet
-                    viewModel.updateTopic(topic.copy(icon = emoji))
+                    viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
                 }.show(childFragmentManager, "emoji_picker_manage")
             },
             onDeleteClick = { topicId ->

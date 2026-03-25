@@ -29,6 +29,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.NewTopicDialog
 import com.treecast.app.ui.topics.RecordingsAdapter
+import com.treecast.app.util.emojiToColor
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
@@ -403,7 +404,7 @@ class TopicDetailsFragment : Fragment() {
             if (isEditing) {
                 EmojiPickerBottomSheet { emoji ->
                     val topic = currentTopic ?: return@EmojiPickerBottomSheet
-                    viewModel.updateTopic(topic.copy(icon = emoji))
+                    viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
                 }.show(childFragmentManager, "emoji_picker_details")
             }
         }
@@ -571,7 +572,7 @@ class TopicDetailsFragment : Fragment() {
     private fun showHierarchyIconPicker(topicId: Long) {
         EmojiPickerBottomSheet { emoji ->
             val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@EmojiPickerBottomSheet
-            viewModel.updateTopic(topic.copy(icon = emoji))
+            viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
         }.show(childFragmentManager, "hierarchy_icon_picker")
     }
 
