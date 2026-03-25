@@ -2,15 +2,14 @@ package com.treecast.app.ui.library.details
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.PopupMenu
-import androidx.core.content.getSystemService
 import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -29,6 +28,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.topics.NewTopicDialog
 import com.treecast.app.ui.topics.RecordingsAdapter
+import com.treecast.app.util.AppVolume
 import com.treecast.app.util.emojiToColor
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
@@ -37,7 +37,9 @@ import kotlinx.coroutines.launch
  * DETAILS tab — shows details for a selected topic.
  *
  * Sections:
- *  1. Header: topic icon (tappable in edit mode) + name (editable in edit mode) + pencil/✓ button
+ *  1. Header: topic icon (always tappable → emoji picker) +
+ *             topic name (always tappable → rename dialog) +
+ *             stats column (recording count / total duration / total size)
  *  2. Hierarchy map: ancestor chain from root → this topic, each row clickable
  *  3. Recordings in this topic (direct only), with newest/oldest sort toggle
  *
@@ -53,7 +55,6 @@ class TopicDetailsFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var recordingsAdapter: RecordingsAdapter
 
-    private var isEditing = false
     private var currentTopic: TopicEntity? = null
     private var newestFirst = true
 
@@ -78,8 +79,8 @@ class TopicDetailsFragment : Fragment() {
     private var pendingMoveRecordingId: Long = -1L
 
     companion object {
-        private const val REQUEST_REPARENT = "TopicDetails_reparent"
-        private const val MOVE_RECORDING_REQUEST = "RecordingMove_Details"
+        private const val REQUEST_REPARENT           = "TopicDetails_reparent"
+        private const val MOVE_RECORDING_REQUEST     = "RecordingMove_Details"
         private const val REQUEST_HIERARCHY_REPARENT = "TopicDetails_hierarchy_reparent"
     }
 
@@ -97,7 +98,7 @@ class TopicDetailsFragment : Fragment() {
         setupRecordingMoveResultListener()
         setupRecordingsAdapter()
         setupSortButton()
-        setupEditButton()
+        setupHeaderInteractions()           // replaces setupEditButton()
         setupMoveButton()
         setupHierarchyReparentResultListener()
 
@@ -122,6 +123,7 @@ class TopicDetailsFragment : Fragment() {
                         val topicId = viewModel.libraryDetailsTopicId.value ?: return@collect
                         val filtered = recordings.filter { it.topicId == topicId }
                         submitSortedRecordings(filtered)
+                        updateTopicStats(filtered)
                     }
                 }
                 launch {
@@ -144,6 +146,53 @@ class TopicDetailsFragment : Fragment() {
         }
     }
 
+    // ── Header interactions ────────────────────────────────────────────────────
+
+    /**
+     * Wires the always-active header controls:
+     *   • Icon tap  → emoji picker
+     *   • Name tap  → rename dialog
+     * Replaces the old edit-mode toggle approach.
+     */
+    private fun setupHeaderInteractions() {
+        binding.tvTopicIcon.setOnClickListener {
+            val topic = currentTopic ?: return@setOnClickListener
+            EmojiPickerBottomSheet { emoji ->
+                viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
+            }.show(childFragmentManager, "emoji_picker_details")
+        }
+
+        binding.tvTopicName.setOnClickListener {
+            showRenameTopicDialog()
+        }
+    }
+
+    private fun showRenameTopicDialog() {
+        val topic = currentTopic ?: return
+        val editText = EditText(requireContext()).apply {
+            setText(topic.name)
+            selectAll()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine()
+        }
+        val padding = (20 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(requireContext()).apply {
+            setPadding(padding, 0, padding, 0)
+            addView(editText)
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Rename Topic")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = editText.text.toString().trim()
+                if (newName.isNotEmpty() && newName != topic.name) {
+                    viewModel.updateTopic(topic.copy(name = newName))
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     // ── Rendering ─────────────────────────────────────────────────────
 
     private fun renderForTopic(topicId: Long?, allTopics: List<TopicEntity>) {
@@ -163,16 +212,229 @@ class TopicDetailsFragment : Fragment() {
         binding.tvTopicIcon.text = topic.icon
         binding.tvTopicName.text = topic.name
 
-        // If we were editing a different topic, exit edit mode
-        if (isEditing) exitEditMode(save = false)
-
         // Hierarchy map
         buildHierarchyMap(topicId, allTopics)
 
         // Recordings will be re-submitted by the allRecordings collector
         val topicRecordings = viewModel.allRecordings.value.filter { it.topicId == topicId }
         submitSortedRecordings(topicRecordings)
+        updateTopicStats(topicRecordings)
     }
+
+    // ── Stats column ───────────────────────────────────────────────────
+
+    private fun updateTopicStats(recordings: List<RecordingEntity>) {
+        val count           = recordings.size
+        val totalDurationMs = recordings.sumOf { it.durationMs }
+        val totalSizeBytes  = recordings.sumOf { it.fileSizeBytes }
+
+        binding.tvTopicRecordingCount.text =
+            resources.getQuantityString(R.plurals.recording_count, count, count)
+        binding.tvTopicTotalDuration.text = formatDuration(totalDurationMs)
+        binding.tvTopicTotalSize.text     = AppVolume.formatBytes(totalSizeBytes)
+    }
+
+    // ── Move / reparent (btnMoveTopic) ─────────────────────────────────
+
+    private fun setupMoveButton() {
+        childFragmentManager.setFragmentResultListener(
+            REQUEST_REPARENT, viewLifecycleOwner
+        ) { _, bundle ->
+            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setFragmentResultListener
+            viewModel.reparentTopic(topicId, newParentId)
+        }
+
+        binding.btnMoveTopic.setOnClickListener {
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
+            val excluded = viewModel.getTopicWithDescendantIds(topicId)
+            TopicPickerBottomSheet.newInstance(
+                selectedTopicId = currentTopic?.parentId,
+                requestKey      = REQUEST_REPARENT,
+                excludedIds     = excluded,
+                mode            = TopicPickerBottomSheet.Mode.REPARENT
+            ).show(childFragmentManager, "move_topic_picker")
+        }
+    }
+
+    private fun setupHierarchyReparentResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            REQUEST_HIERARCHY_REPARENT, viewLifecycleOwner
+        ) { _, bundle ->
+            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val topicId = pendingHierarchyReparentTopicId.takeIf { it != -1L }
+                ?: return@setFragmentResultListener
+            viewModel.reparentTopic(topicId, newParentId)
+            pendingHierarchyReparentTopicId = -1L
+        }
+    }
+
+    private fun showHierarchyTopicOptionsMenu(topicId: Long, topicName: String, anchor: View) {
+        val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
+                viewModel.allRecordings.value.none { it.topicId == topicId }
+
+        PopupMenu(anchor.context, anchor).apply {
+            menuInflater.inflate(R.menu.menu_topic_options, menu)
+            menu.findItem(R.id.action_delete)?.isVisible = isEmpty
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_new_subtopic -> { showHierarchyNewSubtopicDialog(topicId); true }
+                    R.id.action_move         -> { showHierarchyMovePicker(topicId); true }
+                    R.id.action_rename       -> { showHierarchyRenameDialog(topicId, topicName); true }
+                    R.id.action_icon         -> { showHierarchyIconPicker(topicId); true }
+                    R.id.action_delete       -> { showHierarchyDeleteDialog(topicId, topicName); true }
+                    else                     -> false
+                }
+            }
+            show()
+        }
+    }
+
+    private fun showHierarchyNewSubtopicDialog(parentId: Long) {
+        NewTopicDialog(parentId = parentId) { name, icon, color ->
+            viewModel.createTopic(name, parentId, icon, color)
+        }.show(childFragmentManager, "hierarchy_new_subtopic")
+    }
+
+    private fun showHierarchyMovePicker(topicId: Long) {
+        pendingHierarchyReparentTopicId = topicId
+        val excluded = viewModel.getTopicWithDescendantIds(topicId)
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = viewModel.allTopics.value.find { it.id == topicId }?.parentId,
+            requestKey      = REQUEST_HIERARCHY_REPARENT,
+            excludedIds     = excluded,
+            mode            = TopicPickerBottomSheet.Mode.REPARENT
+        ).show(childFragmentManager, "hierarchy_reparent_picker")
+    }
+
+    private fun showHierarchyRenameDialog(topicId: Long, currentName: String) {
+        val ctx = requireContext()
+        val input = EditText(ctx).apply {
+            setText(currentName)
+            selectAll()
+            setPadding(48, 24, 48, 8)
+        }
+        AlertDialog.Builder(ctx)
+            .setTitle("Rename topic")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = input.text.toString().trim()
+                val topic = viewModel.allTopics.value.find { it.id == topicId }
+                    ?: return@setPositiveButton
+                if (newName.isNotEmpty() && newName != topic.name) {
+                    viewModel.updateTopic(topic.copy(name = newName))
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showHierarchyIconPicker(topicId: Long) {
+        EmojiPickerBottomSheet { emoji ->
+            val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@EmojiPickerBottomSheet
+            viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
+        }.show(childFragmentManager, "hierarchy_icon_picker")
+    }
+
+    private fun showHierarchyDeleteDialog(topicId: Long, topicName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete \"$topicName\"?")
+            .setMessage("This topic will be permanently deleted.")
+            .setPositiveButton("Delete") { _, _ ->
+                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
+                viewModel.deleteTopic(topic)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ── Recordings list ────────────────────────────────────────────────
+
+    private fun setupRecordingMoveResultListener() {
+        childFragmentManager.setFragmentResultListener(
+            MOVE_RECORDING_REQUEST, viewLifecycleOwner
+        ) { _, bundle ->
+            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
+            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
+            viewModel.moveRecording(recId, topicId)
+            pendingMoveRecordingId = -1L
+        }
+    }
+
+    private fun requestRecordingMove(recordingId: Long, currentTopicId: Long?) {
+        pendingMoveRecordingId = recordingId
+        TopicPickerBottomSheet.newInstance(
+            selectedTopicId = currentTopicId,
+            requestKey      = MOVE_RECORDING_REQUEST
+        ).show(childFragmentManager, "recording_move_picker_details")
+    }
+
+    private fun setupRecordingsAdapter() {
+        recordingsAdapter = RecordingsAdapter(
+            onPlayPause = { rec ->
+                val nowPlaying = viewModel.nowPlaying.value
+                if (nowPlaying?.recording?.id == rec.id) {
+                    viewModel.togglePlayPause()
+                } else {
+                    viewModel.play(rec)
+                    if (viewModel.autoNavigateToListen.value) {
+                        (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
+                    }
+                }
+            },
+            onRename = { id, title -> viewModel.renameRecording(id, title) },
+            onMoveRequested = { recordingId, currentTopicId ->
+                requestRecordingMove(recordingId, currentTopicId)
+            },
+            onDelete = { rec -> viewModel.deleteRecording(rec) },
+            onTopicDetailsRequested = {},   // hidden on this tab
+            onSelect = { id -> viewModel.selectRecording(id) },
+        )
+
+        binding.recyclerTopicRecordings.apply {
+            adapter = recordingsAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+            isNestedScrollingEnabled = false
+        }
+    }
+
+    private fun setupSortButton() {
+        binding.btnSortRecordings.setOnClickListener {
+            newestFirst = !newestFirst
+            binding.btnSortRecordings.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
+            val recordings = viewModel.allRecordings.value.filter { it.topicId == topicId }
+            submitSortedRecordings(recordings)
+        }
+    }
+
+    private fun submitSortedRecordings(recordings: List<RecordingEntity>) {
+        val sorted = if (newestFirst) {
+            recordings.sortedByDescending { it.createdAt }
+        } else {
+            recordings.sortedBy { it.createdAt }
+        }
+        recordingsAdapter.topics = viewModel.allTopics.value
+        recordingsAdapter.submitList(sorted) {
+            val selectedId = viewModel.selectedRecordingId.value
+            if (selectedId != -1L) {
+                val pos = sorted.indexOfFirst { it.id == selectedId }
+                if (pos != -1) {
+                    binding.recyclerTopicRecordings.post {
+                        val itemView = (binding.recyclerTopicRecordings.layoutManager as? LinearLayoutManager)
+                            ?.findViewByPosition(pos)
+                        if (itemView != null) {
+                            val scrollY = binding.recyclerTopicRecordings.top + itemView.top
+                            binding.nestedScrollView.smoothScrollTo(0, scrollY)
+                        }
+                    }
+                }
+            }
+        }
+        binding.tvNoRecordings.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    // ── Hierarchy map ──────────────────────────────────────────────────
 
     private fun buildHierarchyMap(topicId: Long, allTopics: List<TopicEntity>) {
         binding.hierarchyContainer.removeAllViews()
@@ -346,8 +608,7 @@ class TopicDetailsFragment : Fragment() {
                 true
             }
 
-            // Accessibility actions — wired directly to action methods so each
-            // action is independently discoverable without opening the visual menu.
+            // Accessibility actions
             if (topicId != null) {
                 val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
                         viewModel.allRecordings.value.none { it.topicId == topicId }
@@ -388,304 +649,21 @@ class TopicDetailsFragment : Fragment() {
         binding.hierarchyContainer.addView(row)
     }
 
-    // ── Edit mode ──────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────
 
-    private fun setupEditButton() {
-        binding.btnEditToggle.setOnClickListener {
-            if (isEditing) {
-                exitEditMode(save = true)
-            } else {
-                enterEditMode()
-            }
-        }
-
-        // Icon tap in edit mode → emoji picker
-        binding.tvTopicIcon.setOnClickListener {
-            if (isEditing) {
-                EmojiPickerBottomSheet { emoji ->
-                    val topic = currentTopic ?: return@EmojiPickerBottomSheet
-                    viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
-                }.show(childFragmentManager, "emoji_picker_details")
-            }
-        }
-
-        // Done action on keyboard
-        binding.etTopicName.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                exitEditMode(save = true)
-                true
-            } else false
-        }
-    }
-
-    private fun enterEditMode() {
-        isEditing = true
-        val topic = currentTopic ?: return
-
-        binding.tvTopicName.visibility = View.GONE
-        binding.etTopicName.visibility = View.VISIBLE
-        binding.etTopicName.setText(topic.name)
-        binding.etTopicName.selectAll()
-        binding.etTopicName.requestFocus()
-
-        // Show keyboard
-        context?.getSystemService<InputMethodManager>()
-            ?.showSoftInput(binding.etTopicName, InputMethodManager.SHOW_IMPLICIT)
-
-        // Switch to checkmark icon
-        binding.btnEditToggle.setImageResource(R.drawable.ic_check)
-        binding.btnEditToggle.setColorFilter(requireContext().themeColor(R.attr.colorAccent))
-
-        // Add a pulsing outline to the icon to hint it's tappable
-        binding.tvTopicIcon.setBackgroundResource(R.drawable.bg_icon_edit_hint)
-    }
-
-    private fun exitEditMode(save: Boolean) {
-        isEditing = false
-
-        if (save) {
-            val newName = binding.etTopicName.text.toString().trim()
-            val topic = currentTopic
-            if (newName.isNotEmpty() && topic != null && newName != topic.name) {
-                viewModel.updateTopic(topic.copy(name = newName))
-            }
-        }
-
-        binding.tvTopicName.visibility = View.VISIBLE
-        binding.etTopicName.visibility = View.GONE
-
-        // Hide keyboard
-        context?.getSystemService<InputMethodManager>()
-            ?.hideSoftInputFromWindow(binding.etTopicName.windowToken, 0)
-
-        // Restore pencil icon
-        binding.btnEditToggle.setImageResource(R.drawable.ic_rename)
-        binding.btnEditToggle.clearColorFilter()
-
-        // Remove icon edit hint background
-        binding.tvTopicIcon.setBackgroundResource(0)
-    }
-
-    // ── Move / reparent ────────────────────────────────────────────────
-
-    private fun setupMoveButton() {
-        // Register result listener once
-        childFragmentManager.setFragmentResultListener(
-            REQUEST_REPARENT, viewLifecycleOwner
-        ) { _, bundle ->
-            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
-            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setFragmentResultListener
-            viewModel.reparentTopic(topicId, newParentId)
-            // Hierarchy map will refresh automatically via allTopics observer
-        }
-
-        binding.btnMoveTopic.setOnClickListener {
-            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
-            val excluded = viewModel.getTopicWithDescendantIds(topicId)
-            TopicPickerBottomSheet.newInstance(
-                selectedTopicId = currentTopic?.parentId,
-                requestKey      = REQUEST_REPARENT,
-                excludedIds     = excluded,
-                mode            = TopicPickerBottomSheet.Mode.REPARENT
-            ).show(childFragmentManager, "reparent_picker_details")
-        }
-    }
-
-    // ── Hierarchy topic actions ────────────────────────────────────────────
-
-    /**
-     * Listens for the result of TopicPickerBottomSheet launched from a hierarchy
-     * row's Move action. Uses [REQUEST_HIERARCHY_REPARENT] so it never collides
-     * with the btnMoveTopic result listener which uses [REQUEST_REPARENT].
-     */
-    private fun setupHierarchyReparentResultListener() {
-        childFragmentManager.setFragmentResultListener(
-            REQUEST_HIERARCHY_REPARENT, viewLifecycleOwner
-        ) { _, bundle ->
-            val newParentId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
-            val topicId = pendingHierarchyReparentTopicId.takeIf { it != -1L }
-                ?: return@setFragmentResultListener
-            viewModel.reparentTopic(topicId, newParentId)
-            pendingHierarchyReparentTopicId = -1L
-        }
-    }
-
-    private fun showHierarchyTopicOptionsMenu(topicId: Long, topicName: String, anchor: View) {
-        val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
-                viewModel.allRecordings.value.none { it.topicId == topicId }
-
-        PopupMenu(anchor.context, anchor).apply {
-            menuInflater.inflate(R.menu.menu_topic_options, menu)
-            menu.findItem(R.id.action_delete)?.isVisible = isEmpty
-            setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    R.id.action_new_subtopic -> { showHierarchyNewSubtopicDialog(topicId); true }
-                    R.id.action_move         -> { showHierarchyMovePicker(topicId); true }
-                    R.id.action_rename       -> { showHierarchyRenameDialog(topicId, topicName); true }
-                    R.id.action_icon         -> { showHierarchyIconPicker(topicId); true }
-                    R.id.action_delete       -> { showHierarchyDeleteDialog(topicId, topicName); true }
-                    else                     -> false
-                }
-            }
-            show()
-        }
-    }
-
-    private fun showHierarchyNewSubtopicDialog(parentId: Long) {
-        NewTopicDialog(parentId = parentId) { name, icon, color ->
-            viewModel.createTopic(name, parentId, icon, color)
-        }.show(childFragmentManager, "hierarchy_new_subtopic")
-    }
-
-    private fun showHierarchyMovePicker(topicId: Long) {
-        pendingHierarchyReparentTopicId = topicId
-        val excluded = viewModel.getTopicWithDescendantIds(topicId)
-        TopicPickerBottomSheet.newInstance(
-            selectedTopicId = viewModel.allTopics.value.find { it.id == topicId }?.parentId,
-            requestKey      = REQUEST_HIERARCHY_REPARENT,
-            excludedIds     = excluded,
-            mode            = TopicPickerBottomSheet.Mode.REPARENT
-        ).show(childFragmentManager, "hierarchy_reparent_picker")
-    }
-
-    private fun showHierarchyRenameDialog(topicId: Long, currentName: String) {
-        val ctx = requireContext()
-        val input = EditText(ctx).apply {
-            setText(currentName)
-            selectAll()
-            setPadding(48, 24, 48, 8)
-        }
-        AlertDialog.Builder(ctx)
-            .setTitle("Rename topic")
-            .setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                val newName = input.text.toString().trim()
-                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
-                if (newName.isNotEmpty() && newName != topic.name) {
-                    viewModel.updateTopic(topic.copy(name = newName))
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showHierarchyIconPicker(topicId: Long) {
-        EmojiPickerBottomSheet { emoji ->
-            val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@EmojiPickerBottomSheet
-            viewModel.updateTopic(topic.copy(icon = emoji, color = emojiToColor(emoji)))
-        }.show(childFragmentManager, "hierarchy_icon_picker")
-    }
-
-    private fun showHierarchyDeleteDialog(topicId: Long, topicName: String) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Delete \"$topicName\"?")
-            .setMessage("This topic will be permanently deleted.")
-            .setPositiveButton("Delete") { _, _ ->
-                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
-                viewModel.deleteTopic(topic)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    // ── Recordings list ────────────────────────────────────────────────
-
-    /**
-     * Listens for the result of TopicPickerBottomSheet shown by a recording's
-     * "Move to topic…" action. Uses a separate request key from [REQUEST_REPARENT]
-     * so topic-move and recording-move results never collide.
-     */
-    private fun setupRecordingMoveResultListener() {
-        childFragmentManager.setFragmentResultListener(
-            MOVE_RECORDING_REQUEST, viewLifecycleOwner
-        ) { _, bundle ->
-            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
-            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
-            viewModel.moveRecording(recId, topicId)
-            pendingMoveRecordingId = -1L
-        }
-    }
-
-    private fun requestRecordingMove(recordingId: Long, currentTopicId: Long?) {
-        pendingMoveRecordingId = recordingId
-        TopicPickerBottomSheet.newInstance(
-            selectedTopicId = currentTopicId,
-            requestKey      = MOVE_RECORDING_REQUEST
-        ).show(childFragmentManager, "recording_move_picker_details")
-    }
-
-    private fun setupRecordingsAdapter() {
-        recordingsAdapter = RecordingsAdapter(
-            onPlayPause = { rec ->
-                val nowPlaying = viewModel.nowPlaying.value
-                if (nowPlaying?.recording?.id == rec.id) {
-                    viewModel.togglePlayPause()
-                } else {
-                    viewModel.play(rec)
-                    if (viewModel.autoNavigateToListen.value) {
-                        (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
-                    }
-                }
-            },
-            onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMoveRequested = { recordingId, currentTopicId ->
-                requestRecordingMove(recordingId, currentTopicId)
-            },
-            onDelete = { rec -> viewModel.deleteRecording(rec) },
-            onTopicDetailsRequested  = {},   // hidden on this tab
-            onSelect = { id -> viewModel.selectRecording(id) },
-        )
-
-        binding.recyclerTopicRecordings.apply {
-            adapter = recordingsAdapter
-            layoutManager = LinearLayoutManager(requireContext())
-            isNestedScrollingEnabled = false
-        }
-    }
-
-    private fun setupSortButton() {
-        binding.btnSortRecordings.setOnClickListener {
-            newestFirst = !newestFirst
-            binding.btnSortRecordings.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
-            val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
-            val recordings = viewModel.allRecordings.value.filter { it.topicId == topicId }
-            submitSortedRecordings(recordings)
-        }
-    }
-
-    private fun submitSortedRecordings(recordings: List<RecordingEntity>) {
-        val sorted = if (newestFirst) {
-            recordings.sortedByDescending { it.createdAt }
-        } else {
-            recordings.sortedBy { it.createdAt }
-        }
-        recordingsAdapter.topics = viewModel.allTopics.value
-        recordingsAdapter.submitList(sorted) {
-            val selectedId = viewModel.selectedRecordingId.value
-            if (selectedId != -1L) {
-                val pos = sorted.indexOfFirst { it.id == selectedId }
-                if (pos != -1) {
-                    binding.recyclerTopicRecordings.post {
-                        val itemView = (binding.recyclerTopicRecordings.layoutManager as? LinearLayoutManager)
-                            ?.findViewByPosition(pos)
-                        if (itemView != null) {
-                            val scrollY = binding.recyclerTopicRecordings.top + itemView.top
-                            binding.nestedScrollView.smoothScrollTo(0, scrollY)
-                        }
-                    }
-                }
-            }
-        }
-        binding.tvNoRecordings.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun formatDuration(ms: Long): String {
+        val s = ms / 1000
+        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60)
+        else "%d:%02d".format(s / 60, s % 60)
     }
 
     override fun onResume() {
         super.onResume()
         viewModel.refreshStorageVolumes()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

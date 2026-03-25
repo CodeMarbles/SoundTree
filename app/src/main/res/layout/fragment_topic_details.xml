@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- ── Header: icon + name + edit button ─────────────────── -->
+        <!-- ── Header: icon + name (tap → dialog) + stats column ──────── -->
         <LinearLayout
             android:id="@+id/headerLayout"
             android:layout_width="match_parent"
@@ -23,16 +23,19 @@
             android:paddingHorizontal="16dp"
             android:background="?attr/colorSurfaceBase">
 
-            <!-- Topic icon — tappable in edit mode to open emoji picker -->
+            <!-- Topic icon — always tappable → emoji picker -->
             <TextView
                 android:id="@+id/tvTopicIcon"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:gravity="center"
                 android:textSize="28sp"
-                android:background="@android:color/transparent" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Change topic icon" />
 
-            <!-- Topic name (display mode) -->
+            <!-- Topic name — always tappable → rename dialog -->
             <TextView
                 android:id="@+id/tvTopicName"
                 android:layout_width="0dp"
@@ -44,35 +47,41 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:layout_marginStart="12dp"
-                android:layout_marginEnd="8dp" />
-
-            <!-- Topic name (edit mode) — hidden by default -->
-            <EditText
-                android:id="@+id/etTopicName"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="?attr/colorTextPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:inputType="text"
-                android:layout_marginStart="12dp"
                 android:layout_marginEnd="8dp"
-                android:visibility="gone"
-                android:background="@null"
-                android:imeOptions="actionDone" />
-
-            <!-- Edit / Confirm button (pencil → checkmark in edit mode) -->
-            <ImageButton
-                android:id="@+id/btnEditToggle"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@drawable/ic_rename"
-                android:padding="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Edit topic name"
-                app:tint="?attr/colorTextSecondary" />
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Rename topic" />
+
+            <!-- Stats column: recording count / total duration / total size -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end">
+
+                <TextView
+                    android:id="@+id/tvTopicRecordingCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvTopicTotalDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvTopicTotalSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -133,7 +142,9 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorSurfaceElevated" /> ─────────────────────────────────── -->
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ── Recordings section header ────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
