@@ -62,10 +62,12 @@ import java.util.Locale
  */
 class RecordingsAdapter(
     private val showTopicIcon:    Boolean = false,
+    private val showTopicDetails: Boolean = false,
     private val onPlayPause:      (RecordingEntity) -> Unit,
     private val onRename:         (id: Long, newTitle: String) -> Unit,
     private val onMoveRequested:  (recordingId: Long, currentTopicId: Long?) -> Unit,
     private val onDelete:         (RecordingEntity) -> Unit,
+    private val onTopicDetailsRequested: (topicId: Long?) -> Unit = {},
     private val onSelect:         (Long) -> Unit = {},
 ) : ListAdapter<RecordingEntity, RecordingsAdapter.VH>(DIFF) {
 
@@ -191,13 +193,15 @@ class RecordingsAdapter(
                 menuInflater.inflate(R.menu.menu_recording_options, menu)
                 // Move is unavailable while storage is offline; the recording
                 // can't be reassigned to a topic it may not be able to access.
-                menu.findItem(R.id.action_move)?.isVisible = !isOrphan
+                menu.findItem(R.id.action_move)?.isVisible         = !isOrphan
+                menu.findItem(R.id.action_topic_details)?.isVisible = showTopicDetails
                 setOnMenuItemClickListener { item ->
                     when (item.itemId) {
-                        R.id.action_rename -> { showRenameDialog(rec); true }
-                        R.id.action_move   -> { onMoveRequested(rec.id, rec.topicId); true }
-                        R.id.action_delete -> { showDeleteDialog(rec); true }
-                        else               -> false
+                        R.id.action_rename        -> { showRenameDialog(rec); true }
+                        R.id.action_move          -> { onMoveRequested(rec.id, rec.topicId); true }
+                        R.id.action_delete        -> { showDeleteDialog(rec); true }
+                        R.id.action_topic_details -> { onTopicDetailsRequested(rec.topicId); true }  // ← new
+                        else                      -> false
                     }
                 }
                 show()
@@ -221,6 +225,13 @@ class RecordingsAdapter(
             ViewCompat.addAccessibilityAction(itemView, "Delete recording") { _, _ ->
                 showDeleteDialog(rec)
                 true
+            }
+            // Only register "Topic Details" where it's visible — keeps TalkBack
+            // actions menu clean on Inbox and Topic Details contexts.
+            if (showTopicDetails) {
+                ViewCompat.addAccessibilityAction(itemView, "Topic Details") { _, _ ->
+                    onTopicDetailsRequested(rec.topicId); true
+                }
             }
         }
 

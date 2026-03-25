@@ -609,6 +609,18 @@ class MainActivity : AppCompatActivity() {
         libraryFragment.jumpToSubPageForRecording(topicId)
     }
 
+    fun navigateToTopicDetails(topicId: Long) {
+        navigateTo(PAGE_LIBRARY)
+        libraryFragment.enteredFromExternalTab = true
+        libraryFragment.openTopicDetails(topicId)
+    }
+
+    fun navigateToLibraryUnsorted() {
+        navigateTo(PAGE_LIBRARY)
+        libraryFragment.enteredFromExternalTab = true
+        libraryFragment.navigateToUnsorted()
+    }
+
     fun setTopTitle(title: String) {
         viewModel.setTopTitle(title)
     }

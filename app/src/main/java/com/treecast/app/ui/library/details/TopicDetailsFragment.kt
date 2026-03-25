@@ -632,6 +632,7 @@ class TopicDetailsFragment : Fragment() {
                 requestRecordingMove(recordingId, currentTopicId)
             },
             onDelete = { rec -> viewModel.deleteRecording(rec) },
+            onTopicDetailsRequested  = {},   // hidden on this tab
             onSelect = { id -> viewModel.selectRecording(id) },
         )
 

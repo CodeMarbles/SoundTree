@@ -93,8 +93,9 @@ class AllRecordingsFragment : Fragment() {
 
     private fun setupAdapter() {
         adapter = RecordingsAdapter(
-            showTopicIcon   = true,
-            onPlayPause     = { rec ->
+            showTopicIcon            = true,
+            showTopicDetails         = true,                                        // ← new
+            onPlayPause              = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
                 if (nowPlaying?.recording?.id == rec.id) {
                     viewModel.togglePlayPause()
@@ -105,10 +106,15 @@ class AllRecordingsFragment : Fragment() {
                     }
                 }
             },
-            onRename        = { id, title -> viewModel.renameRecording(id, title) },
-            onMoveRequested = { recordingId, currentTopicId -> requestMove(recordingId, currentTopicId) },
-            onDelete        = { rec -> viewModel.deleteRecording(rec) },
-            onSelect        = { id -> viewModel.selectRecording(id) },
+            onRename                 = { id, title -> viewModel.renameRecording(id, title) },
+            onMoveRequested          = { recordingId, currentTopicId -> requestMove(recordingId, currentTopicId) },
+            onDelete                 = { rec -> viewModel.deleteRecording(rec) },
+            onTopicDetailsRequested  = { topicId ->                                 // ← new
+                val activity = requireActivity() as? MainActivity ?: return@RecordingsAdapter
+                if (topicId == null) activity.navigateToLibraryUnsorted()
+                else activity.navigateToTopicDetails(topicId)
+            },
+            onSelect                 = { id -> viewModel.selectRecording(id) },
         )
 
         binding.recyclerAllRecordings.apply {

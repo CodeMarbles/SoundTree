@@ -3,6 +3,7 @@ package com.treecast.app.ui.listen
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.app.AlertDialog
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -27,7 +29,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
 import com.treecast.app.data.entities.MarkEntity
+import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.databinding.FragmentListenBinding
+import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.NowPlayingState
 import com.treecast.app.ui.common.TopicPickerBottomSheet
@@ -431,6 +435,7 @@ class ListenFragment : Fragment() {
             binding.tvTitle.text           = "Nothing playing"
             binding.tvRecordedAt.text      = ""
             binding.tvDuration.text        = ""
+            binding.tvFileSize.text   = ""
             binding.btnPlayPause.setIconResource(R.drawable.ic_play)
             binding.seekBar.max            = 1
             binding.seekBar.progress       = 0
@@ -463,6 +468,7 @@ class ListenFragment : Fragment() {
 
             binding.tvRecordedAt.text = formatDate(state.recording.createdAt)
             binding.tvDuration.text   = formatMs(state.recording.durationMs)
+            binding.tvFileSize.text   = formatFileSize(state.recording.fileSizeBytes)
 
             binding.multiLineWaveform.setDurationMs(dur)
             binding.multiLineWaveform.setPlayheadMs(pos)
@@ -675,10 +681,12 @@ class ListenFragment : Fragment() {
 
     // ── Topic header ──────────────────────────────────────────────────────────
 
+    // ── Topic header ──────────────────────────────────────────────────────────
+
     private fun setupTopicHeader() {
-        // Result listener must be registered before the sheet is shown.
+        // Result listener for the Move picker launched from the overflow menu.
         childFragmentManager.setFragmentResultListener(
-            TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
+            TopicPickerBottomSheet.REQUEST_KEY + "_listen", viewLifecycleOwner
         ) { _, bundle ->
             val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
             val recId = viewModel.nowPlaying.value?.recording?.id ?: return@setFragmentResultListener
@@ -688,14 +696,79 @@ class ListenFragment : Fragment() {
             binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
         }
 
+        // Topic icon tap:
+        //   • topicId set   → navigate to Topic Details in Library
+        //   • topicId null  → open topic picker so user can assign one
         binding.tvTopicIcon.setOnClickListener {
             val recording = viewModel.nowPlaying.value?.recording ?: return@setOnClickListener
-            TopicPickerBottomSheet.newInstance(recording.topicId)
-                .show(childFragmentManager, "topic_picker")
+            val topicId = recording.topicId
+            if (topicId == null) {
+                TopicPickerBottomSheet.newInstance(
+                    selectedTopicId = null,
+                    requestKey      = TopicPickerBottomSheet.REQUEST_KEY + "_listen"
+                ).show(childFragmentManager, "listen_topic_picker")
+            } else {
+                (requireActivity() as? MainActivity)?.navigateToTopicDetails(topicId)
+            }
         }
+
+        // Recording name tap → rename dialog (unchanged).
         binding.layoutTitleArea.setOnClickListener {
             showRenameDialog()
         }
+
+        // 3-dot overflow → Listen-specific options menu.
+        binding.ivListenOverflow.setOnClickListener {
+            showListenOptionsMenu()
+        }
+    }
+
+    private fun showListenOptionsMenu() {
+        val recording = viewModel.nowPlaying.value?.recording ?: return
+        PopupMenu(requireContext(), binding.ivListenOverflow).apply {
+            menuInflater.inflate(R.menu.menu_listen_options, menu)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_rename -> {
+                        showRenameDialog()
+                        true
+                    }
+                    R.id.action_move -> {
+                        TopicPickerBottomSheet.newInstance(
+                            selectedTopicId = recording.topicId,
+                            requestKey      = TopicPickerBottomSheet.REQUEST_KEY + "_listen"
+                        ).show(childFragmentManager, "listen_move_picker")
+                        true
+                    }
+                    R.id.action_delete -> {
+                        showDeleteDialog(recording)
+                        true
+                    }
+                    R.id.action_topic_details -> {
+                        val activity = requireActivity() as? MainActivity
+                            ?: return@setOnMenuItemClickListener true
+                        val topicId = recording.topicId
+                        if (topicId == null) activity.navigateToLibraryUnsorted()
+                        else activity.navigateToTopicDetails(topicId)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            show()
+        }
+    }
+
+    private fun showDeleteDialog(recording: RecordingEntity) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete recording")
+            .setMessage("\"${recording.title}\" will be permanently deleted.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.stopAndClear()
+                viewModel.deleteRecording(recording)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showRenameDialog() {
@@ -739,4 +812,10 @@ class ListenFragment : Fragment() {
     private fun formatDate(epochMs: Long): String =
         java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
             .format(java.util.Date(epochMs))
+
+    private fun formatFileSize(bytes: Long): String = when {
+        bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000     -> "%.0f KB".format(bytes / 1_000.0)
+        else               -> "$bytes B"
+    }
 }

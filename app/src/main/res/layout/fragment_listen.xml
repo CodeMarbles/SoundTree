@@ -43,9 +43,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ── Header row: icon | category+title | date+duration ──────
-             tvRecordedAt and tvDuration folded in as a right-side column.
-             ─────────────────────────────────────────────────────────── -->
+        <!-- ── Header row: icon | category+title | overflow | date+duration ── -->
         <LinearLayout
             android:id="@+id/topicHeader"
             android:layout_width="match_parent"
@@ -102,13 +100,26 @@
 
             </LinearLayout>
 
-            <!-- Date + duration meta column — right-aligned, small -->
+            <!-- 3-dot overflow menu -->
+            <ImageView
+                android:id="@+id/ivListenOverflow"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_overflow"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Recording options"
+                app:tint="?attr/colorTextSecondary" />
+
+            <!-- Date + duration + file size meta column — right-aligned, small -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="end"
-                android:layout_marginStart="8dp">
+                android:layout_marginStart="4dp">
 
                 <TextView
                     android:id="@+id/tvRecordedAt"
@@ -124,18 +135,14 @@
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp" />
 
-            </LinearLayout>
+                <TextView
+                    android:id="@+id/tvFileSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="10sp" />
 
-            <!-- Chevron: kept GONE -->
-            <ImageView
-                android:id="@+id/ivTopicHeaderChevron"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginStart="4dp"
-                android:src="@drawable/ic_chevron_down"
-                android:rotation="-90"
-                android:visibility="gone"
-                app:tint="?attr/colorTextSecondary" />
+            </LinearLayout>
 
         </LinearLayout>
 

@@ -89,6 +89,7 @@ class InboxTileFragment : Fragment() {
             onRename        = { id, title -> viewModel.renameRecording(id, title) },
             onMoveRequested = { recordingId, currentTopicId -> requestMove(recordingId, currentTopicId) },
             onDelete        = { rec -> viewModel.deleteRecording(rec) },
+            onTopicDetailsRequested  = {}, // (hidden on this tab)
             onSelect        = { id -> viewModel.selectRecording(id) },
         )
 

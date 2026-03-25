@@ -43,6 +43,8 @@ class LibraryFragment : Fragment() {
 
     private val topicNavHistory = ArrayDeque<Long>()
 
+    var enteredFromExternalTab: Boolean = false
+
     companion object {
         const val PAGE_ALL        = 0
         const val PAGE_UNSORTED   = 1
@@ -181,17 +183,33 @@ class LibraryFragment : Fragment() {
     fun handleBackPress(): Boolean {
         return when (binding.tilePager.currentItem) {
             PAGE_DETAILS -> {
-                if (topicNavHistory.isNotEmpty()) {
-                    viewModel.setLibraryDetailsTopic(topicNavHistory.removeLast())
-                    true  // consumed — stay on Details, show previous topic
-                } else {
-                    binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
-                    true  // consumed — exit Details to Topics tab
+                when {
+                    topicNavHistory.isNotEmpty() -> {
+                        // Walk back through in-Library topic navigation first.
+                        viewModel.setLibraryDetailsTopic(topicNavHistory.removeLast())
+                        true
+                    }
+                    enteredFromExternalTab -> {
+                        // Came from outside Library — let MainActivity pop back
+                        // to the originating tab rather than going to Topics.
+                        enteredFromExternalTab = false
+                        false
+                    }
+                    else -> {
+                        binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+                        true
+                    }
                 }
             }
             PAGE_UNSORTED, PAGE_ALL, PAGE_RECORDINGS -> {
-                binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
-                true
+                if (enteredFromExternalTab) {
+                    // Same — yield to MainActivity rather than routing to Topics.
+                    enteredFromExternalTab = false
+                    false
+                } else {
+                    binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
+                    true
+                }
             }
             else -> false
         }

@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Context menu shown when the user long-presses a recording row or taps ⋮.
-  Some options suppressed programatically based on context.
--->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_rename"
