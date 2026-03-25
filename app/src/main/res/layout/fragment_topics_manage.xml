@@ -28,10 +28,13 @@
     <!-- ── FAB — bottom right ─────────────────────────────────────── -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabAddTopic"
+        android:gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_margin="8dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
         android:text="+ TOPIC"
         android:textSize="12sp"
         android:textColor="@color/white"
