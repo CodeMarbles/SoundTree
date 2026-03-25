@@ -127,7 +127,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupHeader() {
-        binding.tvAppIdentity.text = getString(R.string.app_identity, getString(R.string.app_name), getString(R.string.app_emoji))
+        binding.tvAppIdentity.text = getString(R.string.app_label_identity, getString(R.string.app_name), getString(R.string.app_emoji))
     }
 
     private fun setupRecordingRecoverySection() {
@@ -314,14 +314,14 @@ class SettingsFragment : Fragment() {
         // ── Edit / Apply button ───────────────────────────────────────
         fun enterEditMode() {
             widget.setEditing(true)
-            btnEdit.text = getString(R.string.layout_btn_apply)
+            btnEdit.text = getString(R.string.settings_btn_layout_apply)
         }
 
         fun applyAndLock() {
             viewModel.setLayoutOrder(widget.getOrder())
             viewModel.setShowTitleBar(widget.showTitleBar)
             widget.setEditing(false)
-            btnEdit.text = getString(R.string.layout_btn_edit)
+            btnEdit.text = getString(R.string.settings_btn_layout_edit)
         }
 
         btnEdit.setOnClickListener {

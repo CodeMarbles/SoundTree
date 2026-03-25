@@ -48,13 +48,13 @@ class UnsortedRowAdapter(
 
         fun bind() {
             tvIcon.text = "📥"
-            tvName.text = itemView.context.getString(R.string.label_unsorted)
+            tvName.text = itemView.context.getString(R.string.topic_label_unsorted)
             tvName.setTextColor(itemView.context.themeColor(R.attr.colorTextSecondary))
 
             if (unsortedCount > 0) {
                 tvCount.visibility = View.VISIBLE
                 tvCount.text = itemView.context.resources.getQuantityString(
-                    R.plurals.recording_count, unsortedCount, unsortedCount
+                    R.plurals.common_label_recording_count, unsortedCount, unsortedCount
                 )
             } else {
                 tvCount.visibility = View.GONE
@@ -124,7 +124,7 @@ class TopicsManageAdapter(
             if (totalCount > 0) {
                 tvCount.visibility = View.VISIBLE
                 tvCount.text = itemView.context.resources.getQuantityString(
-                    R.plurals.recording_count, totalCount, totalCount
+                    R.plurals.common_label_recording_count, totalCount, totalCount
                 )
             } else {
                 tvCount.visibility = View.GONE

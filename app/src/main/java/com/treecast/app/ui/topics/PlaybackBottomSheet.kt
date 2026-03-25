@@ -56,7 +56,7 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
                     val topic = recording.topicId?.let { id -> topics.find { it.id == id } }
                     binding.topicPicker.setSelectedTopic(
                         recording.topicId,
-                        topic?.name ?: getString(R.string.label_unsorted),
+                        topic?.name ?: getString(R.string.topic_label_unsorted),
                         topic?.icon ?: Icons.INBOX
                     )
                 }

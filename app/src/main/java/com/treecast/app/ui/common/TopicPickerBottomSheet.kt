@@ -114,9 +114,9 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
         // ── Mode-specific presentation ────────────────────────────────
         if (mode == Mode.REPARENT) {
-            view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.picker_title_move_to)
+            view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.topic_picker_title_move)
             view.findViewById<TextView>(R.id.tvNullRowIcon).text = "🌳"
-            view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.picker_null_row_top_level)
+            view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.topic_picker_label_top_level)
         }
 
         refreshList()

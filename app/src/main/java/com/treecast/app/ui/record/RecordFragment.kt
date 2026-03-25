@@ -251,7 +251,7 @@ class RecordFragment : Fragment() {
 
     // ── Topic header ───────────────────────────────────────────────────
     private fun setupTopicHeader() {
-        updateRecordTopicHeader(null, getString(R.string.label_unsorted), Icons.INBOX)
+        updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.INBOX)
 
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
@@ -262,7 +262,7 @@ class RecordFragment : Fragment() {
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
             updateRecordTopicHeader(
                 topicId,
-                topic?.name ?: getString(R.string.label_unsorted),
+                topic?.name ?: getString(R.string.topic_label_unsorted),
                 topic?.icon ?: Icons.INBOX
             )
             val svc = recordingService
@@ -283,7 +283,7 @@ class RecordFragment : Fragment() {
                         val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         updateRecordTopicHeader(
                             topicId,
-                            topic?.name ?: getString(R.string.label_unsorted),
+                            topic?.name ?: getString(R.string.topic_label_unsorted),
                             topic?.icon ?: Icons.INBOX
                         )
                     }

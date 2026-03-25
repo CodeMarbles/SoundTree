@@ -454,7 +454,7 @@ class ListenFragment : Fragment() {
 
         val topic = viewModel.allTopics.value.firstOrNull { it.id == state.recording.topicId }
         binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
-        binding.tvCategory.text  = topic?.name ?: getString(R.string.label_unsorted)
+        binding.tvCategory.text  = topic?.name ?: getString(R.string.topic_label_unsorted)
 
         binding.btnPlayPause.setIconResource(
             if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)

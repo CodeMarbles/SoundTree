@@ -287,7 +287,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         val uri = Uri.fromFile(File(recording.filePath))
         val topic = allTopics.value.firstOrNull { it.id == recording.topicId }
-        val topicName = topic?.name ?: getApplication<Application>().getString(R.string.unsorted)
+        val topicName = topic?.name ?: getApplication<Application>().getString(R.string.topic_label_unsorted)
 
         val artwork = topic?.let { buildTopicArtwork(it.color, it.icon) }
         val artworkBytes = artwork?.let { bitmapToPngByteArray(it) }

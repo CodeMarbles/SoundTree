@@ -20,7 +20,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/picker_title_select_topic"
+            android:text="@string/topic_picker_title_select"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -57,7 +57,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/label_unsorted"
+            android:text="@string/topic_label_unsorted"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="14sp"
             android:layout_marginStart="10dp" />

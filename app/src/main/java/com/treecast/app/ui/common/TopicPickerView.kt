@@ -29,7 +29,7 @@ class TopicPickerView @JvmOverloads constructor(
 
     private var isExpanded = false
     private var selectedTopicId: Long? = null
-    private var selectedTopicName: String = context.getString(R.string.label_unsorted)
+    private var selectedTopicName: String = context.getString(R.string.topic_label_unsorted)
     private var selectedTopicIcon: String = Icons.INBOX
     private val collapsedNodeIds = mutableSetOf<Long>()
     private var lastRoots: List<TreeNode> = emptyList()
@@ -63,7 +63,7 @@ class TopicPickerView @JvmOverloads constructor(
 
         headerRow.setOnClickListener { toggle() }
         tvUncategorised.setOnClickListener {
-            selectTopic(null, context.getString(R.string.label_unsorted), Icons.INBOX)
+            selectTopic(null, context.getString(R.string.topic_label_unsorted), Icons.INBOX)
         }
 
         updateHeader()

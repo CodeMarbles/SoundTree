@@ -229,7 +229,7 @@ class TopicDetailsFragment : Fragment() {
         val totalSizeBytes  = recordings.sumOf { it.fileSizeBytes }
 
         binding.tvTopicRecordingCount.text =
-            resources.getQuantityString(R.plurals.recording_count, count, count)
+            resources.getQuantityString(R.plurals.common_label_recording_count, count, count)
         binding.tvTopicTotalDuration.text = formatDuration(totalDurationMs)
         binding.tvTopicTotalSize.text     = AppVolume.formatBytes(totalSizeBytes)
     }
