@@ -328,7 +328,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
                 }
             }
 
-            holder.label.text = element.displayName.uppercase()
+            holder.label.text = context.getString(element.displayNameRes)
             val targetAlpha = if (editing) 1f else 0.55f
             holder.row.animate().alpha(targetAlpha).setDuration(150).start()
 

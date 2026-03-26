@@ -178,6 +178,13 @@
     <string name="settings_btn_layout_edit">Edit layout</string>
     <string name="settings_btn_layout_apply">Apply</string>
 
+    <!-- Layout reorder widget element names -->
+    <string name="settings_layout_elem_title_bar">Title Bar</string>
+    <string name="settings_layout_elem_content">Content</string>
+    <string name="settings_layout_elem_mini_player">Mini Player</string>
+    <string name="settings_layout_elem_mini_recorder">Mini Recorder</string>
+    <string name="settings_layout_elem_nav">Nav</string>
+
     <!-- Widgets: shared -->
     <string name="settings_widget_when_to_show">When to show the widget above the nav bar</string>
     <string name="settings_widget_vis_never">Never</string>

@@ -1,9 +1,13 @@
 package com.treecast.app.ui
 
+import androidx.annotation.StringRes
+import com.treecast.app.R
+
 /**
  * The five main chrome elements that can be reordered in the app layout.
  *
- * [displayName] is the human-readable label shown in the reorder widget.
+ * [displayNameRes] is the string resource for the human-readable label
+ * shown in the reorder widget.
  * [DEFAULT_ORDER] is the factory arrangement:
  *   Title Bar → Content → Mini Player → Mini Recorder → Nav
  *
@@ -11,12 +15,12 @@ package com.treecast.app.ui
  * DEFAULT_ORDER on first launch after this update, since [parseOrder]
  * rejects any serialised list whose length doesn't match [entries.size].
  */
-enum class LayoutElement(val displayName: String) {
-    TITLE_BAR("Title Bar"),
-    CONTENT("Content"),
-    MINI_PLAYER("Mini Player"),
-    MINI_RECORDER("Mini Recorder"),
-    NAV("Nav");
+enum class LayoutElement(@StringRes val displayNameRes: Int) {
+    TITLE_BAR(R.string.settings_layout_elem_title_bar),
+    CONTENT(R.string.settings_layout_elem_content),
+    MINI_PLAYER(R.string.settings_layout_elem_mini_player),
+    MINI_RECORDER(R.string.settings_layout_elem_mini_recorder),
+    NAV(R.string.settings_layout_elem_nav);
 
     companion object {
         val DEFAULT_ORDER: List<LayoutElement> =
