@@ -1102,15 +1102,11 @@ class MainActivity : AppCompatActivity() {
                 viewModel.playerWidgetVisibility.value == PlayerWidgetVisibility.NEVER -> {
                     navigateTo(PAGE_LISTEN)
                 }
-                // PLAYING mode - only show when playing but nothing is loaded
-                ((viewModel.playerWidgetVisibility.value == PlayerWidgetVisibility.WHILE_PLAYING) && (viewModel.nowPlaying.value == null)) -> {
-                    navigateTo(PAGE_LISTEN)
-                }
                 // Widget is currently visible → navigate to tab
                 isPlayerWidgetVisible() -> {
                     navigateTo(PAGE_LISTEN)
                 }
-                // Widget is hidden (minimized or suppressed) → show it
+                // Widget is hidden (minimized, suppressed, or no content yet) → show it
                 else -> {
                     viewModel.setPlayerHideOverriddenThisVisit(true)
                     viewModel.setPlayerPillMinimized(false)
@@ -1198,9 +1194,11 @@ class MainActivity : AppCompatActivity() {
                 viewModel.playerPillMinimized
             ) { (state, visibility, overridden), hideOnListenTab, page, minimized ->
                 val hasContent  = state != null
-                val alwaysShow  = visibility == PlayerWidgetVisibility.ALWAYS
-                val neverShow   = visibility == PlayerWidgetVisibility.NEVER
-                val shouldShow  = alwaysShow || (hasContent && !neverShow)
+                val shouldShow  = when (visibility) {
+                    PlayerWidgetVisibility.NEVER         -> false
+                    PlayerWidgetVisibility.WHILE_PLAYING -> hasContent || overridden
+                    PlayerWidgetVisibility.ALWAYS        -> true
+                }
                 val onListenTab = page == PAGE_LISTEN
                 val suppressed  = hideOnListenTab && onListenTab && !overridden
                 shouldShow && !suppressed && !minimized
@@ -1265,10 +1263,6 @@ class MainActivity : AppCompatActivity() {
             when {
                 // NEVER mode - pill always redirects
                 viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.NEVER -> {
-                    navigateTo(PAGE_RECORD)
-                }
-                // RECORDING mode but no media loaded
-                ((viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.WHILE_RECORDING) && (viewModel.recordingState.value == RecordingService.State.IDLE)) -> {
                     navigateTo(PAGE_RECORD)
                 }
                 // mini recorder already visible, second tap nav's to page
@@ -1438,43 +1432,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Returns true if the Mini Player widget is currently on screen.
-     * Used by the pill tap handler to decide navigate-vs-show.
+     * Returns true if the Mini Player widget is currently visible on screen.
+     * Used by the pill tap handler to decide between navigate-vs-show behaviours.
+     *
+     * Intentionally delegates to the view state rather than recomputing visibility
+     * logic here. The widget's combine flow (in setupMiniPlayerMinimize) is the
+     * single source of truth for player visibility — it folds together nowPlaying,
+     * playerWidgetVisibility, playerHideOverriddenThisVisit, hidePlayerOnListenTab,
+     * currentPage, and playerPillMinimized into a single authoritative answer that
+     * drives p.root.visibility.
+     *
+     * Duplicating that logic here would create two code paths that could silently
+     * diverge: if someone updates the combine and forgets to update this function
+     * (or vice versa), the pill would make the wrong navigate-vs-show decision.
+     * Reading the view state instead means there is only one logic pathway.
+     *
+     * This is safe because .collect { } updates the view synchronously before any
+     * user interaction (i.e. a pill tap) can fire, so the value is always current.
      */
-    private fun isPlayerWidgetVisible(): Boolean {
-        val vm          = viewModel
-        val state       = vm.nowPlaying.value
-        val visibility  = vm.playerWidgetVisibility.value
-        val hasContent  = state != null
-        val alwaysShow  = visibility == PlayerWidgetVisibility.ALWAYS
-        val neverShow   = visibility == PlayerWidgetVisibility.NEVER
-        val shouldShow  = alwaysShow || (hasContent && !neverShow)
-        val suppressed  = vm.hidePlayerOnListenTab.value
-                && vm.currentPage.value == PAGE_LISTEN
-                && !vm.playerHideOverriddenThisVisit.value
-        val minimized   = vm.playerPillMinimized.value
-        return shouldShow && !suppressed && !minimized
-    }
+    private fun isPlayerWidgetVisible(): Boolean =
+        binding.miniPlayer.root.visibility == View.VISIBLE
 
     /**
-     * Returns true if the Mini Recorder widget is currently on screen.
-     * Used by the pill tap handler to decide navigate-vs-show.
+     * Returns true if the Mini Recorder widget is currently visible on screen.
+     * Used by the pill tap handler to decide between navigate-vs-show behaviours.
+     *
+     * See isPlayerWidgetVisible() for the full reasoning — the same principle
+     * applies here. The combine flow in setupMiniRecorderMinimize is the single
+     * source of truth for recorder visibility, and this function reads that
+     * decision from the view rather than recomputing it independently.
      */
-    private fun isRecorderWidgetVisible(): Boolean {
-        val vm         = viewModel
-        val state      = vm.recordingState.value
-        val visibility = vm.recorderWidgetVisibility.value
-        val wantShow   = when (visibility) {
-            RecorderWidgetVisibility.NEVER           -> false
-            RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
-            RecorderWidgetVisibility.ALWAYS          -> true
-        }
-        val suppressed = vm.hideRecorderOnRecordTab.value
-                && vm.currentPage.value == PAGE_RECORD
-                && !vm.recorderHideOverriddenThisVisit.value
-        val minimized  = vm.recorderPillMinimized.value
-        return wantShow && !suppressed && !minimized
-    }
+    private fun isRecorderWidgetVisible(): Boolean =
+        binding.miniRecorder.root.visibility == View.VISIBLE
 
     // ── Top title ─────────────────────────────────────────────────────
     private fun observeTopTitle() {
