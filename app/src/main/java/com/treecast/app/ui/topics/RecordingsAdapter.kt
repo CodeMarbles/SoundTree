@@ -131,14 +131,15 @@ class RecordingsAdapter(
 
             if (isOrphan) {
                 btnInlinePlay.setImageResource(R.drawable.ic_storage_offline)
-                btnInlinePlay.contentDescription = "Storage offline"
+                btnInlinePlay.contentDescription =
+                    itemView.context.getString(R.string.recording_cd_storage_offline)
                 btnInlinePlay.imageTintList = ColorStateList.valueOf(
                     itemView.context.themeColor(R.attr.colorTextSecondary))
                 itemView.alpha = 0.5f
                 btnInlinePlay.setOnClickListener {
                     Snackbar.make(
                         itemView,
-                        "Storage device not connected",
+                        R.string.recording_msg_storage_not_connected,
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
@@ -147,7 +148,8 @@ class RecordingsAdapter(
                 val isThisPlaying = rec.id == nowPlayingId && isPlaying
                 btnInlinePlay.setImageResource(
                     if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
-                btnInlinePlay.contentDescription = if (isThisPlaying) "Pause" else "Play"
+                btnInlinePlay.contentDescription = itemView.context.getString(
+                    if (isThisPlaying) R.string.common_cd_pause else R.string.common_cd_play)
                 btnInlinePlay.imageTintList = ColorStateList.valueOf(
                     itemView.context.themeColor(R.attr.colorAccent))
                 itemView.alpha = 1f
@@ -212,24 +214,36 @@ class RecordingsAdapter(
 
         private fun setupAccessibilityActions(rec: RecordingEntity, isOrphan: Boolean) {
             // "Rename" — always available
-            ViewCompat.addAccessibilityAction(itemView, "Rename recording") { _, _ ->
+            ViewCompat.addAccessibilityAction(
+                itemView,
+                itemView.context.getString(R.string.recording_cd_rename)
+            ) { _, _ ->
                 showRenameDialog(rec)
                 true
             }
             // "Move to topic" — hidden for orphan recordings (storage offline)
-            ViewCompat.addAccessibilityAction(itemView, "Move to topic") { _, _ ->
+            ViewCompat.addAccessibilityAction(
+                itemView,
+                itemView.context.getString(R.string.recording_cd_move_to_topic)
+            ) { _, _ ->
                 if (!isOrphan) onMoveRequested(rec.id, rec.topicId)
                 true
             }
             // "Delete" — always available
-            ViewCompat.addAccessibilityAction(itemView, "Delete recording") { _, _ ->
+            ViewCompat.addAccessibilityAction(
+                itemView,
+                itemView.context.getString(R.string.recording_cd_delete)
+            ) { _, _ ->
                 showDeleteDialog(rec)
                 true
             }
             // Only register "Topic Details" where it's visible — keeps TalkBack
             // actions menu clean on Inbox and Topic Details contexts.
             if (showTopicDetails) {
-                ViewCompat.addAccessibilityAction(itemView, "Topic Details") { _, _ ->
+                ViewCompat.addAccessibilityAction(
+                    itemView,
+                    itemView.context.getString(R.string.recording_cd_topic_details)
+                ) { _, _ ->
                     onTopicDetailsRequested(rec.topicId); true
                 }
             }

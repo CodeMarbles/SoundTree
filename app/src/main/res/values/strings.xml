@@ -139,6 +139,17 @@
     <string name="recording_dialog_delete_title">Delete Recording</string>
     <string name="recording_dialog_delete_message">"%1$s" will be permanently deleted.</string>
 
+    <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
+    <!-- Play/pause CDs live in common_ since they are used on multiple screens. -->
+    <string name="recording_cd_storage_offline">Storage offline</string>
+    <string name="recording_cd_rename">Rename recording</string>
+    <string name="recording_cd_move_to_topic">Move to topic</string>
+    <string name="recording_cd_delete">Delete recording</string>
+    <string name="recording_cd_topic_details">View topic details</string>
+
+    <!-- Snackbar shown when the user taps a row whose storage volume is offline -->
+    <string name="recording_msg_storage_not_connected">Storage device not connected</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab
@@ -174,6 +185,16 @@
     <string name="library_subnav_organize">ORGANIZE</string>
     <string name="library_subnav_details">DETAILS</string>
 
+    <!-- Top-bar breadcrumb titles — one string per sub-page so each is
+         independently translatable with full context for the translator.
+         %1$s in library_title_details_topic = the topic's display name. -->
+    <string name="library_title_root">Library</string>
+    <string name="library_title_all">Library > All</string>
+    <string name="library_title_unsorted">Library > Unsorted</string>
+    <string name="library_title_topics">Library > Topics</string>
+    <string name="library_title_organize">Library > Organize</string>
+    <string name="library_title_details">Library > Details</string>
+    <string name="library_title_details_topic">Library > Details > %1$s</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          settings_  —  Settings tab

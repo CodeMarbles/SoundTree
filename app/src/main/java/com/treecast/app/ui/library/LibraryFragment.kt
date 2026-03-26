@@ -237,17 +237,18 @@ class LibraryFragment : Fragment() {
      */
     private fun updateTopTitle(position: Int) {
         val title = when (position) {
-            PAGE_ALL        -> "Library > All"
-            PAGE_UNSORTED   -> "Library > Unsorted"
-            PAGE_TOPICS     -> "Library > Topics"
-            PAGE_RECORDINGS -> "Library > Organize"
+            PAGE_ALL        -> getString(R.string.library_title_all)
+            PAGE_UNSORTED   -> getString(R.string.library_title_unsorted)
+            PAGE_TOPICS     -> getString(R.string.library_title_topics)
+            PAGE_RECORDINGS -> getString(R.string.library_title_organize)
             PAGE_DETAILS    -> {
                 val topicId = viewModel.libraryDetailsTopicId.value
                 val name = viewModel.allTopics.value
                     .firstOrNull { it.id == topicId }?.name.orEmpty()
-                if (name.isNotEmpty()) "Library > Details > $name" else "Library > Details"
+                if (name.isNotEmpty()) getString(R.string.library_title_details_topic, name)
+                else getString(R.string.library_title_details)
             }
-            else -> "Library"
+            else -> getString(R.string.library_title_root)
         }
         (requireActivity() as? MainActivity)?.setTopTitle(title)
     }
