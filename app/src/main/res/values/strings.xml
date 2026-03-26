@@ -42,6 +42,7 @@
     <string name="common_btn_rename">Rename</string>
     <string name="common_btn_move">Move</string>
     <string name="common_btn_unlock">Unlock</string>
+    <string name="common_btn_ok">OK</string>
 
     <plurals name="common_label_recording_count">
         <item quantity="one">1 recording</item>
@@ -81,6 +82,11 @@
     <!-- Topic tree context menu -->
     <string name="topic_action_new_subtopic">New Subtopic</string>
 
+    <!-- Topic dialogs -->
+    <string name="topic_dialog_rename_title">Rename Topic</string>
+    <string name="topic_dialog_delete_title">Delete "%1$s"?</string>
+    <string name="topic_dialog_delete_message">This topic will be permanently deleted.</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          record_  —  Record tab
@@ -96,6 +102,11 @@
 
     <string name="recording_action_move_to_topic">Move to topic…</string>
     <string name="recording_action_topic_details">Topic Details</string>
+
+    <!-- Recording dialogs -->
+    <string name="recording_dialog_rename_title">Rename Recording</string>
+    <string name="recording_dialog_delete_title">Delete Recording</string>
+    <string name="recording_dialog_delete_message">"%1$s" will be permanently deleted.</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════

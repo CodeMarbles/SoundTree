@@ -616,9 +616,9 @@ class RecordFragment : Fragment() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         }
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Rename Recording")
+            .setTitle(R.string.recording_dialog_rename_title)
             .setView(editText)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty()) {
                     currentRecordingDisplayName = newName
@@ -632,7 +632,7 @@ class RecordFragment : Fragment() {
                     recordingService?.setDisplayName(currentRecordingDisplayName, false)
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 
@@ -706,9 +706,6 @@ class RecordFragment : Fragment() {
         val svc = recordingService ?: return
         val result = svc.stopRecording()
         if (result.filePath != null && File(result.filePath).exists()) {
-            val stamp = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-                .format(Date(System.currentTimeMillis()))
-
             val resolvedTopicId = viewModel.recordingTopicId.value?.takeIf { id ->
                 viewModel.allTopics.value.any { it.id == id }
             }

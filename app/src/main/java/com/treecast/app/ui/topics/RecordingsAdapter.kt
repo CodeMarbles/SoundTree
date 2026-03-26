@@ -245,22 +245,22 @@ class RecordingsAdapter(
                 setPadding(48, 24, 48, 8)
             }
             AlertDialog.Builder(ctx)
-                .setTitle("Rename recording")
+                .setTitle(R.string.recording_dialog_rename_title)
                 .setView(input)
-                .setPositiveButton("Save") { _, _ ->
+                .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                     val newTitle = input.text.toString().trim()
                     if (newTitle.isNotEmpty()) onRename(rec.id, newTitle)
                 }
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
         }
 
         private fun showDeleteDialog(rec: RecordingEntity) {
             AlertDialog.Builder(itemView.context)
-                .setTitle("Delete recording")
-                .setMessage("\"${rec.title}\" will be permanently deleted.")
-                .setPositiveButton("Delete") { _, _ -> onDelete(rec) }
-                .setNegativeButton("Cancel", null)
+                .setTitle(R.string.recording_dialog_delete_title)
+                .setMessage(itemView.context.getString(R.string.recording_dialog_delete_message, rec.title))
+                .setPositiveButton(R.string.common_btn_delete) { _, _ -> onDelete(rec) }
+                .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
         }
     }

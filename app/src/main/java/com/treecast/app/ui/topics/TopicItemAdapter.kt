@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -28,7 +27,8 @@ import com.treecast.app.ui.common.TopicPickerView
 import com.treecast.app.util.Icons
 import com.treecast.app.util.themeColor
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class TopicItemAdapter(
     private val onTopicClick:   (TreeNode, Boolean) -> Unit,
@@ -363,22 +363,22 @@ class TopicItemAdapter(
                 setPadding(pad, pad, pad, pad)
             }
             AlertDialog.Builder(ctx)
-                .setTitle("Rename Recording")
+                .setTitle(R.string.recording_dialog_rename_title)
                 .setView(input)
-                .setPositiveButton("Rename") { _, _ ->
+                .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                     val newTitle = input.text.toString().trim()
                     if (newTitle.isNotEmpty()) onRename(rec.id, newTitle)
                 }
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
         }
 
         private fun showDeleteDialog(rec: RecordingEntity) {
             AlertDialog.Builder(itemView.context)
-                .setTitle("Delete Recording")
-                .setMessage("Delete \"${rec.title}\"? This cannot be undone.")
-                .setPositiveButton("Delete") { _, _ -> onDelete(rec) }
-                .setNegativeButton("Cancel", null)
+                .setTitle(R.string.recording_dialog_delete_title)
+                .setMessage(itemView.context.getString(R.string.recording_dialog_delete_message, rec.title))
+                .setPositiveButton(R.string.common_btn_delete) { _, _ -> onDelete(rec) }
+                .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
         }
     }

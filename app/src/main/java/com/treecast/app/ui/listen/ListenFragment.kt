@@ -761,13 +761,13 @@ class ListenFragment : Fragment() {
 
     private fun showDeleteDialog(recording: RecordingEntity) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Delete recording")
-            .setMessage("\"${recording.title}\" will be permanently deleted.")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.recording_dialog_delete_title)
+            .setMessage(getString(R.string.recording_dialog_delete_message, recording.title))
+            .setPositiveButton(R.string.common_btn_delete) { _, _ ->
                 viewModel.stopAndClear()
                 viewModel.deleteRecording(recording)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 
@@ -780,13 +780,13 @@ class ListenFragment : Fragment() {
                     android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         }
         com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Rename Recording")
+            .setTitle(R.string.recording_dialog_rename_title)
             .setView(editText)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty()) viewModel.renameRecording(recording.id, newName)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 

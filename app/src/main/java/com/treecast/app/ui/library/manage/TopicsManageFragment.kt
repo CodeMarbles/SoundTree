@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.treecast.app.R
 import com.treecast.app.databinding.FragmentTopicsManageBinding
 import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.ui.MainViewModel
@@ -113,10 +114,10 @@ class TopicsManageFragment : Fragment() {
                 val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                     ?: return@TopicsManageAdapter
                 AlertDialog.Builder(requireContext())
-                    .setTitle("Delete \"${topic.name}\"?")
-                    .setMessage("This topic will be permanently deleted.")
-                    .setPositiveButton("Delete") { _, _ -> viewModel.deleteTopic(topic) }
-                    .setNegativeButton("Cancel", null)
+                    .setTitle(getString(R.string.topic_dialog_delete_title, topic.name))
+                    .setMessage(R.string.topic_dialog_delete_message)
+                    .setPositiveButton(R.string.common_btn_delete) { _, _ -> viewModel.deleteTopic(topic) }
+                    .setNegativeButton(R.string.common_btn_cancel, null)
                     .show()
             }
         )
@@ -169,9 +170,9 @@ class TopicsManageFragment : Fragment() {
         }
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Rename Topic")
+            .setTitle(R.string.topic_dialog_rename_title)
             .setView(container)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty()) {
                     val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
@@ -179,7 +180,7 @@ class TopicsManageFragment : Fragment() {
                     viewModel.updateTopic(topic.copy(name = newName))
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 

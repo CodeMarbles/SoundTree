@@ -181,15 +181,15 @@ class TopicDetailsFragment : Fragment() {
             addView(editText)
         }
         AlertDialog.Builder(requireContext())
-            .setTitle("Rename Topic")
+            .setTitle(R.string.topic_dialog_rename_title)
             .setView(container)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty() && newName != topic.name) {
                     viewModel.updateTopic(topic.copy(name = newName))
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 
@@ -315,9 +315,9 @@ class TopicDetailsFragment : Fragment() {
             setPadding(48, 24, 48, 8)
         }
         AlertDialog.Builder(ctx)
-            .setTitle("Rename topic")
+            .setTitle(R.string.topic_dialog_rename_title)
             .setView(input)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
                 val newName = input.text.toString().trim()
                 val topic = viewModel.allTopics.value.find { it.id == topicId }
                     ?: return@setPositiveButton
@@ -325,7 +325,7 @@ class TopicDetailsFragment : Fragment() {
                     viewModel.updateTopic(topic.copy(name = newName))
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 
@@ -338,13 +338,13 @@ class TopicDetailsFragment : Fragment() {
 
     private fun showHierarchyDeleteDialog(topicId: Long, topicName: String) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Delete \"$topicName\"?")
-            .setMessage("This topic will be permanently deleted.")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(getString(R.string.topic_dialog_delete_title, topicName))
+            .setMessage(R.string.topic_dialog_delete_message)
+            .setPositiveButton(R.string.common_btn_delete) { _, _ ->
                 val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
                 viewModel.deleteTopic(topic)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
     }
 
