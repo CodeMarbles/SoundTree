@@ -108,7 +108,7 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             it.layoutManager = LinearLayoutManager(requireContext())
         }
 
-        view.findViewById<View>(R.id.rowUncategorised).setOnClickListener {
+        view.findViewById<View>(R.id.rowUnsorted).setOnClickListener {
             deliverResult(null)
         }
 

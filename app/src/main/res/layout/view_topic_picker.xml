@@ -45,12 +45,12 @@
         android:visibility="gone">
 
         <TextView
-            android:id="@+id/tvUncategorised"
+            android:id="@+id/tvUnsorted"
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:gravity="center_vertical"
             android:paddingHorizontal="16dp"
-            android:text="📥  Uncategorised (Inbox)"
+            android:text="@string/topic_picker_label_unsorted"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="13sp"
             android:background="?attr/selectableItemBackground"

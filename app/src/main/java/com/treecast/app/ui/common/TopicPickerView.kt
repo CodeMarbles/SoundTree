@@ -9,9 +9,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.treecast.app.R
 import com.treecast.app.data.entities.TopicEntity
@@ -39,7 +37,7 @@ class TopicPickerView @JvmOverloads constructor(
     private val tvSelected: TextView
     private val ivChevron: ImageView
     private val recyclerView: RecyclerView
-    private val tvUncategorised: TextView
+    private val tvUnsorted: TextView
     private val dropdownContainer: LinearLayout
 
     private val treeAdapter = TopicTreeAdapter(
@@ -55,14 +53,14 @@ class TopicPickerView @JvmOverloads constructor(
         tvSelected        = findViewById(R.id.tvSelectedTopic)
         ivChevron         = findViewById(R.id.ivChevron)
         recyclerView      = findViewById(R.id.recyclerTopics)
-        tvUncategorised   = findViewById(R.id.tvUncategorised)
+        tvUnsorted         = findViewById(R.id.tvUnsorted)
         dropdownContainer = findViewById(R.id.dropdownContainer)
 
         recyclerView.adapter       = treeAdapter
         recyclerView.layoutManager = LinearLayoutManager(context)
 
         headerRow.setOnClickListener { toggle() }
-        tvUncategorised.setOnClickListener {
+        tvUnsorted.setOnClickListener {
             selectTopic(null, context.getString(R.string.topic_label_unsorted), Icons.INBOX)
         }
 

@@ -292,7 +292,7 @@ class RecordFragment : Fragment() {
                     viewModel.allTopics.collect { topics ->
                         if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
                             selectedTopicId = null
-                            updateRecordTopicHeader(null, "Uncategorised", Icons.INBOX)
+                            updateRecordTopicHeader(null, "Unsorted", Icons.INBOX)
                             recordingService?.setTopic(null)
                         }
                     }

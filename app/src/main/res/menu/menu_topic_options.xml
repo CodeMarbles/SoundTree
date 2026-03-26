@@ -7,17 +7,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_new_subtopic"
-        android:title="New Subtopic" />
+        android:title="@string/topic_action_new_subtopic" />
     <item
         android:id="@+id/action_move"
-        android:title="Move" />
+        android:title="@string/common_btn_move" />
     <item
         android:id="@+id/action_rename"
-        android:title="Rename" />
+        android:title="@string/common_btn_rename" />
     <item
         android:id="@+id/action_icon"
-        android:title="Icon" />
+        android:title="@string/topic_btn_icon" />
     <item
         android:id="@+id/action_delete"
-        android:title="Delete" />
+        android:title="@string/common_btn_delete" />
 </menu>

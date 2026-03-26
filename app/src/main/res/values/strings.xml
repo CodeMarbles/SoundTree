@@ -78,6 +78,9 @@
     <string name="topic_btn_icon">Icon</string>
     <string name="topic_btn_details">Details</string>
 
+    <!-- Topic tree context menu -->
+    <string name="topic_action_new_subtopic">New Subtopic</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          record_  —  Record tab

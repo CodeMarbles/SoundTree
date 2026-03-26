@@ -34,7 +34,7 @@
 
     <!-- ── Unsorted option ────────────────────────────────────────── -->
     <LinearLayout
-        android:id="@+id/rowUncategorised"
+        android:id="@+id/rowUnsorted"
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:orientation="horizontal"

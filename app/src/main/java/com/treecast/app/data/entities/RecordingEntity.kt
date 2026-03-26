@@ -35,7 +35,7 @@ import com.treecast.app.util.WaveformStatus
 data class RecordingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 
-    /** Null = "Unsorted" (uncategorised) */
+    /** Null = "Unsorted" */
     @ColumnInfo(name = "topic_id") val topicId: Long? = null,
 
     @ColumnInfo(name = "title") val title: String,
