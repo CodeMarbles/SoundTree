@@ -36,7 +36,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Personal podcast · voice journal"
+            android:text="@string/settings_label_tagline"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="13sp" />
 
@@ -63,7 +63,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Display"
+                android:text="@string/settings_tab_display"
                 android:textSize="12sp"
                 android:gravity="center"
                 android:clickable="true"
@@ -74,7 +74,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Behavior"
+                android:text="@string/settings_tab_behavior"
                 android:textSize="12sp"
                 android:gravity="center"
                 android:clickable="true"
@@ -85,7 +85,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Storage"
+                android:text="@string/settings_tab_storage"
                 android:textSize="12sp"
                 android:gravity="center"
                 android:clickable="true"
@@ -96,7 +96,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Tools"
+                android:text="@string/settings_tab_tools"
                 android:textSize="12sp"
                 android:gravity="center"
                 android:clickable="true"
@@ -132,7 +132,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="APPEARANCE"
+                    android:text="@string/settings_section_appearance"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -167,7 +167,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Theme"
+                                android:text="@string/settings_label_theme"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="15sp" />
 
@@ -182,7 +182,7 @@
                                     android:id="@+id/btnThemeSystem"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="System"
+                                    android:text="@string/settings_theme_system"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -193,7 +193,7 @@
                                     android:id="@+id/btnThemeLight"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="Light"
+                                    android:text="@string/settings_theme_light"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -204,7 +204,7 @@
                                     android:id="@+id/btnThemeDark"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="Dark"
+                                    android:text="@string/settings_theme_dark"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -263,7 +263,7 @@
                                     android:id="@+id/btnWaveformStyleStandard"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="Off"
+                                    android:text="@string/settings_waveform_off"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -274,7 +274,7 @@
                                     android:id="@+id/btnWaveformStyleSky"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="Sky"
+                                    android:text="@string/settings_waveform_sky"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -285,7 +285,7 @@
                                     android:id="@+id/btnWaveformStyleSkyLights"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
-                                    android:text="SkyLights"
+                                    android:text="@string/settings_waveform_skylights"
                                     android:textSize="12sp"
                                     android:gravity="center"
                                     android:paddingHorizontal="10dp"
@@ -328,14 +328,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Swap day / night variant"
+                                        android:text="@string/settings_waveform_swap_day_night"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Invert which variant appears in each theme"
+                                        android:text="@string/settings_waveform_swap_day_night_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -375,14 +375,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Background opacity"
+                                        android:text="@string/settings_waveform_bg_opacity"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="How vivid the scene appears"
+                                        android:text="@string/settings_waveform_bg_opacity_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -425,14 +425,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Extends under ruler"
+                                        android:text="@string/settings_waveform_extends_under_ruler"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Scene continues behind the timestamp strip"
+                                        android:text="@string/settings_waveform_extends_under_ruler_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -472,14 +472,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Unplayed region only"
+                                        android:text="@string/settings_waveform_unplayed_only"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="The scene retreats as you listen, and as you record"
+                                        android:text="@string/settings_waveform_unplayed_only_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -597,7 +597,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="WIDGETS"
+                    android:text="@string/settings_section_widgets"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -637,14 +637,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Recording Widget"
+                                    android:text="@string/settings_label_widget_recorder"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="When to show the widget above the nav bar"
+                                    android:text="@string/settings_widget_when_to_show"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp"
@@ -663,7 +663,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Never"
+                                        android:text="@string/settings_widget_vis_never"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -674,7 +674,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Recording"
+                                        android:text="@string/settings_widget_vis_recording"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -685,7 +685,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Always"
+                                        android:text="@string/settings_widget_vis_always"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -718,14 +718,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Hide on Record Tab"
+                                        android:text="@string/settings_recorder_hide_on_record_tab"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Don't show widget while Record tab is active"
+                                        android:text="@string/settings_recorder_hide_on_record_tab_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -762,14 +762,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Always show recorder shortcut"
+                                        android:text="@string/settings_recorder_always_show_shortcut"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Keep pill visible in title bar at all times"
+                                        android:text="@string/settings_widget_always_show_shortcut_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -809,14 +809,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Playback Widget"
+                                    android:text="@string/settings_label_widget_player"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="When to show the widget above the nav bar"
+                                    android:text="@string/settings_widget_when_to_show"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp"
@@ -835,7 +835,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Never"
+                                        android:text="@string/settings_widget_vis_never"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -846,7 +846,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Playing"
+                                        android:text="@string/settings_widget_vis_playing"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -857,7 +857,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="36dp"
                                         android:layout_weight="1"
-                                        android:text="Always"
+                                        android:text="@string/settings_widget_vis_always"
                                         android:textSize="10sp"
                                         android:insetTop="0dp"
                                         android:insetBottom="0dp" />
@@ -890,14 +890,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Hide on Listen Tab"
+                                        android:text="@string/settings_player_hide_on_listen_tab"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Don't show widget while Listen tab is active"
+                                        android:text="@string/settings_player_hide_on_listen_tab_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -934,14 +934,14 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Always show player shortcut"
+                                        android:text="@string/settings_player_always_show_shortcut"
                                         android:textColor="?attr/colorTextPrimary"
                                         android:textSize="15sp" />
 
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Keep pill visible in title bar at all times"
+                                        android:text="@string/settings_widget_always_show_shortcut_desc"
                                         android:textColor="?attr/colorTextSecondary"
                                         android:textSize="12sp"
                                         android:layout_marginTop="2dp" />
@@ -1058,7 +1058,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Topics"
+                                android:text="@string/settings_label_stat_topics"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1088,7 +1088,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Last session"
+                                android:text="@string/settings_label_stat_last_session"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1118,7 +1118,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Total storage used"
+                                android:text="@string/settings_label_stat_total_storage"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1161,7 +1161,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="NAVIGATION"
+                    android:text="@string/settings_section_navigation"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1200,14 +1200,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Switch to Listen on play"
+                                    android:text="@string/settings_nav_auto_navigate"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Navigate to Listen tab when playback starts"
+                                    android:text="@string/settings_nav_auto_navigate_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1245,14 +1245,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Jump to Library on save"
+                                    android:text="@string/settings_nav_jump_to_library"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Navigate to Library tab after saving a recording"
+                                    android:text="@string/settings_nav_jump_to_library_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1274,7 +1274,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="CONTROLS"
+                    android:text="@string/settings_section_controls"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1313,14 +1313,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Scrub back"
+                                    android:text="@string/settings_controls_scrub_back"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Seconds to rewind on skip-back tap"
+                                    android:text="@string/settings_controls_scrub_back_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1547,14 +1547,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Mark nudge"
+                                    android:text="@string/settings_controls_mark_nudge"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Seconds to shift a mark when nudging"
+                                    android:text="@string/settings_controls_mark_nudge_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1630,7 +1630,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="STORAGE"
+                    android:text="@string/settings_section_storage"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1733,7 +1733,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="RECOVERY"
+                    android:text="@string/settings_section_recording_recovery"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1827,7 +1827,7 @@
                             android:layout_marginStart="8dp"
                             android:layout_marginTop="4dp"
                             android:layout_marginBottom="4dp"
-                            android:text="Review orphaned recordings"
+                            android:text="@string/settings_btn_review_orphans"
                             android:textSize="13sp"
                             android:textColor="?attr/colorAccent" />
 
@@ -1860,7 +1860,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="PROCESSING JOBS"
+                    android:text="@string/settings_section_processing_jobs"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1904,7 +1904,7 @@
                                 style="@style/Widget.MaterialComponents.Button.TextButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Regenerate all waveforms"
+                                android:text="@string/settings_tools_btn_regenerate_waveforms"
                                 android:textSize="13sp"
                                 android:textColor="?attr/colorAccent" />
 
@@ -1999,7 +1999,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="DEV OPTIONS"
+                    android:text="@string/settings_section_dev_options"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -2033,7 +2033,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Future Mode"
+                                android:text="@string/settings_dev_future_mode"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="14sp" />
 

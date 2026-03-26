@@ -130,9 +130,85 @@
          settings_  —  Settings tab
          ══════════════════════════════════════════════════════════════ -->
 
+    <!-- Header (always-visible, above tab bar) -->
+    <string name="settings_label_tagline">Personal podcast · voice journal</string>
+
+    <!-- Tab bar -->
+    <string name="settings_tab_display">Display</string>
+    <string name="settings_tab_behavior">Behavior</string>
+    <string name="settings_tab_storage">Storage</string>
+    <string name="settings_tab_tools">Tools</string>
+
+    <!-- Section headers
+     All rendered with android:textAllCaps="true" in the layout, so
+     store them in normal title case here. -->
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_widgets">Widgets</string>
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_controls">Controls</string>
+    <string name="settings_section_storage">Storage</string>
+    <string name="settings_section_recording_recovery">Recording Recovery</string>
+    <string name="settings_section_processing_jobs">Processing Jobs</string>
+    <string name="settings_section_dev_options">Dev Options</string>
+
+    <!-- Appearance: theme picker -->
+    <string name="settings_label_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+
+    <!-- Appearance: waveform style picker -->
+    <string name="settings_label_waveform">Waveform</string>
+    <string name="settings_waveform_off">Off</string>
+    <string name="settings_waveform_sky">Sky</string>
+    <string name="settings_waveform_skylights">SkyLights</string>
+    <string name="settings_waveform_swap_day_night">Swap day / night variant</string>
+    <string name="settings_waveform_swap_day_night_desc">Invert which variant appears in each theme</string>
+    <string name="settings_waveform_bg_opacity">Background opacity</string>
+    <string name="settings_waveform_bg_opacity_desc">How vivid the scene appears</string>
+    <string name="settings_waveform_extends_under_ruler">Extends under ruler</string>
+    <string name="settings_waveform_extends_under_ruler_desc">Scene continues behind the timestamp strip</string>
+    <string name="settings_waveform_unplayed_only">Unplayed region only</string>
+    <string name="settings_waveform_unplayed_only_desc">The scene retreats as you listen, and as you record</string>
+
+    <!-- Appearance: layout inline row -->
+    <string name="settings_label_layout">Layout</string>
+
     <!-- Layout editing -->
     <string name="settings_btn_layout_edit">Edit layout</string>
     <string name="settings_btn_layout_apply">Apply</string>
+
+    <!-- Widgets: shared -->
+    <string name="settings_widget_when_to_show">When to show the widget above the nav bar</string>
+    <string name="settings_widget_vis_never">Never</string>
+    <string name="settings_widget_vis_always">Always</string>
+    <!--
+        "Keep pill visible in title bar at all times" is the sub-label for both
+        the recorder and player always-show-shortcut switches.
+    -->
+    <string name="settings_widget_always_show_shortcut_desc">Keep pill visible in title bar at all times</string>
+
+    <!-- Widgets: Recording Widget -->
+    <string name="settings_label_widget_recorder">Recording Widget</string>
+    <string name="settings_widget_vis_recording">Recording</string>
+    <string name="settings_recorder_hide_on_record_tab">Hide on Record Tab</string>
+    <string name="settings_recorder_hide_on_record_tab_desc">Don\'t show widget while Record tab is active</string>
+    <string name="settings_recorder_always_show_shortcut">Always show recorder shortcut</string>
+
+    <!-- Widgets: Playback Widget -->
+    <string name="settings_label_widget_player">Playback Widget</string>
+    <string name="settings_widget_vis_playing">Playing</string>
+    <string name="settings_player_hide_on_listen_tab">Hide on Listen Tab</string>
+    <string name="settings_player_hide_on_listen_tab_desc">Don\'t show widget while Listen tab is active</string>
+    <string name="settings_player_always_show_shortcut">Always show player shortcut</string>
+
+    <!-- Stats card (bottom of Display tab) -->
+    <string name="settings_label_stat_topics">Topics</string>
+    <string name="settings_label_stat_total_storage">Total storage used</string>
+    <string name="settings_label_stat_last_session">Last session</string>
+    <string name="settings_label_first_use">First use</string>
+    <string name="settings_label_time_ago">%s ago</string>
+
 
     <!-- Storage volume rows (rendered dynamically in SettingsFragment) -->
     <string name="settings_msg_detecting_storage">Detecting storage…</string>
@@ -140,9 +216,27 @@
     <string name="settings_label_volume_usage_mounted">%1$s used  ·  %2$s</string>
     <string name="settings_label_volume_usage_offline">%s used  ·  offline</string>
 
-    <!-- Stats card -->
-    <string name="settings_label_first_use">First use</string>
-    <string name="settings_label_time_ago">%s ago</string>
+    <!-- Recording recovery (Storage tab) -->
+    <string name="settings_label_orphans">Orphaned recordings</string>
+    <string name="settings_btn_review_orphans">Review orphaned recordings</string>
+
+    <!-- Behavior: Navigation section -->
+    <string name="settings_nav_auto_navigate">Switch to Listen on play</string>
+    <string name="settings_nav_auto_navigate_desc">Navigate to Listen tab when playback starts</string>
+    <string name="settings_nav_jump_to_library">Jump to Library on save</string>
+    <string name="settings_nav_jump_to_library_desc">Navigate to Library tab after saving a recording</string>
+
+    <!-- Behavior: Controls section -->
+    <string name="settings_controls_scrub_back">Scrub back</string>
+    <string name="settings_controls_scrub_back_desc">Seconds to rewind on skip-back tap</string>
+    <string name="settings_controls_mark_nudge">Mark nudge</string>
+    <string name="settings_controls_mark_nudge_desc">Seconds to shift a mark when nudging</string>
+
+    <!-- Tools: Processing jobs -->
+    <string name="settings_tools_btn_regenerate_waveforms">Regenerate all waveforms</string>
+
+    <!-- Tools: Dev options -->
+    <string name="settings_dev_future_mode">Future Mode</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
