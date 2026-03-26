@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Context menu shown when the user long-presses a recording row or taps ⋮.
-  Some options suppressed programatically based on context.
+  Some options suppressed programmatically based on context.
 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_rename"
-        android:title="Rename" />
+        android:title="@string/common_btn_rename" />
     <item
         android:id="@+id/action_move"
-        android:title="Move to topic…" />
+        android:title="@string/recording_action_move_to_topic" />
     <item
         android:id="@+id/action_delete"
-        android:title="Delete" />
+        android:title="@string/common_btn_delete" />
     <item
         android:id="@+id/action_topic_details"
-        android:title="Topic Details" />
+        android:title="@string/recording_action_topic_details" />
 </menu>

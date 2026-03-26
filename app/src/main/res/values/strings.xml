@@ -91,6 +91,14 @@
 
 
     <!-- ══════════════════════════════════════════════════════════════
+     recording_  —  Recording item actions (menus, dialogs)
+     ══════════════════════════════════════════════════════════════ -->
+
+    <string name="recording_action_move_to_topic">Move to topic…</string>
+    <string name="recording_action_topic_details">Topic Details</string>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab
          ══════════════════════════════════════════════════════════════ -->
 
