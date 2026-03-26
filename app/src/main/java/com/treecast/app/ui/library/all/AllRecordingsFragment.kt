@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.treecast.app.R
 import com.treecast.app.databinding.FragmentAllRecordingsBinding
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.ui.MainActivity
@@ -134,7 +135,10 @@ class AllRecordingsFragment : Fragment() {
     }
 
     private fun updateSortButtonLabel() {
-        binding.btnSortOrder.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
+        binding.btnSortOrder.text = getString(
+            if (newestFirst) R.string.library_sort_newest_first
+            else             R.string.library_sort_oldest_first
+        )
     }
 
     private fun submitSorted(recordings: List<RecordingEntity>) {

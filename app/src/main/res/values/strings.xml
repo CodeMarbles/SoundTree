@@ -99,6 +99,17 @@
     <string name="topic_dialog_delete_title">Delete "%1$s"?</string>
     <string name="topic_dialog_delete_message">This topic will be permanently deleted.</string>
 
+    <!-- Content descriptions and TalkBack action labels for topic management.
+         Used across the Topics tab, Details tab, and hierarchy rows —
+         extract once here rather than duplicating per-screen. -->
+    <string name="topic_cd_overflow">%1$s options</string>
+    <string name="topic_cd_expand">Expand %1$s</string>
+    <string name="topic_cd_collapse">Collapse %1$s</string>
+    <string name="topic_cd_change_icon">Change topic icon</string>
+    <string name="topic_cd_rename">Rename topic</string>
+    <string name="topic_cd_move">Move topic</string>
+    <string name="topic_cd_delete">Delete topic</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          record_  —  Record tab
@@ -195,6 +206,24 @@
     <string name="library_title_organize">Library > Organize</string>
     <string name="library_title_details">Library > Details</string>
     <string name="library_title_details_topic">Library > Details > %1$s</string>
+
+    <!-- ALL tab: sort toolbar label -->
+    <string name="library_label_all_recordings">All Recordings</string>
+
+    <!-- Sort toggle button labels. Arrow prefix is intentional visual design.
+         Store in title case — textAllCaps="true" is set on the button views. -->
+    <string name="library_sort_newest_first">↓ Newest First</string>
+    <string name="library_sort_oldest_first">↑ Oldest First</string>
+
+    <!-- DETAILS tab: section headers (rendered with textAllCaps="true") -->
+    <string name="library_section_hierarchy">Hierarchy</string>
+    <string name="library_section_recordings_in_topic">Recordings in This Topic</string>
+
+    <!-- DETAILS tab: move topic button (rendered with textAllCaps="true") -->
+    <string name="library_btn_move_topic">Move to…</string>
+
+    <!-- DETAILS tab: empty recordings state -->
+    <string name="library_msg_no_recordings_in_topic">No recordings in this topic yet.</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          settings_  —  Settings tab

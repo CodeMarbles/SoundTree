@@ -401,7 +401,10 @@ class TopicDetailsFragment : Fragment() {
     private fun setupSortButton() {
         binding.btnSortRecordings.setOnClickListener {
             newestFirst = !newestFirst
-            binding.btnSortRecordings.text = if (newestFirst) "↓ NEWEST FIRST" else "↑ OLDEST FIRST"
+            binding.btnSortRecordings.text = getString(
+                if (newestFirst) R.string.library_sort_newest_first
+                else             R.string.library_sort_oldest_first
+            )
             val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
             val recordings = viewModel.allRecordings.value.filter { it.topicId == topicId }
             submitSortedRecordings(recordings)
@@ -601,7 +604,7 @@ class TopicDetailsFragment : Fragment() {
         // ── Overflow ⋮ and long-press ─────────────────────────────────────
         if (onOptionsRequested != null) {
             ivOverflow.visibility = View.VISIBLE
-            ivOverflow.contentDescription = "$name options"
+            ivOverflow.contentDescription = getString(R.string.topic_cd_overflow, name)
             ivOverflow.setOnClickListener { onOptionsRequested(ivOverflow) }
             row.setOnLongClickListener {
                 onOptionsRequested(ivOverflow)
@@ -613,20 +616,20 @@ class TopicDetailsFragment : Fragment() {
                 val isEmpty = viewModel.allTopics.value.none { it.parentId == topicId } &&
                         viewModel.allRecordings.value.none { it.topicId == topicId }
 
-                ViewCompat.addAccessibilityAction(row, "New subtopic") { _, _ ->
+                ViewCompat.addAccessibilityAction(row, getString(R.string.topic_action_new_subtopic)) { _, _ ->
                     showHierarchyNewSubtopicDialog(topicId); true
                 }
-                ViewCompat.addAccessibilityAction(row, "Move topic") { _, _ ->
+                ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_move)) { _, _ ->
                     showHierarchyMovePicker(topicId); true
                 }
-                ViewCompat.addAccessibilityAction(row, "Rename topic") { _, _ ->
+                ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_rename)) { _, _ ->
                     showHierarchyRenameDialog(topicId, name); true
                 }
-                ViewCompat.addAccessibilityAction(row, "Change icon") { _, _ ->
+                ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_change_icon)) { _, _ ->
                     showHierarchyIconPicker(topicId); true
                 }
                 if (isEmpty) {
-                    ViewCompat.addAccessibilityAction(row, "Delete topic") { _, _ ->
+                    ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_delete)) { _, _ ->
                         showHierarchyDeleteDialog(topicId, name); true
                     }
                 }
@@ -640,7 +643,8 @@ class TopicDetailsFragment : Fragment() {
             ivChevron.visibility = View.VISIBLE
             ivChevron.rotation = if (isCollapsed) -90f else 0f
             ivChevron.contentDescription =
-                if (isCollapsed) "Expand $name" else "Collapse $name"
+                if (isCollapsed) getString(R.string.topic_cd_expand, name)
+                else             getString(R.string.topic_cd_collapse, name)
             ivChevron.setOnClickListener { onChevronClick() }
         } else {
             ivChevron.visibility = View.GONE
