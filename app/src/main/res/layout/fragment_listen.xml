@@ -111,7 +111,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="@string/listen_cd_overflow_options"
+                android:contentDescription="@string/recording_cd_overflow"
                 app:tint="?attr/colorTextSecondary" />
 
             <!-- Date + duration + file size meta column — right-aligned, small -->

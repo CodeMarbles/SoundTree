@@ -109,7 +109,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
-            android:contentDescription="Recording options"
+            android:contentDescription="@string/recording_cd_overflow"
             app:tint="?attr/colorTextSecondary" />
 
     </LinearLayout>

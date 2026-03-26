@@ -132,7 +132,8 @@ class TopicsManageAdapter(
 
             // ── Overflow ⋮ ────────────────────────────────────────────
             ivOverflow.visibility = View.VISIBLE
-            ivOverflow.contentDescription = "${topic.name} options"
+            ivOverflow.contentDescription =
+                itemView.context.getString(R.string.topic_cd_overflow, topic.name)
             ivOverflow.setOnClickListener { showOptionsMenu(topic.id, topic.name, isEmpty) }
 
             // ── Chevron ───────────────────────────────────────────────
@@ -140,8 +141,10 @@ class TopicsManageAdapter(
                 ivChevron.visibility = View.VISIBLE
                 ivChevron.rotation   = if (item.isCollapsed) -90f else 0f
                 ivChevron.contentDescription =
-                    if (item.isCollapsed) "Expand ${topic.name}"
-                    else                  "Collapse ${topic.name}"
+                    if (item.isCollapsed)
+                        itemView.context.getString(R.string.topic_cd_expand, topic.name)
+                    else
+                        itemView.context.getString(R.string.topic_cd_collapse, topic.name)
                 ivChevron.setOnClickListener { onCollapseToggle(topic.id, item.isCollapsed) }
             } else {
                 ivChevron.visibility = View.INVISIBLE
@@ -188,25 +191,23 @@ class TopicsManageAdapter(
             topicName: String,
             isEmpty: Boolean
         ) {
-            ViewCompat.addAccessibilityAction(itemView, "New subtopic") { _, _ ->
-                onNewSubtopic(topicId); true
-            }
-            ViewCompat.addAccessibilityAction(itemView, "Move topic") { _, _ ->
-                onMoveClick(topicId); true
-            }
-            ViewCompat.addAccessibilityAction(itemView, "Rename topic") { _, _ ->
-                onRenameClick(topicId, topicName); true
-            }
-            ViewCompat.addAccessibilityAction(itemView, "Change icon") { _, _ ->
-                onIconClick(topicId); true
-            }
-            // Delete is only available for empty topics — skip registering the
-            // action entirely when the topic has content, so it never appears
-            // in TalkBack's actions menu for non-empty rows.
+            val ctx = itemView.context
+            ViewCompat.addAccessibilityAction(
+                itemView, ctx.getString(R.string.topic_action_new_subtopic)
+            ) { _, _ -> onNewSubtopic(topicId); true }
+            ViewCompat.addAccessibilityAction(
+                itemView, ctx.getString(R.string.topic_cd_move)
+            ) { _, _ -> onMoveClick(topicId); true }
+            ViewCompat.addAccessibilityAction(
+                itemView, ctx.getString(R.string.topic_cd_rename)
+            ) { _, _ -> onRenameClick(topicId, topicName); true }
+            ViewCompat.addAccessibilityAction(
+                itemView, ctx.getString(R.string.topic_cd_change_icon)
+            ) { _, _ -> onIconClick(topicId); true }
             if (isEmpty) {
-                ViewCompat.addAccessibilityAction(itemView, "Delete topic") { _, _ ->
-                    onDeleteClick(topicId); true
-                }
+                ViewCompat.addAccessibilityAction(
+                    itemView, ctx.getString(R.string.topic_cd_delete)
+                ) { _, _ -> onDeleteClick(topicId); true }
             }
         }
     }

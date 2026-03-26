@@ -157,6 +157,7 @@
     <string name="recording_cd_move_to_topic">Move to topic</string>
     <string name="recording_cd_delete">Delete recording</string>
     <string name="recording_cd_topic_details">View topic details</string>
+    <string name="recording_cd_overflow">Recording options</string>
 
     <!-- Snackbar shown when the user taps a row whose storage volume is offline -->
     <string name="recording_msg_storage_not_connected">Storage device not connected</string>
@@ -175,7 +176,6 @@
     <string name="listen_btn_sleep_timer">Zzz</string>
 
     <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
-    <string name="listen_cd_overflow_options">Recording options</string>
     <string name="listen_cd_skip_back">Skip back</string>
     <string name="listen_cd_skip_forward">Skip forward</string>
     <string name="listen_cd_expand_waveform">Expand waveform</string>
