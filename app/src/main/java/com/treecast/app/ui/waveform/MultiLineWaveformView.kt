@@ -499,7 +499,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
     fun setCandidateMarkMs(positionMs: Long?) {
         candidateMarkMs = positionMs
         if (positionMs != null) {
-            candidateBannerLabel.text = "Add mark at ${formatCandidateMs(positionMs)}"
+            candidateBannerLabel.text = context.getString(R.string.waveform_label_candidate_mark, formatCandidateMs(positionMs))
             candidateBanner.visibility = View.VISIBLE
         } else {
             candidateBanner.visibility = View.GONE

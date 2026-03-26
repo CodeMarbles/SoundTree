@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.EditText
 import android.widget.LinearLayout
 import androidx.fragment.app.DialogFragment
+import com.treecast.app.R
 import com.treecast.app.util.emojiToColor
 
 /**
@@ -22,17 +23,21 @@ class NewTopicDialog(
             val pad = (16 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad, pad, pad)
         }
-        val nameInput = EditText(requireContext()).apply { hint = "Topic name" }
+        val nameInput = EditText(requireContext()).apply { hint = getString(R.string.topic_hint_name) }
         layout.addView(nameInput)
 
         return AlertDialog.Builder(requireContext())
-            .setTitle(if (parentId == null) "New Root Topic" else "New Sub-topic")
+            .setTitle(
+                if (parentId == null) R.string.topic_dialog_new_root_title
+                else R.string.topic_dialog_new_subtopic_title
+            )
             .setView(layout)
-            .setPositiveButton("Create") { _, _ ->
+            .setPositiveButton(R.string.common_btn_create) { _, _ ->
                 val name = nameInput.text.toString().trim()
-                if (name.isNotEmpty()) onCreated(name, "🎙️", emojiToColor("🎙️"))
+                val defaultEmoji = getString(R.string.topic_default_emoji)
+                if (name.isNotEmpty()) onCreated(name, defaultEmoji, defaultEmoji)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_btn_cancel, null)
             .create()
     }
 }

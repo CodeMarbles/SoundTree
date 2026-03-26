@@ -138,10 +138,10 @@ class ListenFragment : Fragment() {
         binding.btnSnapUp.setOnClickListener   { snapTo(SplitterState.SNAP_UP) }
 
         binding.btnPlaybackSpeed.setOnClickListener {
-            Toast.makeText(requireContext(), "Playback Speed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.listen_toast_playback_speed, Toast.LENGTH_SHORT).show()
         }
         binding.btnSleepTimer.setOnClickListener {
-            Toast.makeText(requireContext(), "Sleep Timer", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.listen_toast_sleep_timer, Toast.LENGTH_SHORT).show()
         }
         binding.splitterBar.setOnTouchListener { _, event -> handleSplitterTouch(event) }
     }

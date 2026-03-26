@@ -529,7 +529,7 @@ class RecordFragment : Fragment() {
                     icon = null
                     //iconTint = ColorStateList.valueOf(Color.WHITE)
 
-                    text = "REC"
+                    text = getString(R.string.record_btn_rec)  // "REC"
                     textSize = 22f
                 }
                 // Flanking buttons + hint label hidden
@@ -587,7 +587,7 @@ class RecordFragment : Fragment() {
                     iconPadding = toDp(5f)
                     iconTint = ColorStateList.valueOf(Color.WHITE)
 
-                    text = "RESUME"
+                    text = getString(R.string.record_btn_resume)  // "RESUME"
                     textSize = 9f
                 }
 

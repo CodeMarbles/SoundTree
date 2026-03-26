@@ -43,6 +43,7 @@
     <string name="common_btn_move">Move</string>
     <string name="common_btn_unlock">Unlock</string>
     <string name="common_btn_ok">OK</string>
+    <string name="common_btn_create">Create</string>
 
     <plurals name="common_label_recording_count">
         <item quantity="one">1 recording</item>
@@ -55,6 +56,8 @@
     <!-- ══════════════════════════════════════════════════════════════
          topic_  —  Topic tree, topic picker, inbox tile
          ══════════════════════════════════════════════════════════════ -->
+
+    <string name="topic_default_emoji">🎙</string>
 
     <!--
         topic_label_unsorted is the plain display name used wherever a
@@ -85,6 +88,9 @@
     <string name="topic_action_new_subtopic">New Subtopic</string>
 
     <!-- Topic dialogs -->
+    <string name="topic_dialog_new_root_title">New Root Topic</string>
+    <string name="topic_dialog_new_subtopic_title">New Sub-topic</string>
+    <string name="topic_hint_name">Topic name</string>
     <string name="topic_dialog_rename_title">Rename Topic</string>
     <string name="topic_dialog_delete_title">Delete "%1$s"?</string>
     <string name="topic_dialog_delete_message">This topic will be permanently deleted.</string>
@@ -94,8 +100,17 @@
          record_  —  Record tab
          ══════════════════════════════════════════════════════════════ -->
 
-    <!-- Main record button label in IDLE state -->
+    <!-- Record button states -->
     <string name="record_btn_rec">REC</string>
+    <string name="record_btn_resume">RESUME</string>
+    <string name="record_btn_cancel">CANCEL</string>
+    <string name="record_btn_save">SAVE</string>
+
+    <!-- Mark button (icon + label, Record tab mark/lock row) -->
+    <string name="record_btn_mark">MARK</string>
+
+    <!-- Cancel hint below the Cancel button -->
+    <string name="record_label_cancel_hint">Double-tap to cancel</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -115,6 +130,9 @@
          listen_  —  Listen tab
          ══════════════════════════════════════════════════════════════ -->
 
+    <!-- Placeholder stubs for upcoming features -->
+    <string name="listen_toast_playback_speed">Playback Speed</string>
+    <string name="listen_toast_sleep_timer">Sleep Timer</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          library_  —  Library tab
@@ -292,5 +310,14 @@
         <item quantity="one">%d incomplete recording</item>
         <item quantity="other">%d incomplete recordings</item>
     </plurals>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         waveform_  —  MultiLineWaveformView widget strings.
+         Candidate for future injection-based customisation; kept here
+         until the widget's string/configuration API is fully designed.
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Candidate mark confirmation banner (Record tab) -->
+    <string name="waveform_label_candidate_mark">Add mark at %s</string>
 
 </resources>
