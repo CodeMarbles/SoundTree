@@ -965,7 +965,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="STATS"
+                    android:text="@string/settings_section_stats"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -1028,7 +1028,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Recordings"
+                                android:text="@string/settings_label_stat_recordings"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1767,7 +1767,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Recoverable"
+                                android:text="@string/settings_orphan_label_recoverable"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1799,7 +1799,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Unrecoverable"
+                                android:text="@string/settings_orphan_label_unrecoverable"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1931,7 +1931,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Analysing…"
+                                android:text="@string/settings_tools_job_analysing"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="12sp" />
 
@@ -1986,7 +1986,7 @@
                             android:layout_height="wrap_content"
                             android:paddingHorizontal="16dp"
                             android:paddingVertical="10dp"
-                            android:text="No jobs running"
+                            android:text="@string/settings_tools_no_jobs"
                             android:textColor="?attr/colorTextSecondary"
                             android:textSize="13sp"
                             android:visibility="visible" />

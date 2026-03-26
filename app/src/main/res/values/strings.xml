@@ -202,12 +202,16 @@
     <string name="settings_player_hide_on_listen_tab_desc">Don\'t show widget while Listen tab is active</string>
     <string name="settings_player_always_show_shortcut">Always show player shortcut</string>
 
+    <!-- Stats section header -->
+    <string name="settings_section_stats">Stats</string>
+
     <!-- Stats card (bottom of Display tab) -->
     <string name="settings_label_stat_topics">Topics</string>
     <string name="settings_label_stat_total_storage">Total storage used</string>
     <string name="settings_label_stat_last_session">Last session</string>
     <string name="settings_label_first_use">First use</string>
     <string name="settings_label_time_ago">%s ago</string>
+    <string name="settings_label_stat_recordings">Recordings</string>
 
 
     <!-- Storage volume rows (rendered dynamically in SettingsFragment) -->
@@ -219,6 +223,8 @@
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>
     <string name="settings_btn_review_orphans">Review orphaned recordings</string>
+    <string name="settings_orphan_label_recoverable">Recoverable</string>
+    <string name="settings_orphan_label_unrecoverable">Unrecoverable</string>
 
     <!-- Behavior: Navigation section -->
     <string name="settings_nav_auto_navigate">Switch to Listen on play</string>
@@ -234,6 +240,8 @@
 
     <!-- Tools: Processing jobs -->
     <string name="settings_tools_btn_regenerate_waveforms">Regenerate all waveforms</string>
+    <string name="settings_tools_job_analysing">Analysing…</string>
+    <string name="settings_tools_no_jobs">No jobs running</string>
 
     <!-- Tools: Dev options -->
     <string name="settings_dev_future_mode">Future Mode</string>
