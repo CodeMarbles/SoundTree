@@ -199,7 +199,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Delete selected mark" />
+                android:contentDescription="@string/mark_cd_delete" />
 
             <!-- Nudge last mark back  ← 📍 -->
             <ImageView
@@ -214,7 +214,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Nudge mark back"
+                android:contentDescription="@string/mark_cd_nudge_back"
                 app:tint="?attr/colorMarkSelected" />
 
             <!--
@@ -225,7 +225,7 @@
                 android:id="@+id/btnMiniMark"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:text="MARK"
+                android:text="@string/mark_btn_add"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/white"
@@ -244,7 +244,7 @@
                 app:cornerRadius="16dp"
                 app:strokeColor="?attr/colorRecordActive"
                 app:strokeWidth="2dp"
-                android:contentDescription="Drop mark" />
+                android:contentDescription="@string/mark_cd_add" />
 
             <!-- Nudge last mark forward  📍 → -->
             <ImageView
@@ -260,7 +260,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Nudge mark forward"
+                android:contentDescription="@string/mark_cd_nudge_fwd"
                 app:tint="?attr/colorMarkSelected" />
 
             <!-- Commit / lock nudge -->
@@ -276,7 +276,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Commit mark position"
+                android:contentDescription="@string/mark_cd_confirm"
                 app:tint="?attr/colorMarkSelected" />
 
         </LinearLayout>

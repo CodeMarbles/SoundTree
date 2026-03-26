@@ -113,6 +113,9 @@
     <!-- Cancel hint below the Cancel button -->
     <string name="record_label_cancel_hint">Double-tap to cancel</string>
 
+    <!-- Eyebrow label above the in-progress recording name field -->
+    <string name="record_label_name_header">Recording</string>
+
     <!-- Toasts -->
     <string name="record_toast_mic_permission">Microphone permission required</string>
     <string name="record_toast_cancel_confirm">Tap again to cancel</string>
@@ -122,11 +125,6 @@
     <string name="record_dialog_low_storage_title">Low Storage</string>
     <string name="record_dialog_low_storage_msg">Only %1$s free on \"%2$s\". The recording may be cut short.\n\nContinue anyway?</string>
     <string name="record_btn_continue">Continue</string>
-
-    <!-- Content descriptions (accessibility) -->
-    <string name="record_cd_nudge_back">Nudge mark earlier</string>
-    <string name="record_cd_nudge_forward">Nudge mark later</string>
-    <string name="record_cd_mark_delete">Delete mark</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -333,7 +331,27 @@
          until the widget's string/configuration API is fully designed.
          ══════════════════════════════════════════════════════════════ -->
 
-    <!-- Candidate mark confirmation banner (Record tab) -->
-    <string name="waveform_label_candidate_mark">Add mark at %s</string>
+    <!-- ══════════════════════════════════════════════════════════════
+        mark_  —  Mark feature: shared across Record tab, Listen tab,
+                  Mini Recorder, and Mini Player. Add new mark strings
+                  here rather than creating screen-specific copies.
+                  Marks are a central extensibility point; expect this
+                  section to grow as mark-related features are added.
+        ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Button label (visible text; all mark buttons use textAllCaps — store as title case) -->
+    <string name="mark_btn_add">Mark</string>
+
+    <!-- Candidate mark banner; %s = formatted timestamp e.g. "1:23" -->
+    <string name="mark_label_candidate">Add mark at %s</string>
+
+    <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
+    <string name="mark_cd_add">Add mark</string>
+    <string name="mark_cd_delete">Delete mark</string>
+    <string name="mark_cd_nudge_back">Nudge mark back</string>
+    <string name="mark_cd_nudge_fwd">Nudge mark forward</string>
+    <string name="mark_cd_jump_prev">Previous mark</string>
+    <string name="mark_cd_jump_next">Next mark</string>
+    <string name="mark_cd_confirm">Lock mark position</string>
 
 </resources>

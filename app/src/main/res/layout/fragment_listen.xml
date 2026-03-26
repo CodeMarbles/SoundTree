@@ -227,7 +227,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Jump to previous mark"
+                android:contentDescription="@string/mark_cd_jump_prev"
                 app:tint="?attr/colorMarkDefault" />
 
             <!-- Skip back -->
@@ -283,7 +283,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Jump to next mark"
+                android:contentDescription="@string/mark_cd_jump_next"
                 app:tint="?attr/colorMarkDefault" />
 
             <!-- Right spacer: symmetric with left spacer -->
@@ -502,7 +502,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:contentDescription="Move mark back"
+                    android:contentDescription="@string/mark_cd_nudge_back"
                     app:tint="?attr/colorTextSecondary" />
 
                 <ImageView
@@ -514,7 +514,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:contentDescription="Move mark forward"
+                    android:contentDescription="@string/mark_cd_nudge_fwd"
                     app:tint="?attr/colorTextSecondary" />
 
                 <ImageView
@@ -526,7 +526,7 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:contentDescription="Delete mark"
+                    android:contentDescription="@string/mark_cd_delete"
                     app:tint="?attr/colorTextSecondary" />
 
                 <com.google.android.material.card.MaterialCardView
@@ -538,7 +538,8 @@
                     android:focusable="true"
                     app:cardBackgroundColor="?attr/colorTextSecondary"
                     app:cardCornerRadius="7dp"
-                    app:cardElevation="0dp">
+                    app:cardElevation="0dp"
+                    android:contentDescription="@string/mark_cd_confirm" >
 
                     <ImageView
                         android:layout_width="match_parent"
@@ -565,7 +566,7 @@
                     android:id="@+id/btnAddMark"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="MARK"
+                    android:text="@string/mark_btn_add"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textAllCaps="true"
@@ -578,7 +579,8 @@
                     app:iconSize="16dp"
                     app:iconTint="@color/white"
                     app:iconGravity="textStart"
-                    app:cornerRadius="24dp" />
+                    app:cornerRadius="24dp"
+                    android:contentDescription="@string/mark_cd_add" />
 
             </LinearLayout>
 

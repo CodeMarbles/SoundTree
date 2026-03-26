@@ -68,7 +68,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:text="Unsorted"
+                    android:text="@string/topic_label_unsorted"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="13sp" />
 
@@ -101,7 +101,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="RECORDING"
+                    android:text="@string/record_label_name_header"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="9sp"
                     android:textAllCaps="true"
@@ -370,7 +370,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="@string/record_cd_nudge_back" />
+                    android:contentDescription="@string/mark_cd_nudge_back" />
 
                 <!-- Nudge later -->
                 <ImageView
@@ -384,7 +384,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="@string/record_cd_nudge_forward" />
+                    android:contentDescription="@string/mark_cd_nudge_fwd" />
 
                 <!-- Delete mark -->
                 <ImageView
@@ -398,7 +398,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="@string/record_cd_mark_delete" />
+                    android:contentDescription="@string/mark_cd_delete" />
 
                 <!-- Confirm / dismiss (UI-only: deselects mark, hides panel) -->
                 <com.google.android.material.card.MaterialCardView
@@ -409,7 +409,8 @@
                     android:focusable="true"
                     app:cardBackgroundColor="?attr/colorMarkSelected"
                     app:cardCornerRadius="7dp"
-                    app:cardElevation="0dp">
+                    app:cardElevation="0dp"
+                    android:contentDescription="@string/mark_cd_confirm">
 
                     <ImageView
                         android:layout_width="match_parent"
@@ -471,9 +472,11 @@
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
+                android:text="@string/mark_btn_add"
                 app:cardBackgroundColor="?attr/colorMarkAction"
                 app:cardCornerRadius="14dp"
-                app:cardElevation="0dp">
+                app:cardElevation="0dp"
+                android:contentDescription="@string/mark_cd_add" >
 
                 <LinearLayout
                     android:layout_width="match_parent"

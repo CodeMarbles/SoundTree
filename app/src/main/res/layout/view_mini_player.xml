@@ -222,7 +222,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Delete selected mark" />
+                android:contentDescription="@string/mark_cd_delete" />
 
             <!-- Nudge mark back ← (outer ring) -->
             <ImageView
@@ -236,7 +236,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Move mark back"
+                android:contentDescription="@string/mark_cd_nudge_back"
                 app:tint="?attr/colorMarkSelected" />
 
             <!-- Jump to previous mark (inner ring) -->
@@ -249,7 +249,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Jump to previous mark"
+                android:contentDescription="@string/mark_cd_jump_prev"
                 app:tint="?attr/colorMarkDefault" />
 
             <!-- MARK pill — blue stroke = "listener's tool" -->
@@ -257,7 +257,7 @@
                 android:id="@+id/btnMiniAddMark"
                 android:layout_width="wrap_content"
                 android:layout_height="30dp"
-                android:text="MARK"
+                android:text="@string/mark_btn_add"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/white"
@@ -276,7 +276,7 @@
                 app:cornerRadius="15dp"
                 app:strokeColor="?attr/colorAccent"
                 app:strokeWidth="2dp"
-                android:contentDescription="Add mark at current position" />
+                android:contentDescription="@string/mark_cd_add" />
 
             <!-- Jump to next mark (inner ring) -->
             <ImageView
@@ -288,7 +288,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Jump to next mark"
+                android:contentDescription="@string/mark_cd_jump_next"
                 app:tint="?attr/colorMarkDefault" />
 
             <!-- Nudge mark forward → (outer ring) -->
@@ -303,7 +303,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Move mark forward"
+                android:contentDescription="@string/mark_cd_nudge_fwd"
                 app:tint="?attr/colorMarkSelected" />
 
             <!-- Confirm mark position -->
@@ -318,7 +318,7 @@
                 android:focusable="true"
                 android:enabled="false"
                 android:alpha="0.3"
-                android:contentDescription="Confirm mark position"
+                android:contentDescription="@string/mark_cd_confirm"
                 app:tint="?attr/colorMarkSelected" />
 
         </LinearLayout>
