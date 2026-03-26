@@ -265,7 +265,7 @@ class RecordingService : Service() {
         startTimeMs = System.currentTimeMillis()
         accumulatedMs = 0L
         _state.value = State.RECORDING
-        startForeground(NOTIFICATION_ID, buildNotification("Recording…"))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_record_status_recording)))
         mainHandler.post(amplitudeRunnable)
         return currentFilePath
     }
@@ -275,7 +275,7 @@ class RecordingService : Service() {
         mediaRecorder?.pause()
         accumulatedMs += System.currentTimeMillis() - startTimeMs
         _state.value = State.PAUSED
-        updateNotification("Paused")
+        updateNotification(getString(R.string.notif_record_status_paused))
         mainHandler.removeCallbacks(amplitudeRunnable)
     }
 
@@ -284,7 +284,7 @@ class RecordingService : Service() {
         mediaRecorder?.resume()
         startTimeMs = System.currentTimeMillis()
         _state.value = State.RECORDING
-        updateNotification("Recording…")
+        updateNotification(getString(R.string.notif_record_status_recording))
         mainHandler.post(amplitudeRunnable)
     }
 
@@ -548,8 +548,10 @@ class RecordingService : Service() {
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            CHANNEL_ID, "Recording", NotificationManager.IMPORTANCE_LOW
-        ).apply { description = "TreeCast recording status" }
+            CHANNEL_ID,
+            getString(R.string.notif_channel_record_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply { description = getString(R.string.notif_channel_record_desc) }
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(channel)
     }
@@ -578,18 +580,14 @@ class RecordingService : Service() {
             val resumePi = PendingIntent.getService(
                 this, REQUEST_RESUME, resumeIntent, PendingIntent.FLAG_IMMUTABLE
             )
-            NotificationCompat.Action(
-                R.drawable.ic_resume_circle, "Resume", resumePi
-            )
+            NotificationCompat.Action(R.drawable.ic_resume_circle, getString(R.string.notif_record_action_resume), resumePi)
         } else {
             val pauseIntent = Intent(this, RecordingService::class.java)
                 .apply { action = ACTION_PAUSE }
             val pausePi = PendingIntent.getService(
                 this, REQUEST_PAUSE, pauseIntent, PendingIntent.FLAG_IMMUTABLE
             )
-            NotificationCompat.Action(
-                R.drawable.ic_pause, "Pause", pausePi
-            )
+            NotificationCompat.Action(R.drawable.ic_pause, getString(R.string.notif_record_action_pause), pausePi)
         }
 
         // ── Save action ───────────────────────────────────────────────
@@ -598,9 +596,7 @@ class RecordingService : Service() {
         val savePi = PendingIntent.getService(
             this, REQUEST_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
         )
-        val saveAction = NotificationCompat.Action(
-            R.drawable.ic_save_check_wave, "Save", savePi
-        )
+        val saveAction = NotificationCompat.Action(R.drawable.ic_save_check_wave, getString(R.string.notif_record_action_save), savePi)
 
         // ── Drop Mark action ──────────────────────────────────────────
         val markIntent = Intent(this, RecordingService::class.java)
@@ -608,17 +604,20 @@ class RecordingService : Service() {
         val markPi = PendingIntent.getService(
             this, REQUEST_MARK, markIntent, PendingIntent.FLAG_IMMUTABLE
         )
-        val markAction = NotificationCompat.Action(
-            R.drawable.ic_mark, "Mark", markPi
-        )
+        val markAction = NotificationCompat.Action(R.drawable.ic_mark, getString(R.string.mark_btn_add), markPi)
 
         val markCountText = if (pendingMarks.isNotEmpty())
-            "$statusText  ·  ${pendingMarks.size} mark${if (pendingMarks.size == 1) "" else "s"}"
+            resources.getQuantityString(
+                R.plurals.notif_record_status_with_marks,
+                pendingMarks.size,
+                statusText,
+                pendingMarks.size
+            )
         else
             statusText
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("TreeCast")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(markCountText)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(openAppPi)

@@ -107,9 +107,6 @@
     <string name="record_btn_cancel">CANCEL</string>
     <string name="record_btn_save">SAVE</string>
 
-    <!-- Mark button (icon + label, Record tab mark/lock row) -->
-    <string name="record_btn_mark">MARK</string>
-
     <!-- Cancel hint below the Cancel button -->
     <string name="record_label_cancel_hint">Double-tap to cancel</string>
 
@@ -309,6 +306,20 @@
     <string name="notif_record_status_paused">Paused</string>
     <!-- Notification action button -->
     <string name="notif_record_action_save">Save</string>
+
+    <!-- Notification channel metadata -->
+    <string name="notif_channel_record_name">Recording</string>
+    <string name="notif_channel_record_desc">TreeCast recording status</string>
+
+    <!-- Notification action buttons (Pause/Resume are symmetric with Save above) -->
+    <string name="notif_record_action_pause">Pause</string>
+    <string name="notif_record_action_resume">Resume</string>
+
+    <!-- Status line when marks are present; %1$s = status text, %2$d = count -->
+    <plurals name="notif_record_status_with_marks">
+        <item quantity="one">%1$s  ·  1 mark</item>
+        <item quantity="other">%1$s  ·  %2$d marks</item>
+    </plurals>
 
 
     <!-- ══════════════════════════════════════════════════════════════
