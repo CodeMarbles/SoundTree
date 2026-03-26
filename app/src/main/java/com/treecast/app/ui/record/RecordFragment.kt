@@ -41,9 +41,6 @@ import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class RecordFragment : Fragment() {
 
@@ -100,7 +97,7 @@ class RecordFragment : Fragment() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) startRecording()
-        else Toast.makeText(requireContext(), "Microphone permission required", Toast.LENGTH_LONG).show()
+        else Toast.makeText(requireContext(), getString(R.string.record_toast_mic_permission), Toast.LENGTH_LONG).show()
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────
@@ -172,7 +169,7 @@ class RecordFragment : Fragment() {
                 cancelRecording()
             } else {
                 lastCancelTapMs = now
-                Toast.makeText(requireContext(), "Tap again to cancel", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.record_toast_cancel_confirm), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -251,7 +248,7 @@ class RecordFragment : Fragment() {
 
     // ── Topic header ───────────────────────────────────────────────────
     private fun setupTopicHeader() {
-        updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.INBOX)
+        updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.UNSORTED)
 
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
@@ -263,7 +260,7 @@ class RecordFragment : Fragment() {
             updateRecordTopicHeader(
                 topicId,
                 topic?.name ?: getString(R.string.topic_label_unsorted),
-                topic?.icon ?: Icons.INBOX
+                topic?.icon ?: Icons.UNSORTED
             )
             val svc = recordingService
             if (svc != null && svc.state.value != RecordingService.State.IDLE) {
@@ -284,7 +281,7 @@ class RecordFragment : Fragment() {
                         updateRecordTopicHeader(
                             topicId,
                             topic?.name ?: getString(R.string.topic_label_unsorted),
-                            topic?.icon ?: Icons.INBOX
+                            topic?.icon ?: Icons.UNSORTED
                         )
                     }
                 }
@@ -292,7 +289,7 @@ class RecordFragment : Fragment() {
                     viewModel.allTopics.collect { topics ->
                         if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
                             selectedTopicId = null
-                            updateRecordTopicHeader(null, "Unsorted", Icons.INBOX)
+                            updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.UNSORTED)
                             recordingService?.setTopic(null)
                         }
                     }
@@ -668,16 +665,13 @@ class RecordFragment : Fragment() {
 
         if (!svc.hasSufficientFreeSpace()) {
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Low Storage")
-                .setMessage(
-                    "Only ${AppVolume.formatBytes(volume.freeBytes)} free on " +
-                            "\"${volume.label}\". The recording may be cut short.\n\n" +
-                            "Continue anyway?"
-                )
-                .setPositiveButton("Continue") { _, _ ->
+                .setTitle(R.string.record_dialog_low_storage_title)
+                .setMessage(getString(R.string.record_dialog_low_storage_msg,
+                    AppVolume.formatBytes(volume.freeBytes), volume.label))
+                .setPositiveButton(R.string.record_btn_continue) { _, _ ->
                     doStartRecording(svc)
                 }
-                .setNegativeButton("Cancel") { _, _ ->
+                .setNegativeButton(R.string.common_btn_cancel) { _, _ ->
                     svc.setStorageDir(
                         StorageVolumeHelper.getDefaultVolume(requireContext()).rootDir,
                         StorageVolumeHelper.UUID_PRIMARY
@@ -723,7 +717,7 @@ class RecordFragment : Fragment() {
                 markTimestamps    = result.markTimestamps,
                 storageVolumeUuid = result.storageVolumeUuid
             )
-            Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.record_toast_saved), Toast.LENGTH_SHORT).show()
             resetRecordingState()
 
             if (viewModel.jumpToLibraryOnSave.value) {

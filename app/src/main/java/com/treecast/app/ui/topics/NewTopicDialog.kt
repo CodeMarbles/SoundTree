@@ -7,7 +7,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import androidx.fragment.app.DialogFragment
 import com.treecast.app.R
-import com.treecast.app.util.emojiToColor
 
 /**
  * Dialog for creating a new topic/folder.
@@ -34,7 +33,7 @@ class NewTopicDialog(
             .setView(layout)
             .setPositiveButton(R.string.common_btn_create) { _, _ ->
                 val name = nameInput.text.toString().trim()
-                val defaultEmoji = getString(R.string.topic_default_emoji)
+                val defaultEmoji = getString(R.string.topic_emoji_default)
                 if (name.isNotEmpty()) onCreated(name, defaultEmoji, defaultEmoji)
             }
             .setNegativeButton(R.string.common_btn_cancel, null)

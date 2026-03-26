@@ -327,7 +327,7 @@ class TopicItemAdapter(
                     picker.setSelectedTopic(
                         rec.topicId,
                         topic?.name ?: itemView.context.getString(R.string.topic_label_unsorted),
-                        topic?.icon ?: Icons.INBOX
+                        topic?.icon ?: Icons.UNSORTED
                     )
                     picker.onTopicSelected = { topicId ->
                         onMove(rec.id, topicId)

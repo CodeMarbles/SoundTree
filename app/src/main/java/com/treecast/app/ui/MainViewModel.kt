@@ -30,6 +30,7 @@ import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.waveform.WaveformDisplayConfig
 import com.treecast.app.ui.waveform.WaveformStyle
 import com.treecast.app.util.AppVolume
+import com.treecast.app.util.Icons
 import com.treecast.app.util.MarkJumpLogic
 import com.treecast.app.util.OrphanRecording
 import com.treecast.app.util.OrphanRecordingScanner
@@ -575,7 +576,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val allTopics: StateFlow<List<TopicEntity>> = repo.getAllTopics()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun createTopic(name: String, parentId: Long?, icon: String = "🎙️", color: String = "#6C63FF") =
+    fun createTopic(name: String, parentId: Long?, icon: String = Icons.DEFAULT_TOPIC, color: String = "#6C63FF") =
         viewModelScope.launch { repo.createTopic(name, parentId, icon, color) }
     fun updateTopic(t: TopicEntity) = viewModelScope.launch { repo.updateTopic(t) }
     fun deleteTopic(t: TopicEntity) = viewModelScope.launch { repo.deleteTopic(t) }

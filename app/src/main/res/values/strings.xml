@@ -57,7 +57,8 @@
          topic_  —  Topic tree, topic picker, inbox tile
          ══════════════════════════════════════════════════════════════ -->
 
-    <string name="topic_default_emoji">🎙</string>
+    <string name="topic_emoji_default">🎙</string>
+    <string name="topic_emoji_unsorted">📥</string>
 
     <!--
         topic_label_unsorted is the plain display name used wherever a
@@ -111,6 +112,21 @@
 
     <!-- Cancel hint below the Cancel button -->
     <string name="record_label_cancel_hint">Double-tap to cancel</string>
+
+    <!-- Toasts -->
+    <string name="record_toast_mic_permission">Microphone permission required</string>
+    <string name="record_toast_cancel_confirm">Tap again to cancel</string>
+    <string name="record_toast_saved">Saved!</string>
+
+    <!-- Low storage dialog -->
+    <string name="record_dialog_low_storage_title">Low Storage</string>
+    <string name="record_dialog_low_storage_msg">Only %1$s free on \"%2$s\". The recording may be cut short.\n\nContinue anyway?</string>
+    <string name="record_btn_continue">Continue</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="record_cd_nudge_back">Nudge mark earlier</string>
+    <string name="record_cd_nudge_forward">Nudge mark later</string>
+    <string name="record_cd_mark_delete">Delete mark</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════

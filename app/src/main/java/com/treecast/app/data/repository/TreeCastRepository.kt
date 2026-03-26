@@ -7,6 +7,7 @@ import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.SessionEntity
 import com.treecast.app.data.entities.TopicEntity
+import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageVolumeHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -39,7 +40,7 @@ class TreeCastRepository(context: Context) {
     suspend fun createTopic(
         name: String,
         parentId: Long? = null,
-        icon: String = "🎙️",
+        icon: String = Icons.DEFAULT_TOPIC,
         color: String = "#6C63FF"
     ): Long = topicDao.insert(TopicEntity(name = name, parentId = parentId, icon = icon, color = color))
 

@@ -56,7 +56,7 @@
                     android:layout_width="30dp"
                     android:layout_height="30dp"
                     android:gravity="center"
-                    android:text="📥"
+                    android:text="@string/topic_emoji_unsorted"
                     android:textSize="18sp"
                     android:includeFontPadding="false"
                     android:background="?attr/colorSurfaceBase"
@@ -370,7 +370,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="Nudge mark earlier" />
+                    android:contentDescription="@string/record_cd_nudge_back" />
 
                 <!-- Nudge later -->
                 <ImageView
@@ -384,7 +384,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="Nudge mark later" />
+                    android:contentDescription="@string/record_cd_nudge_forward" />
 
                 <!-- Delete mark -->
                 <ImageView
@@ -398,7 +398,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:tint="?attr/colorMarkSelected"
-                    android:contentDescription="Delete mark" />
+                    android:contentDescription="@string/record_cd_mark_delete" />
 
                 <!-- Confirm / dismiss (UI-only: deselects mark, hides panel) -->
                 <com.google.android.material.card.MaterialCardView
@@ -492,7 +492,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MARK"
+                        android:text="@string/record_btn_mark"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"
                         android:textStyle="bold"

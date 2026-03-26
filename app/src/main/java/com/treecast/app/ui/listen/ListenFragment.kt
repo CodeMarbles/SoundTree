@@ -453,7 +453,7 @@ class ListenFragment : Fragment() {
         binding.tvTitle.text = state.recording.title
 
         val topic = viewModel.allTopics.value.firstOrNull { it.id == state.recording.topicId }
-        binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
+        binding.tvTopicIcon.text = topic?.icon ?: Icons.UNSORTED
         binding.tvCategory.text  = topic?.name ?: getString(R.string.topic_label_unsorted)
 
         binding.btnPlayPause.setIconResource(
@@ -693,7 +693,7 @@ class ListenFragment : Fragment() {
             viewModel.moveRecording(recId, topicId)
             // Optimistic icon update — nowPlaying observer will also sync it.
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
-            binding.tvTopicIcon.text = topic?.icon ?: Icons.INBOX
+            binding.tvTopicIcon.text = topic?.icon ?: Icons.UNSORTED
         }
 
         // Topic icon tap:

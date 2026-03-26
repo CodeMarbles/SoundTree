@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.treecast.app.util.Icons
 
 /**
  * Represents a node (folder) in the topic tree.
@@ -42,7 +43,7 @@ data class TopicEntity(
     @ColumnInfo(name = "description") val description: String = "",
 
     /** Emoji or icon identifier shown on tiles/tree nodes */
-    @ColumnInfo(name = "icon") val icon: String = "🎙️",
+    @ColumnInfo(name = "icon") val icon: String = Icons.DEFAULT_TOPIC,
 
     /** UI color accent hex string e.g. "#FF6B6B" */
     @ColumnInfo(name = "color") val color: String = "#6C63FF",

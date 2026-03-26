@@ -27,7 +27,7 @@
             android:id="@+id/tvIcon"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:text="🎙️"
+            android:text="@string/topic_emoji_default"
             android:textSize="22sp"
             android:gravity="center"
             app:layout_constraintTop_toTopOf="parent"

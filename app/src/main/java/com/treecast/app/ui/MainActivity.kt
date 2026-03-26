@@ -642,7 +642,7 @@ class MainActivity : AppCompatActivity() {
                 viewModel.moveRecording(recId, topicId)
             }
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
-            binding.miniPlayer.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
+            binding.miniPlayer.tvMiniTopicIcon.text = topic?.icon ?: Icons.UNSORTED
         }
 
         // ── Title row ─────────────────────────────────────────────────────
@@ -702,7 +702,7 @@ class MainActivity : AppCompatActivity() {
                     // Populate topic icon
                     val topic = viewModel.allTopics.value
                         .firstOrNull { it.id == state.recording.topicId }
-                    p.tvMiniTopicIcon.text = topic?.icon ?: Icons.INBOX
+                    p.tvMiniTopicIcon.text = topic?.icon ?: Icons.UNSORTED
 
                     p.tvMiniTime.text  = "${formatMs(state.positionMs)} / ${formatMs(state.durationMs)}"
                     p.btnMiniPlayPause.setImageResource(
@@ -1004,7 +1004,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             combine(viewModel.recordingTopicId, viewModel.allTopics) { topicId, topics ->
-                topics.firstOrNull { it.id == topicId }?.icon ?: Icons.INBOX
+                topics.firstOrNull { it.id == topicId }?.icon ?: Icons.UNSORTED
             }.collect { icon ->
                 recorderBinding.btnMiniRecTopic.text = icon
             }
@@ -1016,7 +1016,7 @@ class MainActivity : AppCompatActivity() {
             val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
             viewModel.setRecordingTopicId(topicId)
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
-            recorderBinding.btnMiniRecTopic.text = topic?.icon ?: Icons.INBOX
+            recorderBinding.btnMiniRecTopic.text = topic?.icon ?: Icons.UNSORTED
         }
 
         recorderBinding.btnMiniRecTopic.setOnClickListener {
@@ -1155,7 +1155,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     val topic = viewModel.allTopics.value
                         .firstOrNull { it.id == state.recording.topicId }
-                    val icon = topic?.icon ?: Icons.INBOX
+                    val icon = topic?.icon ?: Icons.UNSORTED
                     pill.pillPlayerTopic.text = icon
                     pill.pillPlayerTopic.visibility = View.VISIBLE
                     pill.pillPlayerFilename.text = state.recording.title

@@ -73,7 +73,7 @@
                 android:id="@+id/tvMiniTopicIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📥"
+                android:text="@string/topic_emoji_unsorted"
                 android:textSize="13sp"
                 android:paddingEnd="4dp" />
 

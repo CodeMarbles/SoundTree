@@ -114,7 +114,7 @@ class RecordingsAdapter(
             if (showTopicIcon) {
                 tvTopicIcon.visibility = View.VISIBLE
                 val topic = topics.firstOrNull { it.id == rec.topicId }
-                tvTopicIcon.text = topic?.icon ?: Icons.INBOX
+                tvTopicIcon.text = topic?.icon ?: Icons.UNSORTED
             } else {
                 tvTopicIcon.visibility = View.GONE
             }

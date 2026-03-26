@@ -57,7 +57,7 @@ class PlaybackBottomSheet : BottomSheetDialogFragment() {
                     binding.topicPicker.setSelectedTopic(
                         recording.topicId,
                         topic?.name ?: getString(R.string.topic_label_unsorted),
-                        topic?.icon ?: Icons.INBOX
+                        topic?.icon ?: Icons.UNSORTED
                     )
                 }
             }
