@@ -20,6 +20,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorBackground">
@@ -110,7 +111,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Recording options"
+                android:contentDescription="@string/listen_cd_overflow_options"
                 app:tint="?attr/colorTextSecondary" />
 
             <!-- Date + duration + file size meta column — right-aligned, small -->
@@ -169,7 +170,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="0:00"
+                android:text=""
+                tools:text="0:00"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="11sp" />
 
@@ -177,7 +179,8 @@
                 android:id="@+id/tvRemaining"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-0:00"
+                android:text=""
+                tools:text="-0:00"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="11sp" />
 
@@ -240,7 +243,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Skip back"
+                android:contentDescription="@string/listen_cd_skip_back"
                 app:tint="?attr/colorTextPrimary" />
 
             <!-- Play / Pause — matches skip button size; corner radius = half width -->
@@ -252,7 +255,7 @@
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text=""
-                android:contentDescription="Play / Pause"
+                android:contentDescription=""
                 app:icon="@drawable/ic_play"
                 app:iconPadding = "0dp"
                 app:iconSize="22dp"
@@ -270,7 +273,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Skip forward"
+                android:contentDescription="@string/listen_cd_skip_forward"
                 app:tint="?attr/colorTextPrimary" />
 
             <!-- Jump to next mark -->
@@ -299,7 +302,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:text="Zzz"
+                android:text="@string/listen_btn_sleep_timer"
                 android:textSize="12sp"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
@@ -346,7 +349,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
-            android:contentDescription="Expand waveform"
+            android:contentDescription="@string/listen_cd_expand_waveform"
             app:tint="?attr/colorTextSecondary" />
 
         <View
@@ -373,7 +376,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
-            android:contentDescription="Expand marks"
+            android:contentDescription="@string/listen_cd_expand_marks"
             app:tint="?attr/colorTextSecondary" />
 
     </LinearLayout>
@@ -403,7 +406,8 @@
             android:id="@+id/tvPositionBottom"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0:00"
+            android:text=""
+            tools:text="0:00"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="11sp"
             android:layout_marginEnd="6dp" />
@@ -420,7 +424,8 @@
             android:id="@+id/tvRemainingBottom"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="-0:00"
+            android:text=""
+            tools:text="-0:00"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="11sp"
             android:layout_marginStart="6dp" />
@@ -616,14 +621,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🎧"
+            android:text="@string/listen_empty_emoji"
             android:textSize="56sp"
             android:layout_marginBottom="16dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nothing playing yet"
+            android:text="@string/listen_empty_heading"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -632,7 +637,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap play on a recording in the Library to start listening."
+            android:text="@string/listen_empty_body"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="14sp"
             android:textAlignment="center" />

@@ -409,6 +409,12 @@ class ListenFragment : Fragment() {
 
     // ── Now Playing observer ───────────────────────────────────────────────────
 
+    // observeNowPlaying is a coroutine scope that stays alive as long as the
+    // fragment's view is at least STARTED (i.e. visible on screen).
+    // repeatOnLifecycle cancels all inner coroutines when the lifecycle drops
+    // below STARTED (fragment goes off-screen) and re-launches them when it
+    // comes back — so you never collect from a view that no longer exists.
+    // Each launch{} inside is an independent collector; they all run concurrently.
     private fun observeNowPlaying() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -432,11 +438,12 @@ class ListenFragment : Fragment() {
         binding.playerContent.visibility = if (state == null) View.GONE    else View.VISIBLE
 
         if (state == null) {
-            binding.tvTitle.text           = "Nothing playing"
+            binding.tvTitle.text           = getString(R.string.listen_empty_heading)
             binding.tvRecordedAt.text      = ""
             binding.tvDuration.text        = ""
             binding.tvFileSize.text   = ""
             binding.btnPlayPause.setIconResource(R.drawable.ic_play)
+            binding.btnPlayPause.contentDescription = getString(R.string.common_cd_play)
             binding.seekBar.max            = 1
             binding.seekBar.progress       = 0
             binding.seekBarBottom.max      = 1
@@ -458,6 +465,9 @@ class ListenFragment : Fragment() {
 
         binding.btnPlayPause.setIconResource(
             if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+        binding.btnPlayPause.contentDescription =
+            getString(if (state.isPlaying) R.string.common_cd_pause else R.string.common_cd_play)
+
 
         if (!isSeeking) {
             val dur = state.durationMs.coerceAtLeast(1L)

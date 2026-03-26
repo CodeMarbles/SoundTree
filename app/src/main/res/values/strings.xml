@@ -52,6 +52,9 @@
 
     <string name="common_placeholder_empty">—</string>
 
+    <string name="common_cd_play">Play</string>
+    <string name="common_cd_pause">Pause</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          topic_  —  Topic tree, topic picker, inbox tile
@@ -141,7 +144,22 @@
          listen_  —  Listen tab
          ══════════════════════════════════════════════════════════════ -->
 
-    <!-- Placeholder stubs for upcoming features -->
+    <!-- Empty state -->
+    <string name="listen_empty_emoji">🎧</string>
+    <string name="listen_empty_heading">Nothing playing yet</string>
+    <string name="listen_empty_body">Tap play on a recording in the Library to start listening.</string>
+
+    <!-- Stub transport button labels (replace when real features land) -->
+    <string name="listen_btn_sleep_timer">Zzz</string>
+
+    <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
+    <string name="listen_cd_overflow_options">Recording options</string>
+    <string name="listen_cd_skip_back">Skip back</string>
+    <string name="listen_cd_skip_forward">Skip forward</string>
+    <string name="listen_cd_expand_waveform">Expand waveform</string>
+    <string name="listen_cd_expand_marks">Expand marks</string>
+
+    <!-- Stub feature Toasts (shown until Playback Speed / Sleep Timer are implemented) -->
     <string name="listen_toast_playback_speed">Playback Speed</string>
     <string name="listen_toast_sleep_timer">Sleep Timer</string>
 
