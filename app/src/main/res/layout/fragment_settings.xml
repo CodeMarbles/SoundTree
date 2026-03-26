@@ -238,14 +238,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Waveform background"
+                                    android:text="@string/settings_label_waveform_bg"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Decorative scene behind the waveform bars"
+                                    android:text="@string/settings_label_waveform_bg_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -524,14 +524,14 @@
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    android:text="Layout"
+                                    android:text="@string/settings_label_layout"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Title bar"
+                                    android:text="@string/settings_layout_title_bar"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginEnd="6dp" />
@@ -565,7 +565,7 @@
                                         android:id="@+id/btnEditLayout"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Edit layout"
+                                        android:text="@string/settings_btn_layout_edit"
                                         android:textSize="13sp"
                                         android:textColor="?attr/colorAccent"
                                         android:paddingHorizontal="12dp"
@@ -998,7 +998,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Total recorded time"
+                                android:text="@string/settings_label_stat_recorded_time"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1006,7 +1006,7 @@
                                 android:id="@+id/tvTotalRecordedTime"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="—"
+                                android:text="@string/common_placeholder_empty"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="13sp" />
 
@@ -1036,7 +1036,7 @@
                                 android:id="@+id/tvRecordingCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="—"
+                                android:text="@string/common_placeholder_empty"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="13sp" />
 
@@ -1066,7 +1066,7 @@
                                 android:id="@+id/tvTopicCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="—"
+                                android:text="@string/common_placeholder_empty"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="13sp" />
 
@@ -1126,7 +1126,7 @@
                                 android:id="@+id/tvStatsTotalStorage"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="—"
+                                android:text="@string/common_placeholder_empty"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="13sp" />
 
@@ -1391,14 +1391,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Scrub forward"
+                                    android:text="@string/settings_controls_scrub_forward"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Seconds to advance on skip-forward tap"
+                                    android:text="@string/settings_controls_scrub_forward_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1469,14 +1469,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Mark rewind threshold"
+                                    android:text="@string/settings_controls_mark_rewind_threshold"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Rewind to mark when tapping within this window"
+                                    android:text="@string/settings_controls_mark_rewind_threshold_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1668,14 +1668,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Default recording storage"
+                                    android:text="@string/settings_label_default_storage"
                                     android:textColor="?attr/colorTextPrimary"
                                     android:textSize="15sp" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="New recordings will be saved here"
+                                    android:text="@string/settings_label_default_storage_desc"
                                     android:textColor="?attr/colorTextSecondary"
                                     android:textSize="12sp"
                                     android:layout_marginTop="2dp" />
@@ -1711,7 +1711,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Total used by TreeCast"
+                                android:text="@string/settings_label_total_used"
                                 android:textColor="?attr/colorTextSecondary"
                                 android:textSize="13sp" />
 
@@ -1719,7 +1719,7 @@
                                 android:id="@+id/tvTotalUsed"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="—"
+                                android:text="@string/common_placeholder_empty"
                                 android:textColor="?attr/colorTextPrimary"
                                 android:textSize="13sp" />
 

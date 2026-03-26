@@ -795,7 +795,9 @@ class SettingsFragment : Fragment() {
     /** Updates the "Total used by TreeCast" summary line. */
     private fun renderTotalUsed(usageMap: Map<String, Long>) {
         val totalBytes = usageMap.values.sum()
-        binding.tvTotalUsed.text = if (totalBytes == 0L) "—" else AppVolume.formatBytes(totalBytes)
+        binding.tvTotalUsed.text =
+            if (totalBytes == 0L) getString(R.string.common_placeholder_empty)
+            else AppVolume.formatBytes(totalBytes)
     }
 
     private fun loadStats() {
@@ -805,7 +807,9 @@ class SettingsFragment : Fragment() {
                 // Total recorded time + last session (one-shot suspends)
                 launch {
                     val totalMs = viewModel.getTotalRecordingTime()
-                    binding.tvTotalRecordedTime.text = if (totalMs > 0) formatGap(totalMs) else "—"
+                    binding.tvTotalRecordedTime.text =
+                        if (totalMs > 0) formatGap(totalMs)
+                        else getString(R.string.common_placeholder_empty)
 
                     val lastSession = viewModel.getLastClosedSession()
                     binding.tvLastOpened.text = if (lastSession != null) {
@@ -835,8 +839,9 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.storageUsageByVolume.collect { usageMap ->
                         val totalBytes = usageMap.values.sum()
-                        binding.tvStatsTotalStorage.text = if (totalBytes > 0)
-                            AppVolume.formatBytes(totalBytes) else "—"
+                        binding.tvStatsTotalStorage.text =
+                            if (totalBytes > 0) AppVolume.formatBytes(totalBytes)
+                            else getString(R.string.common_placeholder_empty)
                     }
                 }
             }
