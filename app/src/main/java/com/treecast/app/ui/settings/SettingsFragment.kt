@@ -707,8 +707,8 @@ class SettingsFragment : Fragment() {
 
         if (volumes.isEmpty()) {
             // Edge case: no volumes found yet (first render before refresh completes).
-            val placeholder = android.widget.TextView(requireContext()).apply {
-                text = "Detecting storage…"
+            val placeholder = TextView(requireContext()).apply {
+                text = getString(R.string.settings_msg_detecting_storage)
                 setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
                 textSize = 13f
                 setPadding(64, 12, 64, 12)
@@ -722,7 +722,7 @@ class SettingsFragment : Fragment() {
             val isSelected = volume.uuid == selectedUuid
 
             val row = LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.HORIZONTAL
+                orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(64, 20, 64, 20)
                 isClickable = true
@@ -745,8 +745,9 @@ class SettingsFragment : Fragment() {
                 )
             }
 
-            val tvLabel = android.widget.TextView(requireContext()).apply {
-                text = if (volume.isMounted) volume.label else "${volume.label} (unavailable)"
+            val tvLabel = TextView(requireContext()).apply {
+                text = if (volume.isMounted) volume.label
+                       else getString(R.string.settings_label_volume_unavailable, volume.label)
                 setTextColor(
                     if (volume.isMounted) requireContext().themeColor(R.attr.colorTextPrimary)
                     else requireContext().themeColor(R.attr.colorTextSecondary)
@@ -755,10 +756,12 @@ class SettingsFragment : Fragment() {
                 if (isSelected) setTypeface(null, android.graphics.Typeface.BOLD)
             }
 
-            val tvUsage = android.widget.TextView(requireContext()).apply {
+            val tvUsage = TextView(requireContext()).apply {
                 val usedLabel = AppVolume.formatBytes(usedBytes)
-                text = if (volume.isMounted) "$usedLabel used  ·  ${volume.freeLabel()}"
-                else "$usedLabel used  ·  offline"
+                text = if (volume.isMounted)
+                    getString(R.string.settings_label_volume_usage_mounted, usedLabel, volume.freeLabel())
+                else
+                    getString(R.string.settings_label_volume_usage_offline, usedLabel)
                 setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
                 textSize = 12f
                 setPadding(0, 2, 0, 0)
@@ -806,9 +809,9 @@ class SettingsFragment : Fragment() {
 
                     val lastSession = viewModel.getLastClosedSession()
                     binding.tvLastOpened.text = if (lastSession != null) {
-                        "${formatGap(System.currentTimeMillis() - lastSession.openedAt)} ago"
+                        getString(R.string.settings_label_time_ago, formatGap(System.currentTimeMillis() - lastSession.openedAt))
                     } else {
-                        "First use"
+                        getString(R.string.settings_label_first_use)
                     }
                 }
 

@@ -97,8 +97,8 @@
 
 
     <!-- ══════════════════════════════════════════════════════════════
-     recording_  —  Recording item actions (menus, dialogs)
-     ══════════════════════════════════════════════════════════════ -->
+         recording_  —  Recording item actions (menus, dialogs)
+         ══════════════════════════════════════════════════════════════ -->
 
     <string name="recording_action_move_to_topic">Move to topic…</string>
     <string name="recording_action_topic_details">Topic Details</string>
@@ -122,6 +122,8 @@
     <string name="library_subnav_all">ALL</string>
     <string name="library_subnav_unsorted">UNSORTED</string>
     <string name="library_subnav_topics">TOPICS</string>
+    <string name="library_subnav_organize">ORGANIZE</string>
+    <string name="library_subnav_details">DETAILS</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -131,6 +133,16 @@
     <!-- Layout editing -->
     <string name="settings_btn_layout_edit">Edit layout</string>
     <string name="settings_btn_layout_apply">Apply</string>
+
+    <!-- Storage volume rows (rendered dynamically in SettingsFragment) -->
+    <string name="settings_msg_detecting_storage">Detecting storage…</string>
+    <string name="settings_label_volume_unavailable">%s (unavailable)</string>
+    <string name="settings_label_volume_usage_mounted">%1$s used  ·  %2$s</string>
+    <string name="settings_label_volume_usage_offline">%s used  ·  offline</string>
+
+    <!-- Stats card -->
+    <string name="settings_label_first_use">First use</string>
+    <string name="settings_label_time_ago">%s ago</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
