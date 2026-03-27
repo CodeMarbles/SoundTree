@@ -13,6 +13,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.PopupMenu
@@ -66,7 +67,7 @@ class ListenFragment : Fragment() {
     private var dragStartRawY = 0f
     private var pendingSnapRunnable: Runnable? = null
     private val touchSlop by lazy {
-        android.view.ViewConfiguration.get(requireContext()).scaledTouchSlop
+        ViewConfiguration.get(requireContext()).scaledTouchSlop
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -371,6 +372,7 @@ class ListenFragment : Fragment() {
     }
 
     /** Updates both seekbars and both label pairs from a single position value. */
+    @SuppressLint("SetTextI18n")
     private fun syncSeekUi(positionMs: Long, durationMs: Long) {
         val dur = durationMs.coerceAtLeast(1L)
         binding.seekBar.progress       = positionMs.toInt()
@@ -593,6 +595,7 @@ class ListenFragment : Fragment() {
 
     // ── Mark chips ────────────────────────────────────────────────────────────
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun renderMarkTimestamps(marks: List<MarkEntity>) {
         val container = binding.markTimestampList
         container.removeAllViews()

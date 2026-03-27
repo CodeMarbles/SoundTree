@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -260,8 +262,8 @@ class LibraryFragment : Fragment() {
         val radius         = 10f * resources.displayMetrics.density  // tighter than bottom nav's 20dp
         val detailsEnabled = viewModel.libraryDetailsTopicId.value != null
 
-        val overshoot  = android.view.animation.OvershootInterpolator(1.6f)  // slightly softer than bottom nav
-        val decelerate = android.view.animation.DecelerateInterpolator()
+        val overshoot  = OvershootInterpolator(1.6f)  // slightly softer than bottom nav
+        val decelerate = DecelerateInterpolator()
 
         fun style(tv: TextView, active: Boolean, enabled: Boolean = true) {
             // ── Background pill ───────────────────────────────────────────

@@ -1,6 +1,8 @@
 package com.treecast.app.ui.settings
 
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -102,7 +104,7 @@ class SettingsFragment : Fragment() {
             tabs.forEach { (tv, t) ->
                 if (t == tab) {
                     tv.setTextColor(activeText)
-                    tv.setTypeface(null, android.graphics.Typeface.BOLD)
+                    tv.setTypeface(null, Typeface.BOLD)
                     // Draw a rounded rect pill behind the active label
                     val pill = android.graphics.drawable.GradientDrawable().apply {
                         shape = android.graphics.drawable.GradientDrawable.RECTANGLE
@@ -112,7 +114,7 @@ class SettingsFragment : Fragment() {
                     tv.background = pill
                 } else {
                     tv.setTextColor(inactiveText)
-                    tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+                    tv.setTypeface(null, Typeface.NORMAL)
                     tv.background = null
                 }
             }
@@ -241,7 +243,7 @@ class SettingsFragment : Fragment() {
 
         val row = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(hPad, vPad, hPad, vPad)
         }
         val tvLabel = TextView(requireContext()).apply {
@@ -439,7 +441,7 @@ class SettingsFragment : Fragment() {
             ).forEach { (btn, mode) ->
                 val isActive = mode == selected
                 btn.setTextColor(if (isActive) activeText else inactiveText)
-                btn.setTypeface(null, if (isActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+                btn.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
                 btn.setBackgroundColor(if (isActive) activeBg else android.graphics.Color.TRANSPARENT)
             }
         }
@@ -491,7 +493,7 @@ class SettingsFragment : Fragment() {
             btnToKey.forEach { (btn, key) ->
                 val isActive = key == activeKey
                 btn.setTextColor(if (isActive) activeText else inactiveText)
-                btn.setTypeface(null, if (isActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+                btn.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
                 btn.setBackgroundColor(if (isActive) activeBg else android.graphics.Color.TRANSPARENT)
             }
         }
@@ -723,7 +725,7 @@ class SettingsFragment : Fragment() {
 
             val row = LinearLayout(requireContext()).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(64, 20, 64, 20)
                 isClickable = true
                 isFocusable  = true
@@ -753,7 +755,7 @@ class SettingsFragment : Fragment() {
                     else requireContext().themeColor(R.attr.colorTextSecondary)
                 )
                 textSize = 14f
-                if (isSelected) setTypeface(null, android.graphics.Typeface.BOLD)
+                if (isSelected) setTypeface(null, Typeface.BOLD)
             }
 
             val tvUsage = TextView(requireContext()).apply {

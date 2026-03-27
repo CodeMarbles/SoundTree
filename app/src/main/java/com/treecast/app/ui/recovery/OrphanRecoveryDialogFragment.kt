@@ -1,6 +1,5 @@
 package com.treecast.app.ui.recovery
 
-import android.app.Dialog
 import android.content.DialogInterface
 import android.media.MediaPlayer
 import android.os.Bundle
@@ -15,6 +14,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.treecast.app.R
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
@@ -359,7 +359,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
         ) {
             if (payloads.isNotEmpty() && holder is PlayableVH) {
                 (payloads.first() as? String)?.let { label ->
-                    holder.itemView.findViewById<com.google.android.material.button.MaterialButton>(
+                    holder.itemView.findViewById<MaterialButton>(
                         R.id.btnPickTopic
                     )?.text = label
                 }
@@ -377,9 +377,9 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             val tvDuration = itemView.findViewById<TextView>(R.id.tvDuration)
             val tvFileSize = itemView.findViewById<TextView>(R.id.tvFileSize)
             val etTitle    = itemView.findViewById<android.widget.EditText>(R.id.etTitle)
-            val btnTopic   = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnPickTopic)
-            val btnDelete  = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDelete)
-            val btnRecover = itemView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnRecover)
+            val btnTopic   = itemView.findViewById<MaterialButton>(R.id.btnPickTopic)
+            val btnDelete  = itemView.findViewById<MaterialButton>(R.id.btnDelete)
+            val btnRecover = itemView.findViewById<MaterialButton>(R.id.btnRecover)
 
             tvDuration.text = formatDuration(item.durationMs)
             tvFileSize.text = AppVolume.formatBytes(item.file.length())
@@ -419,7 +419,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
     private inner class CorruptVH(view: View) : RecyclerView.ViewHolder(view) {
         fun bind(item: Item.Corrupt, index: Int) {
             itemView.findViewById<TextView>(R.id.tvFilename).text = item.suggestedTitle
-            itemView.findViewById<com.google.android.material.button.MaterialButton>(
+            itemView.findViewById<MaterialButton>(
                 R.id.btnDelete
             ).setOnClickListener { onDelete(index) }
         }

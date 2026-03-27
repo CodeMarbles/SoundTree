@@ -1,5 +1,6 @@
 package com.treecast.app.ui.settings
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -9,6 +10,7 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -69,7 +71,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
 
     fun setEditing(enabled: Boolean) {
         editing = enabled
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
     }
 
     // ── Internal state ────────────────────────────────────────────────
@@ -139,6 +141,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
 
     // ── Private helpers ───────────────────────────────────────────────
 
+    @SuppressLint("NotifyDataSetChanged")
     private fun rebuildDisplayItems() {
         displayItems.clear()
         displayItems.addAll(fullOrder)
@@ -181,7 +184,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
             else                    -> TYPE_STRIP
         }
 
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val isContent = viewType == TYPE_CONTENT
             val dp = context.resources.displayMetrics.density
 
@@ -291,6 +294,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
             }
         }
 
+        @SuppressLint("ClickableViewAccessibility")
         override fun onBindViewHolder(holder: VH, position: Int) {
             val element = displayItems[position]
 
@@ -359,8 +363,8 @@ class LayoutReorderWidget @JvmOverloads constructor(
             vh: RecyclerView.ViewHolder,
             target: RecyclerView.ViewHolder
         ): Boolean {
-            val from = vh.adapterPosition
-            val to   = target.adapterPosition
+            val from = vh.bindingAdapterPosition
+            val to   = target.bindingAdapterPosition
             onItemMoved(from, to)
             adapter.notifyItemMoved(from, to)
             return true

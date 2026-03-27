@@ -9,7 +9,11 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -275,8 +279,8 @@ class MainActivity : AppCompatActivity() {
             val view = viewMap[element] ?: continue
             if (element == LayoutElement.TITLE_BAR && !showTitle && !anyPillActive) continue
             if (element == LayoutElement.CONTENT) {
-                val lp = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
                 )
                 binding.rootStack.addView(view, lp)
             } else {
@@ -286,10 +290,10 @@ class MainActivity : AppCompatActivity() {
                     LayoutElement.NAV           -> (64 * dp).toInt()
                     LayoutElement.TITLE_BAR -> if (pillOnlyMode) LinearLayout.LayoutParams.WRAP_CONTENT
                     else               (53 * dp).toInt()
-                    else -> android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                    else -> LinearLayout.LayoutParams.WRAP_CONTENT
                 }
-                val lp = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, heightPx
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, heightPx
                 )
                 binding.rootStack.addView(view, lp)
             }
@@ -322,13 +326,13 @@ class MainActivity : AppCompatActivity() {
                 viewModel.showTitleBar,
                 viewModel.playerPillMinimized,
                 viewModel.recorderPillMinimized
-            ) { _, _, _, _ -> Unit }
+            ) { _, _, _, _ -> }
 
             combine(
                 innerFlow,
                 viewModel.alwaysShowPlayerPill,
                 viewModel.alwaysShowRecorderPill
-            ) { _, _, _ -> Unit }
+            ) { _, _, _ -> }
                 .collect { applyLayoutOrder() }
         }
     }
@@ -545,13 +549,13 @@ class MainActivity : AppCompatActivity() {
         val strokePx   = (2.5f * resources.displayMetrics.density).toInt()
         val recordRed  = themeColor(R.attr.colorRecordActive)
 
-        val overshoot  = android.view.animation.OvershootInterpolator(1.8f)
-        val decelerate = android.view.animation.DecelerateInterpolator()
+        val overshoot  = OvershootInterpolator(1.8f)
+        val decelerate = DecelerateInterpolator()
 
         data class Tab(
-            val pill:   android.widget.LinearLayout,
-            val icon:   android.widget.ImageView,
-            val label:  android.widget.TextView,
+            val pill:   LinearLayout,
+            val icon:   ImageView,
+            val label:  TextView,
             val bgAttr: Int,
             val page:   Int
         )
@@ -570,8 +574,8 @@ class MainActivity : AppCompatActivity() {
 
             // ── Pill background ───────────────────────────────────────────
             tab.pill.background = when {
-                active || showBorder -> android.graphics.drawable.GradientDrawable().apply {
-                    shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                active || showBorder -> GradientDrawable().apply {
+                    shape        = GradientDrawable.RECTANGLE
                     cornerRadius = radius
                     setColor(if (active) themeColor(tab.bgAttr) else android.graphics.Color.TRANSPARENT)
                     if (showBorder) setStroke(strokePx, recordRed)
