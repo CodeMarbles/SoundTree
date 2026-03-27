@@ -3,11 +3,16 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
     id 'kotlin-parcelize'
+    id 'androidx.room'
 }
 
 def major = 0
 def minor = 6
 def patch = 17
+
+room {
+    schemaDirectory "$projectDir/schemas"
+}
 
 android {
     namespace 'com.treecast.app'
@@ -49,8 +54,8 @@ android {
 
 dependencies {
     // Core
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
@@ -86,9 +91,6 @@ dependencies {
     implementation "androidx.media3:media3-session:$media3_version"
     implementation "androidx.media3:media3-ui:$media3_version"
     implementation 'androidx.media:media:1.7.0'
-
-    // Charts / waveform visualization
-    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
 
     implementation 'androidx.emoji2:emoji2-emojipicker:1.6.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
