@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.treecast.app.ui
 
 import android.app.Application
@@ -258,7 +260,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = isPlaying) ?: return
             if (isPlaying) {
-                startProgressPolling(_nowPlaying.value?.recording?.id ?: return)
+                startProgressPolling()
             } else {
                 stopProgressPolling()
                 viewModelScope.launch { saveCurrentPosition() }
@@ -321,7 +323,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             durationMs = recording.durationMs
         )
 
-        startProgressPolling(recording.id)
+        startProgressPolling()
         startObservingMarks(recording.id)
         _selectedMarkId.value = null           // clear stale selection from previous recording
         _playbackMarkNudgeLocked.value = true  // re-lock nudge for the fresh recording
@@ -414,7 +416,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Position polling ──────────────────────────────────────────────
 
-    private fun startProgressPolling(recordingId: Long) {
+    private fun startProgressPolling() {
         stopProgressPolling()
         progressJob = viewModelScope.launch {
             while (isActive) {

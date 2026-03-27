@@ -150,6 +150,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        viewModel.onAppClose()
         storageEjectReceiver?.let { unregisterReceiver(it) }
         storageEjectReceiver = null
     }
@@ -522,8 +523,8 @@ class MainActivity : AppCompatActivity() {
         // pill border appears/disappears independently of tab selection.
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
-                val recording = state != RecordingService.State.IDLE
-                updateBottomNavSelection(viewModel.currentPage.value, recording)
+                val isRecording = state != RecordingService.State.IDLE
+                updateBottomNavSelection(viewModel.currentPage.value, isRecording)
             }
         }
 

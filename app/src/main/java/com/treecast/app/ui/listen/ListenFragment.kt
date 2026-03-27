@@ -3,6 +3,7 @@ package com.treecast.app.ui.listen
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
@@ -19,7 +20,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -133,6 +133,7 @@ class ListenFragment : Fragment() {
 
     // ── Splitter ───────────────────────────────────────────────────────────────
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun setupSplitter() {
         binding.btnSnapDown.setOnClickListener { snapTo(SplitterState.SNAP_DOWN) }
         binding.btnSnapUp.setOnClickListener   { snapTo(SplitterState.SNAP_UP) }
@@ -346,7 +347,7 @@ class ListenFragment : Fragment() {
         binding.btnJumpPrev.setOnClickListener { viewModel.jumpMark(forward = false, select = false) }
         binding.btnJumpNext.setOnClickListener { viewModel.jumpMark(forward = true,  select = false) }
 
-        val seekListener = fun(seekBar: SeekBar) = object : SeekBar.OnSeekBarChangeListener {
+        val seekListener = object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(sb: SeekBar) { isSeeking = true }
             override fun onStopTrackingTouch(sb: SeekBar) {
                 isSeeking = false
@@ -360,8 +361,8 @@ class ListenFragment : Fragment() {
                 }
             }
         }
-        binding.seekBar.setOnSeekBarChangeListener(seekListener(binding.seekBar))
-        binding.seekBarBottom.setOnSeekBarChangeListener(seekListener(binding.seekBarBottom))
+        binding.seekBar.setOnSeekBarChangeListener(seekListener)
+        binding.seekBarBottom.setOnSeekBarChangeListener(seekListener)
     }
 
     private fun syncSeekMax(durationMs: Long) {
@@ -430,6 +431,7 @@ class ListenFragment : Fragment() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun updateUi(state: NowPlayingState?) {
         // ── Show/hide empty state vs player ───────────────────────────────────
         // playerContent is a ConstraintLayout Group referencing all five zones;
@@ -619,7 +621,7 @@ class ListenFragment : Fragment() {
                     val m = (4 * density).toInt()
                     setMargins(m, m, m, m)
                 }
-                val gd = GestureDetectorCompat(requireContext(),
+                val gd = GestureDetector(requireContext(),
                     object : GestureDetector.SimpleOnGestureListener() {
                         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                             viewModel.selectMark(mark.id)
