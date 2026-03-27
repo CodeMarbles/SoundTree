@@ -103,8 +103,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        viewModel.onAppOpen()
-
         setupViewPager()
         observeTopTitle()
         setupBottomNav()

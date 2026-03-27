@@ -1,5 +1,6 @@
 package com.treecast.app.ui
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -32,22 +33,13 @@ class SplashActivity : AppCompatActivity() {
         val repo = (application as TreeCastApp).repository
 
         lifecycleScope.launch(Dispatchers.IO) {
+            val knownPaths = repo.getKnownFilePaths()
+            val orphans      = OrphanRecordingScanner.scan(applicationContext, knownPaths)
 
-            // ── Run session check and orphan scan concurrently ─────────
-            val sessionDeferred = async {
-                repo.getLastSession()
-            }
-            val orphanDeferred = async {
-                val knownPaths = repo.getKnownFilePaths()
-                OrphanRecordingScanner.scan(applicationContext, knownPaths)
-            }
-
-            val lastSession  = sessionDeferred.await()
-            val orphans      = orphanDeferred.await()
-
-            val longAbsence = if (lastSession?.closedAt != null) {
-                val gapMs = System.currentTimeMillis() - lastSession.closedAt
-                gapMs >= TimeUnit.HOURS.toMillis(4)
+            val lastOpenedAt = getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
+                .getLong("last_session_opened_at", -1L).takeIf { it != -1L }
+            val longAbsence = if (lastOpenedAt != null) {
+                System.currentTimeMillis() - lastOpenedAt >= TimeUnit.HOURS.toMillis(4)
             } else {
                 true // first ever launch
             }

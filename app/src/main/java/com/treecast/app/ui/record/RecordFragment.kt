@@ -248,7 +248,7 @@ class RecordFragment : Fragment() {
 
     // ── Topic header ───────────────────────────────────────────────────
     private fun setupTopicHeader() {
-        updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.UNSORTED)
+        updateRecordTopicHeader(getString(R.string.topic_label_unsorted), Icons.UNSORTED)
 
         childFragmentManager.setFragmentResultListener(
             TopicPickerBottomSheet.REQUEST_KEY, viewLifecycleOwner
@@ -258,7 +258,6 @@ class RecordFragment : Fragment() {
             viewModel.setRecordingTopicId(topicId)
             val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
             updateRecordTopicHeader(
-                topicId,
                 topic?.name ?: getString(R.string.topic_label_unsorted),
                 topic?.icon ?: Icons.UNSORTED
             )
@@ -279,7 +278,6 @@ class RecordFragment : Fragment() {
                         }
                         val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         updateRecordTopicHeader(
-                            topicId,
                             topic?.name ?: getString(R.string.topic_label_unsorted),
                             topic?.icon ?: Icons.UNSORTED
                         )
@@ -289,7 +287,10 @@ class RecordFragment : Fragment() {
                     viewModel.allTopics.collect { topics ->
                         if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
                             selectedTopicId = null
-                            updateRecordTopicHeader(null, getString(R.string.topic_label_unsorted), Icons.UNSORTED)
+                            updateRecordTopicHeader(
+                                getString(R.string.topic_label_unsorted),
+                                Icons.UNSORTED
+                            )
                             recordingService?.setTopic(null)
                         }
                     }
@@ -304,7 +305,7 @@ class RecordFragment : Fragment() {
     }
 
     /** Syncs the topic header views with the given topic state. */
-    private fun updateRecordTopicHeader(topicId: Long?, name: String, icon: String) {
+    private fun updateRecordTopicHeader(name: String, icon: String) {
         binding.tvRecordTopicIcon.text = icon
         binding.tvRecordTopicName.text = name
     }

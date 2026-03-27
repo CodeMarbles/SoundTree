@@ -15,25 +15,10 @@ import kotlinx.coroutines.flow.combine
 class TreeCastRepository(context: Context) {
 
     private val db = AppDatabase.getInstance(context)
-    private val sessionDao = db.sessionDao()
     private val topicDao = db.topicDao()
     private val recordingDao = db.recordingDao()
     private val markDao = db.markDao()
 
-    // ── Session ──────────────────────────────────────────────────────
-    suspend fun openSession(): Long {
-        val session = SessionEntity()
-        return sessionDao.insert(session)
-    }
-
-    suspend fun closeSession(id: Long) {
-        val now = System.currentTimeMillis()
-        val session = sessionDao.getLastSession()?.takeIf { it.id == id } ?: return
-        sessionDao.closeSession(id, now, now - session.openedAt)
-    }
-
-    suspend fun getLastSession(): SessionEntity? = sessionDao.getLastSession()
-    suspend fun getLastClosedSession(): SessionEntity? = sessionDao.getLastClosedSession()
     suspend fun getTotalRecordingTime(): Long = recordingDao.getTotalDurationMs()
 
     // ── Topics ──────────────────────────────────────────────────────

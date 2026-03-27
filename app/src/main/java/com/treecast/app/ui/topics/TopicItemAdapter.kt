@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -251,7 +250,7 @@ class TopicItemAdapter(
         private val btnDelete:        MaterialButton  = v.findViewById(R.id.btnDelete)
         private val picker:           TopicPickerView = v.findViewById(R.id.inlineTopicPicker)
 
-        private val gestureDetector = GestureDetectorCompat(v.context,
+        private val gestureDetector = GestureDetector(v.context,
             object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                     val pos = bindingAdapterPosition

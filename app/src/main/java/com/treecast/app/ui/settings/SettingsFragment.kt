@@ -813,9 +813,9 @@ class SettingsFragment : Fragment() {
                         if (totalMs > 0) formatGap(totalMs)
                         else getString(R.string.common_placeholder_empty)
 
-                    val lastSession = viewModel.getLastClosedSession()
-                    binding.tvLastOpened.text = if (lastSession != null) {
-                        getString(R.string.settings_label_time_ago, formatGap(System.currentTimeMillis() - lastSession.openedAt))
+                    val lastOpenedAt = viewModel.getLastSessionOpenedAt()
+                    binding.tvLastOpened.text = if (lastOpenedAt != null) {
+                        getString(R.string.settings_label_time_ago, formatGap(System.currentTimeMillis() - lastOpenedAt))
                     } else {
                         getString(R.string.settings_label_first_use)
                     }

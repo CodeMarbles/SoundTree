@@ -186,7 +186,7 @@ object WaveformExtractor {
      * as a sliver rather than disappearing entirely.
      */
     private fun normalise(raw: FloatArray): FloatArray {
-        val max = raw.max() ?: 0f
+        val max = raw.maxOrNull() ?: 0f
         if (max <= 0f) return flatFallback(raw.size)
         return FloatArray(raw.size) { i ->
             (raw[i] / max).coerceIn(0.05f, 1f)

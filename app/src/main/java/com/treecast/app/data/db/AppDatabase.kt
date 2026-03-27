@@ -8,7 +8,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.treecast.app.data.dao.MarkDao
 import com.treecast.app.data.dao.RecordingDao
-import com.treecast.app.data.dao.SessionDao
 import com.treecast.app.data.dao.TopicDao
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
@@ -27,7 +26,6 @@ import com.treecast.app.data.entities.TopicEntity
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract fun sessionDao(): SessionDao
     abstract fun topicDao(): TopicDao
     abstract fun recordingDao(): RecordingDao
     abstract fun markDao(): MarkDao
@@ -134,6 +132,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v7 → v8: Remove the sessions table.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS sessions")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -141,7 +148,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "treecast.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

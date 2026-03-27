@@ -86,6 +86,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         private const val TAG = "MainViewModel"
         private const val PREF_THEME_MODE = "theme_mode"
+        private const val PREF_LAST_SESSION_OPENED_AT = "last_session_opened_at"
         private const val PREF_AUTO_NAVIGATE      = "auto_navigate_to_listen"
         private const val PREF_SCRUB_BACK_SECS    = "scrub_back_secs"
         private const val PREF_SCRUB_FORWARD_SECS = "scrub_forward_secs"
@@ -126,16 +127,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Session ───────────────────────────────────────────────────────
-    private var currentSessionId: Long = -1L
-    fun onAppOpen()  = viewModelScope.launch { currentSessionId = repo.openSession() }
-
     fun onAppClose() = viewModelScope.launch {
         saveCurrentPosition()
-        if (currentSessionId != -1L) repo.closeSession(currentSessionId)
+        prefs.edit().putLong(PREF_LAST_SESSION_OPENED_AT, System.currentTimeMillis()).apply()
     }
 
-    suspend fun getLastSession() = repo.getLastSession()
-    suspend fun getLastClosedSession() = repo.getLastClosedSession()
+    fun getLastSessionOpenedAt(): Long? {
+        val v = prefs.getLong(PREF_LAST_SESSION_OPENED_AT, -1L)
+        return if (v == -1L) null else v
+    }
+
     suspend fun getTotalRecordingTime() = repo.getTotalRecordingTime()
 
     // ── Top title ─────────────────────────────────────────────────────
