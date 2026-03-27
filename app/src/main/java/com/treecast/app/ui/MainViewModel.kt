@@ -797,21 +797,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             else             -> WaveformStyle.Standard
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, WaveformStyle.Standard)
-
-    // ── Compatibility shim — remove in step 7 ────────────────────────────────
-
-    /**
-     * True when any non-Standard style is active.  Kept only so SettingsFragment
-     * compiles until its waveform section is rewritten in step 7.
-     * Do not add new call sites.
-     */
-    @Deprecated("Use waveformStyleKey / waveformStyle directly after step 7.")
-    val stylizedWaveforms: StateFlow<Boolean> = _waveformStyleKey
-        .map { it != STYLE_STANDARD }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-
-
-
+    
     // ── Layout order ──────────────────────────────────────────────────
     //
     // Stores the ordered list of chrome elements (Title Bar, Content,
