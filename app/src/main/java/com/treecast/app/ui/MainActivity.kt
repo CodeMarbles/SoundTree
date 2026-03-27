@@ -69,13 +69,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     val viewModel: MainViewModel by viewModels()
 
-    private val pageTitles = mapOf(
-        PAGE_SETTINGS to "Settings",
-        PAGE_RECORD   to "Record",
-        PAGE_LIBRARY  to "Library",
-        PAGE_LISTEN   to "Listen",
-        PAGE_WORKSPACE to "Workspace"
-    )
+    private fun pageTitle(page: Int): String = when (page) {
+        PAGE_SETTINGS  -> getString(R.string.tab_settings)
+        PAGE_RECORD    -> getString(R.string.tab_record)
+        PAGE_LIBRARY   -> getString(R.string.tab_library)
+        PAGE_LISTEN    -> getString(R.string.tab_listen)
+        PAGE_WORKSPACE -> getString(R.string.tab_workspace)
+        else           -> ""
+    }
 
     private var storageEjectReceiver: StorageEjectReceiver? = null
 
@@ -178,7 +179,7 @@ class MainActivity : AppCompatActivity() {
      * [RecordFragment.stopAndSave] performs when the app is in the foreground.
      *
      * Only called when [EXTRA_SAVED_RECORDING_ID] is present; the topic extra
-     * is optional (null means the recording landed in Inbox).
+     * is optional (null means the recording landed in Unsorted).
      */
     private fun handleNotificationSaveIntent(intent: Intent) {
         val recordingId = intent.getLongExtra(EXTRA_SAVED_RECORDING_ID, -1L)
@@ -447,11 +448,11 @@ class MainActivity : AppCompatActivity() {
         recordFragment = RecordFragment()
 
         val adapter = MainPagerAdapter(this).apply {
-            addFragment(SettingsFragment(), "Settings")
-            addFragment(recordFragment,   "Record")
-            addFragment(libraryFragment,    "Library")
-            addFragment(ListenFragment(),   "Listen")
-            addFragment(WorkspaceFragment(),   "Workspace")
+            addFragment(SettingsFragment(),  getString(R.string.tab_settings))
+            addFragment(recordFragment,      getString(R.string.tab_record))
+            addFragment(libraryFragment,     getString(R.string.tab_library))
+            addFragment(ListenFragment(),    getString(R.string.tab_listen))
+            addFragment(WorkspaceFragment(), getString(R.string.tab_workspace))
         }
         binding.viewPager.adapter = adapter
         binding.viewPager.isUserInputEnabled = false
@@ -463,7 +464,7 @@ class MainActivity : AppCompatActivity() {
                 val recording = viewModel.recordingState.value != RecordingService.State.IDLE
                 updateBottomNavSelection(position, recording)
                 if (position != PAGE_LIBRARY) {
-                    viewModel.setTopTitle(pageTitles[position] ?: "")
+                    viewModel.setTopTitle(pageTitle(position))
                 } else {
                     // LibraryFragment drives the title, but its inner page-change
                     // callback won't fire on a swipe-in from another tab — nudge it.
@@ -823,12 +824,21 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.recordingState.collect { state ->
                 val (iconRes, label, color) = when (state) {
-                    RecordingService.State.RECORDING ->
-                        Triple(R.drawable.ic_record_circle, "RECORDING", themeColor(R.attr.colorRecordActive))
-                    RecordingService.State.PAUSED ->
-                        Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
                     RecordingService.State.IDLE ->
-                        Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
+                        Triple(
+                            R.drawable.ic_stop_square,
+                            getString(R.string.record_pill_status_idle),
+                            themeColor(R.attr.colorTextSecondary))
+                    RecordingService.State.RECORDING ->
+                        Triple(
+                            R.drawable.ic_record_circle,
+                            getString(R.string.record_pill_status_recording),
+                            themeColor(R.attr.colorRecordActive))
+                    RecordingService.State.PAUSED ->
+                        Triple(
+                            R.drawable.ic_pause,
+                            getString(R.string.record_pill_status_paused),
+                            themeColor(R.attr.colorRecordPause))
                 }
                 recorderBinding.ivMiniRecStateIcon.setImageResource(iconRes)
                 recorderBinding.ivMiniRecStateIcon.imageTintList =

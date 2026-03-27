@@ -5,7 +5,6 @@ import com.treecast.app.data.dao.VolumeUsage
 import com.treecast.app.data.db.AppDatabase
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
-import com.treecast.app.data.entities.SessionEntity
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.util.Icons
 import com.treecast.app.util.StorageVolumeHelper
@@ -130,7 +129,7 @@ class TreeCastRepository(context: Context) {
         recordingDao.updatePlaybackState(id, posMs, listened)
 
     fun getAllRecordings(): Flow<List<RecordingEntity>> = recordingDao.getAll()
-    fun getInbox(): Flow<List<RecordingEntity>> = recordingDao.getInbox()
+    fun getUnsorted(): Flow<List<RecordingEntity>> = recordingDao.getUnsorted()
     fun getFavourites(): Flow<List<RecordingEntity>> = recordingDao.getFavourites()
     fun searchRecordings(q: String): Flow<List<RecordingEntity>> = recordingDao.search(q)
 

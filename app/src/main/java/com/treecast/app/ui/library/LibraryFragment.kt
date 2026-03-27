@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * Library tab — hosts 5 sub-pages via an internal ViewPager2.
  *
  *   [0] ALL          — Flat chronological list of all recordings
- *   [1] UNSORTED     — Recordings with no topic (Inbox)
+ *   [1] UNSORTED     — Recordings with no topic
  *   [2] TOPICS       — Topic tree management (no recordings inline)
  *   [3] ORGANIZE     — Deprecated Recordings view; now a blank placeholder
  *   [4] DETAILS      — Details page for a selected topic

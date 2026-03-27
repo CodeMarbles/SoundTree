@@ -132,6 +132,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putLong(PREF_LAST_SESSION_OPENED_AT, System.currentTimeMillis()).apply()
     }
 
+    /**
+     * Last session logic used to drive what the default landing page is when opening the app
+     */
     fun getLastSessionOpenedAt(): Long? {
         val v = prefs.getLong(PREF_LAST_SESSION_OPENED_AT, -1L)
         return if (v == -1L) null else v
@@ -478,7 +481,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val allRecordings: StateFlow<List<RecordingEntity>> = repo.getAllRecordings()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val inbox: StateFlow<List<RecordingEntity>> = repo.getInbox()
+    val unsortedRecordings: StateFlow<List<RecordingEntity>> = repo.getUnsorted()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _searchQuery = MutableStateFlow("")
@@ -1306,7 +1309,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Returns a display label for [job] in the form "$topicIcon $title".
-     * Falls back to "📥 $title" for inbox recordings and "Recording" if the
+     * Falls back to "📥 $title" for unsorted recordings and "Recording" if the
      * recording can no longer be found (e.g. deleted mid-job).
      */
     fun labelForJob(job: ProcessingJobInfo): String {

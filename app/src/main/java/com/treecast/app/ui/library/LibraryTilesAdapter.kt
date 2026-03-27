@@ -13,7 +13,7 @@ import com.treecast.app.ui.library.all.AllRecordingsFragment
  * Adapter for the 5-page Library ViewPager2.
  *
  *   [0] AllRecordingsFragment  — flat chronological list of all recordings
- *   [1] InboxTileFragment      — unsorted / inbox recordings
+ *   [1] UnsortedTileFragment      — unsorted / inbox recordings
  *   [2] TopicsManageFragment   — topic tree management (no recordings inline)
  *   [3] OrganizeFragment       — blank placeholder (formerly TopicsFragment)
  *   [4] TopicDetailsFragment   — details page for a selected topic
@@ -22,7 +22,7 @@ class LibraryTilesAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
 
     private val pages = listOf(
         AllRecordingsFragment(),
-        InboxTileFragment(),
+        UnsortedTileFragment(),
         TopicsManageFragment(),
         OrganizeFragment(),          // was TopicsFragment() — code preserved in TopicsFragment.kt
         TopicDetailsFragment()

@@ -33,7 +33,7 @@ interface RecordingDao {
     fun getByTopic(topicId: Long): Flow<List<RecordingEntity>>
 
     @Query("SELECT * FROM recordings WHERE topic_id IS NULL ORDER BY created_at DESC")
-    fun getInbox(): Flow<List<RecordingEntity>>
+    fun getUnsorted(): Flow<List<RecordingEntity>>
 
     @Query("SELECT * FROM recordings ORDER BY created_at DESC")
     fun getAll(): Flow<List<RecordingEntity>>

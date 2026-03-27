@@ -4,7 +4,7 @@
 
   Used by RecordingsAdapter in:
     • All Recordings tab   (showTopicIcon = true  → tvTopicIcon visible)
-    • Inbox / Unsorted tab (showTopicIcon = false → tvTopicIcon gone)
+    • Unsorted tab (showTopicIcon = false → tvTopicIcon gone)
     • Topic Details tab    (showTopicIcon = false → tvTopicIcon gone)
 
   The old expand tray (expandedControls, ivChevron, btnRename, btnMove,

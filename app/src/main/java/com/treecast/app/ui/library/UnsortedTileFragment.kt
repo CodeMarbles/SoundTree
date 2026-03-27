@@ -17,7 +17,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.launch
 
-class InboxTileFragment : Fragment() {
+class UnsortedTileFragment : Fragment() {
 
     private var _binding: FragmentInboxTileBinding? = null
     private val binding get() = _binding!!
@@ -94,7 +94,7 @@ class InboxTileFragment : Fragment() {
         )
 
         binding.recyclerInbox.apply {
-            this.adapter = this@InboxTileFragment.adapter
+            this.adapter = this@UnsortedTileFragment.adapter
             layoutManager = LinearLayoutManager(requireContext())
         }
     }
@@ -121,7 +121,7 @@ class InboxTileFragment : Fragment() {
                     }
                 }
                 launch {
-                    viewModel.inbox.collect { recs ->
+                    viewModel.unsortedRecordings.collect { recs ->
                         adapter.submitList(recs) {
                             val selectedId = viewModel.selectedRecordingId.value
                             if (selectedId != -1L) {

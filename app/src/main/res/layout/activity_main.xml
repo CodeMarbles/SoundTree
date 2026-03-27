@@ -38,7 +38,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="20dp"
-                    android:text="Record"
+                    android:text="@string/tab_record"
                     android:textColor="?attr/colorTextPrimary"
                     android:textSize="17sp"
                     android:textStyle="bold"
@@ -132,7 +132,7 @@
                         android:id="@+id/tvSettingsLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Settings"
+                        android:text="@string/tab_settings"
                         android:textSize="10sp"
                         android:layout_marginTop="2dp" />
 
@@ -171,7 +171,7 @@
                         android:id="@+id/tvRecordLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Record"
+                        android:text="@string/tab_record"
                         android:textSize="10sp"
                         android:layout_marginTop="2dp" />
 
@@ -210,7 +210,7 @@
                         android:id="@+id/tvLibraryLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Library"
+                        android:text="@string/tab_library"
                         android:textSize="10sp"
                         android:layout_marginTop="2dp" />
 
@@ -249,7 +249,7 @@
                         android:id="@+id/tvListenLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Listen"
+                        android:text="@string/tab_listen"
                         android:textSize="10sp"
                         android:layout_marginTop="2dp" />
 
@@ -313,7 +313,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="🔒  Screen Locked"
+            android:text="@string/app_label_locked"
             android:textColor="#FFFFFF"
             android:textSize="20sp" />
 
@@ -323,7 +323,7 @@
             android:layout_height="56dp"
             android:layout_gravity="bottom|center_horizontal"
             android:layout_marginBottom="100dp"
-            android:text="Unlock"
+            android:text="@string/common_btn_unlock"
             android:textSize="16sp"
             app:cornerRadius="28dp"
             android:backgroundTint="?attr/colorAccent" />

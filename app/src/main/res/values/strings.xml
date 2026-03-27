@@ -137,6 +137,12 @@
     <string name="record_dialog_low_storage_msg">Only %1$s free on \"%2$s\". The recording may be cut short.\n\nContinue anyway?</string>
     <string name="record_btn_continue">Continue</string>
 
+    <!-- Title-bar recorder pill state labels. Intentionally terse/uppercase;
+     stored as-is since the view does not apply textAllCaps. -->
+    <string name="record_pill_status_idle">READY</string>
+    <string name="record_pill_status_recording">REC</string>
+    <string name="record_pill_status_paused">PAUSED</string>
+
 
     <!-- ══════════════════════════════════════════════════════════════
          recording_  —  Recording item actions (menus, dialogs)
