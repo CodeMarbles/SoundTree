@@ -137,6 +137,22 @@ class MainActivity : AppCompatActivity() {
                 binding.viewPager.currentItem = PAGE_RECORD
         }
 
+        // This code block is a guard derived from Android 10 theme swapping putting the nav in a
+        // bad state.  Here is Claude's explanation:
+        //
+        // The .post { } queues after the first layout pass, ensuring the ViewPager has settled on
+        // its actual position before the nav is drawn — which is also the right moment to read
+        // currentItem reliably on older Android versions.
+        // Part 1 alone (a guard in setupViewPager) will fix the visible symptom on Android 10.
+        // Part 2 (this fix) makes the recreation path cleaner overall and prevents the nav from
+        // ever flashing the wrong selection after a theme change.
+        binding.viewPager.post {
+            val page = binding.viewPager.currentItem
+            val isRecording = viewModel.recordingState.value != RecordingService.State.IDLE
+            viewModel.setCurrentPage(page)
+            updateBottomNavSelection(page, isRecording)
+        }
+
         checkAndShowOrphanRecovery()
     }
 
@@ -469,7 +485,8 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.adapter = adapter
         binding.viewPager.isUserInputEnabled = false
         binding.viewPager.offscreenPageLimit = 5
-        binding.viewPager.setCurrentItem(PAGE_RECORD, false)
+        val startPage = if (isRestoredFromState) viewModel.currentPage.value else PAGE_RECORD
+        binding.viewPager.setCurrentItem(startPage, false)
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -613,6 +630,11 @@ class MainActivity : AppCompatActivity() {
 
     fun navigateTo(page: Int) {
         binding.viewPager.currentItem = page
+        // Eagerly sync nav + ViewModel so same-page assignments
+        // (e.g. after a silent setCurrentItem on Android 10) still update correctly.
+        val isRecording = viewModel.recordingState.value != RecordingService.State.IDLE
+        updateBottomNavSelection(page, isRecording)
+        viewModel.setCurrentPage(page)
     }
 
     /**
