@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Background for the floating playback speed picker popup.
+  Light theme: matches bg_picker.xml — grey_200 fill, 12dp corners.
+  Place at: res/drawable/bg_popup_speed.xml
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/grey_200" />
+    <corners android:radius="12dp" />
+</shape>

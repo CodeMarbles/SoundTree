@@ -70,6 +70,10 @@ class ListenFragment : Fragment() {
         ViewConfiguration.get(requireContext()).scaledTouchSlop
     }
 
+    // ── Speed popup ───────────────────────────────────────────────────────────
+
+    private lateinit var speedPopup: PlaybackSpeedPopup
+
     // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreateView(
@@ -84,6 +88,7 @@ class ListenFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupTopicHeader()
         setupTransportControls()
+        observePlaybackSpeed()
         setupMultiLineWaveform()
 
         setupSplitter()
@@ -105,6 +110,29 @@ class ListenFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    // ── Playback speed observer ───────────────────────────────────────────────
+
+    private fun observePlaybackSpeed() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.playbackSpeed.collect { speed ->
+                    binding.btnPlaybackSpeed.text = formatSpeed(speed)
+                    // accessibility considerations
+                    binding.btnPlaybackSpeed.contentDescription =
+                        getString(R.string.listen_cd_speed_btn, formatSpeed(speed))
+                    speedPopup.syncSpeed(speed)   // no-op when popup is closed
+
+                    // Announce to TalkBack that the speed has changed
+                    if (speedPopup.isShowing) {
+                        binding.btnPlaybackSpeed.announceForAccessibility(
+                            getString(R.string.listen_cd_speed_btn, formatSpeed(speed))
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // ── Multi-line waveform setup ──────────────────────────────────────────────
@@ -139,8 +167,13 @@ class ListenFragment : Fragment() {
         binding.btnSnapDown.setOnClickListener { snapTo(SplitterState.SNAP_DOWN) }
         binding.btnSnapUp.setOnClickListener   { snapTo(SplitterState.SNAP_UP) }
 
+        speedPopup = PlaybackSpeedPopup(
+            context        = requireContext(),
+            anchor         = binding.btnPlaybackSpeed,
+            onSpeedChanged = { speed -> viewModel.setPlaybackSpeed(speed) }
+        )
         binding.btnPlaybackSpeed.setOnClickListener {
-            Toast.makeText(requireContext(), R.string.listen_toast_playback_speed, Toast.LENGTH_SHORT).show()
+            speedPopup.toggle(viewModel.playbackSpeed.value)
         }
         binding.btnSleepTimer.setOnClickListener {
             Toast.makeText(requireContext(), R.string.listen_toast_sleep_timer, Toast.LENGTH_SHORT).show()
@@ -832,5 +865,15 @@ class ListenFragment : Fragment() {
         bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
         bytes >= 1_000     -> "%.0f KB".format(bytes / 1_000.0)
         else               -> "$bytes B"
+    }
+
+    /** Formats a speed float for display on the button label, e.g. "1×", "1.5×", "0.75×". */
+    private fun formatSpeed(speed: Float): String {
+        // Show one decimal place unless it's a whole number (1.0 → "1×", 1.5 → "1.5×")
+        return if (speed == speed.toLong().toFloat()) {
+            "${speed.toLong()}×"
+        } else {
+            "${speed}×"
+        }
     }
 }

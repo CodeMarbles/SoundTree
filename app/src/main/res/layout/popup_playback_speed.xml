@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Floating playback speed picker popup.
+  Anchored above btnPlaybackSpeed in ListenFragment.
+
+  Structure:
+    ┌─────────────────────────────────────────────┐
+    │  [0.75×]  [1×]  [1.25×]  [1.5×]  [2×]      │  ← preset row
+    │ ─────────────────────────────────────────── │  ← divider
+    │  [−]  ══════════●══════════════════  [+]    │  ← slider row
+    └─────────────────────────────────────────────┘
+
+  Width is fixed at 240dp so the root LinearLayout never reflows.
+  Place at: res/layout/popup_playback_speed.xml
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="240dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_popup_speed"
+    android:paddingTop="6dp"
+    android:paddingBottom="8dp"
+    android:paddingHorizontal="4dp"
+    android:elevation="8dp">
+
+    <!-- ── Preset buttons row ─────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeed075"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="0.75×"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeed100"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="1×"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeed125"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="1.25×"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeed150"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="1.5×"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            tools:ignore="HardcodedText" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeed200"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="2×"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            tools:ignore="HardcodedText" />
+
+    </LinearLayout>
+
+    <!-- ── Divider ────────────────────────────────────────────────── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="8dp"
+        android:background="?attr/colorSurfaceElevated" />
+
+    <!-- ── Slider row ─────────────────────────────────────────────── -->
+    <!--
+      The Slider range is set in code (SPEED_MIN..SPEED_MAX, SPEED_STEP).
+      valueTo/valueFrom/stepSize here are safe defaults that keep the view
+      valid before the helper class sets them; they get overwritten immediately.
+      tickVisible="false" suppresses the 75 step-tick marks that would
+      otherwise clutter the track.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="2dp">
+
+        <!-- Decrease by one step -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeedMinus"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:text="−"
+            android:textSize="18sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            android:gravity="center"
+            android:contentDescription="@string/listen_cd_speed_decrease"
+            tools:ignore="HardcodedText" />
+
+        <!-- Speed slider — range/step configured in PlaybackSpeedPopup -->
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sliderSpeed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:valueFrom="0.25"
+            android:valueTo="4.0"
+            android:stepSize="0.05"
+            android:value="1.0"
+            app:tickVisible="false"
+            app:trackHeight="2dp"
+            app:thumbRadius="8dp"
+            app:labelBehavior="gone" />
+
+        <!-- Increase by one step -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeedPlus"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:text="+"
+            android:textSize="18sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
+            android:gravity="center"
+            android:contentDescription="@string/listen_cd_speed_increase"
+            tools:ignore="HardcodedText" />
+
+    </LinearLayout>
+
+</LinearLayout>

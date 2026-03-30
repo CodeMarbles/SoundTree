@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Background for the floating playback speed picker popup.
+  Dark theme: colorSurfaceElevated (grey_800), 12dp corners.
+  Place at: res/drawable-night/bg_popup_speed.xml
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/grey_800" />
+    <corners android:radius="12dp" />
+</shape>

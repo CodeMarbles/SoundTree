@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -45,6 +46,7 @@ import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.io.File
+import kotlin.math.roundToInt
 
 data class NowPlayingState(
     val recording:  RecordingEntity,
@@ -103,6 +105,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         private const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         private const val PREF_FUTURE_MODE = "future_mode"
+
+        private const val PREF_PLAYBACK_SPEED = "playback_speed"
+        const val SPEED_MIN  = 0.25f
+        const val SPEED_MAX  = 4.0f
+        const val SPEED_STEP = 0.05f
+        const val SPEED_DEFAULT = 1.0f
+
 
         // ── Waveform style prefs ──────────────────────────────────────────────
         //
@@ -314,6 +323,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         controller.stop()
         controller.setMediaItem(mediaItem)
         controller.prepare()
+        controller.setPlaybackParameters(PlaybackParameters(_playbackSpeed.value))
 
         if (recording.playbackPositionMs > 0L) {
             controller.seekTo(recording.playbackPositionMs)
@@ -669,6 +679,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putFloat(MarkJumpLogic.PREF_REWIND_THRESHOLD_SECS, v).apply()
     }
 
+    private val _playbackSpeed = MutableStateFlow(
+        prefs.getFloat(PREF_PLAYBACK_SPEED, SPEED_DEFAULT)
+    )
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed
+
+    fun setPlaybackSpeed(speed: Float) {
+        // Round to nearest 0.05 step to avoid floating-point drift
+        // (e.g. slider producing 1.2999999 instead of 1.30).
+        val rounded = (speed / SPEED_STEP).roundToInt() * SPEED_STEP
+        val clamped = rounded.coerceIn(SPEED_MIN, SPEED_MAX)
+        _playbackSpeed.value = clamped
+        prefs.edit().putFloat(PREF_PLAYBACK_SPEED, clamped).apply()
+        mediaController?.setPlaybackParameters(PlaybackParameters(clamped))
+    }
+
     // ── Jump to Library on save ───────────────────────────────────────
     private val _jumpToLibraryOnSave =
         MutableStateFlow(prefs.getBoolean(PREF_JUMP_TO_LIBRARY, true))
@@ -797,7 +822,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             else             -> WaveformStyle.Standard
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, WaveformStyle.Standard)
-    
+
     // ── Layout order ──────────────────────────────────────────────────
     //
     // Stores the ordered list of chrome elements (Title Bar, Content,

@@ -188,8 +188,13 @@
     <string name="listen_cd_expand_marks">Expand marks</string>
 
     <!-- Stub feature Toasts (shown until Playback Speed / Sleep Timer are implemented) -->
-    <string name="listen_toast_playback_speed">Playback Speed</string>
     <string name="listen_toast_sleep_timer">Sleep Timer</string>
+
+    <!-- Playback speed popup -->
+    <string name="listen_cd_speed_decrease">Decrease speed</string>
+    <string name="listen_cd_speed_increase">Increase speed</string>
+    <string name="listen_cd_speed_btn">Playback speed: %1$s, tap to change</string>
+    <string name="listen_cd_speed_slider">Playback speed slider</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          library_  —  Library tab
