@@ -264,7 +264,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (!isPlaying && _nowPlaying.value?.isPlaying == true) {
                 // Check if the controller actually agrees we're not playing
                 if (mediaController?.isPlaying == false &&
-                    mediaController?.playbackState != Player.STATE_BUFFERING) {
+                    mediaController?.playbackState != Player.STATE_BUFFERING &&
+                    mediaController?.playbackState != Player.STATE_IDLE)  {
                     _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = false) ?: return
                     stopProgressPolling()
                     viewModelScope.launch { saveCurrentPosition() }
@@ -282,6 +283,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
+                // Guard against stale STATE_ENDED callbacks from a previous recording.
+                // After play() is called for a new recording, Media3's masking
+                // immediately advances controller.playbackState to STATE_BUFFERING (or
+                // beyond). A STATE_ENDED callback still in flight for the old recording
+                // therefore arrives when the controller no longer reports STATE_ENDED,
+                // and we should not let it corrupt the new recording's play state.
+                if (mediaController?.playbackState != Player.STATE_ENDED) return
+
                 val recId = _nowPlaying.value?.recording?.id ?: return
                 viewModelScope.launch { repo.updatePlayback(recId, 0L, true) }
                 _nowPlaying.value = _nowPlaying.value?.copy(isPlaying = false, positionMs = 0L)
@@ -320,7 +329,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             .build()
 
-        controller.stop()
+        // below line might be cause of the stop bug
+        //controller.stop()
         controller.setMediaItem(mediaItem)
         controller.prepare()
         controller.setPlaybackParameters(PlaybackParameters(_playbackSpeed.value))
