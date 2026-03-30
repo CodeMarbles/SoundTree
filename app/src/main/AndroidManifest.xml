@@ -10,6 +10,13 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
+    <!--
+        Required for WorkManager to reschedule periodic backup jobs after a
+        device reboot. Without this, scheduled backups would silently stop
+        firing until the user opens the app again.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Declares microphone usage context for AppOps attribution (API 31+) -->
     <attribution android:tag="microphone" android:label="@string/app_name" />
 
@@ -66,6 +73,30 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!--
+            On-connect backup trigger.
+
+            ACTION_MEDIA_MOUNTED is explicitly exempt from the API 26+ restriction
+            on implicit broadcast receivers, so static registration here is both
+            permitted and necessary — it ensures the backup fires even when the
+            app is not running when the user plugs in a designated backup drive.
+
+            Storage broadcasts require a "file" data scheme to be delivered;
+            without it the system will not route the intent to this receiver.
+
+            exported="false" — this broadcast is sent by the OS, not by other
+            apps, and we have no need to receive it from third parties.
+        -->
+        <receiver
+            android:name=".receiver.StorageMountReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_MOUNTED" />
+                <data android:scheme="file" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

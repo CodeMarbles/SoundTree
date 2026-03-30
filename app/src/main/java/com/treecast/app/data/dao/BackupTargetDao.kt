@@ -72,6 +72,9 @@ interface BackupTargetDao {
     @Query("UPDATE backup_targets SET interval_hours = :hours WHERE volume_uuid = :volumeUuid")
     suspend fun setIntervalHours(volumeUuid: String, hours: Int)
 
+    @Query("UPDATE backup_targets SET backup_dir_uri = :uri WHERE volume_uuid = :volumeUuid")
+    suspend fun setBackupDirUri(volumeUuid: String, uri: String)
+
     /** Stamped by BackupWorker on successful completion. */
     @Query("UPDATE backup_targets SET last_backup_at = :epochMs WHERE volume_uuid = :volumeUuid")
     suspend fun setLastBackupAt(volumeUuid: String, epochMs: Long)
