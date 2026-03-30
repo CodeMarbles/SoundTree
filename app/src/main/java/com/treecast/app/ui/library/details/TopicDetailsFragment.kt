@@ -341,8 +341,16 @@ class TopicDetailsFragment : Fragment() {
             .setTitle(getString(R.string.topic_dialog_delete_title, topicName))
             .setMessage(R.string.topic_dialog_delete_message)
             .setPositiveButton(R.string.common_btn_delete) { _, _ ->
-                val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return@setPositiveButton
+                val topic = viewModel.allTopics.value.find { it.id == topicId }
+                    ?: return@setPositiveButton
                 viewModel.deleteTopic(topic)
+
+                // If the deleted topic is the one currently on display,
+                // clear the selection and navigate back to the Topics tab.
+                if (topicId == viewModel.libraryDetailsTopicId.value) {
+                    viewModel.setLibraryDetailsTopic(null)
+                    (requireParentFragment() as? LibraryFragment)?.navigateToTopics()
+                }
             }
             .setNegativeButton(R.string.common_btn_cancel, null)
             .show()
