@@ -99,8 +99,14 @@ class MainActivity : AppCompatActivity() {
     // Direct reference to the Record fragment so we can
     private lateinit var recordFragment: RecordFragment
 
+    // Track whether we're restoring from a config change
+    private var isRestoredFromState = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // helps track whether this is a first launch or an app reconfig launch on older android devices
+        isRestoredFromState = savedInstanceState != null
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -232,9 +238,15 @@ class MainActivity : AppCompatActivity() {
 
         if (orphans.isEmpty()) return
 
-        OrphanRecoveryDialogFragment
-            .newInstance(orphans)
-            .show(supportFragmentManager, "orphan_recovery")
+        // Only show the dialog on a genuine cold start — not when the activity
+        // is being recreated due to a configuration change (e.g. a theme switch).
+        // On Android 10, theme changes trigger activity recreation and would
+        // otherwise re-surface this dialog even after the user dismissed it.
+        if (orphans.isNotEmpty() && !isRestoredFromState) {
+            OrphanRecoveryDialogFragment
+                .newInstance(orphans)
+                .show(supportFragmentManager, OrphanRecoveryDialogFragment.TAG)
+        }
     }
 
     // ── Layout order ──────────────────────────────────────────────────

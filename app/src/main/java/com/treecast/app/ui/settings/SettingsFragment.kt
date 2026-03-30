@@ -136,7 +136,7 @@ class SettingsFragment : Fragment() {
         binding.btnReviewOrphans.setOnClickListener {
             OrphanRecoveryDialogFragment
                 .newInstance(viewModel.orphanRecordings.value)
-                .show(parentFragmentManager, "orphan_recovery")
+                .show(parentFragmentManager, OrphanRecoveryDialogFragment.TAG)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {

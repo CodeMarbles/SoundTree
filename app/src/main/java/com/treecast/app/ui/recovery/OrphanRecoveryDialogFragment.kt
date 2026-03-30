@@ -50,6 +50,8 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
     // ── Construction ──────────────────────────────────────────────────
 
     companion object {
+        const val TAG = "orphan_recovery"
+
         private const val ARG_PLAYABLE_PATHS     = "playable_paths"
         private const val ARG_PLAYABLE_DURATIONS = "playable_durations_ms"
         private const val ARG_CORRUPT_PATHS      = "corrupt_paths"
