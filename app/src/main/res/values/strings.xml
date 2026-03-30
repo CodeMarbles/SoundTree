@@ -153,6 +153,7 @@
     <string name="mini_recorder_cd_minimize">Minimize recorder</string>
     <string name="mini_recorder_cd_rec_pause">Record / Pause</string>
     <string name="mini_recorder_cd_save">Save recording</string>
+    <string name="mini_recorder_cd_change_topic">Change recording topic</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -218,6 +219,7 @@
     <string name="mini_player_label_paused">PAUSED:</string>
     <!-- Shown in ALWAYS-visible mode when no recording is loaded -->
     <string name="mini_player_label_no_selection">NO SELECTION</string>
+    <string name="mini_player_cd_play_pause">Play / Pause</string>
 
     <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
     <string name="mini_player_cd_minimize">Minimize player</string>

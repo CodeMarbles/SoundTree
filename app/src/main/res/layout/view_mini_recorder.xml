@@ -14,6 +14,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="108dp"
     android:background="?attr/colorSurfaceBase"
@@ -155,7 +156,7 @@
                 android:id="@+id/tvMiniRecElapsed"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0:00"
+                tools:text="0:00"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="12sp"
                 android:fontFamily="monospace" />
@@ -172,13 +173,13 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:gravity="center"
-                android:text="📥"
+                android:text="@string/topic_emoji_unsorted"
                 android:textSize="18sp"
                 android:includeFontPadding="false"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Change recording topic" />
+                android:contentDescription="@string/mini_recorder_cd_change_topic" />
 
             <!-- Spacer right -->
             <Space

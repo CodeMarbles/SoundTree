@@ -17,6 +17,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="108dp"
     android:background="?attr/colorMiniPlayerSurface"
@@ -82,7 +83,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="—"
+                android:text="@string/common_placeholder_empty"
                 android:textColor="?attr/colorTextPrimary"
                 android:textSize="11sp"
                 android:maxLines="1"
@@ -100,7 +101,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Close player" />
+                android:contentDescription="@string/mini_player_cd_close" />
 
             <!-- Minimize button — sends widget to title-bar pill -->
             <ImageView
@@ -112,7 +113,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Minimize player" />
+                android:contentDescription="@string/mini_player_cd_minimize" />
 
         </LinearLayout>
 
@@ -136,7 +137,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Skip back"
+                android:contentDescription="@string/listen_cd_skip_back"
                 app:tint="?attr/colorTextPrimary" />
 
             <!-- Play / Pause -->
@@ -149,7 +150,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Play / Pause"
+                android:contentDescription="@string/mini_player_cd_play_pause"
                 app:tint="?attr/colorAccent" />
 
             <!-- Skip forward -->
@@ -162,7 +163,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Skip forward"
+                android:contentDescription="@string/listen_cd_skip_forward"
                 app:tint="?attr/colorTextPrimary" />
 
             <!-- Playback timeline — fills rest of Row 2 -->
@@ -191,7 +192,7 @@
                 android:id="@+id/tvMiniTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0:00 / 0:00"
+                tools:text="0:00 / 0:00"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="10sp"
                 android:fontFamily="monospace" />
