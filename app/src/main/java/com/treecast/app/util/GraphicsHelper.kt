@@ -7,12 +7,22 @@ import android.graphics.Paint
 import androidx.palette.graphics.Palette
 import java.io.ByteArrayOutputStream
 
+private const val FALLBACK_COLOR = "#6C63FF"
+
+/** Parses [hex] as a color, falling back to [FALLBACK_COLOR] if the string is invalid. */
+private fun parseColorSafe(hex: String): Int =
+    try {
+        Color.parseColor(hex)
+    } catch (_: IllegalArgumentException) {
+        Color.parseColor(FALLBACK_COLOR)
+    }
+
 fun buildTopicArtwork(color: String, icon: String, sizePx: Int = 512): Bitmap {
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // Fill with topic color
-    canvas.drawColor(Color.parseColor(color))
+    // Fill with topic color, falling back gracefully if the stored value is malformed
+    canvas.drawColor(parseColorSafe(color))
 
     // Draw the emoji centered
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
