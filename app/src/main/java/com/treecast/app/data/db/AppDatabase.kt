@@ -6,22 +6,28 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.treecast.app.data.dao.BackupLogDao
+import com.treecast.app.data.dao.BackupTargetDao
 import com.treecast.app.data.dao.MarkDao
 import com.treecast.app.data.dao.RecordingDao
 import com.treecast.app.data.dao.TopicDao
+import com.treecast.app.data.entities.BackupLogEntity
+import com.treecast.app.data.entities.BackupLogErrorEntity
+import com.treecast.app.data.entities.BackupTargetEntity
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
-import com.treecast.app.data.entities.SessionEntity
 import com.treecast.app.data.entities.TopicEntity
 
 @Database(
     entities = [
-        SessionEntity::class,
         TopicEntity::class,
         RecordingEntity::class,
         MarkEntity::class,
+        BackupTargetEntity::class,
+        BackupLogEntity::class,
+        BackupLogErrorEntity::class,
     ],
-    version = 7,
+    version = 9,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun topicDao(): TopicDao
     abstract fun recordingDao(): RecordingDao
     abstract fun markDao(): MarkDao
+    abstract fun backupTargetDao(): BackupTargetDao
+    abstract fun backupLogDao(): BackupLogDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -134,10 +142,87 @@ abstract class AppDatabase : RoomDatabase() {
 
         /**
          * v7 → v8: Remove the sessions table.
+         *
+         * Session tracking was removed — the table is no longer referenced by
+         * any entity, DAO, or repository code.
          */
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS sessions")
+            }
+        }
+
+        /**
+         * v8 → v9: Add backup_targets, backup_logs, and backup_log_errors tables.
+         *
+         * - backup_targets: user-designated backup destination volumes and their
+         *   per-target configuration (on-connect trigger, scheduled interval,
+         *   SAF directory URI, last backup timestamp, preferences backup toggle).
+         * - backup_logs: one row per backup run, recording provenance, outcome,
+         *   and aggregate file/byte stats. Denormalizes target fields so log
+         *   entries remain readable if the target is later removed.
+         * - backup_log_errors: child table for per-file failures and warnings
+         *   within a run. Cascade-deleted with their parent log row.
+         *
+         * No existing data is affected — this is a purely additive migration.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS backup_targets (
+                        volume_uuid          TEXT    NOT NULL PRIMARY KEY,
+                        on_connect_enabled   INTEGER NOT NULL DEFAULT 1,
+                        scheduled_enabled    INTEGER NOT NULL DEFAULT 1,
+                        interval_hours       INTEGER NOT NULL DEFAULT 24,
+                        last_backup_at       INTEGER,
+                        backup_dir_uri       TEXT,
+                        backup_preferences   INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS backup_logs (
+                        id                              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        backup_target_uuid              TEXT,
+                        volume_uuid                     TEXT    NOT NULL,
+                        volume_label                    TEXT    NOT NULL,
+                        backup_dir_uri                  TEXT    NOT NULL,
+                        trigger                         TEXT    NOT NULL,
+                        started_at                      INTEGER NOT NULL,
+                        ended_at                        INTEGER,
+                        status                          TEXT,
+                        error_message                   TEXT,
+                        db_backed_up                    INTEGER NOT NULL DEFAULT 0,
+                        preferences_backed_up           INTEGER NOT NULL DEFAULT 0,
+                        files_examined                  INTEGER NOT NULL DEFAULT 0,
+                        files_copied                    INTEGER NOT NULL DEFAULT 0,
+                        files_skipped                   INTEGER NOT NULL DEFAULT 0,
+                        files_failed                    INTEGER NOT NULL DEFAULT 0,
+                        bytes_copied                    INTEGER NOT NULL DEFAULT 0,
+                        total_recordings_on_source      INTEGER NOT NULL DEFAULT 0,
+                        total_recordings_on_dest        INTEGER NOT NULL DEFAULT 0,
+                        total_bytes_on_destination      INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(backup_target_uuid) REFERENCES backup_targets(volume_uuid) ON DELETE SET NULL
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_backup_logs_backup_target_uuid ON backup_logs(backup_target_uuid)"
+                )
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS backup_log_errors (
+                        id            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        log_id        INTEGER NOT NULL,
+                        severity      TEXT    NOT NULL,
+                        source_path   TEXT,
+                        error_message TEXT    NOT NULL,
+                        occurred_at   INTEGER NOT NULL,
+                        FOREIGN KEY(log_id) REFERENCES backup_logs(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_backup_log_errors_log_id ON backup_log_errors(log_id)"
+                )
             }
         }
 
@@ -148,7 +233,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "treecast.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                        MIGRATION_6_7,
+                        MIGRATION_7_8,
+                        MIGRATION_8_9,
+                    )
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

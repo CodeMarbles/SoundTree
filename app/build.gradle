@@ -8,7 +8,7 @@ plugins {
 
 def major = 0
 def minor = 7
-def patch = 8
+def patch = 9
 
 room {
     schemaDirectory "$projectDir/schemas"
