@@ -64,7 +64,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="READY"
+                android:text="@string/record_pill_status_idle"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="11sp"
                 android:textStyle="bold"
@@ -91,7 +91,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Minimize recorder" />
+                android:contentDescription="@string/mini_recorder_cd_minimize" />
 
         </LinearLayout>
 
@@ -114,7 +114,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Record / Pause" />
+                android:contentDescription="@string/mini_recorder_cd_rec_pause" />
 
             <!-- Save button -->
             <ImageView
@@ -127,7 +127,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
-                android:contentDescription="Save recording" />
+                android:contentDescription="@string/mini_recorder_cd_save" />
 
             <!-- Growing timeline — fills the rest of Row 1 -->
             <com.treecast.app.ui.widget.MiniRecorderTimelineView

@@ -730,7 +730,7 @@ class RecordFragment : Fragment() {
                 }
             }
         } else {
-            Toast.makeText(requireContext(), "Nothing recorded", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.record_toast_nothing_recorded), Toast.LENGTH_SHORT).show()
         }
     }
 

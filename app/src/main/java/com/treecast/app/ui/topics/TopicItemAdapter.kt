@@ -283,7 +283,7 @@ class TopicItemAdapter(
             val isSelected    = rec.id == selectedRecordingId || rec.id == nowPlayingId
             itemView.setBackgroundColor(
                 if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
-                else android.graphics.Color.TRANSPARENT
+                else Color.TRANSPARENT
             )
 
             val isOrphan = rec.storageVolumeUuid in orphanVolumeUuids

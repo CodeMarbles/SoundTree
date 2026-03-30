@@ -60,8 +60,7 @@ import kotlinx.coroutines.withContext
  *   already perform mark-jumping via MarkAwarePlayer.
  */
 class PlaybackService : MediaSessionService() {
-    companion object {
-    }
+    companion object;
 
     private var mediaSession: MediaSession? = null
     private lateinit var repo: TreeCastRepository

@@ -1,5 +1,6 @@
 package com.treecast.app.ui.waveform
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -326,8 +327,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
             textSize = 16f
             setTextColor(context.themeColor(R.attr.colorAccent))
             setPadding((8 * dp).toInt(), (2 * dp).toInt(), (8 * dp).toInt(), (2 * dp).toInt())
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
                 cornerRadius = 999f * dp
                 setColor(android.graphics.Color.argb(60, 255, 255, 255))
             }
@@ -351,8 +352,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
         candidateBanner = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity     = Gravity.CENTER_VERTICAL
-            background  = android.graphics.drawable.GradientDrawable().apply {
-                shape         = android.graphics.drawable.GradientDrawable.RECTANGLE
+            background  = GradientDrawable().apply {
+                shape         = GradientDrawable.RECTANGLE
                 cornerRadius  = 999f * dp
                 setColor(android.graphics.Color.argb(230, 45, 45, 55))
                 setStroke((1f * dp).toInt(), android.graphics.Color.argb(160, 130, 130, 150))
@@ -362,7 +363,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
             addView(candidateBannerLabel)
             addView(candidateBannerConfirm)
             addView(candidateBannerCancel.also {
-                (it.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart = (6 * dp).toInt()
+                (it.layoutParams as? MarginLayoutParams)?.marginStart = (6 * dp).toInt()
             })
             visibility = View.GONE
         }
@@ -744,6 +745,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
             )
         }
 
+        @SuppressLint("ClickableViewAccessibility")
         inner class LineViewHolder(val lineView: WaveformLineView) :
             RecyclerView.ViewHolder(lineView) {
 

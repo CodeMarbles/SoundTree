@@ -540,7 +540,7 @@ class WaveformLineView @JvmOverloads constructor(
 
             // Peak amplitude across the bar's sample range.
             val amp = if (sampleEnd > sampleStart)
-                amps.slice(sampleStart until sampleEnd).max()!!
+                amps.slice(sampleStart until sampleEnd).max()
             else
                 amps[sampleStart]
 
@@ -595,7 +595,7 @@ class WaveformLineView @JvmOverloads constructor(
             val sampleStart = (startIdx + i       * samplesPerBar).toInt().coerceIn(0, amps.size - 1)
             val sampleEnd   = (startIdx + (i + 1) * samplesPerBar).toInt().coerceIn(0, amps.size)
             val amp = if (sampleEnd > sampleStart)
-                amps.slice(sampleStart until sampleEnd).max()!!
+                amps.slice(sampleStart until sampleEnd).max()
             else
                 amps[sampleStart]
 

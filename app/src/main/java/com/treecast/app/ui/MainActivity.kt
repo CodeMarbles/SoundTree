@@ -708,10 +708,10 @@ class MainActivity : AppCompatActivity() {
 
                     // Playing label — reports current state, turns yellow when paused
                     if (state.isPlaying) {
-                        p.tvMiniPlayingLabel.text = "NOW PLAYING:"
+                        p.tvMiniPlayingLabel.text = getString(R.string.mini_player_label_now_playing)
                         p.tvMiniPlayingLabel.setTextColor(themeColor(R.attr.colorTextSecondary))
                     } else {
-                        p.tvMiniPlayingLabel.text = "PAUSED:"
+                        p.tvMiniPlayingLabel.text = getString(R.string.mini_player_label_paused)
                         p.tvMiniPlayingLabel.setTextColor(themeColor(R.attr.colorRecordPause))
                     }
 
@@ -1191,7 +1191,7 @@ class MainActivity : AppCompatActivity() {
                     pill.ivPillPlayerPlay.imageTintList =
                         ColorStateList.valueOf(themeColor(R.attr.colorTextSecondary))
                     pill.pillPlayerTopic.visibility = View.GONE
-                    pill.pillPlayerFilename.text = "NO SELECTION"
+                    pill.pillPlayerFilename.text = getString(R.string.mini_player_label_no_selection)
                     //pill.pillPlayerFilename.isSelected = false   // stop marquee scroll on idle
                 }
             }
@@ -1243,7 +1243,7 @@ class MainActivity : AppCompatActivity() {
                 state == null && visibility == PlayerWidgetVisibility.ALWAYS
             }.collect { idle ->
                 if (idle) {
-                    p.tvMiniPlayingLabel.text = "NO SELECTION"
+                    p.tvMiniPlayingLabel.text = getString(R.string.mini_player_label_no_selection)
                     p.tvMiniTopicIcon.visibility = View.GONE
                     p.tvMiniTitle.text = ""
                     // Grey out the transport row — nothing to control
@@ -1255,7 +1255,7 @@ class MainActivity : AppCompatActivity() {
                     p.btnMiniSkipForward.alpha = 0.3f
                     p.miniPlayerTimeline.visibility = View.INVISIBLE
                 } else {
-                    p.tvMiniPlayingLabel.text = "NOW PLAYING:"
+                    p.tvMiniPlayingLabel.text = getString(R.string.mini_player_label_now_playing)
                     p.tvMiniTopicIcon.visibility = View.VISIBLE
                     p.btnMiniPlayPause.isEnabled = true
                     p.btnMiniPlayPause.alpha = 1f
@@ -1366,11 +1366,11 @@ class MainActivity : AppCompatActivity() {
             viewModel.recordingState.collect { state ->
                 val (iconRes, label, textColor) = when (state) {
                     RecordingService.State.IDLE ->
-                        Triple(R.drawable.ic_stop_square, "READY", themeColor(R.attr.colorTextSecondary))
+                        Triple(R.drawable.ic_stop_square, getString(R.string.record_pill_status_idle), themeColor(R.attr.colorTextSecondary))
                     RecordingService.State.RECORDING ->
-                        Triple(R.drawable.ic_record_circle, "REC", themeColor(R.attr.colorRecordActive))
+                        Triple(R.drawable.ic_record_circle, getString(R.string.record_pill_status_recording), themeColor(R.attr.colorRecordActive))
                     RecordingService.State.PAUSED ->
-                        Triple(R.drawable.ic_pause, "PAUSED", themeColor(R.attr.colorRecordPause))
+                        Triple(R.drawable.ic_pause, getString(R.string.record_pill_status_paused), themeColor(R.attr.colorRecordPause))
                 }
                 pill.ivPillRecorderDot.visibility =
                     if (state == RecordingService.State.PAUSED) View.VISIBLE else View.GONE

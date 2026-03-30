@@ -303,7 +303,7 @@ class LayoutReorderWidget @JvmOverloads constructor(
                 if (!showTitleBar && holder.pillLeft != null && holder.pillRight != null) {
                     // Disabled state — show muted twin pills, hide label
                     holder.label.visibility = View.GONE
-                    (holder.pillLeft?.parent as? View)?.visibility = View.VISIBLE
+                    (holder.pillLeft.parent as? View)?.visibility = View.VISIBLE
 
                     fun mutedStroke(base: Int): Int =
                         Color.argb(80, Color.red(base), Color.green(base), Color.blue(base))

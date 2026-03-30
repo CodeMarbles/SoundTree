@@ -131,6 +131,7 @@
     <string name="record_toast_mic_permission">Microphone permission required</string>
     <string name="record_toast_cancel_confirm">Tap again to cancel</string>
     <string name="record_toast_saved">Saved!</string>
+    <string name="record_toast_nothing_recorded">Nothing recorded</string>
 
     <!-- Low storage dialog -->
     <string name="record_dialog_low_storage_title">Low Storage</string>
@@ -142,6 +143,16 @@
     <string name="record_pill_status_idle">READY</string>
     <string name="record_pill_status_recording">REC</string>
     <string name="record_pill_status_paused">PAUSED</string>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         mini_recorder_  —  Mini Recorder widget strings.
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
+    <string name="mini_recorder_cd_minimize">Minimize recorder</string>
+    <string name="mini_recorder_cd_rec_pause">Record / Pause</string>
+    <string name="mini_recorder_cd_save">Save recording</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -195,6 +206,23 @@
     <string name="listen_cd_speed_increase">Increase speed</string>
     <string name="listen_cd_speed_btn">Playback speed: %1$s, tap to change</string>
     <string name="listen_cd_speed_slider">Playback speed slider</string>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         mini_player_  —  Mini Player widget strings.
+         Status labels are intentionally terse/uppercase; the view
+         does not apply textAllCaps, so store them as they appear.
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Status label above the recording title in the title row -->
+    <string name="mini_player_label_now_playing">NOW PLAYING:</string>
+    <string name="mini_player_label_paused">PAUSED:</string>
+    <!-- Shown in ALWAYS-visible mode when no recording is loaded -->
+    <string name="mini_player_label_no_selection">NO SELECTION</string>
+
+    <!-- Content descriptions (TalkBack / screen reader; never shown visually) -->
+    <string name="mini_player_cd_minimize">Minimize player</string>
+    <string name="mini_player_cd_close">Close player</string>
+    <string name="mini_player_cd_change_topic">Change recording topic</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          library_  —  Library tab

@@ -62,7 +62,7 @@
                 android:id="@+id/tvMiniPlayingLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="NOW PLAYING:"
+                android:text="@string/mini_player_label_now_playing"
                 android:textColor="?attr/colorTextSecondary"
                 android:textSize="11sp"
                 android:textStyle="bold"
