@@ -574,6 +574,17 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlaybackSettings() {
+        // ── Switch to Listen on play ──────────────────────────────────────────────
+        binding.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
+        binding.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setAutoNavigateToListen(isChecked)
+        }
+
+        // ── Jump to Library on save ───────────────────────────────────────────────
+        binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
+        binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setJumpToLibraryOnSave(isChecked)
+        }
 
         // ── Player widget visibility (3-state) ───────────────────────────────
         val playerToggleGroup = binding.togglePlayerVisibility
