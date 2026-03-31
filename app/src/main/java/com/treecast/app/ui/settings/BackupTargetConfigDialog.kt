@@ -49,16 +49,9 @@ class BackupTargetConfigDialog : DialogFragment() {
         private const val ARG_IS_MOUNTED      = "is_mounted"
         private const val ARG_DISPLAY_LABEL   = "display_label"
 
-        /** Interval options shown in the selector. Parallel arrays. */
-        val INTERVAL_HOURS  = intArrayOf(1, 6, 12, 24, 48, 168)
-        val INTERVAL_LABELS = arrayOf(
-            "Every hour",
-            "Every 6 hours",
-            "Every 12 hours",
-            "Daily",
-            "Every 2 days",
-            "Weekly",
-        )
+        /** Interval options shown in the selector.
+         *  Labels live in @array/settings_backup_interval_labels — parallel by index. */
+        val INTERVAL_HOURS = intArrayOf(1, 6, 12, 24, 48, 168)
 
         fun newInstance(state: BackupTargetUiState): BackupTargetConfigDialog =
             BackupTargetConfigDialog().apply {
@@ -117,7 +110,8 @@ class BackupTargetConfigDialog : DialogFragment() {
         })
 
         root.addView(TextView(ctx).apply {
-            text = if (isMounted) "Connected" else "Not connected"
+            text = if (isMounted) getString(R.string.settings_backup_config_status_connected)
+            else getString(R.string.settings_backup_status_not_connected)
             textSize = 13f
             setTextColor(
                 if (isMounted) ctx.themeColor(R.attr.colorAccent)
@@ -131,7 +125,7 @@ class BackupTargetConfigDialog : DialogFragment() {
         // ── Back up now ───────────────────────────────────────────────────────
         if (isMounted) {
             root.addView(MaterialButton(ctx).apply {
-                text = "Back up now"
+                text = getString(R.string.settings_backup_config_btn_back_up_now)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -146,8 +140,8 @@ class BackupTargetConfigDialog : DialogFragment() {
         // ── On-connect toggle ─────────────────────────────────────────────────
         root.addView(switchRow(
             ctx        = ctx,
-            label      = "Back up on connect",
-            sublabel   = "Run a backup each time this drive is connected",
+            label      = getString(R.string.settings_backup_config_label_on_connect),
+            sublabel   = getString(R.string.settings_backup_config_sublabel_on_connect),
             checked    = args.getBoolean(ARG_ON_CONNECT),
             px24       = px24,
             onChanged  = { enabled -> viewModel.setBackupOnConnectEnabled(volumeUuid, enabled) },
@@ -167,8 +161,8 @@ class BackupTargetConfigDialog : DialogFragment() {
 
         root.addView(switchRow(
             ctx       = ctx,
-            label     = "Scheduled backup",
-            sublabel  = "Run a backup on a fixed interval",
+            label     = getString(R.string.settings_backup_config_label_scheduled),
+            sublabel  = getString(R.string.settings_backup_config_sublabel_scheduled),
             checked   = scheduledEnabled,
             px24      = px24,
             onChanged = { enabled ->
@@ -188,7 +182,7 @@ class BackupTargetConfigDialog : DialogFragment() {
             null,
             com.google.android.material.R.attr.materialButtonOutlinedStyle,
         ).apply {
-            text = "Remove backup target"
+            text = getString(R.string.settings_backup_config_btn_remove)
             setTextColor(ctx.themeColor(R.attr.colorError))
             strokeColor = android.content.res.ColorStateList.valueOf(
                 ctx.themeColor(R.attr.colorError)
@@ -262,6 +256,7 @@ class BackupTargetConfigDialog : DialogFragment() {
         onSelected: (Int) -> Unit,
     ): RadioGroup {
         val px12 = (12 * ctx.resources.displayMetrics.density).toInt()
+        val intervalLabels = ctx.resources.getStringArray(R.array.settings_backup_interval_labels)
 
         return RadioGroup(ctx).apply {
             orientation = RadioGroup.VERTICAL
@@ -269,9 +264,9 @@ class BackupTargetConfigDialog : DialogFragment() {
 
             INTERVAL_HOURS.forEachIndexed { i, hours ->
                 addView(RadioButton(ctx).apply {
-                    id      = View.generateViewId()
-                    text    = INTERVAL_LABELS[i]
-                    tag     = hours
+                    id       = View.generateViewId()
+                    text     = intervalLabels[i]
+                    tag      = hours
                     textSize = 13f
                     setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
                     isChecked = (hours == currentHours)
@@ -280,7 +275,8 @@ class BackupTargetConfigDialog : DialogFragment() {
             }
 
             setOnCheckedChangeListener { group, checkedId ->
-                val hours = group.findViewById<RadioButton>(checkedId)?.tag as? Int ?: return@setOnCheckedChangeListener
+                val hours = group.findViewById<RadioButton>(checkedId)?.tag as? Int
+                    ?: return@setOnCheckedChangeListener
                 onSelected(hours)
             }
         }

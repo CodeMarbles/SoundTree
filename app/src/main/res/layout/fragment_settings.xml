@@ -1839,7 +1839,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Backups"
+                    android:text="@string/settings_section_backups"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"

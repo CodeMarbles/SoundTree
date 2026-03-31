@@ -358,19 +358,19 @@ class SettingsFragment : Fragment() {
         val parts = mutableListOf<String>()
 
         if (!state.isMounted) {
-            parts += "Not connected"
+            parts += getString(R.string.settings_backup_status_not_connected)
         } else {
             val triggers = mutableListOf<String>()
-            if (state.entity.onConnectEnabled) triggers += "on connect"
-            if (state.entity.scheduledEnabled) triggers += "every ${state.entity.intervalHours}h"
+            if (state.entity.onConnectEnabled) triggers += getString(R.string.settings_backup_trigger_on_connect)
+            if (state.entity.scheduledEnabled) triggers += getString(R.string.settings_backup_trigger_scheduled, state.entity.intervalHours)
             if (triggers.isNotEmpty()) parts += triggers.joinToString(" · ")
         }
 
         val lastBackup = state.entity.lastBackupAt
         if (lastBackup != null) {
-            parts += "Last backup: ${formatRelativeTime(lastBackup)}"
+            parts += getString(R.string.settings_backup_last_backed_up, formatRelativeTime(lastBackup))
         } else {
-            parts += "Never backed up"
+            parts += getString(R.string.settings_backup_never_backed_up)
         }
 
         return parts.joinToString("  ·  ")
@@ -380,9 +380,9 @@ class SettingsFragment : Fragment() {
     private fun formatRelativeTime(epochMs: Long): String {
         val deltaMs = System.currentTimeMillis() - epochMs
         return when {
-            deltaMs < TimeUnit.MINUTES.toMillis(2)  -> "just now"
-            deltaMs < TimeUnit.HOURS.toMillis(1)    -> "${TimeUnit.MILLISECONDS.toMinutes(deltaMs)}m ago"
-            deltaMs < TimeUnit.HOURS.toMillis(48)   -> "${TimeUnit.MILLISECONDS.toHours(deltaMs)}h ago"
+            deltaMs < TimeUnit.MINUTES.toMillis(2)  -> getString(R.string.settings_backup_time_just_now)
+            deltaMs < TimeUnit.HOURS.toMillis(1)    -> getString(R.string.settings_backup_time_minutes_ago, TimeUnit.MILLISECONDS.toMinutes(deltaMs))
+            deltaMs < TimeUnit.HOURS.toMillis(48)   -> getString(R.string.settings_backup_time_hours_ago, TimeUnit.MILLISECONDS.toHours(deltaMs))
             else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMs))
         }
     }

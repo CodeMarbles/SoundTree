@@ -393,11 +393,43 @@
     <string name="settings_label_default_storage_desc">New recordings will be saved here</string>
     <string name="settings_label_total_used">Total used by TreeCast</string>
 
-    <!-- Storage: automatic backup -->
+    <!-- Backup: card section titles -->
     <string name="settings_backup_title">Automatic Backups</string>
-    <string name="settings_backup_no_targets">No backup targets configured</string>
-    <string name="settings_backup_available_title">Available to add</string>
+    <string name="settings_backup_available_title">Available to Add</string>
+
+    <!-- Backup: designated target list — row content and empty states -->
+    <string name="settings_backup_no_targets">No backup volumes configured</string>
+    <string name="settings_backup_no_available">No external drives detected</string>
     <string name="settings_backup_btn_add">Add as backup target</string>
+    <string name="settings_backup_status_not_connected">Not connected</string>
+    <string name="settings_backup_trigger_on_connect">on connect</string>
+    <string name="settings_backup_trigger_scheduled">every %dh</string>
+    <string name="settings_backup_last_backed_up">Last backup: %s</string>
+    <string name="settings_backup_never_backed_up">Never backed up</string>
+    <string name="settings_backup_time_just_now">just now</string>
+    <string name="settings_backup_time_minutes_ago">%dm ago</string>
+    <string name="settings_backup_time_hours_ago">%dh ago</string>
+
+    <!-- Backup: target config dialog — labels, sublabels, and action buttons -->
+    <string name="settings_backup_config_btn_back_up_now">Back up now</string>
+    <string name="settings_backup_config_btn_remove">Remove backup target</string>
+    <string name="settings_backup_config_status_connected">Connected</string>
+    <string name="settings_backup_config_label_on_connect">Back up on connect</string>
+    <string name="settings_backup_config_sublabel_on_connect">Run a backup each time this drive is connected</string>
+    <string name="settings_backup_config_label_scheduled">Scheduled backup</string>
+    <string name="settings_backup_config_sublabel_scheduled">Run a backup on a fixed interval</string>
+
+    <!-- Backup: scheduled interval picker options.
+         Indices are parallel to BackupTargetConfigDialog.INTERVAL_HOURS —
+         do not reorder without updating that array too. -->
+    <string-array name="settings_backup_interval_labels">
+        <item>Every hour</item>
+        <item>Every 6 hours</item>
+        <item>Every 12 hours</item>
+        <item>Daily</item>
+        <item>Every 2 days</item>
+        <item>Weekly</item>
+    </string-array>
 
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>
