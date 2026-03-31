@@ -270,6 +270,27 @@ class TreeCastRepository(context: Context) {
     suspend fun setBackupPreferencesEnabled(volumeUuid: String, enabled: Boolean) =
         backupTargetDao.setBackupPreferences(volumeUuid, enabled)
 
+    /**
+     * Re-enqueues a periodic WorkManager job for every backup target that has
+     * scheduled backups enabled.
+     *
+     * WorkManager persists its job queue across normal app restarts, but that
+     * queue can be silently lost after a force-stop, an OS-level job pruning,
+     * or certain app updates. Calling this on every launch is cheap (it is a
+     * no-op for jobs that are already live, because [BackupWorker.enqueueOrUpdatePeriodic]
+     * uses [ExistingPeriodicWorkPolicy.REPLACE]) and ensures the schedule is
+     * always consistent with the DB, even after those edge-case losses.
+     */
+    suspend fun reconcileScheduledBackups() {
+        backupTargetDao.getScheduledTargets().forEach { target ->
+            BackupWorker.enqueueOrUpdatePeriodic(
+                context       = appContext,
+                volumeUuid    = target.volumeUuid,
+                intervalHours = target.intervalHours.toLong(),
+            )
+        }
+    }
+
     // ── Backup logs ───────────────────────────────────────────────────────────
 
     /**

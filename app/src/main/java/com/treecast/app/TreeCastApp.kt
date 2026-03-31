@@ -22,6 +22,7 @@ class TreeCastApp : Application() {
         super.onCreate()
         applyThemeFromPrefs()
         enqueuePendingWaveformJobs()
+        reconcileScheduledBackups()
     }
 
     private fun applyThemeFromPrefs() {
@@ -52,6 +53,23 @@ class TreeCastApp : Application() {
                         filePath    = recording.filePath
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * On every launch, re-enqueues a periodic WorkManager job for each backup
+     * target that has scheduled backups enabled.
+     *
+     * WorkManager's job queue can be lost after a force-stop or OS pruning.
+     * This ensures the schedule always reflects the DB configuration.
+     * [BackupWorker.enqueueOrUpdatePeriodic] uses REPLACE policy, so already-live
+     * jobs are simply refreshed rather than doubled up.
+     */
+    private fun reconcileScheduledBackups() {
+        appScope.launch {
+            runCatching {
+                repository.reconcileScheduledBackups()
             }
         }
     }
