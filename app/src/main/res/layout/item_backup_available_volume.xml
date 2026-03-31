@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_backup_available_volume.xml
+  One row in the "Available to Add" backup volume list in the Storage tab.
+
+  Layout:
+    Volume name   (primary text, 14sp bold)
+    Free space    (secondary text, 12sp)
+    [Add as Target button — right-aligned]
+
+  The outer MaterialCardView provides the subtle stroke border that visually
+  groups each row as a self-contained unit. Inflated by
+  SettingsFragment.renderBackupAvailable() via ItemBackupAvailableVolumeBinding.
+-->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="4dp"
+    app:cardBackgroundColor="?attr/colorSurfaceBase"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorSurfaceElevated"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <!-- Volume name — primary weight -->
+        <TextView
+            android:id="@+id/tvVolumeName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="USB Drive" />
+
+        <!-- Free space annotation — secondary color, sits just below the name -->
+        <TextView
+            android:id="@+id/tvVolumeInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            tools:text="24.1 GB free of 64 GB" />
+
+        <!-- Add as Target — outlined button, right-aligned, below the text block -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddAsTarget"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_backup_btn_add"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

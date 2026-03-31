@@ -1899,7 +1899,7 @@
                             android:orientation="vertical"
                             android:paddingBottom="8dp" />
 
-                        <!-- ── Available to add card (hidden when no undesignated volumes mounted) ─ -->
+                        <!-- ── Available to Add ──────────────────────────────────────────────── -->
                         <LinearLayout
                             android:id="@+id/cardBackupAvailable"
                             android:layout_width="match_parent"
@@ -1927,8 +1927,8 @@
 
                             <!--
                                 Dynamically populated by SettingsFragment.renderBackupAvailable().
-                                Shows one row per mounted removable volume not yet designated as
-                                a backup target. The parent card is GONE when this list is empty.
+                                Shows one item_backup_available_volume card per mounted removable
+                                volume not yet designated as a target, or a placeholder when empty.
                             -->
                             <LinearLayout
                                 android:id="@+id/containerBackupAvailable"

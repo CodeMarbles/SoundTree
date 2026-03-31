@@ -22,6 +22,7 @@ import androidx.work.WorkInfo
 import com.google.android.material.slider.Slider
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
+import com.treecast.app.databinding.ItemBackupAvailableVolumeBinding
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.PlayerWidgetVisibility
@@ -294,59 +295,45 @@ class SettingsFragment : Fragment() {
     }
 
     /**
-     * Renders the "Available to add" list — mounted removable volumes not yet
-     * designated as targets. The entire card section is hidden when empty.
+     * Renders the "Available to Add" list — mounted removable volumes not yet
+     * designated as targets.
+     *
+     * Always visible. Shows a placeholder when no volumes are available rather
+     * than hiding the section, so the user understands the feature exists even
+     * when no drives are currently connected.
+     *
+     * Each volume is shown as an [ItemBackupAvailableVolumeBinding] card with
+     * a subtle stroke border, volume name, free-space annotation, and an
+     * "Add as Target" outlined button.
      */
     private fun renderBackupAvailable(available: List<AppVolume>) {
-        binding.cardBackupAvailable.visibility =
-            if (available.isEmpty()) View.GONE else View.VISIBLE
-
+        // Section is always visible — no visibility toggle.
         val container = binding.containerBackupAvailable
         container.removeAllViews()
 
-        available.forEach { volume ->
-            val row = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity     = Gravity.CENTER_VERTICAL
-                setPadding(64, 20, 32, 20)
-            }
-
-            val textBlock = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                )
-            }
-            textBlock.addView(TextView(requireContext()).apply {
-                text = volume.label
-                textSize = 14f
-                setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
-            })
-            textBlock.addView(TextView(requireContext()).apply {
-                text = volume.freeLabel()
-                textSize = 12f
+        if (available.isEmpty()) {
+            container.addView(TextView(requireContext()).apply {
+                text = getString(R.string.settings_backup_no_available)
                 setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
-                setPadding(0, 2, 0, 0)
+                textSize = 13f
+                setPadding(64, 24, 64, 8)
             })
+            return
+        }
 
-            val btnAdd = com.google.android.material.button.MaterialButton(
-                requireContext(),
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle,
-            ).apply {
-                text = getString(R.string.settings_backup_btn_add)
-                textSize = 12f
-                setOnClickListener {
-                    pendingBackupVolumeUuid = volume.uuid
-                    openDocumentTree.launch(null)
-                }
+        available.forEach { volume ->
+            val itemBinding = ItemBackupAvailableVolumeBinding.inflate(
+                layoutInflater, container, false
+            )
+
+            itemBinding.tvVolumeName.text = volume.label
+            itemBinding.tvVolumeInfo.text = volume.freeLabel()
+            itemBinding.btnAddAsTarget.setOnClickListener {
+                pendingBackupVolumeUuid = volume.uuid
+                openDocumentTree.launch(null)
             }
 
-            row.addView(textBlock)
-            row.addView(btnAdd)
-            container.addView(row)
-
-            if (volume != available.last()) container.addView(rowDivider())
+            container.addView(itemBinding.root)
         }
     }
 
