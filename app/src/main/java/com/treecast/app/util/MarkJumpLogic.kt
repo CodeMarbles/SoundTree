@@ -16,8 +16,8 @@ object MarkJumpLogic {
 
     sealed class JumpTarget {
         data class ToMark(val positionMs: Long) : JumpTarget()
-        object ToTrackStart : JumpTarget()  // prev fallback — no marks behind
-        object NoTarget : JumpTarget()      // next only — nothing ahead
+        data object ToTrackStart : JumpTarget()  // prev fallback — no marks behind
+        data object NoTarget : JumpTarget()      // next only — nothing ahead
     }
 
     fun findTarget(

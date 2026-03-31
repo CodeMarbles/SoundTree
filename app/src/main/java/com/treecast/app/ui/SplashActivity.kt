@@ -8,7 +8,6 @@ import androidx.lifecycle.lifecycleScope
 import com.treecast.app.TreeCastApp
 import com.treecast.app.util.OrphanRecordingScanner
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit

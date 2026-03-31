@@ -43,6 +43,7 @@ import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 
 class ListenFragment : Fragment() {
@@ -236,7 +237,7 @@ class ListenFragment : Fragment() {
 
             MotionEvent.ACTION_MOVE -> {
                 if (!dragActive) {
-                    if (Math.abs(event.rawY - dragStartRawY) < touchSlop) return true
+                    if (abs(event.rawY - dragStartRawY) < touchSlop) return true
                     // Crossed slop — commit to drag
                     dragActive = true
                     // Switch layout to marks-dominant immediately, no animation

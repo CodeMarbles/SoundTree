@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.treecast.app.R
 import com.treecast.app.util.themeColor
+import kotlin.math.abs
 
 /**
  * Growing recording timeline for the Mini Recorder widget.
@@ -235,7 +236,7 @@ class MiniRecorderTimelineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_UP && markTimestamps.isNotEmpty()) {
             val hitSlop = resources.displayMetrics.density * 20f
-            val hitIndex = dotCxList.indexOfFirst { cx -> Math.abs(cx - event.x) <= hitSlop }
+            val hitIndex = dotCxList.indexOfFirst { cx -> abs(cx - event.x) <= hitSlop }
             if (hitIndex >= 0) {
                 onMarkTapped?.invoke(hitIndex)
                 return true

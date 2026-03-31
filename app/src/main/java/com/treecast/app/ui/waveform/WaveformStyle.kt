@@ -59,7 +59,7 @@ sealed class WaveformStyle {
     // ── Standard ──────────────────────────────────────────────────────────────
 
     /** Plain rendering — no stylized background.  The default. */
-    object Standard : WaveformStyle()
+    data object Standard : WaveformStyle()
 
     // ── Sky ───────────────────────────────────────────────────────────────────
 

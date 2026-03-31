@@ -444,28 +444,27 @@ class WaveformLineView @JvmOverloads constructor(
             playedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
         } else {
             val px       = computePlayheadX()
-            val top      = waveformTop
             val bottom   = (waveformTop + waveformH).toFloat()
 
             when {
                 playheadMs <= startMs -> {
                     // Entire line is ahead of the playhead — unplayed only.
-                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
                 }
                 playheadMs >= endMs -> {
                     // Entire line is behind the playhead — played only.
-                    playedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    playedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
                 }
                 else -> {
                     // Line straddles the playhead — clip each half separately.
                     canvas.save()
-                    canvas.clipRect(0f, top, px, bottom)
-                    playedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    canvas.clipRect(0f, waveformTop, px, bottom)
+                    playedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
                     canvas.restore()
 
                     canvas.save()
-                    canvas.clipRect(px, top, fillWidthPx, bottom)
-                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, top, null) }
+                    canvas.clipRect(px, waveformTop, fillWidthPx, bottom)
+                    unplayedBitmap?.let { canvas.drawBitmap(it, 0f, waveformTop, null) }
                     canvas.restore()
                 }
             }
