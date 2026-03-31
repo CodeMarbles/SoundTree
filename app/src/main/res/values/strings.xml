@@ -287,6 +287,7 @@
     <string name="settings_section_navigation">Navigation</string>
     <string name="settings_section_controls">Controls</string>
     <string name="settings_section_storage">Storage</string>
+    <string name="settings_section_backups">Backups</string>
     <string name="settings_section_recording_recovery">Recording Recovery</string>
     <string name="settings_section_processing_jobs">Processing Jobs</string>
     <string name="settings_section_dev_options">Dev Options</string>
@@ -391,6 +392,12 @@
     <string name="settings_label_default_storage">Default recording storage</string>
     <string name="settings_label_default_storage_desc">New recordings will be saved here</string>
     <string name="settings_label_total_used">Total used by TreeCast</string>
+
+    <!-- Storage: automatic backup -->
+    <string name="settings_backup_title">Automatic Backups</string>
+    <string name="settings_backup_no_targets">No backup targets configured</string>
+    <string name="settings_backup_available_title">Available to add</string>
+    <string name="settings_backup_btn_add">Add as backup target</string>
 
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>

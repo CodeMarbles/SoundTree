@@ -1,6 +1,8 @@
 package com.treecast.app.ui.settings
 
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -9,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -19,6 +22,7 @@ import androidx.work.WorkInfo
 import com.google.android.material.slider.Slider
 import com.treecast.app.R
 import com.treecast.app.databinding.FragmentSettingsBinding
+import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.PlayerWidgetVisibility
 import com.treecast.app.ui.ProcessingStatus
@@ -29,6 +33,9 @@ import com.treecast.app.util.OrphanRecording
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -41,6 +48,36 @@ class SettingsFragment : Fragment() {
     // ── Tab state ─────────────────────────────────────────────────────
     private enum class Tab { DISPLAY, BEHAVIOR, STORAGE, TOOLS }
     private var activeTab = Tab.DISPLAY
+
+    /**
+     * Stores the UUID of the volume the user tapped "Add" on while the SAF
+     * directory picker is open. Cleared when the picker returns.
+     */
+    private var pendingBackupVolumeUuid: String? = null
+
+    /**
+     * SAF directory picker launcher.
+     *
+     * Opened when the user taps "Add as backup target" on an available volume.
+     * On a successful result:
+     *   1. Persist read+write permission so it survives app restart.
+     *   2. Hand the volume UUID + URI to the ViewModel to insert the target row.
+     *
+     * A null result (user cancelled) is silently ignored.
+     */
+    private val openDocumentTree = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        val volumeUuid = pendingBackupVolumeUuid ?: return@registerForActivityResult
+        pendingBackupVolumeUuid = null
+        if (uri == null) return@registerForActivityResult
+
+        requireContext().contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        )
+        viewModel.addBackupTarget(volumeUuid, uri.toString())
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -61,6 +98,7 @@ class SettingsFragment : Fragment() {
         setupPlaybackSettings()
         setupStorageSection()
         setupRecordingRecoverySection()
+        setupBackupSection()
         setupProcessingSection()
         setupDevOptionsSection()
         loadStats()
@@ -163,6 +201,202 @@ class SettingsFragment : Fragment() {
         return "$label · ${AppVolume.formatBytes(totalBytes)}"
     }
 
+    private fun setupBackupSection() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Observe designated targets and available volumes together so
+                // a single volume moving between the two lists re-renders atomically.
+                launch {
+                    combine(
+                        viewModel.backupTargetUiStates,
+                        viewModel.backupAvailableVolumes,
+                    ) { targets, available -> targets to available }
+                        .collect { (targets, available) ->
+                            renderBackupTargets(targets)
+                            renderBackupAvailable(available)
+                        }
+                }
+            }
+        }
+    }
+
+    /**
+     * Renders the "Designated backup volumes" list.
+     * Each row shows label, mount status, last-backup time, and a gear icon
+     * that opens [BackupTargetConfigDialog].
+     */
+    private fun renderBackupTargets(targets: List<BackupTargetUiState>) {
+        val container = binding.containerBackupTargets
+        container.removeAllViews()
+
+        if (targets.isEmpty()) {
+            container.addView(TextView(requireContext()).apply {
+                text = getString(R.string.settings_backup_no_targets)
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                textSize = 13f
+                setPadding(64, 24, 64, 8)
+            })
+            return
+        }
+
+        targets.forEach { state ->
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = Gravity.CENTER_VERTICAL
+                setPadding(64, 24, 32, 24)
+                isClickable  = true
+                isFocusable  = true
+                setBackgroundResource(android.util.TypedValue().also { tv ->
+                    requireContext().theme.resolveAttribute(
+                        android.R.attr.selectableItemBackground, tv, true
+                    )
+                }.resourceId)
+                setOnClickListener {
+                    BackupTargetConfigDialog.newInstance(state)
+                        .show(childFragmentManager, BackupTargetConfigDialog.TAG)
+                }
+            }
+
+            val textBlock = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                )
+            }
+
+            textBlock.addView(TextView(requireContext()).apply {
+                text = state.displayLabel
+                textSize = 14f
+                setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
+            })
+
+            textBlock.addView(TextView(requireContext()).apply {
+                text = buildBackupSubtitle(state)
+                textSize = 12f
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                setPadding(0, 2, 0, 0)
+            })
+
+            // Gear icon — tappable affordance hint; row click handles the action.
+            val tvGear = TextView(requireContext()).apply {
+                text = "⚙️"
+                textSize = 18f
+                setPadding(16, 0, 0, 0)
+                isClickable = false
+            }
+
+            row.addView(textBlock)
+            row.addView(tvGear)
+            container.addView(row)
+
+            if (state != targets.last()) container.addView(rowDivider())
+        }
+    }
+
+    /**
+     * Renders the "Available to add" list — mounted removable volumes not yet
+     * designated as targets. The entire card section is hidden when empty.
+     */
+    private fun renderBackupAvailable(available: List<AppVolume>) {
+        binding.cardBackupAvailable.visibility =
+            if (available.isEmpty()) View.GONE else View.VISIBLE
+
+        val container = binding.containerBackupAvailable
+        container.removeAllViews()
+
+        available.forEach { volume ->
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = Gravity.CENTER_VERTICAL
+                setPadding(64, 20, 32, 20)
+            }
+
+            val textBlock = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                )
+            }
+            textBlock.addView(TextView(requireContext()).apply {
+                text = volume.label
+                textSize = 14f
+                setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
+            })
+            textBlock.addView(TextView(requireContext()).apply {
+                text = volume.freeLabel()
+                textSize = 12f
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                setPadding(0, 2, 0, 0)
+            })
+
+            val btnAdd = com.google.android.material.button.MaterialButton(
+                requireContext(),
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            ).apply {
+                text = getString(R.string.settings_backup_btn_add)
+                textSize = 12f
+                setOnClickListener {
+                    pendingBackupVolumeUuid = volume.uuid
+                    openDocumentTree.launch(null)
+                }
+            }
+
+            row.addView(textBlock)
+            row.addView(btnAdd)
+            container.addView(row)
+
+            if (volume != available.last()) container.addView(rowDivider())
+        }
+    }
+
+    /**
+     * Builds the subtitle line for a backup target row.
+     * Shows mount status, trigger modes enabled, and last backup time.
+     */
+    private fun buildBackupSubtitle(state: BackupTargetUiState): String {
+        val parts = mutableListOf<String>()
+
+        if (!state.isMounted) {
+            parts += "Not connected"
+        } else {
+            val triggers = mutableListOf<String>()
+            if (state.entity.onConnectEnabled) triggers += "on connect"
+            if (state.entity.scheduledEnabled) triggers += "every ${state.entity.intervalHours}h"
+            if (triggers.isNotEmpty()) parts += triggers.joinToString(" · ")
+        }
+
+        val lastBackup = state.entity.lastBackupAt
+        if (lastBackup != null) {
+            parts += "Last backup: ${formatRelativeTime(lastBackup)}"
+        } else {
+            parts += "Never backed up"
+        }
+
+        return parts.joinToString("  ·  ")
+    }
+
+    /** Formats an epoch-ms timestamp as a relative or absolute time string. */
+    private fun formatRelativeTime(epochMs: Long): String {
+        val deltaMs = System.currentTimeMillis() - epochMs
+        return when {
+            deltaMs < TimeUnit.MINUTES.toMillis(2)  -> "just now"
+            deltaMs < TimeUnit.HOURS.toMillis(1)    -> "${TimeUnit.MILLISECONDS.toMinutes(deltaMs)}m ago"
+            deltaMs < TimeUnit.HOURS.toMillis(48)   -> "${TimeUnit.MILLISECONDS.toHours(deltaMs)}h ago"
+            else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMs))
+        }
+    }
+
+    /** Creates a thin horizontal divider consistent with other Storage tab rows. */
+    private fun rowDivider(): View {
+        return View(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 1
+            ).also { lp -> lp.marginStart = 64; lp.marginEnd = 64 }
+            setBackgroundColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
+        }
+    }
+
     private fun setupProcessingSection() {
         // Button: regenerate all waveforms from scratch.
         binding.btnReprocessWaveforms.setOnClickListener {
@@ -226,8 +460,8 @@ class SettingsFragment : Fragment() {
     }
 
     private fun formatCompletionTime(epochMs: Long): String {
-        val fmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-        return fmt.format(java.util.Date(epochMs))
+        val fmt = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return fmt.format(Date(epochMs))
     }
 
     private fun addJobRow(

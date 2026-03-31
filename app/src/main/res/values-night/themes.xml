@@ -44,6 +44,7 @@
         <item name="colorActionCancel">@color/red_800</item>
         <item name="colorActionSave">@color/green_900</item>
         <item name="colorActionLockScreen">@color/amber_950</item>
+        <item name="colorError">@color/red_500</item>
 
         <!-- Text -->
         <item name="colorTextPrimary">#EEEEFF</item>

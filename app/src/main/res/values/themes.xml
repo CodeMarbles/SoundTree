@@ -43,6 +43,7 @@
         <item name="colorActionLockScreen">@color/amber_100</item>
         <item name="colorActionCancel">@color/red_700</item>
         <item name="colorActionSave">@color/green_800</item>
+        <item name="colorError">@color/red_700</item>
 
         <!-- Text -->
         <item name="colorTextPrimary">@color/navy_900</item>

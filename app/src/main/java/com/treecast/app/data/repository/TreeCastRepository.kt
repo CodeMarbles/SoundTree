@@ -87,9 +87,10 @@ class TreeCastRepository(context: Context) {
         durationMs: Long,
         fileSizeBytes: Long,
         title: String,
-        topicId: Long?,
+        topicId: Long? = null,
+        markTimestamps: List<Long>,
         storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
-        markTimestamps: List<Long> = emptyList(),
+        createdAt: Long = System.currentTimeMillis()
     ): Long {
         val recordingId = recordingDao.insert(
             RecordingEntity(
@@ -99,18 +100,36 @@ class TreeCastRepository(context: Context) {
                 title             = title,
                 topicId           = topicId,
                 storageVolumeUuid = storageVolumeUuid,
+                createdAt         = createdAt
             )
         )
         if (markTimestamps.isNotEmpty()) {
-            markDao.insertAll(markTimestamps.map { MarkEntity(recordingId = recordingId, positionMs = it) })
+            saveMarks(recordingId, markTimestamps)
         }
         return recordingId
     }
 
-    suspend fun getPendingWaveformRecordings() = recordingDao.getPendingWaveformRecordings()
-    suspend fun resetAllWaveformStatuses()     = recordingDao.resetAllWaveformStatuses()
+    /**
+     * Returns recordings whose waveform is PENDING or stuck IN_PROGRESS.
+     * Called by TreeCastApp on startup to enqueue jobs.
+     */
+    suspend fun getPendingWaveformRecordings(): List<RecordingEntity> =
+        recordingDao.getPendingWaveformRecordings()
 
-    suspend fun getAllRecordingsOnce(): List<RecordingEntity> = recordingDao.getAllOnce()
+    /**
+     * Resets every recording's waveform status to PENDING.
+     * Called by the "Regenerate all waveforms" action after cache files
+     * have been deleted.
+     */
+    suspend fun resetAllWaveformStatuses() =
+        recordingDao.resetAllWaveformStatuses()
+
+    /**
+     * Returns every recording in the database (oldest first).
+     * Used for bulk re-enqueue after a full waveform reset.
+     */
+    suspend fun getAllRecordingsOnce(): List<RecordingEntity> =
+        recordingDao.getAllOnce()
 
     suspend fun updateRecording(recording: RecordingEntity) = recordingDao.update(recording)
     suspend fun deleteRecording(recording: RecordingEntity) = recordingDao.delete(recording)

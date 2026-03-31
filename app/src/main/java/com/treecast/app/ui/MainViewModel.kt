@@ -22,6 +22,8 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.treecast.app.R
 import com.treecast.app.TreeCastApp
+import com.treecast.app.data.entities.BackupLogEntity
+import com.treecast.app.data.entities.BackupTargetEntity
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
@@ -42,6 +44,7 @@ import com.treecast.app.util.WaveformCache
 import com.treecast.app.util.WaveformExtractor
 import com.treecast.app.util.bitmapToPngByteArray
 import com.treecast.app.util.buildTopicArtwork
+import com.treecast.app.worker.BackupWorker
 import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -76,6 +79,22 @@ data class ProcessingStatus(
     companion object {
         val IDLE = ProcessingStatus(null, emptyList(), emptyList())
     }
+}
+
+/**
+ * UI model combining a [BackupTargetEntity] with the live [AppVolume] for
+ * that volume (null when the drive is not currently connected).
+ *
+ * Emitted by [MainViewModel.backupTargetUiStates] so the Storage tab never
+ * needs to cross-reference the two collections itself.
+ */
+data class BackupTargetUiState(
+    val entity: BackupTargetEntity,
+    /** Null when the backup volume is not currently mounted. */
+    val volume: AppVolume?,
+) {
+    val isMounted: Boolean get() = volume?.isMounted == true
+    val displayLabel: String get() = volume?.label ?: entity.volumeUuid
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -1451,5 +1470,102 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val preferred = _defaultStorageUuid.value
         return StorageVolumeHelper.getVolumeByUuid(getApplication(), preferred)
             ?: StorageVolumeHelper.getDefaultVolume(getApplication())
+    }
+
+    // ── Backup state ──────────────────────────────────────────────────────────
+
+    /**
+     * All configured backup targets, each paired with their live [AppVolume].
+     * Observed by the Storage tab to render the designated-targets list.
+     *
+     * Re-evaluates whenever either the DB target list or the mounted volume
+     * list changes, so mount/unmount events update the UI automatically.
+     */
+    val backupTargetUiStates: StateFlow<List<BackupTargetUiState>> = combine(
+        repo.getBackupTargets(),
+        storageVolumes,
+    ) { targets, volumes ->
+        val volumeMap = volumes.associateBy { it.uuid }
+        targets.map { target ->
+            BackupTargetUiState(
+                entity = target,
+                volume = volumeMap[target.volumeUuid],
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * Removable volumes that are currently mounted and not yet designated as
+     * backup targets (and not the primary internal volume).
+     *
+     * Shown as the "available to add" list in the Storage tab. Empty when no
+     * undesignated removable volumes are connected.
+     */
+    val backupAvailableVolumes: StateFlow<List<AppVolume>> = combine(
+        storageVolumes,
+        repo.getBackupTargets(),
+    ) { volumes, targets ->
+        val targetUuids = targets.map { it.volumeUuid }.toSet()
+        volumes.filter { vol ->
+            vol.isMounted
+                    && vol.uuid != StorageVolumeHelper.UUID_PRIMARY
+                    && vol.uuid !in targetUuids
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // ── Backup actions ────────────────────────────────────────────────────────
+
+    /**
+     * Designates [volumeUuid] as a backup target and persists the SAF
+     * directory URI chosen by the user. Called immediately after a
+     * successful [Intent.ACTION_OPEN_DOCUMENT_TREE] result in
+     * [SettingsFragment].
+     */
+    fun addBackupTarget(volumeUuid: String, dirUri: String) {
+        viewModelScope.launch {
+            repo.addBackupTarget(volumeUuid)
+            repo.setBackupTargetDirUri(volumeUuid, dirUri)
+        }
+    }
+
+    /**
+     * Removes a backup target and cancels its periodic WorkManager job.
+     * Any currently-running or enqueued one-time backup is left to complete.
+     */
+    fun removeBackupTarget(volumeUuid: String) {
+        viewModelScope.launch { repo.removeBackupTarget(volumeUuid) }
+    }
+
+    fun setBackupOnConnectEnabled(volumeUuid: String, enabled: Boolean) {
+        viewModelScope.launch { repo.setBackupOnConnectEnabled(volumeUuid, enabled) }
+    }
+
+    /**
+     * Toggles scheduled backups for [volumeUuid]. Enqueues or cancels the
+     * WorkManager [PeriodicWorkRequest] accordingly via the repository.
+     */
+    fun setBackupScheduledEnabled(volumeUuid: String, enabled: Boolean) {
+        viewModelScope.launch { repo.setBackupScheduledEnabled(volumeUuid, enabled) }
+    }
+
+    /**
+     * Updates the scheduled interval and replaces the live WorkManager
+     * periodic request if scheduling is currently enabled.
+     */
+    fun setBackupIntervalHours(volumeUuid: String, hours: Int) {
+        viewModelScope.launch { repo.setBackupIntervalHours(volumeUuid, hours) }
+    }
+
+    /**
+     * Enqueues a one-time manual backup for [volumeUuid]. Safe to call even
+     * if a backup is already running — [ExistingWorkPolicy.KEEP] makes it a
+     * no-op until the current job finishes.
+     */
+    fun triggerManualBackup(volumeUuid: String) {
+        BackupWorker.enqueueOneTime(
+            context    = getApplication(),
+            volumeUuid = volumeUuid,
+            trigger    = BackupLogEntity.BackupTrigger.MANUAL,
+        )
     }
 }

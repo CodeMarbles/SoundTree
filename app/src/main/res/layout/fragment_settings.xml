@@ -1835,6 +1835,115 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- BACKUPS section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Backups"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Card header -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="16dp"
+                            android:paddingBottom="8dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_backup_title"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.06" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <!--
+                            Dynamically populated by SettingsFragment.renderBackupTargets().
+                            Shows one row per configured backup target, or a "none configured"
+                            placeholder when empty.
+                        -->
+                        <LinearLayout
+                            android:id="@+id/containerBackupTargets"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingBottom="8dp" />
+
+                        <!-- ── Available to add card (hidden when no undesignated volumes mounted) ─ -->
+                        <LinearLayout
+                            android:id="@+id/cardBackupAvailable"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <!-- Card header -->
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_backup_available_title"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.06"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="16dp"
+                                android:paddingBottom="8dp" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="?attr/colorSurfaceElevated"
+                                android:layout_marginHorizontal="16dp" />
+
+                            <!--
+                                Dynamically populated by SettingsFragment.renderBackupAvailable().
+                                Shows one row per mounted removable volume not yet designated as
+                                a backup target. The parent card is GONE when this list is empty.
+                            -->
+                            <LinearLayout
+                                android:id="@+id/containerBackupAvailable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingBottom="8dp" />
+
+                        </LinearLayout>
+
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
             </LinearLayout>
 
         </ScrollView>

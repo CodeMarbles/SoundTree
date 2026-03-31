@@ -71,6 +71,7 @@
     <attr name="colorPlayhead"              format="color" />
 
     <!-- Status & labels -->
+    <attr name="colorError"                 format="color" />
     <attr name="colorStatusSuccess"         format="color" />
     <attr name="colorStatusWarning"         format="color" />
     <attr name="colorStatusLockScreen"      format="color" />
