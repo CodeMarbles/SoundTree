@@ -4,7 +4,7 @@ import android.content.Context
 import com.treecast.app.data.dao.VolumeUsage
 import com.treecast.app.data.db.AppDatabase
 import com.treecast.app.data.entities.BackupLogEntity
-import com.treecast.app.data.entities.BackupLogErrorEntity
+import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.data.entities.BackupTargetEntity
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
@@ -316,11 +316,23 @@ class TreeCastRepository(context: Context) {
         backupLogDao.getLastCompletedForVolume(volumeUuid)
 
     /**
-     * Error/warning rows for a specific backup run.
-     * Consumed by the incident detail view.
+     * All event rows (INFO milestones + WARNING/ERROR problems) for a specific
+     * backup run. Consumed by the backup log detail view.
+     *
+     * To show only user-visible problems (WARNING + ERROR), use
+     * [getBackupLogProblems] instead, which filters out INFO rows.
      */
-    fun getBackupLogErrors(logId: Long): Flow<List<BackupLogErrorEntity>> =
-        backupLogDao.getErrorsForLog(logId)
+    fun getBackupLogEvents(logId: Long): Flow<List<BackupLogEventEntity>> =
+        backupLogDao.getEventsForLog(logId)
+
+    /**
+     * WARNING + ERROR rows only for a specific backup run.
+     * Use this when computing user-visible error counts or rendering
+     * summaries that should not include INFO milestone rows.
+     */
+    fun getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEntity>> =
+        backupLogDao.getProblemsForLog(logId)
+
 
     /** Clears all backup log entries (and their child error rows via CASCADE). */
     suspend fun clearAllBackupLogs() = backupLogDao.clearAll()

@@ -19,8 +19,8 @@ import com.treecast.app.data.db.AppDatabase
 import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.data.entities.BackupLogEntity.BackupStatus
 import com.treecast.app.data.entities.BackupLogEntity.BackupTrigger
-import com.treecast.app.data.entities.BackupLogErrorEntity
-import com.treecast.app.data.entities.BackupLogErrorEntity.ErrorSeverity
+import com.treecast.app.data.entities.BackupLogEventEntity
+import com.treecast.app.data.entities.BackupLogEventEntity.EventType
 import com.treecast.app.util.StorageVolumeHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,9 +41,17 @@ import java.util.concurrent.TimeUnit
  *    `recordings/` sub-directory, skipping files already present with a
  *    matching byte size.
  * 6. Writes a [BackupLogEntity] row (created at start, finalised at end)
- *    and [BackupLogErrorEntity] rows for any per-file problems.
+ *    and [BackupLogEventEntity] child rows for any events (INFO milestones
+ *    when verbose logging is on; WARNING and ERROR for problems always).
  * 7. Updates [BackupTargetEntity.lastBackupAt] on success.
  * 8. Posts a notification with the outcome.
+ *
+ * ## Verbose logging
+ * When the user enables "Detailed backup log" in Settings, [PREF_VERBOSE_LOGGING]
+ * is true and INFO milestone events are emitted alongside the usual WARNING/ERROR
+ * events. Milestones include: WAL checkpoint result, db/ directory resolution,
+ * database copy, recordings/ directory resolution, and pre-scan statistics.
+ * Individual file copies are never logged regardless of verbosity level.
  *
  * ## Enqueuing
  * Use the [enqueueOneTime] helper for ON_CONNECT and MANUAL triggers.
@@ -70,6 +78,14 @@ class BackupWorker(
 
         const val KEY_VOLUME_UUID = "volume_uuid"
         const val KEY_TRIGGER     = "trigger"
+
+        /**
+         * SharedPreferences key for the verbose backup logging toggle.
+         * When true, [EventType.INFO] milestone events are written to
+         * [BackupLogEventEntity] during each run.
+         * Default: false.
+         */
+        const val PREF_VERBOSE_LOGGING = "backup_verbose_logging"
 
         // ── Notification ──────────────────────────────────────────────
         const val CHANNEL_ID      = "treecast_backup"
@@ -157,9 +173,13 @@ class BackupWorker(
         val trigger = inputData.getString(KEY_TRIGGER)
             ?: BackupTrigger.MANUAL
 
-        val db            = AppDatabase.getInstance(applicationContext)
-        val targetDao     = db.backupTargetDao()
-        val logDao        = db.backupLogDao()
+        val db        = AppDatabase.getInstance(applicationContext)
+        val targetDao = db.backupTargetDao()
+        val logDao    = db.backupLogDao()
+
+        val verbose = applicationContext
+            .getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
+            .getBoolean(PREF_VERBOSE_LOGGING, false)
 
         // ── 1. Resolve target ─────────────────────────────────────────
         val target = targetDao.getByUuid(volumeUuid)
@@ -196,7 +216,34 @@ class BackupWorker(
 
         postNotification(applicationContext, "Backup in progress…")
 
-        val errors = mutableListOf<BackupLogErrorEntity>()
+        // Accumulated events — flushed to DB in a single batch at the end.
+        val events = mutableListOf<BackupLogEventEntity>()
+
+        // Convenience helpers — keep call sites concise.
+        fun info(message: String, path: String? = null) {
+            if (verbose) events += BackupLogEventEntity(
+                logId      = logId,
+                severity   = EventType.INFO,
+                sourcePath = path,
+                message    = message,
+            )
+        }
+        fun warning(message: String, path: String? = null) {
+            events += BackupLogEventEntity(
+                logId      = logId,
+                severity   = EventType.WARNING,
+                sourcePath = path,
+                message    = message,
+            )
+        }
+        fun error(message: String, path: String? = null) {
+            events += BackupLogEventEntity(
+                logId      = logId,
+                severity   = EventType.ERROR,
+                sourcePath = path,
+                message    = message,
+            )
+        }
 
         // Running stats — updated incrementally and flushed to the DB at the end.
         var filesExamined = 0
@@ -210,41 +257,31 @@ class BackupWorker(
         try {
             val sqliteDb = db.openHelper.writableDatabase
             sqliteDb.execSQL("PRAGMA wal_checkpoint(FULL)")
+            info("WAL checkpoint complete")
 
             val dbSourceFile = applicationContext.getDatabasePath("treecast.db")
             val dbDestDir    = destRoot.findOrCreateDir("db")
 
             if (dbDestDir != null) {
+                info("db/ directory resolved on backup destination")
                 copyFileToDocumentDir(dbSourceFile, dbDestDir, "treecast.db")
                 dbBackedUp = true
+                info("Database copied — ${dbSourceFile.length()} bytes")
             } else {
-                errors += BackupLogErrorEntity(
-                    logId        = logId,
-                    severity     = ErrorSeverity.ERROR,
-                    sourcePath   = null,
-                    errorMessage = "Could not create db/ directory on backup destination",
-                )
+                error("Could not create db/ directory on backup destination")
             }
         } catch (e: Exception) {
-            errors += BackupLogErrorEntity(
-                logId        = logId,
-                severity     = ErrorSeverity.ERROR,
-                sourcePath   = null,
-                errorMessage = "Database checkpoint/copy failed: ${e.message}",
-            )
+            error("Database checkpoint/copy failed: ${e.message}")
         }
 
         // ── 4. Sync recording files ───────────────────────────────────
         val recordingDestDir = destRoot.findOrCreateDir("recordings")
 
         if (recordingDestDir == null) {
-            errors += BackupLogErrorEntity(
-                logId        = logId,
-                severity     = ErrorSeverity.ERROR,
-                sourcePath   = null,
-                errorMessage = "Could not create recordings/ directory on backup destination",
-            )
+            error("Could not create recordings/ directory on backup destination")
         } else {
+            info("recordings/ directory resolved on backup destination")
+
             // Build an index of files already on the destination keyed by name,
             // so existence checks are O(1) rather than O(n) per source file.
             val destIndex: Map<String, Long> = recordingDestDir
@@ -256,6 +293,11 @@ class BackupWorker(
                 dir.listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }
                     ?.size ?: 0
             }
+            val alreadyOnDest = destIndex.count { (name, _) -> name.startsWith("TC_") }
+            info(
+                "Pre-scan complete — $totalOnSource recording(s) on source, " +
+                        "$alreadyOnDest already on destination"
+            )
 
             for (sourceDir in sourceDirs) {
                 val files = sourceDir
@@ -279,11 +321,9 @@ class BackupWorker(
                                 bytesCopied += file.length()
                             } catch (e: Exception) {
                                 filesFailed++
-                                errors += BackupLogErrorEntity(
-                                    logId        = logId,
-                                    severity     = ErrorSeverity.ERROR,
-                                    sourcePath   = file.absolutePath,
-                                    errorMessage = e.message ?: "Unknown error",
+                                error(
+                                    message = e.message ?: "Unknown error",
+                                    path    = file.absolutePath,
                                 )
                             }
                         }
@@ -292,8 +332,8 @@ class BackupWorker(
             }
 
             // Total state of destination after this run.
-            val destFiles      = recordingDestDir.listFiles()
-            val totalOnDest    = destFiles.count { it.name.orEmpty().startsWith("TC_") }
+            val destFiles        = recordingDestDir.listFiles()
+            val totalOnDest      = destFiles.count { it.name.orEmpty().startsWith("TC_") }
             val totalBytesOnDest = destFiles
                 .filter { it.name.orEmpty().startsWith("TC_") }
                 .sumOf { it.length() }
@@ -313,15 +353,20 @@ class BackupWorker(
             )
         }
 
-        // ── 6. Write error child rows ─────────────────────────────────
-        if (errors.isNotEmpty()) {
-            logDao.insertErrors(errors)
+        // ── 6. Write event child rows ─────────────────────────────────
+        if (events.isNotEmpty()) {
+            logDao.insertEvents(events)
         }
 
         // ── 7. Finalise log row ───────────────────────────────────────
+        //
+        // Problem count is WARNING + ERROR only — INFO milestones do not
+        // count toward PARTIAL or FAILED status.
+        val problemCount = events.count { it.severity != EventType.INFO }
+
         val status = when {
             filesFailed > 0 && filesCopied == 0 && !dbBackedUp -> BackupStatus.FAILED
-            filesFailed > 0 || errors.isNotEmpty()              -> BackupStatus.PARTIAL
+            filesFailed > 0 || problemCount > 0                 -> BackupStatus.PARTIAL
             else                                                 -> BackupStatus.SUCCESS
         }
 
@@ -330,7 +375,7 @@ class BackupWorker(
             endedAt      = System.currentTimeMillis(),
             status       = status,
             errorMessage = if (status == BackupStatus.FAILED)
-                "Backup failed — ${errors.size} error(s). See backup log for details."
+                "Backup failed — $problemCount error(s). See backup log for details."
             else null,
         )
 

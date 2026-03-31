@@ -12,7 +12,7 @@ import com.treecast.app.data.dao.MarkDao
 import com.treecast.app.data.dao.RecordingDao
 import com.treecast.app.data.dao.TopicDao
 import com.treecast.app.data.entities.BackupLogEntity
-import com.treecast.app.data.entities.BackupLogErrorEntity
+import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.data.entities.BackupTargetEntity
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
@@ -25,9 +25,9 @@ import com.treecast.app.data.entities.TopicEntity
         MarkEntity::class,
         BackupTargetEntity::class,
         BackupLogEntity::class,
-        BackupLogErrorEntity::class,
+        BackupLogEventEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -226,6 +226,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v9 → v10: Rename backup_log_errors → backup_log_events.
+         *
+         * The child event table is renamed to reflect its expanded purpose —
+         * it now stores INFO milestone events (when verbose backup logging is
+         * enabled) in addition to WARNING and ERROR incidents. The column
+         * schema is unchanged; severity remains a TEXT column that now also
+         * accepts the value "INFO". The index is recreated under the new name.
+         *
+         * Existing WARNING/ERROR rows are preserved and remain fully valid.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE backup_log_errors RENAME TO backup_log_events")
+                db.execSQL("DROP INDEX IF EXISTS index_backup_log_errors_log_id")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_backup_log_events_log_id ON backup_log_events(log_id)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -240,6 +261,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
+                        MIGRATION_9_10,
                     )
                     .fallbackToDestructiveMigration()
                     .build()

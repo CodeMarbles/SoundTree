@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.treecast.app.data.entities.BackupLogEntity
-import com.treecast.app.data.entities.BackupLogErrorEntity
+import com.treecast.app.data.entities.BackupLogEventEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,7 +17,7 @@ interface BackupLogDao {
     /**
      * Inserts a new log row at the start of a backup run.
      * Returns the generated [BackupLogEntity.id] so BackupWorker can
-     * reference it when writing [BackupLogErrorEntity] child rows and
+     * reference it when writing [BackupLogEventEntity] child rows and
      * when updating the row on completion.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -113,42 +113,65 @@ interface BackupLogDao {
 
     // ── Log clearing ──────────────────────────────────────────────────────────
 
-    /** Deletes all log entries (and their child error rows via CASCADE). */
+    /** Deletes all log entries (and their child event rows via CASCADE). */
     @Query("DELETE FROM backup_logs")
     suspend fun clearAll()
 
     /**
-     * Deletes log entries for a specific volume (and child error rows via CASCADE).
+     * Deletes log entries for a specific volume (and child event rows via CASCADE).
      * Called when the user removes a backup target and opts to clear its history.
      */
     @Query("DELETE FROM backup_logs WHERE volume_uuid = :volumeUuid")
     suspend fun clearForVolume(volumeUuid: String)
 
-    // ── BackupLogErrorEntity ──────────────────────────────────────────────────
+    // ── BackupLogEventEntity ──────────────────────────────────────────────────
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertError(error: BackupLogErrorEntity)
+    suspend fun insertEvent(event: BackupLogEventEntity)
 
-    /** Bulk insert — BackupWorker may accumulate errors and flush them together. */
+    /** Bulk insert — BackupWorker may accumulate events and flush them together. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertErrors(errors: List<BackupLogErrorEntity>)
+    suspend fun insertEvents(events: List<BackupLogEventEntity>)
 
     /**
-     * All error/warning rows for a given log entry.
-     * Used to populate the incident detail view for a specific backup run.
+     * All event rows for a given log entry, oldest first.
+     * Used to populate the detail view for a specific backup run.
+     * Includes INFO, WARNING, and ERROR severity rows.
      */
     @Query("""
-        SELECT * FROM backup_log_errors
+        SELECT * FROM backup_log_events
         WHERE log_id = :logId
         ORDER BY occurred_at ASC
     """)
-    fun getErrorsForLog(logId: Long): Flow<List<BackupLogErrorEntity>>
+    fun getEventsForLog(logId: Long): Flow<List<BackupLogEventEntity>>
 
     /** One-shot variant for use outside of UI observation. */
     @Query("""
-        SELECT * FROM backup_log_errors
+        SELECT * FROM backup_log_events
         WHERE log_id = :logId
         ORDER BY occurred_at ASC
     """)
-    suspend fun getErrorsForLogOnce(logId: Long): List<BackupLogErrorEntity>
+    suspend fun getEventsForLogOnce(logId: Long): List<BackupLogEventEntity>
+
+    /**
+     * WARNING + ERROR rows only for a given log entry, oldest first.
+     * Use this when computing user-visible error counts or rendering
+     * a summary that should not include INFO milestone rows.
+     */
+    @Query("""
+        SELECT * FROM backup_log_events
+        WHERE log_id = :logId
+          AND severity IN ('WARNING', 'ERROR')
+        ORDER BY occurred_at ASC
+    """)
+    fun getProblemsForLog(logId: Long): Flow<List<BackupLogEventEntity>>
+
+    /** One-shot variant of [getProblemsForLog]. */
+    @Query("""
+        SELECT * FROM backup_log_events
+        WHERE log_id = :logId
+          AND severity IN ('WARNING', 'ERROR')
+        ORDER BY occurred_at ASC
+    """)
+    suspend fun getProblemsForLogOnce(logId: Long): List<BackupLogEventEntity>
 }

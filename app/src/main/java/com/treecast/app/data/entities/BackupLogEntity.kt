@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey
  * Records a single backup run to one [BackupTargetEntity] volume.
  *
  * Each row is created when a backup starts and updated in-place as the run
- * progresses. [BackupLogErrorEntity] rows referencing this row's [id] are
+ * progresses. [BackupLogEventEntity] rows referencing this row's [id] are
  * written for any per-file failure or warning encountered during the run.
  *
  * ## Denormalization
@@ -97,7 +97,7 @@ data class BackupLogEntity(
     /**
      * Top-level error message if [status] is [BackupStatus.FAILED].
      * Null for success or partial runs — per-item errors live in
-     * [BackupLogErrorEntity].
+     * [BackupLogEventEntity].
      */
     @ColumnInfo(name = "error_message")
     val errorMessage: String? = null,
@@ -135,7 +135,7 @@ data class BackupLogEntity(
 
     /**
      * Files that were attempted but failed. Each failed file has a
-     * corresponding [BackupLogErrorEntity] row with details.
+     * corresponding [BackupLogEventEntity] row with details.
      */
     @ColumnInfo(name = "files_failed")
     val filesFailed: Int = 0,
