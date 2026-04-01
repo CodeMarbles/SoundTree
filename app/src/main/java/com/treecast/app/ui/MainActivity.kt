@@ -33,7 +33,7 @@ import com.treecast.app.ui.settings.SettingsFragment
 import com.treecast.app.ui.workspace.WorkspaceFragment
 import com.treecast.app.util.Icons
 import com.treecast.app.util.OrphanRecording
-import com.treecast.app.util.StorageEjectReceiver
+import com.treecast.app.util.StorageVolumeEventReceiver
 import com.treecast.app.util.UiConstants
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         else           -> ""
     }
 
-    private var storageEjectReceiver: StorageEjectReceiver? = null
+    private var storageVolumeEventReceiver: StorageVolumeEventReceiver? = null
 
     // ── Back-stack navigation ─────────────────────────────────────────
     //
@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        storageEjectReceiver = StorageEjectReceiver {
+        storageVolumeEventReceiver = StorageVolumeEventReceiver {
             // Called on the main thread — safe to update ViewModel directly.
             viewModel.refreshStorageVolumes()
         }.also { receiver ->
@@ -166,6 +166,7 @@ class MainActivity : AppCompatActivity() {
                 addAction(Intent.ACTION_MEDIA_REMOVED)
                 addAction(Intent.ACTION_MEDIA_UNMOUNTED)
                 addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+                addAction(Intent.ACTION_MEDIA_MOUNTED)
                 // Storage broadcasts require a data scheme to be delivered.
                 addDataScheme("file")
             }
@@ -176,8 +177,8 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         viewModel.onAppClose()
-        storageEjectReceiver?.let { unregisterReceiver(it) }
-        storageEjectReceiver = null
+        storageVolumeEventReceiver?.let { unregisterReceiver(it) }
+        storageVolumeEventReceiver = null
     }
 
     /**

@@ -395,7 +395,7 @@
 
     <!-- Backup: card section titles -->
     <string name="settings_backup_title">Automatic Backups</string>
-    <string name="settings_backup_available_title">Available to Add</string>
+    <string name="settings_backup_available_title">Available Backup Devices</string>
 
     <!-- Backup: designated target list — row content and empty states -->
     <string name="settings_backup_no_targets">No backup volumes configured</string>
@@ -430,6 +430,49 @@
         <item>Every 2 days</item>
         <item>Weekly</item>
     </string-array>
+
+    <!-- Backup: log UI — history dialog, row chips, and detail dialog
+         backup_log_status_*    — chip labels for BackupStatus values
+         backup_log_trigger_*   — human-readable trigger names in detail view
+         backup_log_detail_*    — labels and templates for the detail dialog
+         backup_log_duration_*  — run duration format strings
+         backup_log_date_format — SimpleDateFormat pattern used by BackupLogUi
+    -->
+    <string name="backup_log_status_success">Success</string>
+    <string name="backup_log_status_partial">Partial</string>
+    <string name="backup_log_status_failed">Failed</string>
+    <string name="backup_log_status_running">Running</string>
+    <!-- Used in tvStats while a run is still in progress -->
+    <string name="backup_log_status_running_ellipsis">…</string>
+    <string name="backup_log_trigger_on_connect">On Connect</string>
+    <string name="backup_log_trigger_scheduled">Scheduled</string>
+    <string name="backup_log_trigger_manual">Manual</string>
+    <!-- History dialog -->
+    <string name="backup_log_history_title">Backup History</string>
+    <string name="backup_log_history_empty">No backup runs recorded yet.</string>
+    <!-- Settings card mini-list header + button -->
+    <string name="backup_log_section_recent">Recent Backups</string>
+    <string name="backup_log_btn_view_all">View all history</string>
+    <!-- Detail dialog — metadata labels -->
+    <string name="backup_log_detail_trigger_label">Trigger</string>
+    <string name="backup_log_detail_duration_label">Duration</string>
+    <string name="backup_log_detail_files_label">Files</string>
+    <string name="backup_log_detail_bytes_label">Data copied</string>
+    <string name="backup_log_detail_db_label">Database</string>
+    <string name="backup_log_detail_db_backed_up">Backed up</string>
+    <string name="backup_log_detail_db_not_backed_up">Not included</string>
+    <!-- %1$d=copied  %2$d=skipped  %3$d=failed -->
+    <string name="backup_log_detail_files_summary">%1$d copied · %2$d skipped · %3$d failed</string>
+    <string name="backup_log_detail_events_title">Events</string>
+    <string name="backup_log_detail_btn_show_info">Show milestones</string>
+    <string name="backup_log_detail_btn_hide_info">Hide milestones</string>
+    <string name="backup_log_detail_no_events">No events recorded for this run.</string>
+    <string name="backup_log_detail_error_message_label">Run error</string>
+    <!-- Duration format strings: %1$d=minutes  %2$d=seconds -->
+    <string name="backup_log_duration_minutes">%1$dm %2$ds</string>
+    <string name="backup_log_duration_seconds">%1$ds</string>
+    <!-- SimpleDateFormat pattern used by BackupLogUi.bindLog() and BackupLogDetailDialog -->
+    <string name="backup_log_date_format" translatable="false">MMM d, yyyy · h:mm a</string>
 
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>

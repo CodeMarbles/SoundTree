@@ -1939,6 +1939,58 @@
 
                         </LinearLayout>
 
+                        <!-- ── Recent Backups sub-section ───────────────────────────────────── -->
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="4dp"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="4dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/backup_log_section_recent"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.06" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnViewAllHistory"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/backup_log_btn_view_all"
+                                android:textSize="12sp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp" />
+
+                        </LinearLayout>
+
+                        <!--
+                            Dynamically populated by SettingsFragment.renderBackupMiniLog().
+                            Shows the last 3 completed backup runs (any volume) using
+                            item_backup_log_row.xml with showVolumeLabel=true.
+                            Each row is tappable to open BackupLogDetailDialog.
+                        -->
+                        <LinearLayout
+                            android:id="@+id/containerBackupLog"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingBottom="8dp" />
 
                     </LinearLayout>
 

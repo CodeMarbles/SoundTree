@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -21,8 +22,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.WorkInfo
 import com.google.android.material.slider.Slider
 import com.treecast.app.R
+import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.databinding.ItemBackupAvailableVolumeBinding
+import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.PlayerWidgetVisibility
@@ -31,6 +34,7 @@ import com.treecast.app.ui.RecorderWidgetVisibility
 import com.treecast.app.ui.recovery.OrphanRecoveryDialogFragment
 import com.treecast.app.util.AppVolume
 import com.treecast.app.util.OrphanRecording
+import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -217,7 +221,19 @@ class SettingsFragment : Fragment() {
                             renderBackupAvailable(available)
                         }
                 }
+
+                // ── Mini backup log (last 3 runs) + "View all" button ─────────
+                launch {
+                    viewModel.backupLogs.collect { logs ->
+                        renderBackupMiniLog(logs)
+                    }
+                }
             }
+        }
+
+        binding.btnViewAllHistory.setOnClickListener {
+            BackupLogHistoryDialog()
+                .show(childFragmentManager, BackupLogHistoryDialog.TAG)
         }
     }
 
@@ -330,10 +346,48 @@ class SettingsFragment : Fragment() {
             itemBinding.tvVolumeInfo.text = volume.freeLabel()
             itemBinding.btnAddAsTarget.setOnClickListener {
                 pendingBackupVolumeUuid = volume.uuid
-                openDocumentTree.launch(null)
+                openDocumentTree.launch(buildVolumeRootUri(volume.uuid))
             }
 
             container.addView(itemBinding.root)
+        }
+    }
+
+    /**
+     * Renders the last 3 completed backup runs in the Settings backup card.
+     *
+     * Shows a placeholder when there are no runs yet. Each row uses
+     * [ItemBackupLogRowBinding] (showVolumeLabel = true) and opens
+     * [BackupLogDetailDialog] on tap.
+     */
+    private fun renderBackupMiniLog(logs: List<BackupLogEntity>) {
+        val container = binding.containerBackupLog
+        container.removeAllViews()
+
+        val recent = logs.take(3)
+
+        if (recent.isEmpty()) {
+            container.addView(TextView(requireContext()).apply {
+                text = getString(R.string.backup_log_history_empty)
+                setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
+                textSize = 13f
+                setPadding(64, 24, 64, 8)
+            })
+            return
+        }
+
+        recent.forEachIndexed { index, log ->
+            val rowBinding = ItemBackupLogRowBinding.inflate(
+                layoutInflater, container, false
+            )
+            rowBinding.bindLog(log, showVolumeLabel = true, context = requireContext())
+            rowBinding.root.setOnClickListener {
+                BackupLogDetailDialog.newInstance(log)
+                    .show(childFragmentManager, BackupLogDetailDialog.TAG)
+            }
+            container.addView(rowBinding.root)
+
+            if (index < recent.lastIndex) container.addView(rowDivider())
         }
     }
 
@@ -1090,5 +1144,24 @@ class SettingsFragment : Fragment() {
             hours > 0   -> "${hours}h ${minutes}m"
             else        -> "${minutes}m"
         }
+    }
+
+    /**
+     * Builds an initial-URI hint for ACTION_OPEN_DOCUMENT_TREE that opens the
+     * picker at the root of the specified storage volume.
+     *
+     * Works on stock Android 8+ and most OEM ROMs. Some Samsung/older OEM
+     * ROMs ignore the hint entirely — the picker still opens, just at its
+     * default location, so this is always safe to pass.
+     *
+     * Returns null for the primary volume since the picker already defaults
+     * there; only meaningful for removable volumes.
+     */
+    private fun buildVolumeRootUri(volumeUuid: String): Uri? {
+        if (volumeUuid == StorageVolumeHelper.UUID_PRIMARY) return null
+        return DocumentsContract.buildRootUri(
+            "com.android.externalstorage.documents",
+            volumeUuid
+        )
     }
 }

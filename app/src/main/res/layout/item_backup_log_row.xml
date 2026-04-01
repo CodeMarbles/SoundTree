@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_backup_log_row.xml
+  One row representing a single BackupLogEntity.
+
+  Used in three contexts:
+    - BackupLogHistoryDialog  — all-volume history list   → tvVolumeLabel VISIBLE
+    - SettingsFragment mini-list (last 3 in backup card)  → tvVolumeLabel VISIBLE
+    - BackupTargetConfigDialog recent backups section     → tvVolumeLabel GONE
+                                                            (already scoped to one volume)
+
+  The host is responsible for setting
+      binding.tvVolumeLabel.visibility = View.GONE
+  when the context already implies a single volume. Use BackupLogUi.bindLog()
+  which handles this via the showVolumeLabel parameter.
+
+  Layout (horizontal, center-vertical):
+    [tvStatusChip]  [tvVolumeLabel (bold) / tvDate (secondary)]  [tvStats]
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!--
+        Status chip — colored pill with rounded corners.
+        Background and text are set programmatically by BackupLogUi.bindLog()
+        so the chip color reacts to the BackupStatus value.
+    -->
+    <TextView
+        android:id="@+id/tvStatusChip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="3dp"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginEnd="12dp"
+        tools:text="Success"
+        tools:background="#2A7A3B" />
+
+    <!-- Volume label + date block — takes all remaining horizontal space -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!--
+            Volume label — hidden (View.GONE) by BackupLogUi.bindLog() when
+            showVolumeLabel = false (i.e. inside BackupTargetConfigDialog).
+        -->
+        <TextView
+            android:id="@+id/tvVolumeLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:maxLines="1"
+            tools:text="USB Drive" />
+
+        <!-- Date / time of the backup run start -->
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            android:layout_marginTop="1dp"
+            tools:text="Mar 31, 2026 · 2:14 PM" />
+
+    </LinearLayout>
+
+    <!--
+        Compact stats — "12 · 0" (filesCopied · filesFailed).
+        Shows "…" while status is null (run in progress).
+        Set programmatically by BackupLogUi.bindLog().
+    -->
+    <TextView
+        android:id="@+id/tvStats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="12sp"
+        android:gravity="end"
+        android:layout_marginStart="8dp"
+        tools:text="12 · 0" />
+
+</LinearLayout>

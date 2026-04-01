@@ -220,30 +220,37 @@ class BackupWorker(
         val events = mutableListOf<BackupLogEventEntity>()
 
         // Convenience helpers — keep call sites concise.
-        fun info(message: String, path: String? = null) {
-            if (verbose) events += BackupLogEventEntity(
+        suspend fun info(message: String, path: String? = null) {
+            events += BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.INFO,
                 sourcePath = path,
                 message    = message,
             )
+            logDao.insertEvents(events)
+            events.clear()
         }
-        fun warning(message: String, path: String? = null) {
+        suspend fun warning(message: String, path: String? = null) {
             events += BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.WARNING,
                 sourcePath = path,
                 message    = message,
             )
+            logDao.insertEvents(events)
+            events.clear()
         }
-        fun error(message: String, path: String? = null) {
+        suspend fun error(message: String, path: String? = null) {
             events += BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.ERROR,
                 sourcePath = path,
                 message    = message,
             )
+            logDao.insertEvents(events)
+            events.clear()
         }
+
 
         // Running stats — updated incrementally and flushed to the DB at the end.
         var filesExamined = 0
@@ -256,7 +263,7 @@ class BackupWorker(
         // ── 3. Checkpoint WAL then copy DB ────────────────────────────
         try {
             val sqliteDb = db.openHelper.writableDatabase
-            sqliteDb.execSQL("PRAGMA wal_checkpoint(FULL)")
+            sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
             info("WAL checkpoint complete")
 
             val dbSourceFile = applicationContext.getDatabasePath("treecast.db")
@@ -328,6 +335,22 @@ class BackupWorker(
                             }
                         }
                     }
+
+                    // Flush stats to DB every 5 files so the UI can show live progress.
+                    //if (filesExamined % 5 == 0) {
+                    logDao.updateStats(
+                        id               = logId,
+                        filesExamined    = filesExamined,
+                        filesCopied      = filesCopied,
+                        filesSkipped     = filesSkipped,
+                        filesFailed      = filesFailed,
+                        bytesCopied      = bytesCopied,
+                        totalOnSource    = totalOnSource,
+                        totalOnDest      = 0,
+                        totalBytesOnDest = 0L,
+                        dbBackedUp       = dbBackedUp,
+                    )
+                    //}
                 }
             }
 
@@ -354,9 +377,9 @@ class BackupWorker(
         }
 
         // ── 6. Write event child rows ─────────────────────────────────
-        if (events.isNotEmpty()) {
-            logDao.insertEvents(events)
-        }
+//        if (events.isNotEmpty()) {
+//            logDao.insertEvents(events)
+//        }
 
         // ── 7. Finalise log row ───────────────────────────────────────
         //

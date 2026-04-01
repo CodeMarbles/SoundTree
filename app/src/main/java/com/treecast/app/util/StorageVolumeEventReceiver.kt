@@ -12,14 +12,15 @@ import android.content.Intent
  * manifest. Static registration of ACTION_MEDIA_REMOVED is blocked by
  * the OS on API 26+ for this action family.
  */
-class StorageEjectReceiver(
-    private val onEject: () -> Unit
+class StorageVolumeEventReceiver(
+    private val onVolumeChange: () -> Unit
 ) : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_MEDIA_REMOVED,
             Intent.ACTION_MEDIA_UNMOUNTED,
-            Intent.ACTION_MEDIA_BAD_REMOVAL -> onEject()
+            Intent.ACTION_MEDIA_BAD_REMOVAL,
+            Intent.ACTION_MEDIA_MOUNTED -> onVolumeChange()
         }
     }
 }

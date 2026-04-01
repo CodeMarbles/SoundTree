@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_backup_log_event.xml
+  One row in the event list inside BackupLogDetailDialog.
+
+  Inflated by BackupLogDetailDialog for each BackupLogEventEntity.
+  The severity dot color is set programmatically via viewSeverityDot.background.
+
+  Layout (horizontal, gravity=top so long messages don't vertically-center the dot):
+    [viewSeverityDot]  [tvMessage / tvSourcePath]  [tvTime]
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="top"
+    android:paddingHorizontal="24dp"
+    android:paddingVertical="10dp">
+
+    <!--
+        Severity indicator dot — 8 × 8 dp circle.
+        Background is a GradientDrawable (OVAL) set from code:
+          INFO    → blue   #4A90D9
+          WARNING → amber  #CC8800
+          ERROR   → colorError (theme attr)
+    -->
+    <View
+        android:id="@+id/viewSeverityDot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Message + optional source path block -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="13sp"
+            tools:text="WAL checkpoint complete" />
+
+        <!--
+            Source path — only shown when event.sourcePath is non-null.
+            Displays just the filename (substringAfterLast('/')) to keep rows compact.
+            visibility=gone by default; set to VISIBLE from code.
+        -->
+        <TextView
+            android:id="@+id/tvSourcePath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            android:ellipsize="middle"
+            android:maxLines="1"
+            android:visibility="gone"
+            tools:visibility="visible"
+            tools:text="TC_20260331_141532.m4a" />
+
+    </LinearLayout>
+
+    <!-- Time of event — right-aligned, very compact (h:mm:ss a) -->
+    <TextView
+        android:id="@+id/tvTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:layout_marginStart="8dp"
+        tools:text="2:14:03" />
+
+</LinearLayout>

@@ -13,11 +13,16 @@ import android.widget.Switch
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.button.MaterialButton
 import com.treecast.app.R
+import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.launch
 
 /**
  * Dialog for configuring an existing backup target.
@@ -67,6 +72,9 @@ class BackupTargetConfigDialog : DialogFragment() {
     }
 
     private val viewModel: MainViewModel by activityViewModels()
+
+    // Container for the per-volume recent backups section; populated in onViewCreated.
+    private var containerRecentBackups: LinearLayout? = null
 
     // Args convenience
     private val volumeUuid    get() = requireArguments().getString(ARG_VOLUME_UUID)!!
@@ -176,6 +184,27 @@ class BackupTargetConfigDialog : DialogFragment() {
 
         root.addView(divider(px24))
 
+        // ── Recent Backups ────────────────────────────────────────────────────
+        root.addView(TextView(ctx).apply {
+            text = getString(R.string.backup_log_section_recent)
+            textSize = 13f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
+            letterSpacing = 0.06f
+            setPadding(px24, px16, px24, 0)
+        })
+
+        containerRecentBackups = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        root.addView(containerRecentBackups!!)
+
+        root.addView(divider(px24))
+
         // ── Remove ────────────────────────────────────────────────────────────
         root.addView(MaterialButton(
             ctx,
@@ -198,6 +227,58 @@ class BackupTargetConfigDialog : DialogFragment() {
         })
 
         return root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val container = containerRecentBackups ?: return
+        val ctx = requireContext()
+        val px1 = resources.displayMetrics.density.toInt().coerceAtLeast(1)
+        val px24 = (24 * resources.displayMetrics.density).toInt()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.getBackupLogsForVolume(volumeUuid)
+                    .collect { logs ->
+                        container.removeAllViews()
+                        val recent = logs.take(5)
+
+                        if (recent.isEmpty()) {
+                            container.addView(TextView(ctx).apply {
+                                text = getString(R.string.backup_log_history_empty)
+                                setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+                                textSize = 13f
+                                setPadding(px24, 24, px24, 8)
+                            })
+                            return@collect
+                        }
+
+                        recent.forEachIndexed { index, log ->
+                            val rowBinding = ItemBackupLogRowBinding.inflate(
+                                layoutInflater, container, false
+                            )
+                            rowBinding.bindLog(log, showVolumeLabel = false, context = ctx)
+                            rowBinding.root.setOnClickListener {
+                                BackupLogDetailDialog.newInstance(log)
+                                    .show(parentFragmentManager, BackupLogDetailDialog.TAG)
+                            }
+                            container.addView(rowBinding.root)
+
+                            if (index < recent.lastIndex) {
+                                container.addView(View(ctx).apply {
+                                    layoutParams = LinearLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT, px1
+                                    ).also {
+                                        it.marginStart = px24
+                                        it.marginEnd   = px24
+                                    }
+                                    setBackgroundColor(ctx.themeColor(R.attr.colorSurfaceElevated))
+                                })
+                            }
+                        }
+                    }
+            }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

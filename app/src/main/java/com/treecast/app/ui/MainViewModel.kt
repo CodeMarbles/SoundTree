@@ -23,6 +23,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.treecast.app.R
 import com.treecast.app.TreeCastApp
 import com.treecast.app.data.entities.BackupLogEntity
+import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.data.entities.BackupTargetEntity
 import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
@@ -1512,6 +1513,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     && vol.uuid !in targetUuids
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+
+    // ── Backup log state ──────────────────────────────────────────────────────
+
+    /**
+     * All backup log entries, newest first.
+     * Observed by [BackupLogHistoryDialog] and the Settings backup card mini-list.
+     */
+    val backupLogs: StateFlow<List<BackupLogEntity>> =
+        repo.getBackupLogs()
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * Backup log entries for a specific volume, newest first.
+     * Consumed by [BackupTargetConfigDialog] to show per-volume recent runs.
+     */
+    fun getBackupLogsForVolume(volumeUuid: String): Flow<List<BackupLogEntity>> =
+        repo.getBackupLogsForVolume(volumeUuid)
+
+    /**
+     * All events (INFO + WARNING + ERROR) for a specific backup run.
+     * Used by [BackupLogDetailDialog] when the "Show milestones" toggle is on.
+     */
+    fun getBackupLogEvents(logId: Long): Flow<List<BackupLogEventEntity>> =
+        repo.getBackupLogEvents(logId)
+
+    /**
+     * WARNING + ERROR events only for a specific backup run.
+     * The default view in [BackupLogDetailDialog]; hides INFO milestone rows.
+     */
+    fun getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEntity>> =
+        repo.getBackupLogProblems(logId)
+
 
     // ── Backup actions ────────────────────────────────────────────────────────
 
