@@ -11,6 +11,6 @@ enum class RecorderWidgetVisibility {
     NEVER, WHILE_RECORDING, ALWAYS;
 
     companion object {
-        fun fromString(s: String?) = values().firstOrNull { it.name == s } ?: WHILE_RECORDING
+        fun fromString(s: String?) = entries.firstOrNull { it.name == s } ?: WHILE_RECORDING
     }
 }

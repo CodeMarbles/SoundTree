@@ -56,9 +56,9 @@ object OrphanRecordingScanner {
     ): List<OrphanRecording> = withContext(Dispatchers.IO) {
         recordingDirs(context)
             .flatMap { dir ->
-                dir.listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }
-                    ?.toList()
-                    .orEmpty()
+                dir.walkTopDown()
+                    .filter { it.isFile && it.name.startsWith("TC_") && it.extension == "m4a" }
+                    .toList()
             }
             .filter { file -> file.absolutePath !in knownPaths }
             .map { file ->

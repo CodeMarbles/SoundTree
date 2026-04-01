@@ -344,11 +344,12 @@ class BackupWorker(
             val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
 
             for (sourceDir in sourceDirs) {
-                val files = sourceDir
-                    .listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }
-                    ?: continue
+                val allSourceFiles = sourceDir
+                    .walkTopDown()
+                    .filter { it.isFile && it.name.startsWith("TC_") && it.extension == "m4a" }
+                    .toList()
 
-                for (file in files) {
+                for (file in allSourceFiles) {
                     filesExamined++
                     val destSize = destIndex[file.name]
 

@@ -539,9 +539,12 @@ class RecordingService : Service() {
     private fun createOutputFile(): File {
         val base = outputDir
             ?: File(getExternalFilesDir(null), "recordings")
-        base.mkdirs()
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        return File(base, "TC_$stamp.m4a")
+        val now = Date()
+        val year  = SimpleDateFormat("yyyy", Locale.US).format(now)
+        val month = SimpleDateFormat("MM",   Locale.US).format(now)
+        val dir   = File(base, "$year/$month").also { it.mkdirs() }
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
+        return File(dir, "TC_$stamp.m4a")
     }
 
     // ── Notification ──────────────────────────────────────────────────
