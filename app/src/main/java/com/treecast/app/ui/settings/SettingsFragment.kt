@@ -127,6 +127,29 @@ class SettingsFragment : Fragment() {
 
     // ── Tab management ────────────────────────────────────────────────
 
+    // Change from local fun inside setupTabs() to a private member function:
+    private fun selectTab(tab: Tab) {
+        activeTab = tab
+        val scrolls = mapOf(
+            Tab.DISPLAY  to binding.scrollDisplay,
+            Tab.BEHAVIOR to binding.scrollBehavior,
+            Tab.STORAGE  to binding.scrollStorage,
+            Tab.TOOLS    to binding.scrollTools,
+        )
+        scrolls.forEach { (t, scroll) ->
+            scroll.visibility = if (t == tab) View.VISIBLE else View.GONE
+        }
+        // update tab pill visuals — move the existing styling logic here too
+        listOf(
+            binding.tabDisplay  to Tab.DISPLAY,
+            binding.tabBehavior to Tab.BEHAVIOR,
+            binding.tabStorage  to Tab.STORAGE,
+            binding.tabTools    to Tab.TOOLS,
+        ).forEach { (view, t) ->
+            view.isSelected = (t == tab)
+        }
+    }
+
     private fun setupTabs() {
         val tabs = listOf(
             binding.tabDisplay  to Tab.DISPLAY,
@@ -134,40 +157,6 @@ class SettingsFragment : Fragment() {
             binding.tabStorage  to Tab.STORAGE,
             binding.tabTools    to Tab.TOOLS
         )
-        val scrolls = mapOf(
-            Tab.DISPLAY  to binding.scrollDisplay,
-            Tab.BEHAVIOR to binding.scrollBehavior,
-            Tab.STORAGE  to binding.scrollStorage,
-            Tab.TOOLS    to binding.scrollTools
-        )
-
-        fun selectTab(tab: Tab) {
-            activeTab = tab
-            // Show/hide content panes
-            scrolls.forEach { (t, scroll) ->
-                scroll.visibility = if (t == tab) View.VISIBLE else View.GONE
-            }
-            // Update tab pill visuals
-            val activeText   = requireContext().themeColor(R.attr.colorTextPrimary)
-            val inactiveText = requireContext().themeColor(R.attr.colorTextSecondary)
-            tabs.forEach { (tv, t) ->
-                if (t == tab) {
-                    tv.setTextColor(activeText)
-                    tv.setTypeface(null, Typeface.BOLD)
-                    // Draw a rounded rect pill behind the active label
-                    val pill = android.graphics.drawable.GradientDrawable().apply {
-                        shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                        cornerRadius = requireContext().resources.displayMetrics.density * 7
-                        setColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
-                    }
-                    tv.background = pill
-                } else {
-                    tv.setTextColor(inactiveText)
-                    tv.setTypeface(null, Typeface.NORMAL)
-                    tv.background = null
-                }
-            }
-        }
 
         tabs.forEach { (tv, tab) ->
             tv.setOnClickListener { selectTab(tab) }
@@ -511,7 +500,7 @@ class SettingsFragment : Fragment() {
             val prog = ((log.bytesCopied.toFloat() / estimatedTotal) * 10_000)
                 .toInt().coerceIn(0, 10_000)
             card.progressBackup.isIndeterminate = false
-            card.progressBackup.setProgressCompat(prog, true)
+            card.progressBackup.setProgress(prog, true)
         } else {
             card.progressBackup.isIndeterminate = true
         }

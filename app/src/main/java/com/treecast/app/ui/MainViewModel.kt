@@ -1615,6 +1615,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
+    // ── Backup log state ──────────────────────────────────────────────────────
+
+    /**
+     * All backup log entries, newest first.
+     * Observed by [BackupLogHistoryDialog] and the Settings backup card mini-list.
+     */
+    val backupLogs: StateFlow<List<BackupLogEntity>> =
+        repo.getBackupLogs()
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * Backup log entries for a specific volume, newest first.
+     * Consumed by [BackupTargetConfigDialog] to show per-volume recent runs.
+     */
+    fun getBackupLogsForVolume(volumeUuid: String): Flow<List<BackupLogEntity>> =
+        repo.getBackupLogsForVolume(volumeUuid)
+
+    /**
+     * All events (INFO + WARNING + ERROR) for a specific backup run.
+     * Used by [BackupLogDetailDialog] when the "Show milestones" toggle is on.
+     */
+    fun getBackupLogEvents(logId: Long): Flow<List<BackupLogEventEntity>> =
+        repo.getBackupLogEvents(logId)
+
+    /**
+     * WARNING + ERROR events only for a specific backup run.
+     * The default view in [BackupLogDetailDialog]; hides INFO milestone rows.
+     */
+    fun getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEntity>> =
+        repo.getBackupLogProblems(logId)
+
+
     /**
      * Live snapshot of all backup activity.
      *
@@ -1707,39 +1739,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun requestNavigateToStorageTab() {
         _navigateToStorageTab.tryEmit(Unit)
     }
-
-
-    // ── Backup log state ──────────────────────────────────────────────────────
-
-    /**
-     * All backup log entries, newest first.
-     * Observed by [BackupLogHistoryDialog] and the Settings backup card mini-list.
-     */
-    val backupLogs: StateFlow<List<BackupLogEntity>> =
-        repo.getBackupLogs()
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    /**
-     * Backup log entries for a specific volume, newest first.
-     * Consumed by [BackupTargetConfigDialog] to show per-volume recent runs.
-     */
-    fun getBackupLogsForVolume(volumeUuid: String): Flow<List<BackupLogEntity>> =
-        repo.getBackupLogsForVolume(volumeUuid)
-
-    /**
-     * All events (INFO + WARNING + ERROR) for a specific backup run.
-     * Used by [BackupLogDetailDialog] when the "Show milestones" toggle is on.
-     */
-    fun getBackupLogEvents(logId: Long): Flow<List<BackupLogEventEntity>> =
-        repo.getBackupLogEvents(logId)
-
-    /**
-     * WARNING + ERROR events only for a specific backup run.
-     * The default view in [BackupLogDetailDialog]; hides INFO milestone rows.
-     */
-    fun getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEntity>> =
-        repo.getBackupLogProblems(logId)
-
 
     // ── Backup actions ────────────────────────────────────────────────────────
 
