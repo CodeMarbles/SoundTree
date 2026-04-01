@@ -87,4 +87,10 @@
     <color name="black">#FF000000</color>
     <color name="transparent">#00000000</color>
 
+    <!-- Backup status colors -->
+    <color name="backup_strip_running">#2196F3</color>  <!-- blue -->
+    <color name="backup_strip_success">#4CAF50</color>  <!-- green -->
+    <color name="backup_strip_partial">#FF9800</color>  <!-- amber -->
+    <color name="backup_strip_failed">#F44336</color>   <!-- red -->
+
 </resources>

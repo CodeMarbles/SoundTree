@@ -58,6 +58,27 @@ interface BackupLogDao {
     """)
     suspend fun getLastCompletedForVolume(volumeUuid: String): BackupLogEntity?
 
+    /**
+     * All log entries that are currently in-progress (status IS NULL), newest first.
+     * Observed by MainViewModel to drive the progress card and title-bar strip.
+     */
+    @Query("SELECT * FROM backup_logs WHERE status IS NULL ORDER BY started_at DESC")
+    fun getInProgressBackupLogs(): Flow<List<BackupLogEntity>>
+
+    /**
+     * The most recent INFO event message for a given in-progress log entry.
+     * Returns an empty list when verbose logging is off or no events have been
+     * written yet. The caller maps the list to firstOrNull().
+     */
+    @Query("""
+    SELECT error_message FROM backup_log_events
+    WHERE log_id = :logId
+      AND severity = 'INFO'
+    ORDER BY occurred_at DESC
+    LIMIT 1
+""")
+    fun getLatestInfoMessagesForLog(logId: Long): Flow<List<String>>
+
     /** One-shot read of all log entries, for export or bulk processing. */
     @Query("SELECT * FROM backup_logs ORDER BY started_at DESC")
     suspend fun getAllOnce(): List<BackupLogEntity>

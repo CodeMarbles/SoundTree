@@ -61,6 +61,17 @@
                 android:layout_height="1dp"
                 android:background="?attr/colorSurfaceElevated" />
 
+            <!--
+                backupStatusStrip: slides down when a backup job starts, slides back up
+                to dismiss. Managed entirely by MainActivity.setupBackupStatusStrip().
+                Initial translationY is set programmatically so it starts off-screen. -->
+            <include
+                android:id="@+id/backupStatusStrip"
+                layout="@layout/view_backup_status_strip"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- ── Page content ───────────────────────────────────────── -->

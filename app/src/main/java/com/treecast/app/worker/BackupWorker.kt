@@ -2,7 +2,9 @@ package com.treecast.app.worker
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.documentfile.provider.DocumentFile
@@ -21,6 +23,7 @@ import com.treecast.app.data.entities.BackupLogEntity.BackupStatus
 import com.treecast.app.data.entities.BackupLogEntity.BackupTrigger
 import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.data.entities.BackupLogEventEntity.EventType
+import com.treecast.app.ui.MainActivity
 import com.treecast.app.util.StorageVolumeHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -89,7 +92,16 @@ class BackupWorker(
 
         // ── Notification ──────────────────────────────────────────────
         const val CHANNEL_ID      = "treecast_backup"
-        const val NOTIFICATION_ID = 2001
+        /**
+         * Returns a stable per-volume notification ID.
+         *
+         * Uses a bounded hash of [volumeUuid] offset above the legacy ID (2001).
+         * Range 2002–6097 gives 4 096 slots — far more than any real deployment
+         * will need. The old NOTIFICATION_ID = 2001 is intentionally vacated so
+         * concurrent jobs on different volumes no longer overwrite each other.
+         */
+        fun notifIdForVolume(volumeUuid: String): Int =
+            2002 + (volumeUuid.hashCode() and 0x0FFF)
 
         // ── Unique work name helpers ──────────────────────────────────
 
@@ -214,40 +226,44 @@ class BackupWorker(
             )
         )
 
-        postNotification(applicationContext, "Backup in progress…")
+        postNotification(
+            context      = applicationContext,
+            volumeUuid   = volumeUuid,
+            volumeLabel  = volumeLabel,
+            text         = "Backup in progress\u2026",
+        )
 
         // Accumulated events — flushed to DB in a single batch at the end.
         val events = mutableListOf<BackupLogEventEntity>()
 
         // Convenience helpers — keep call sites concise.
         suspend fun info(message: String, path: String? = null) {
-            events += BackupLogEventEntity(
+            val event = BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.INFO,
                 sourcePath = path,
                 message    = message,
             )
-            logDao.insertEvents(events)
-            events.clear()
+            logDao.insertEvent(event)
         }
         suspend fun warning(message: String, path: String? = null) {
-            events += BackupLogEventEntity(
+            val event = BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.WARNING,
                 sourcePath = path,
                 message    = message,
             )
-            logDao.insertEvents(events)
+            logDao.insertEvent(event)
             events.clear()
         }
         suspend fun error(message: String, path: String? = null) {
-            events += BackupLogEventEntity(
+            val event = BackupLogEventEntity(
                 logId      = logId,
                 severity   = EventType.ERROR,
                 sourcePath = path,
                 message    = message,
             )
-            logDao.insertEvents(events)
+            logDao.insertEvent(event)
             events.clear()
         }
 
@@ -306,6 +322,27 @@ class BackupWorker(
                         "$alreadyOnDest already on destination"
             )
 
+            // ── Pre-scan: walk all source dirs recursively to compute total bytes ──────
+            // Done before the copy loop so the notification and progress bar have a
+            // denominator from the first file. Uses File.walkTopDown() so nested
+            // subdirectories are automatically included if the directory structure
+            // ever becomes more complex than a flat recordings/ folder.
+            val walkFailures = mutableListOf<Pair<String, String>>()  // path → message
+            val allSourceFiles: List<File> = recordingSourceDirs()
+                .flatMap { dir ->
+                    dir.walkTopDown()
+                        .onFail { file, ex ->
+                            walkFailures += file.absolutePath to (ex.message ?: "Unreadable")
+                        }
+                        .filter { it.isFile && it.name.startsWith("TC_") }
+                        .toList()
+                }
+            // Flush any walk errors now that we're back in a suspending context.
+            walkFailures.forEach { (path, message) ->
+                warning("Could not read $path: $message", path)
+            }
+            val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
+
             for (sourceDir in sourceDirs) {
                 val files = sourceDir
                     .listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }
@@ -350,6 +387,18 @@ class BackupWorker(
                         totalBytesOnDest = 0L,
                         dbBackedUp       = dbBackedUp,
                     )
+                    //}
+                    // Update the notification progress bar every 10 files.
+                    //if (filesExamined % 10 == 0) {
+                        postNotification(
+                            context          = applicationContext,
+                            volumeUuid       = volumeUuid,
+                            volumeLabel      = volumeLabel,
+                            text             = "Copying files…",
+                            ongoing          = true,
+                            bytesCopied      = bytesCopied,
+                            totalBytes       = totalBytesOnSource,
+                        )
                     //}
                 }
             }
@@ -413,7 +462,13 @@ class BackupWorker(
             BackupStatus.PARTIAL -> "Backup finished with $filesFailed error(s)"
             else                 -> "Backup failed"
         }
-        postNotification(applicationContext, notifText, ongoing = false)
+        postNotification(
+            context     = applicationContext,
+            volumeUuid  = volumeUuid,
+            volumeLabel = volumeLabel,
+            text        = notifText,
+            ongoing     = false,
+        )
 
         if (status == BackupStatus.FAILED) Result.failure() else Result.success()
     }
@@ -467,8 +522,12 @@ class BackupWorker(
 
     private fun postNotification(
         context: Context,
+        volumeUuid: String,
+        volumeLabel: String,
         text: String,
         ongoing: Boolean = true,
+        bytesCopied: Long = 0L,
+        totalBytes: Long = 0L,
     ) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -481,14 +540,39 @@ class BackupWorker(
             ).apply { description = "TreeCast automatic backup progress" }
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("TreeCast Backup")
+        // Deep-link PendingIntent: opens MainActivity and navigates to Settings → Storage tab.
+        val deepLinkIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_SETTINGS, true)
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_STORAGE_TAB, true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notifIdForVolume(volumeUuid),   // unique request code per volume
+            deepLinkIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle(if (ongoing) "Backing up to $volumeLabel" else "TreeCast Backup")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_save_check_wave)
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
-            .build()
+            .setContentIntent(pendingIntent)
 
-        nm.notify(NOTIFICATION_ID, notification)
+        // Attach progress bar when running.
+        if (ongoing) {
+            if (totalBytes > 0 && bytesCopied >= 0) {
+                val max      = 10_000
+                val progress = ((bytesCopied.toFloat() / totalBytes) * max)
+                    .toInt().coerceIn(0, max)
+                builder.setProgress(max, progress, /* indeterminate= */ false)
+            } else {
+                builder.setProgress(0, 0, /* indeterminate= */ true)
+            }
+        }
+
+        nm.notify(notifIdForVolume(volumeUuid), builder.build())
     }
 }

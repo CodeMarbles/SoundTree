@@ -67,6 +67,72 @@ data class ProcessingJobInfo(
     val completedAt: Long? = null
 )
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Backup progress UI models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Snapshot of a single currently-running backup job, including the live DB
+ * row (updated by BackupWorker.updateStats) and the most recent INFO event
+ * message for the optional status line.
+ */
+data class ActiveBackupInfo(
+    val log: BackupLogEntity,
+    /**
+     * Most recent INFO event message, or null when verbose logging is off
+     * or no INFO events have been flushed yet. UI falls back to "Copying files…".
+     */
+    val latestEventMessage: String?,
+)
+
+/**
+ * State snapshot shared by the in-settings progress card and the title-bar
+ * strip. Both surfaces observe [MainViewModel.backupUiState]; neither
+ * independently subscribes to WorkManager or the DB.
+ */
+data class BackupUiState(
+    /** All currently-running backup jobs, ordered newest-started first. */
+    val activeJobs: List<ActiveBackupInfo>,
+    /**
+     * Jobs that completed since this process started, newest first.
+     * Memory-only — cleared on process restart. Used by the title-bar strip
+     * to show outcome summaries.
+     */
+    val recentlyCompletedJobs: List<BackupLogEntity>,
+) {
+    val isAnyRunning: Boolean       get() = activeJobs.isNotEmpty()
+    val primaryActive: ActiveBackupInfo? get() = activeJobs.firstOrNull()
+    val extraActiveCount: Int       get() = maxOf(0, activeJobs.size - 1)
+
+    companion object {
+        val IDLE = BackupUiState(emptyList(), emptyList())
+    }
+}
+
+/** Three-state model driving the title-bar status strip. */
+sealed class BackupStripState {
+    /** Strip is hidden. */
+    object Hidden : BackupStripState()
+
+    /**
+     * One or more jobs are running.
+     * [primary] is the job shown in the strip; [extraCount] drives the "+N more" badge.
+     */
+    data class Running(
+        val primary: ActiveBackupInfo,
+        val extraCount: Int,
+    ) : BackupStripState()
+
+    /**
+     * All jobs have finished; the strip is showing the outcome of [log].
+     * [autoDismissMs] is the delay before the strip auto-dismisses (null = persist until tapped).
+     */
+    data class Completed(
+        val log: BackupLogEntity,
+        val autoDismissMs: Long?,
+    ) : BackupStripState()
+}
+
 /** Snapshot of the waveform processing queue shown in the Settings tab. */
 data class ProcessingStatus(
     val active: ProcessingJobInfo?,
@@ -1513,6 +1579,134 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     && vol.uuid !in targetUuids
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // ── Backup progress state ──────────────────────────────────────────────────
+
+    // Tracks jobs completed in this process lifetime so the strip can show outcomes.
+    private val backupRecentlyCompleted       = mutableListOf<BackupLogEntity>()
+    private val backupKnownCompletedIds       = mutableSetOf<Long>()
+    private var backupStateInitialized        = false
+    private val _backupRefreshTick            = MutableStateFlow(0L)
+
+    // IDs that the user (or auto-dismiss timer) has already dismissed from the strip.
+    private val stripDismissedIds             = mutableSetOf<Long>()
+
+    /**
+     * Merges in-progress log rows with their per-log latest INFO events.
+     * flatMapLatest restarts the event subscriptions whenever the set of
+     * in-progress logs changes (new job starts or a job finishes).
+     */
+    private val activeBackupInfoFlow: Flow<List<ActiveBackupInfo>> =
+        repo.getInProgressBackupLogs()
+            .flatMapLatest { inProgressLogs ->
+                when (inProgressLogs.size) {
+                    0    -> flowOf(emptyList())
+                    1    -> {
+                        val log = inProgressLogs[0]
+                        repo.getLatestInfoMessageForLog(log.id)
+                            .map { msg -> listOf(ActiveBackupInfo(log, msg)) }
+                    }
+                    else -> combine(
+                        inProgressLogs.map { log ->
+                            repo.getLatestInfoMessageForLog(log.id)
+                                .map { msg -> ActiveBackupInfo(log, msg) }
+                        }
+                    ) { array -> array.toList() }
+                }
+            }
+
+    /**
+     * Live snapshot of all backup activity.
+     *
+     * Combines [activeBackupInfoFlow] (in-progress rows + events) with [backupLogs]
+     * (all rows) to detect transitions from in-progress → completed and populate
+     * [BackupUiState.recentlyCompletedJobs] for the title-bar strip.
+     *
+     * Observed by both [SettingsFragment] (progress card) and [MainActivity] (strip).
+     */
+    val backupUiState: StateFlow<BackupUiState> = combine(
+        activeBackupInfoFlow,
+        backupLogs,             // existing StateFlow<List<BackupLogEntity>>
+        _backupRefreshTick,
+    ) { activeInfos, allLogs, _ ->
+        if (!backupStateInitialized) {
+            // Snapshot existing completed rows at startup so we don't re-show them.
+            allLogs.filter { it.status != null }.forEach { backupKnownCompletedIds.add(it.id) }
+            backupStateInitialized = true
+        } else {
+            // Detect newly-completed jobs (status flipped from null → non-null).
+            allLogs
+                .filter { it.status != null && it.id !in backupKnownCompletedIds }
+                .forEach { log ->
+                    backupKnownCompletedIds.add(log.id)
+                    backupRecentlyCompleted.removeAll { it.id == log.id }
+                    backupRecentlyCompleted.add(0, log)   // prepend — newest first
+                }
+        }
+        BackupUiState(activeInfos, backupRecentlyCompleted.toList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, BackupUiState.IDLE)
+
+    /**
+     * Derived strip state: what the title-bar strip should currently show.
+     * [BackupStripState.Hidden] collapses the strip; Running/Completed show it.
+     */
+    val backupStripState: StateFlow<BackupStripState> = backupUiState
+        .map { state ->
+            when {
+                state.activeJobs.isNotEmpty() -> BackupStripState.Running(
+                    primary    = state.activeJobs.first(),
+                    extraCount = state.activeJobs.size - 1,
+                )
+                else -> {
+                    val undismissed = state.recentlyCompletedJobs
+                        .firstOrNull { it.id !in stripDismissedIds }
+                    if (undismissed != null) BackupStripState.Completed(
+                        log          = undismissed,
+                        autoDismissMs = when (undismissed.status) {
+                            BackupLogEntity.BackupStatus.SUCCESS -> 8_000L
+                            BackupLogEntity.BackupStatus.PARTIAL -> 15_000L
+                            else                                 -> null   // FAILED — persist
+                        },
+                    ) else BackupStripState.Hidden
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, BackupStripState.Hidden)
+
+    // ── Backup actions ─────────────────────────────────────────────────────────
+
+    /**
+     * Cancels all WorkManager jobs tagged with this volume's per-volume tag.
+     * BackupWorker checks [androidx.work.ListenableWorker.isStopped] and will
+     * finalise the log row with FAILED status on cancellation.
+     */
+    fun cancelBackupForVolume(volumeUuid: String) {
+        WorkManager.getInstance(getApplication())
+            .cancelAllWorkByTag("${BackupWorker.TAG_VOLUME_PREFIX}$volumeUuid")
+    }
+
+    /**
+     * Dismisses [logId] from the title-bar strip.
+     * Called by auto-dismiss timers and direct user taps on a Completed strip.
+     */
+    fun dismissBackupStrip(logId: Long) {
+        stripDismissedIds.add(logId)
+        _backupRefreshTick.value = System.currentTimeMillis()
+    }
+
+    // ── Navigation event ───────────────────────────────────────────────────────
+
+    /**
+     * Emitted when the title-bar strip is tapped, requesting navigation to the
+     * Settings → Storage tab. Observed by both [MainActivity] (switches tab page)
+     * and [SettingsFragment] (switches inner tab to Storage).
+     */
+    private val _navigateToStorageTab = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val navigateToStorageTab: SharedFlow<Unit> = _navigateToStorageTab.asSharedFlow()
+
+    fun requestNavigateToStorageTab() {
+        _navigateToStorageTab.tryEmit(Unit)
+    }
 
 
     // ── Backup log state ──────────────────────────────────────────────────────

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    view_backup_progress_card.xml
+    In-settings running-job card. Inflated once into containerBackupProgressCard
+    and rebound whenever backupUiState.primaryActive changes.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <!-- ── Header row: title + cancel ───────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvBackupProgressTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorTextPrimary"
+            tools:text="Backing up to SD Card" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelBackup"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/backup_progress_cancel"
+            android:textSize="12sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:textColor="?attr/colorError" />
+
+    </LinearLayout>
+
+    <!-- ── Progress bar (4dp, determinate or indeterminate) ─────── -->
+    <ProgressBar
+        android:id="@+id/progressBackup"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:max="10000"
+        android:progress="0"
+        android:indeterminate="true" />
+
+    <!-- ── Current-file status line ─────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvBackupProgressStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="?attr/colorTextSecondary"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:paddingBottom="8dp"
+        tools:text="Copying TC_20250101_123456.m4a" />
+
+    <!-- ── Tally chips: Copied · Skipped · Errors ───────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/chipCopied"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_tally_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:layout_marginEnd="6dp"
+            tools:text="✓ 12 copied" />
+
+        <TextView
+            android:id="@+id/chipSkipped"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_tally_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            android:layout_marginEnd="6dp"
+            tools:text="↷ 34 skipped" />
+
+        <TextView
+            android:id="@+id/chipErrors"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_tally_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:textSize="11sp"
+            android:textColor="?attr/colorTextSecondary"
+            tools:text="✕ 0 errors" />
+
+    </LinearLayout>
+
+</LinearLayout>

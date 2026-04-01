@@ -26,7 +26,9 @@ import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.databinding.ItemBackupAvailableVolumeBinding
 import com.treecast.app.databinding.ItemBackupLogRowBinding
+import com.treecast.app.databinding.ViewBackupProgressCardBinding
 import com.treecast.app.ui.BackupTargetUiState
+import com.treecast.app.ui.BackupUiState
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.PlayerWidgetVisibility
 import com.treecast.app.ui.ProcessingStatus
@@ -59,6 +61,8 @@ class SettingsFragment : Fragment() {
      * directory picker is open. Cleared when the picker returns.
      */
     private var pendingBackupVolumeUuid: String? = null
+
+    private var backupProgressCardBinding: ViewBackupProgressCardBinding? = null
 
     /**
      * SAF directory picker launcher.
@@ -102,6 +106,7 @@ class SettingsFragment : Fragment() {
         setupRecordingWidgetSection()
         setupPlaybackSettings()
         setupStorageSection()
+        setupBackupProgressCard()
         setupRecordingRecoverySection()
         setupBackupSection()
         setupProcessingSection()
@@ -112,6 +117,7 @@ class SettingsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        backupProgressCardBinding = null
     }
 
     override fun onResume() {
@@ -425,6 +431,114 @@ class SettingsFragment : Fragment() {
             deltaMs < TimeUnit.HOURS.toMillis(1)    -> getString(R.string.settings_backup_time_minutes_ago, TimeUnit.MILLISECONDS.toMinutes(deltaMs))
             deltaMs < TimeUnit.HOURS.toMillis(48)   -> getString(R.string.settings_backup_time_hours_ago, TimeUnit.MILLISECONDS.toHours(deltaMs))
             else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMs))
+        }
+    }
+
+    // ── Backup progress card ──────────────────────────────────────────────────
+
+    /**
+     * Observes [MainViewModel.backupUiState] and shows/hides the running-job card
+     * inside [containerBackupProgressCard].
+     *
+     * Inflates [ViewBackupProgressCardBinding] once and rebinds it on each emission.
+     * The card fades in when a job starts and fades out when all jobs complete.
+     */
+    private fun setupBackupProgressCard() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+
+                launch {
+                    viewModel.backupUiState.collect { state ->
+                        renderBackupProgressCard(state)
+                    }
+                }
+
+                launch {
+                    viewModel.navigateToStorageTab.collect {
+                        selectTab(Tab.STORAGE)
+                    }
+                }
+
+            }
+        }
+    }
+
+    private fun renderBackupProgressCard(state: BackupUiState) {
+        val container = binding.containerBackupProgressCard
+        val primaryJob = state.primaryActive
+
+        if (primaryJob == null) {
+            // Animate out if currently visible.
+            if (container.visibility == View.VISIBLE) {
+                container.animate()
+                    .alpha(0f)
+                    .setDuration(200)
+                    .withEndAction { container.visibility = View.GONE }
+                    .start()
+            }
+            return
+        }
+
+        // Inflate the card view once; rebind on subsequent emissions.
+        if (backupProgressCardBinding == null) {
+            backupProgressCardBinding = ViewBackupProgressCardBinding.inflate(
+                layoutInflater, container, false
+            )
+            container.addView(backupProgressCardBinding!!.root)
+        }
+        val card = backupProgressCardBinding!!
+        val log  = primaryJob.log
+
+        // Header
+        card.tvBackupProgressTitle.text =
+            getString(R.string.backup_progress_title, log.volumeLabel)
+        card.btnCancelBackup.setOnClickListener {
+            viewModel.cancelBackupForVolume(log.volumeUuid)
+        }
+
+        // Progress bar — byte-based if we can estimate the total, else indeterminate.
+        // Use the current log's totalBytesOnDestination once it is non-zero (end of run),
+        // falling back to the most recent *completed* log for this volume as a proxy.
+        val estimatedTotal = if (log.totalBytesOnDestination > 0) {
+            log.totalBytesOnDestination
+        } else {
+            viewModel.backupLogs.value
+                .firstOrNull { it.volumeUuid == log.volumeUuid && it.status != null }
+                ?.totalBytesOnDestination ?: 0L
+        }
+
+        if (estimatedTotal > 0 && log.bytesCopied > 0) {
+            val prog = ((log.bytesCopied.toFloat() / estimatedTotal) * 10_000)
+                .toInt().coerceIn(0, 10_000)
+            card.progressBackup.isIndeterminate = false
+            card.progressBackup.setProgressCompat(prog, true)
+        } else {
+            card.progressBackup.isIndeterminate = true
+        }
+
+        // Status line
+        card.tvBackupProgressStatus.text =
+            primaryJob.latestEventMessage
+                ?: getString(R.string.backup_progress_copying)
+
+        // Tally chips
+        card.chipCopied.text  = getString(R.string.backup_progress_chip_copied,  log.filesCopied)
+        card.chipSkipped.text = getString(R.string.backup_progress_chip_skipped, log.filesSkipped)
+        card.chipErrors.text  = if (log.filesFailed == 1)
+            getString(R.string.backup_progress_chip_error_singular)
+        else
+            getString(R.string.backup_progress_chip_errors, log.filesFailed)
+        card.chipErrors.setTextColor(
+            requireContext().themeColor(
+                if (log.filesFailed > 0) R.attr.colorError else R.attr.colorTextSecondary
+            )
+        )
+
+        // Animate in if newly visible.
+        if (container.visibility != View.VISIBLE) {
+            container.alpha = 0f
+            container.visibility = View.VISIBLE
+            container.animate().alpha(1f).setDuration(200).start()
         }
     }
 

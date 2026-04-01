@@ -474,6 +474,22 @@
     <!-- SimpleDateFormat pattern used by BackupLogUi.bindLog() and BackupLogDetailDialog -->
     <string name="backup_log_date_format" translatable="false">MMM d, yyyy · h:mm a</string>
 
+    <!-- ── Backup progress card (in-settings) ────────────────────────────────── -->
+    <string name="backup_progress_title">Backing up to %s</string>
+    <string name="backup_progress_cancel">Cancel</string>
+    <string name="backup_progress_copying">Copying files\u2026</string>
+    <string name="backup_progress_chip_copied">✓ %d copied</string>
+    <string name="backup_progress_chip_skipped">↷ %d skipped</string>
+    <string name="backup_progress_chip_errors">✕ %d errors</string>
+    <string name="backup_progress_chip_error_singular">✕ 1 error</string>
+
+    <!-- ── Title-bar status strip ─────────────────────────────────────────────── -->
+    <string name="backup_strip_running">Backing up to %s\u2026</string>
+    <string name="backup_strip_success">Backup complete — %d file(s) copied</string>
+    <string name="backup_strip_partial">Backup finished with %d error(s)</string>
+    <string name="backup_strip_failed">Backup failed</string>
+    <string name="backup_strip_extra_jobs">+%d more</string>
+
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>
     <string name="settings_btn_review_orphans">Review orphaned recordings</string>

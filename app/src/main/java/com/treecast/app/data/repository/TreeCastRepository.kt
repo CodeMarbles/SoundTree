@@ -14,6 +14,7 @@ import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 class TreeCastRepository(context: Context) {
 
@@ -343,6 +344,20 @@ class TreeCastRepository(context: Context) {
      */
     suspend fun clearBackupLogsForVolume(volumeUuid: String) =
         backupLogDao.clearForVolume(volumeUuid)
+
+    /**
+     * All backup log entries whose run is still in progress (status IS NULL).
+     * Used by [MainViewModel.backupUiState] to drive live-progress UI.
+     */
+    fun getInProgressBackupLogs(): Flow<List<BackupLogEntity>> =
+        backupLogDao.getInProgressBackupLogs()
+
+    /**
+     * The most recent INFO event message for an in-progress log entry, or null
+     * when verbose logging is off or no INFO events have been written yet.
+     */
+    fun getLatestInfoMessageForLog(logId: Long): Flow<String?> =
+        backupLogDao.getLatestInfoMessagesForLog(logId).map { it.firstOrNull() }
 
     // ── Singleton ─────────────────────────────────────────────────────────────
 

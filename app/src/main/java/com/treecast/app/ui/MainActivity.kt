@@ -7,8 +7,12 @@ import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
@@ -19,9 +23,13 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
 import com.treecast.app.R
+import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.ActivityMainBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.common.TopicPickerBottomSheet
@@ -64,6 +72,10 @@ class MainActivity : AppCompatActivity() {
         const val PAGE_LIBRARY  = 2
         const val PAGE_LISTEN   = 3
         const val PAGE_WORKSPACE = 4
+
+        /** Set as an extra on the backup notification PendingIntent. */
+        const val EXTRA_NAVIGATE_TO_SETTINGS    = "navigate_to_settings"
+        const val EXTRA_NAVIGATE_TO_STORAGE_TAB = "navigate_to_storage_tab"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -102,6 +114,9 @@ class MainActivity : AppCompatActivity() {
     // Track whether we're restoring from a config change
     private var isRestoredFromState = false
 
+    private val stripAutoDismissHandler = Handler(Looper.getMainLooper())
+    private var stripCurrentDismissLogId: Long = -1L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // helps track whether this is a first launch or an app reconfig launch on older android devices
@@ -118,6 +133,7 @@ class MainActivity : AppCompatActivity() {
         setupMiniPlayerMinimize()
         setupMiniRecorder()
         setupMiniRecorderMinimize()
+        setupBackupStatusStrip()
 
         setupTabChangeOverrideReset()
         setupBackNavigation()
@@ -151,6 +167,14 @@ class MainActivity : AppCompatActivity() {
             val isRecording = viewModel.recordingState.value != RecordingService.State.IDLE
             viewModel.setCurrentPage(page)
             updateBottomNavSelection(page, isRecording)
+        }
+
+        // Handle deep-link from notification
+        if (intent.getBooleanExtra(EXTRA_NAVIGATE_TO_SETTINGS, false)) {
+            binding.viewPager.setCurrentItem(PAGE_SETTINGS, false)
+            if (intent.getBooleanExtra(EXTRA_NAVIGATE_TO_STORAGE_TAB, false)) {
+                viewModel.requestNavigateToStorageTab()
+            }
         }
 
         checkAndShowOrphanRecovery()
@@ -193,6 +217,13 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         if (intent?.hasExtra(EXTRA_SAVED_RECORDING_ID) == true) {
             handleNotificationSaveIntent(intent)
+        }
+
+        if (intent?.getBooleanExtra(EXTRA_NAVIGATE_TO_SETTINGS, false) == true) {
+            binding.viewPager.setCurrentItem(PAGE_SETTINGS, false)
+            if (intent.getBooleanExtra(EXTRA_NAVIGATE_TO_STORAGE_TAB, false)) {
+                viewModel.requestNavigateToStorageTab()
+            }
         }
     }
 
@@ -1435,6 +1466,155 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Observes [MainViewModel.backupStripState] and drives the title-bar status
+     * strip: slide-down animation on appearance, content binding for Running and
+     * Completed states, auto-dismiss timers, and tap-to-navigate behaviour.
+     */
+    private fun setupBackupStatusStrip() {
+        val strip          = binding.backupStatusStrip
+        val stripHeight    = resources.getDimensionPixelSize(R.dimen.backup_strip_height)
+
+        // Start off-screen so the first slide-down looks correct.
+        strip.root.translationY = -stripHeight.toFloat()
+
+        // Pulsing animator for the border while a job is running.
+        val pulseAnimator = ValueAnimator.ofFloat(1f, 0.35f, 1f).apply {
+            duration       = 1_400
+            repeatCount    = ValueAnimator.INFINITE
+            interpolator   = AccelerateDecelerateInterpolator()
+            addUpdateListener { anim ->
+                strip.backupStripBorder.alpha = anim.animatedValue as Float
+            }
+        }
+
+        var lastState: BackupStripState = BackupStripState.Hidden
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.backupStripState.collect { state ->
+                    val wasHidden = lastState is BackupStripState.Hidden
+                    lastState = state
+
+                    when (state) {
+                        is BackupStripState.Hidden -> {
+                            if (strip.root.visibility == View.VISIBLE) slideStripUp(strip.root, stripHeight, pulseAnimator)
+                        }
+
+                        is BackupStripState.Running -> {
+                            val log = state.primary.log
+
+                            // Content
+                            strip.tvStripStatus.text =
+                                getString(R.string.backup_strip_running, log.volumeLabel)
+                            strip.tvStripBadge.visibility =
+                                if (state.extraCount > 0) View.VISIBLE else View.GONE
+                            strip.tvStripBadge.text =
+                                getString(R.string.backup_strip_extra_jobs, state.extraCount)
+
+                            // Progress
+                            strip.progressStrip.visibility = View.VISIBLE
+                            val estimatedTotal = viewModel.backupLogs.value
+                                .firstOrNull { it.volumeUuid == log.volumeUuid && it.status != null }
+                                ?.totalBytesOnDestination ?: 0L
+                            if (estimatedTotal > 0 && log.bytesCopied > 0) {
+                                val prog = ((log.bytesCopied.toFloat() / estimatedTotal) * 10_000)
+                                    .toInt().coerceIn(0, 10_000)
+                                strip.progressStrip.isIndeterminate = false
+                                strip.progressStrip.setProgress(prog, true)
+                            } else {
+                                strip.progressStrip.isIndeterminate = true
+                            }
+
+                            // Border: pulsing blue
+                            strip.backupStripBorder.setBackgroundColor(
+                                ContextCompat.getColor(this@MainActivity, R.color.backup_strip_running)
+                            )
+                            if (!pulseAnimator.isRunning) pulseAnimator.start()
+
+                            if (wasHidden) slideStripDown(strip.root, stripHeight)
+
+                            // Cancel any pending auto-dismiss for the previous completion.
+                            stripAutoDismissHandler.removeCallbacksAndMessages(null)
+                        }
+
+                        is BackupStripState.Completed -> {
+                            pulseAnimator.cancel()
+                            strip.backupStripBorder.alpha = 1f
+                            strip.progressStrip.visibility = View.GONE
+
+                            // Content
+                            val log = state.log
+                            strip.tvStripStatus.text = when (log.status) {
+                                BackupLogEntity.BackupStatus.SUCCESS ->
+                                    getString(R.string.backup_strip_success, log.filesCopied)
+                                BackupLogEntity.BackupStatus.PARTIAL ->
+                                    getString(R.string.backup_strip_partial, log.filesFailed)
+                                else ->
+                                    getString(R.string.backup_strip_failed)
+                            }
+                            strip.tvStripBadge.visibility = View.GONE
+
+                            // Border colour
+                            val borderColor = when (log.status) {
+                                BackupLogEntity.BackupStatus.SUCCESS ->
+                                    ContextCompat.getColor(this@MainActivity, R.color.backup_strip_success)
+                                BackupLogEntity.BackupStatus.PARTIAL ->
+                                    ContextCompat.getColor(this@MainActivity, R.color.backup_strip_partial)
+                                else ->
+                                    ContextCompat.getColor(this@MainActivity, R.color.backup_strip_failed)
+                            }
+                            strip.backupStripBorder.setBackgroundColor(borderColor)
+
+                            if (wasHidden) slideStripDown(strip.root, stripHeight)
+
+                            // Auto-dismiss timer
+                            val dismissDelay = state.autoDismissMs
+                            stripAutoDismissHandler.removeCallbacksAndMessages(null)
+                            if (dismissDelay != null && stripCurrentDismissLogId != log.id) {
+                                stripCurrentDismissLogId = log.id
+                                stripAutoDismissHandler.postDelayed({
+                                    viewModel.dismissBackupStrip(log.id)
+                                }, dismissDelay)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Tap → navigate to Settings → Storage
+        strip.root.setOnClickListener {
+            binding.viewPager.setCurrentItem(PAGE_SETTINGS, false)
+            viewModel.requestNavigateToStorageTab()
+            // Dismiss a completed strip on tap
+            (lastState as? BackupStripState.Completed)?.let {
+                stripAutoDismissHandler.removeCallbacksAndMessages(null)
+                viewModel.dismissBackupStrip(it.log.id)
+            }
+        }
+    }
+
+    private fun slideStripDown(view: View, stripHeight: Int) {
+        view.translationY = -stripHeight.toFloat()
+        view.visibility   = View.VISIBLE
+        view.animate()
+            .translationY(0f)
+            .setDuration(200)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    private fun slideStripUp(view: View, stripHeight: Int, pulseAnimator: ValueAnimator) {
+        pulseAnimator.cancel()
+        view.animate()
+            .translationY(-stripHeight.toFloat())
+            .setDuration(150)
+            .setInterpolator(AccelerateInterpolator())
+            .withEndAction { view.visibility = View.GONE }
+            .start()
     }
 
     /**

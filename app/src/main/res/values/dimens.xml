@@ -2,4 +2,5 @@
 <resources>
     <dimen name="settings_card_corner_radius">8dp</dimen>
     <dimen name="layoutMiniRecorderMarkPanelPadding">2dp</dimen>
+    <dimen name="backup_strip_height">30dp</dimen>
 </resources>
