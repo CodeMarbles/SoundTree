@@ -53,6 +53,8 @@ class BackupTargetConfigDialog : DialogFragment() {
         private const val ARG_INTERVAL_HOURS  = "interval_hours"
         private const val ARG_IS_MOUNTED      = "is_mounted"
         private const val ARG_DISPLAY_LABEL   = "display_label"
+        private const val ARG_VOLUME_LABEL    = "volume_label"    // raw OS label; null when unnamed/unmounted
+        private const val ARG_BACKUP_DIR_URI  = "backup_dir_uri"  // SAF tree URI; null when not yet chosen
 
         /** Interval options shown in the selector.
          *  Labels live in @array/settings_backup_interval_labels — parallel by index. */
@@ -67,6 +69,8 @@ class BackupTargetConfigDialog : DialogFragment() {
                     putInt(ARG_INTERVAL_HOURS,    state.entity.intervalHours)
                     putBoolean(ARG_IS_MOUNTED,    state.isMounted)
                     putString(ARG_DISPLAY_LABEL,  state.displayLabel)
+                    putString(ARG_VOLUME_LABEL,   state.volume?.label)
+                    putString(ARG_BACKUP_DIR_URI, state.entity.backupDirUri)
                 }
             }
     }
@@ -80,6 +84,8 @@ class BackupTargetConfigDialog : DialogFragment() {
     private val volumeUuid    get() = requireArguments().getString(ARG_VOLUME_UUID)!!
     private val isMounted     get() = requireArguments().getBoolean(ARG_IS_MOUNTED)
     private val displayLabel  get() = requireArguments().getString(ARG_DISPLAY_LABEL)!!
+    private val volumeLabel   get() = requireArguments().getString(ARG_VOLUME_LABEL)   // null = unnamed/unmounted
+    private val backupDirUri  get() = requireArguments().getString(ARG_BACKUP_DIR_URI) // null = not yet set
 
     override fun onStart() {
         super.onStart()
@@ -108,14 +114,41 @@ class BackupTargetConfigDialog : DialogFragment() {
             setBackgroundColor(ctx.themeColor(R.attr.colorSurfaceBase))
         }
 
-        // ── Title ─────────────────────────────────────────────────────────────
+        // ── Volume info header ────────────────────────────────────────────────
+        val hasName = !volumeLabel.isNullOrEmpty()
+        // Line 1: volume name (or "Unnamed Volume" in secondary/italic when absent)
         root.addView(TextView(ctx).apply {
-            text = displayLabel
+            text = if (hasName) volumeLabel
+            else getString(R.string.backup_volume_unnamed)
             textSize = 18f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
-            setPadding(px24, 0, px24, 4)
+            setTypeface(
+                null,
+                if (hasName) android.graphics.Typeface.BOLD
+                else android.graphics.Typeface.ITALIC,
+            )
+            setTextColor(
+                if (hasName) ctx.themeColor(R.attr.colorTextPrimary)
+                else ctx.themeColor(R.attr.colorTextSecondary),
+            )
+            setPadding(px24, 0, px24, 2)
         })
+        // Line 2: volume UUID (always shown; monospace for legibility)
+        root.addView(TextView(ctx).apply {
+            text     = volumeUuid
+            textSize = 12f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+            setPadding(px24, 0, px24, 2)
+        })
+        // Line 3: backup path derived from the SAF tree URI (omitted when not yet set)
+        backupDirDisplayPath(backupDirUri)?.let { path ->
+            root.addView(TextView(ctx).apply {
+                text     = path
+                textSize = 12f
+                setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+                setPadding(px24, 0, px24, 4)
+            })
+        }
 
         root.addView(TextView(ctx).apply {
             text = if (isMounted) getString(R.string.settings_backup_config_status_connected)
@@ -371,6 +404,28 @@ class BackupTargetConfigDialog : DialogFragment() {
                 LinearLayout.LayoutParams.MATCH_PARENT, px1
             ).also { it.setMargins(px24, 0, px24, 0) }
             setBackgroundColor(ctx.themeColor(R.attr.colorSurfaceElevated))
+        }
+    }
+
+    /**
+     * Extracts a human-readable root-relative path from a SAF tree URI.
+     *
+     * External-storage document IDs have the form "<uuid>:<path>" (e.g.
+     * "1A2B-3C4D:TreeCast/backups") or "primary:<path>" for internal storage.
+     * We drop the volume prefix and prepend "/" to produce "/TreeCast/backups".
+     *
+     * Returns null when [dirUri] is null, blank, or cannot be parsed — the
+     * caller simply omits the path line rather than showing a raw URI.
+     */
+    private fun backupDirDisplayPath(dirUri: String?): String? {
+        if (dirUri.isNullOrBlank()) return null
+        return try {
+            val docId = android.provider.DocumentsContract.getTreeDocumentId(
+                android.net.Uri.parse(dirUri)
+            )
+            "/" + docId.substringAfter(":", missingDelimiterValue = docId)
+        } catch (_: Exception) {
+            null
         }
     }
 }

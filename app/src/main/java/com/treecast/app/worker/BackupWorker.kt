@@ -554,8 +554,11 @@ class BackupWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // "Label (UUID)" when the volume has a name; plain UUID when it doesn't.
+        // Mirrors the volumeStripLabel logic used by the title-bar strip.
+        val displayTitle = if (volumeLabel != volumeUuid) "$volumeLabel ($volumeUuid)" else volumeUuid
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(if (ongoing) "Backing up to $volumeLabel" else "TreeCast Backup")
+            .setContentTitle(if (ongoing) "Backing up to $displayTitle" else "TreeCast Backup — $displayTitle")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_save_check_wave)
             .setOngoing(ongoing)

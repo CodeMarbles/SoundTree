@@ -21,6 +21,11 @@ import kotlinx.coroutines.launch
 // The strip background and text color are set per-state using semantic theme
 // attributes (colorStatusRunning/Success/Warning/Failed Background/Foreground),
 // making it theme-aware automatically.
+//
+// Pass 1B: all strip states now show volume identity — "Label (UUID)" when the
+// volume has a name, or just "UUID" when it doesn't. The helper volumeStripLabel()
+// encapsulates this rule so it is applied consistently across Running, Completed,
+// and (via BackupWorker) the system notification.
 // ─────────────────────────────────────────────────────────────────────────────
 
 internal fun MainActivity.setupBackupStatusStrip() {
@@ -44,8 +49,10 @@ internal fun MainActivity.setupBackupStatusStrip() {
                         strip.tvStripStatus.setTextColor(fg)
                         strip.tvStripBadge.setTextColor(fg)
 
-                        strip.tvStripStatus.text =
-                            getString(R.string.backup_strip_running, log.volumeLabel)
+                        strip.tvStripStatus.text = getString(
+                            R.string.backup_strip_running,
+                            volumeStripLabel(log.volumeLabel, log.volumeUuid),
+                        )
                         strip.tvStripBadge.visibility =
                             if (state.extraCount > 0) View.VISIBLE else View.GONE
                         strip.tvStripBadge.text =
@@ -70,6 +77,7 @@ internal fun MainActivity.setupBackupStatusStrip() {
 
                     is BackupStripState.Completed -> {
                         val log = state.log
+                        val volId = volumeStripLabel(log.volumeLabel, log.volumeUuid)
 
                         val (bg, fg) = when (log.status) {
                             BackupLogEntity.BackupStatus.SUCCESS ->
@@ -89,11 +97,11 @@ internal fun MainActivity.setupBackupStatusStrip() {
 
                         strip.tvStripStatus.text = when (log.status) {
                             BackupLogEntity.BackupStatus.SUCCESS ->
-                                getString(R.string.backup_strip_success, log.filesCopied)
+                                getString(R.string.backup_strip_success, volId, log.filesCopied)
                             BackupLogEntity.BackupStatus.PARTIAL ->
-                                getString(R.string.backup_strip_partial, log.filesFailed)
+                                getString(R.string.backup_strip_partial, volId, log.filesFailed)
                             else ->
-                                getString(R.string.backup_strip_failed)
+                                getString(R.string.backup_strip_failed, volId)
                         }
                         strip.tvStripBadge.visibility = View.GONE
                         strip.progressStrip.visibility = View.GONE
@@ -116,3 +124,16 @@ internal fun MainActivity.setupBackupStatusStrip() {
         viewModel.requestNavigateToStorageTab()
     }
 }
+
+/**
+ * Formats a volume identity string for the title-bar strip and notification.
+ *
+ * When the volume has a distinct OS-assigned name (i.e. [volumeLabel] differs
+ * from [volumeUuid]), returns "Label (UUID)" so both the human-readable name
+ * and the stable identifier are visible at a glance.
+ *
+ * When the volume has no name — which happens when [BackupWorker] falls back
+ * to the raw UUID as the label — returns just the UUID to avoid redundancy.
+ */
+internal fun volumeStripLabel(volumeLabel: String, volumeUuid: String): String =
+    if (volumeLabel != volumeUuid) "$volumeLabel ($volumeUuid)" else volumeUuid

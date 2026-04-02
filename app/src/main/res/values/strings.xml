@@ -486,10 +486,13 @@
 
     <!-- ── Title-bar status strip ─────────────────────────────────────────────── -->
     <string name="backup_strip_running">Backing up to %s\u2026</string>
-    <string name="backup_strip_success">Backup complete — %d file(s) copied</string>
-    <string name="backup_strip_partial">Backup finished with %d error(s)</string>
-    <string name="backup_strip_failed">Backup failed</string>
+    <string name="backup_strip_success">Backup complete to %1$s — %2$d file(s) copied</string>
+    <string name="backup_strip_partial">Backup to %1$s finished with %2$d error(s)</string>
+    <string name="backup_strip_failed">Backup failed — %s</string>
     <string name="backup_strip_extra_jobs">+%d more</string>
+
+    <!-- Shown in BackupTargetConfigDialog header when volume has no OS-assigned name -->
+    <string name="backup_volume_unnamed">Unnamed Volume</string>
 
     <!-- Recording recovery (Storage tab) -->
     <string name="settings_label_orphans">Orphaned recordings</string>
