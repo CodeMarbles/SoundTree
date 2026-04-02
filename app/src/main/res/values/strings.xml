@@ -420,6 +420,11 @@
     <string name="settings_backup_config_label_scheduled">Scheduled backup</string>
     <string name="settings_backup_config_sublabel_scheduled">Run a backup on a fixed interval</string>
 
+    <!-- Remove backup target — confirmation dialog -->
+    <string name="settings_backup_config_remove_confirm_title">Remove backup target?</string>
+    <string name="settings_backup_config_remove_confirm_message">This will remove this volume as a backup destination. Copies already on the drive will not be deleted.</string>
+    <string name="settings_backup_config_remove_confirm_action">Remove</string>
+
     <!-- Backup: scheduled interval picker options.
          Indices are parallel to BackupTargetConfigDialog.INTERVAL_HOURS —
          do not reorder without updating that array too. -->
