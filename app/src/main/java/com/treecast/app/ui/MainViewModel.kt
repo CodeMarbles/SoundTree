@@ -1592,10 +1592,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val backupRecentlyCompleted       = mutableListOf<BackupLogEntity>()
     private val backupKnownCompletedIds       = mutableSetOf<Long>()
     private var backupStateInitialized        = false
-    private val _backupRefreshTick            = MutableStateFlow(0L)
 
     // IDs that the user (or auto-dismiss timer) has already dismissed from the strip.
-    private val stripDismissedIds             = mutableSetOf<Long>()
+    private val _stripDismissedIds  = MutableStateFlow<Set<Long>>(emptySet())
 
     /**
      * Merges in-progress log rows with their per-log latest INFO events.
@@ -1664,9 +1663,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     val backupUiState: StateFlow<BackupUiState> = combine(
         activeBackupInfoFlow,
-        backupLogs,             // existing StateFlow<List<BackupLogEntity>>
-        _backupRefreshTick,
-    ) { activeInfos, allLogs, _ ->
+        backupLogs,
+    ) { activeInfos, allLogs ->
         if (!backupStateInitialized) {
             // Snapshot existing completed rows at startup so we don't re-show them.
             allLogs.filter { it.status != null }.forEach { backupKnownCompletedIds.add(it.id) }
@@ -1688,23 +1686,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Derived strip state: what the title-bar strip should currently show.
      * [BackupStripState.Hidden] collapses the strip; Running/Completed show it.
      */
-    val backupStripState: StateFlow<BackupStripState> = backupUiState
-        .map { state ->
-            when {
-                state.activeJobs.isNotEmpty() -> BackupStripState.Running(
-                    primary    = state.activeJobs.first(),
-                    extraCount = state.activeJobs.size - 1,
-                )
-                else -> {
-                    val undismissed = state.recentlyCompletedJobs
-                        .firstOrNull { it.id !in stripDismissedIds }
-                    if (undismissed != null) BackupStripState.Completed(
-                        log = undismissed,
-                    ) else BackupStripState.Hidden
-                }
+    val backupStripState: StateFlow<BackupStripState> = combine(
+        backupUiState,
+        _stripDismissedIds,
+    ) { state, dismissedIds ->
+        when {
+            state.activeJobs.isNotEmpty() -> BackupStripState.Running(
+                primary    = state.activeJobs.first(),
+                extraCount = state.activeJobs.size - 1,
+            )
+            else -> {
+                val undismissed = state.recentlyCompletedJobs
+                    .firstOrNull { it.id !in dismissedIds }
+                if (undismissed != null) BackupStripState.Completed(
+                    log = undismissed,
+                ) else BackupStripState.Hidden
             }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, BackupStripState.Hidden)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, BackupStripState.Hidden)
 
     // ── Backup actions ─────────────────────────────────────────────────────────
 
@@ -1723,8 +1722,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Called by auto-dismiss timers and direct user taps on a Completed strip.
      */
     fun dismissBackupStrip(logId: Long) {
-        stripDismissedIds.add(logId)
-        _backupRefreshTick.value = System.currentTimeMillis()
+        _stripDismissedIds.value = _stripDismissedIds.value + logId
     }
 
     // ── Navigation event ───────────────────────────────────────────────────────
