@@ -1578,6 +1578,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /**
+     * Live single-row query for [BackupLogDetailDialog].
+     * Emits on every write the worker makes to this log row (stats update,
+     * status flip, etc.). The dialog observes this to keep its header and
+     * metadata grid live while the backup is in progress.
+     */
+    fun getBackupLog(logId: Long): Flow<BackupLogEntity?> =
+        repo.getBackupLog(logId)
+
     // ── Backup progress state ──────────────────────────────────────────────────
 
     // Tracks jobs completed in this process lifetime so the strip can show outcomes.

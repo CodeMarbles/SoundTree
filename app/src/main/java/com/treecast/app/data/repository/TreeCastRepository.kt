@@ -294,6 +294,10 @@ class TreeCastRepository(context: Context) {
 
     // ── Backup logs ───────────────────────────────────────────────────────────
 
+    fun getBackupLog(logId: Long): Flow<BackupLogEntity?> {
+        return backupLogDao.observeById(logId)
+    }
+
     /**
      * All backup log entries, newest first.
      * Consumed by the Tools tab backup history UI.

@@ -65,6 +65,9 @@ interface BackupLogDao {
     @Query("SELECT * FROM backup_logs WHERE status IS NULL ORDER BY started_at DESC")
     fun getInProgressBackupLogs(): Flow<List<BackupLogEntity>>
 
+    @Query("SELECT * FROM backup_logs WHERE id = :logId")
+    fun observeById(logId: Long): Flow<BackupLogEntity?>
+
     /**
      * The most recent INFO event message for a given in-progress log entry.
      * Returns an empty list when verbose logging is off or no events have been

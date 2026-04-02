@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.treecast.app.ui.settings
 
 import android.graphics.Color
@@ -17,6 +19,7 @@ import com.treecast.app.databinding.DialogBackupLogDetailBinding
 import com.treecast.app.databinding.ItemBackupLogEventBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.util.themeColor
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
@@ -100,76 +103,94 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
         val args  = requireArguments()
         val logId = args.getLong(ARG_LOG_ID)
 
-        bindHeader(args)
-        bindMetadata(args)
+        // Reconstruct a seed entity from the bundle args so the dialog isn't
+        // blank for the brief moment before the first DB emission arrives.
+        val seedLog = BackupLogEntity(
+            id               = logId,
+            backupTargetUuid = null,
+            volumeUuid       = "",
+            volumeLabel      = args.getString(ARG_VOLUME_LABEL, ""),
+            backupDirUri     = "",
+            trigger          = args.getString(ARG_TRIGGER, ""),
+            status           = args.getString(ARG_STATUS),
+            startedAt        = args.getLong(ARG_STARTED_AT),
+            endedAt          = args.getLong(ARG_ENDED_AT).takeIf { it != 0L },
+            filesCopied      = args.getInt(ARG_FILES_COPIED),
+            filesSkipped     = args.getInt(ARG_FILES_SKIPPED),
+            filesFailed      = args.getInt(ARG_FILES_FAILED),
+            bytesCopied      = args.getLong(ARG_BYTES_COPIED),
+            dbBackedUp       = args.getBoolean(ARG_DB_BACKED_UP),
+            errorMessage     = args.getString(ARG_ERROR_MESSAGE),
+        )
+        bindHeader(seedLog)
+        bindMetadata(seedLog)
 
         binding.btnToggleInfo.setOnClickListener {
             val next = !showInfoFlow.value
             showInfoFlow.value = next
             binding.btnToggleInfo.text = getString(
                 if (next) R.string.backup_log_detail_btn_hide_info
-                else R.string.backup_log_detail_btn_show_info
+                else      R.string.backup_log_detail_btn_show_info
             )
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                showInfoFlow
-                    .flatMapLatest { showInfo ->
-                        if (showInfo) viewModel.getBackupLogEvents(logId)
-                        else viewModel.getBackupLogProblems(logId)
+
+                // ── Live header + metadata ─────────────────────────────────────
+                launch {
+                    viewModel.getBackupLog(logId).collect { log ->
+                        if (log != null) {
+                            bindHeader(log)
+                            bindMetadata(log)
+                        }
                     }
-                    .collectLatest { events -> bindEvents(events) }
+                }
+
+                // ── Events list ───────────────────────────────────────────────
+                launch {
+                    showInfoFlow
+                        .flatMapLatest { showInfo ->
+                            if (showInfo) viewModel.getBackupLogEvents(logId)
+                            else          viewModel.getBackupLogProblems(logId)
+                        }
+                        .collectLatest { events -> bindEvents(events) }
+                }
             }
         }
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
 
-    private fun bindHeader(args: Bundle) {
-        binding.tvDetailVolume.text = args.getString(ARG_VOLUME_LABEL)
-        binding.tvDetailDate.text   = formatDateTime(args.getLong(ARG_STARTED_AT))
+    private fun bindHeader(log: BackupLogEntity) {
+        binding.tvDetailVolume.text = log.volumeLabel
+        binding.tvDetailDate.text   = formatDateTime(log.startedAt)
 
-        val status = args.getString(ARG_STATUS)
-        val (chipLabel, chipColor) = BackupLogEntity(
-            // Minimal stub — only status matters for chip params
-            id = 0, backupTargetUuid = null, volumeUuid = "", volumeLabel = "",
-            backupDirUri = "", trigger = "", status = status
-        ).statusChipParams(requireContext())
-
+        val (chipLabel, chipColor) = log.statusChipParams(requireContext())
         binding.tvDetailStatusChip.text       = chipLabel
         binding.tvDetailStatusChip.background = pillBackground(chipColor, requireContext())
     }
 
     // ── Metadata ──────────────────────────────────────────────────────────────
 
-    private fun bindMetadata(args: Bundle) {
-        val status       = args.getString(ARG_STATUS)
-        val trigger      = args.getString(ARG_TRIGGER) ?: ""
-        val startedAt    = args.getLong(ARG_STARTED_AT)
-        val endedAt      = args.getLong(ARG_ENDED_AT).takeIf { it > 0L }
-        val filesCopied  = args.getInt(ARG_FILES_COPIED)
-        val filesSkipped = args.getInt(ARG_FILES_SKIPPED)
-        val filesFailed  = args.getInt(ARG_FILES_FAILED)
-        val bytesCopied  = args.getLong(ARG_BYTES_COPIED)
-        val dbBackedUp   = args.getBoolean(ARG_DB_BACKED_UP)
-        val errorMessage = args.getString(ARG_ERROR_MESSAGE)
-
-        binding.tvDetailTrigger.text = formatTrigger(trigger)
-        binding.tvDetailDuration.text = formatDuration(startedAt, endedAt, requireContext())
+    private fun bindMetadata(log: BackupLogEntity) {
+        binding.tvDetailTrigger.text  = formatTrigger(log.trigger ?: "")
+        binding.tvDetailDuration.text = formatDuration(log.startedAt, log.endedAt, requireContext())
         binding.tvDetailFiles.text = getString(
             R.string.backup_log_detail_files_summary,
-            filesCopied, filesSkipped, filesFailed
+            log.filesCopied, log.filesSkipped, log.filesFailed
         )
-        binding.tvDetailBytes.text = formatBytes(bytesCopied)
+        binding.tvDetailBytes.text = formatBytes(log.bytesCopied)
         binding.tvDetailDb.text = getString(
-            if (dbBackedUp) R.string.backup_log_detail_db_backed_up
-            else R.string.backup_log_detail_db_not_backed_up
+            if (log.dbBackedUp) R.string.backup_log_detail_db_backed_up
+            else                R.string.backup_log_detail_db_not_backed_up
         )
 
-        if (status == BackupLogEntity.BackupStatus.FAILED && !errorMessage.isNullOrBlank()) {
+        if (log.status == BackupLogEntity.BackupStatus.FAILED && !log.errorMessage.isNullOrBlank()) {
             binding.rowDetailErrorMessage.visibility = View.VISIBLE
-            binding.tvDetailErrorMessage.text = errorMessage
+            binding.tvDetailErrorMessage.text = log.errorMessage
+        } else {
+            binding.rowDetailErrorMessage.visibility = View.GONE
         }
     }
 

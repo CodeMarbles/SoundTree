@@ -10,7 +10,7 @@
         android:id="@+id/rootStack"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical" >
 
         <!-- ── Title bar ──────────────────────────────────────── -->
         <!--
@@ -23,7 +23,7 @@
             android:id="@+id/titleBarContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical" >
 
             <FrameLayout
                 android:id="@+id/topBar"
@@ -54,23 +54,19 @@
                     android:layout_gravity="bottom"
                     android:layout_marginBottom="1px" />
 
+                <include
+                    android:id="@+id/backupStatusStrip"
+                    layout="@layout/view_backup_status_strip"
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:visibility="gone" />
+
             </FrameLayout>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="?attr/colorSurfaceElevated" />
-
-            <!--
-                backupStatusStrip: slides down when a backup job starts, slides back up
-                to dismiss. Managed entirely by MainActivity.setupBackupStatusStrip().
-                Initial translationY is set programmatically so it starts off-screen. -->
-            <include
-                android:id="@+id/backupStatusStrip"
-                layout="@layout/view_backup_status_strip"
-                android:layout_width="match_parent"
-                android:layout_height="30dp"
-                android:visibility="gone" />
 
         </LinearLayout>
 
