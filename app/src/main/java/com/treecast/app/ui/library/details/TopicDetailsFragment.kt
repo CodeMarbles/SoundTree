@@ -26,6 +26,7 @@ import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.library.LibraryFragment
+import com.treecast.app.ui.recording.RecordingDetailsDialogFragment
 import com.treecast.app.ui.topics.NewTopicDialog
 import com.treecast.app.ui.topics.RecordingsAdapter
 import com.treecast.app.util.AppVolume
@@ -396,7 +397,11 @@ class TopicDetailsFragment : Fragment() {
             },
             onDelete = { rec -> viewModel.deleteRecording(rec) },
             onTopicDetailsRequested = {},   // hidden on this tab
-            onSelect = { id -> viewModel.selectRecording(id) },
+            onSelect = { id ->
+                viewModel.selectRecording(id)
+                RecordingDetailsDialogFragment.newInstance(id)
+                    .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
+            },
         )
 
         binding.recyclerTopicRecordings.apply {

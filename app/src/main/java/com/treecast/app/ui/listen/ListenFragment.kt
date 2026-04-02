@@ -36,6 +36,7 @@ import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.NowPlayingState
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.recording.RecordingDetailsDialogFragment
 import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.ui.waveform.WaveformTapType
 import com.treecast.app.util.Icons
@@ -763,7 +764,9 @@ class ListenFragment : Fragment() {
 
         // Recording name tap → rename dialog (unchanged).
         binding.layoutTitleArea.setOnClickListener {
-            showRenameDialog()
+            val id = viewModel.nowPlaying.value?.recording?.id ?: return@setOnClickListener
+            RecordingDetailsDialogFragment.newInstance(id)
+                .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
         }
 
         // 3-dot overflow → Listen-specific options menu.

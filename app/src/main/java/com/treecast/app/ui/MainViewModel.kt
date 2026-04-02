@@ -505,8 +505,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _markJumpMs.tryEmit(posMs)
     }
 
-
-
     fun skipBack() {
         val currentPos = mediaController?.currentPosition
             ?: _nowPlaying.value?.positionMs

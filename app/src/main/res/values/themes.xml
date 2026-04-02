@@ -116,4 +116,11 @@
         <item name="android:windowEnterAnimation">@anim/slide_in_up</item>
         <item name="android:windowExitAnimation">@anim/slide_out_down</item>
     </style>
+
+    <style name="Theme.TreeCast.FullscreenDialog" parent="Theme.TreeCast">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">?attr/colorBackground</item>
+        <item name="android:windowAnimationStyle">@style/Animation.TreeCast.SlideUpDown</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

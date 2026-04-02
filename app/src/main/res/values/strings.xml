@@ -180,6 +180,7 @@
     <!-- Snackbar shown when the user taps a row whose storage volume is offline -->
     <string name="recording_msg_storage_not_connected">Storage device not connected</string>
 
+    <string name="recording_details_cd_close">Close recording details</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab

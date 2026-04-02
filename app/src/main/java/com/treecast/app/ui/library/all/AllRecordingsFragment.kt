@@ -16,6 +16,7 @@ import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.recording.RecordingDetailsDialogFragment
 import com.treecast.app.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.launch
 
@@ -115,7 +116,11 @@ class AllRecordingsFragment : Fragment() {
                 if (topicId == null) activity.navigateToLibraryUnsorted()
                 else activity.navigateToTopicDetails(topicId)
             },
-            onSelect                 = { id -> viewModel.selectRecording(id) },
+            onSelect = { id ->
+                viewModel.selectRecording(id)
+                RecordingDetailsDialogFragment.newInstance(id)
+                    .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
+            },
         )
 
         binding.recyclerAllRecordings.apply {
