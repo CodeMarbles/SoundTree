@@ -1762,6 +1762,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.removeBackupTarget(volumeUuid) }
     }
 
+    /**
+     * Clears all backup log entries for [volumeUuid].
+     *
+     * Silently no-ops if a backup is currently running for this volume —
+     * the UI is responsible for checking [backupUiState] first and showing
+     * a [Toast] so the user understands why nothing happened. The guard here
+     * is a secondary safety net so a direct ViewModel call can never corrupt
+     * an in-progress log row.
+     */
+    fun clearBackupLogsForVolume(volumeUuid: String) {
+        if (backupUiState.value.activeJobs.any { it.log.volumeUuid == volumeUuid }) return
+        viewModelScope.launch { repo.clearBackupLogsForVolume(volumeUuid) }
+    }
+
+    /**
+     * Clears all backup log entries across every volume.
+     * Silently no-ops if any backup is currently running.
+     */
+    fun clearAllBackupLogs() {
+        if (backupUiState.value.isAnyRunning) return
+        viewModelScope.launch { repo.clearAllBackupLogs() }
+    }
+
     fun setBackupOnConnectEnabled(volumeUuid: String, enabled: Boolean) {
         viewModelScope.launch { repo.setBackupOnConnectEnabled(volumeUuid, enabled) }
     }

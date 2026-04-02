@@ -11,6 +11,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -43,23 +44,25 @@ import kotlinx.coroutines.launch
  *   │  Mount status                       │
  *   │  Back up now (when mounted)         │
  *   │  On-connect toggle                  │
- *   │  Scheduled toggle + interval        │
+ *   │  Scheduled toggle + chevron         │
+ *   │    [interval picker — expandable]   │
  *   ├─────────────────────────────────────┤
- *   │  Backup History header              │ ← scrollable RecyclerView zone;
+ *   │  Backup History        [Clear]      │ ← scrollable RecyclerView zone;
  *   │  [log row] …                        │   fills remaining screen height
  *   │  [log row] …                        │
  *   ├─────────────────────────────────────┤
  *   │  [Remove backup target]             │ ← always visible footer
  *   └─────────────────────────────────────┘
  *
- * Using a [RecyclerView] in the middle zone — rather than inflating all rows
- * into a LinearLayout — means the list handles arbitrarily large histories
- * without memory pressure, and the header / footer are always reachable
- * regardless of how many log entries exist.
+ * The scheduled section (2C): when scheduling is enabled, the interval
+ * picker is collapsed behind a ▶/▼ chevron. The currently-selected interval
+ * is shown inline as the row sublabel so it's visible without expanding.
+ * Tapping anywhere on the label/chevron area toggles the picker; the Switch
+ * widget itself consumes its own touch events and does not toggle expand.
  *
- * [skipCollapsed] = true means dragging down dismisses immediately rather
- * than collapsing to a half-height peek. The drag handle makes this gesture
- * discoverable.
+ * The history section (2D): a "Clear" text button sits right-aligned in the
+ * section header. It is suppressed while a backup is actively running for
+ * this volume.
  *
  * All mutations delegate directly to [MainViewModel] which owns the
  * WorkManager coordination via the repository.
@@ -178,8 +181,8 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                 (32 * dm.density).toInt(),
                 (4  * dm.density).toInt(),
             ).also {
-                it.gravity     = Gravity.CENTER_HORIZONTAL
-                it.topMargin   = px12
+                it.gravity      = Gravity.CENTER_HORIZONTAL
+                it.topMargin    = px12
                 it.bottomMargin = px8
             }
             background = GradientDrawable().apply {
@@ -267,45 +270,15 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
 
         headerZone.addView(divider(px24))
 
-        // ── Scheduled toggle + interval ───────────────────────────────────────
-        var scheduledEnabled = args.getBoolean(ARG_SCHEDULED)
-        val currentInterval  = args.getInt(ARG_INTERVAL_HOURS)
-
-        val intervalGroup = buildIntervalGroup(ctx, currentInterval, px24) { hours ->
-            viewModel.setBackupIntervalHours(volumeUuid, hours)
-        }
-        intervalGroup.visibility = if (scheduledEnabled) View.VISIBLE else View.GONE
-
-        headerZone.addView(switchRow(
-            ctx       = ctx,
-            label     = getString(R.string.settings_backup_config_label_scheduled),
-            sublabel  = getString(R.string.settings_backup_config_sublabel_scheduled),
-            checked   = scheduledEnabled,
-            px24      = px24,
-            onChanged = { enabled ->
-                scheduledEnabled = enabled
-                intervalGroup.visibility = if (enabled) View.VISIBLE else View.GONE
-                viewModel.setBackupScheduledEnabled(volumeUuid, enabled)
-            },
-        ))
-
-        headerZone.addView(intervalGroup)
+        // ── Scheduled backup — toggle + collapsible interval picker (2C) ──────
+        headerZone.addView(buildScheduledSection(ctx, args, px8, px12, px24))
 
         root.addView(headerZone)
 
-        // ── History section header (sits between the two zones' dividers) ─────
+        // ── History section header — title + Clear button (2D) ───────────────
         root.addView(divider(px24))
 
-        root.addView(TextView(ctx).apply {
-            // Reuses the existing "Backup History" string — appropriate now that
-            // we show all entries, not just the last 5.
-            text = getString(R.string.backup_log_history_title)
-            textSize = 13f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
-            letterSpacing = 0.06f
-            setPadding(px24, px16, px24, px4)
-        })
+        root.addView(buildHistoryHeader(ctx, px4, px16, px24))
 
         // ══════════════════════════════════════════════════════════════════════
         // ZONE 2 — Scrollable history: RecyclerView fills remaining height
@@ -318,8 +291,6 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
             ).also { it.weight = 1f }
             layoutManager = LinearLayoutManager(ctx)
             adapter       = backupLogAdapter
-            // Suppress the default over-scroll glow; the sheet's drag gesture
-            // handles the "pull past top" interaction instead.
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         root.addView(recycler)
@@ -358,6 +329,216 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         root.addView(footerZone)
 
         return root
+    }
+
+    // ── Scheduled section (2C) ────────────────────────────────────────────────
+
+    /**
+     * Builds the scheduled backup row + collapsible interval picker as a
+     * self-contained [LinearLayout].
+     *
+     * Behaviour:
+     *  - Switch OFF: plain row with static sublabel, chevron hidden, picker hidden.
+     *  - Switch ON:  chevron visible; sublabel shows selected interval. Tapping
+     *    the label/chevron area (not the Switch widget) toggles expand/collapse.
+     *    The picker auto-expands the first time scheduling is enabled.
+     *
+     * The Switch widget consumes its own touch events so tapping it only fires
+     * [Switch.setOnCheckedChangeListener], never the row's [View.setOnClickListener].
+     */
+    private fun buildScheduledSection(
+        ctx: android.content.Context,
+        args: Bundle,
+        px8: Int,
+        px12: Int,
+        px24: Int,
+    ): LinearLayout {
+        val intervalLabels = ctx.resources.getStringArray(R.array.settings_backup_interval_labels)
+
+        // Resolve a display label for a given interval value.
+        fun labelForHours(hours: Int): String {
+            val idx = INTERVAL_HOURS.indexOfFirst { it == hours }.takeIf { it >= 0 } ?: 3
+            return intervalLabels[idx]
+        }
+
+        var scheduledEnabled      = args.getBoolean(ARG_SCHEDULED)
+        var intervalExpanded      = scheduledEnabled   // start open if already enabled
+        var currentSelectedHours  = args.getInt(ARG_INTERVAL_HOURS)
+
+        // ── Sublabel: static hint when off; selected interval name when on ────
+        val tvSublabel = TextView(ctx).apply {
+            text = if (scheduledEnabled) labelForHours(currentSelectedHours)
+            else getString(R.string.settings_backup_config_sublabel_scheduled)
+            textSize = 12f
+            setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+            setPadding(0, 2, 0, 0)
+        }
+
+        // ── Chevron: only visible when scheduling is enabled ──────────────────
+        val tvChevron = TextView(ctx).apply {
+            text       = if (intervalExpanded) "▼" else "▶"
+            textSize   = 12f
+            visibility = if (scheduledEnabled) View.VISIBLE else View.GONE
+            setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+            setPadding(px8, 0, px8, 0)
+        }
+
+        // ── Interval picker — hidden when scheduling is off or collapsed ──────
+        val intervalGroup = buildIntervalGroup(ctx, currentSelectedHours, px24) { hours ->
+            currentSelectedHours = hours
+            tvSublabel.text = labelForHours(hours)
+            viewModel.setBackupIntervalHours(volumeUuid, hours)
+        }
+        intervalGroup.visibility =
+            if (scheduledEnabled && intervalExpanded) View.VISIBLE else View.GONE
+
+        // ── Expand/collapse toggle ────────────────────────────────────────────
+        fun toggleExpanded() {
+            intervalExpanded = !intervalExpanded
+            tvChevron.text = if (intervalExpanded) "▼" else "▶"
+            intervalGroup.visibility = if (intervalExpanded) View.VISIBLE else View.GONE
+        }
+
+        // ── Row layout ────────────────────────────────────────────────────────
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity     = Gravity.CENTER_VERTICAL
+            setPadding(px24, px12, px24, px12)
+            isClickable = scheduledEnabled
+            isFocusable = scheduledEnabled
+            if (scheduledEnabled) setOnClickListener { toggleExpanded() }
+        }
+
+        val textBlock = LinearLayout(ctx).apply {
+            orientation  = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            )
+        }
+        textBlock.addView(TextView(ctx).apply {
+            text = getString(R.string.settings_backup_config_label_scheduled)
+            textSize = 14f
+            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
+        })
+        textBlock.addView(tvSublabel)
+
+        @Suppress("UseSwitchCompatOrMaterialCode")
+        val switch = Switch(ctx).apply {
+            isChecked = scheduledEnabled
+            setOnCheckedChangeListener { _, isChecked ->
+                scheduledEnabled = isChecked
+
+                // Update sublabel: show interval name when on, static hint when off.
+                tvSublabel.text = if (isChecked) labelForHours(currentSelectedHours)
+                else getString(R.string.settings_backup_config_sublabel_scheduled)
+
+                // Show/hide chevron.
+                tvChevron.visibility = if (isChecked) View.VISIBLE else View.GONE
+
+                if (isChecked) {
+                    // Auto-expand when first enabling so the user can see the options.
+                    intervalExpanded    = true
+                    tvChevron.text      = "▼"
+                    intervalGroup.visibility = View.VISIBLE
+                } else {
+                    intervalGroup.visibility = View.GONE
+                }
+
+                // The row is only tappable (for expand/collapse) when scheduling is on.
+                row.isClickable = isChecked
+                row.isFocusable = isChecked
+                if (isChecked) row.setOnClickListener { toggleExpanded() }
+                else           row.setOnClickListener(null)
+
+                viewModel.setBackupScheduledEnabled(volumeUuid, isChecked)
+            }
+        }
+
+        row.addView(textBlock)
+        row.addView(tvChevron)
+        row.addView(switch)
+
+        // Wrap row + picker in a container so they can be added to headerZone together.
+        return LinearLayout(ctx).apply {
+            orientation  = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            addView(row)
+            addView(intervalGroup)
+        }
+    }
+
+    // ── History header with Clear button (2D) ─────────────────────────────────
+
+    /**
+     * Builds the "Backup History" section header row.
+     *
+     * Left: bold section label.
+     * Right: "Clear" text button — disabled while a backup for this volume is
+     * actively running, to avoid clearing a log row the worker is still writing.
+     *
+     * The active-backup guard is read from [MainViewModel.backupUiState] at the
+     * moment the button is tapped; a [Toast] explains the block to the user.
+     * A [MaterialAlertDialogBuilder] confirmation precedes the actual deletion.
+     */
+    private fun buildHistoryHeader(
+        ctx: android.content.Context,
+        px4: Int,
+        px16: Int,
+        px24: Int,
+    ): LinearLayout {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity     = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            setPadding(px24, px16, px24, px4)
+        }
+
+        row.addView(TextView(ctx).apply {
+            text = getString(R.string.backup_log_history_title)
+            textSize = 13f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
+            letterSpacing = 0.06f
+            layoutParams  = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            )
+        })
+
+        row.addView(TextView(ctx).apply {
+            text     = getString(R.string.backup_log_clear_action)
+            textSize = 13f
+            setTextColor(ctx.themeColor(R.attr.colorError))
+            setOnClickListener { onClearVolumeLogsClicked(ctx) }
+        })
+
+        return row
+    }
+
+    private fun onClearVolumeLogsClicked(ctx: android.content.Context) {
+        val isRunning = viewModel.backupUiState.value.activeJobs
+            .any { it.log.volumeUuid == volumeUuid }
+        if (isRunning) {
+            Toast.makeText(
+                ctx,
+                getString(R.string.backup_log_clear_active_warning),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(R.string.backup_log_clear_volume_title))
+            .setMessage(getString(R.string.backup_log_clear_volume_message))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(getString(R.string.backup_log_clear_action)) { _, _ ->
+                viewModel.clearBackupLogsForVolume(volumeUuid)
+            }
+            .show()
     }
 
     // ── Flow observation ──────────────────────────────────────────────────────
@@ -443,7 +624,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         px24: Int,
         onChanged: (Boolean) -> Unit,
     ): LinearLayout {
-        val dm  = ctx.resources.displayMetrics
+        val dm   = ctx.resources.displayMetrics
         val px12 = (12 * dm.density).toInt()
 
         val row = LinearLayout(ctx).apply {
@@ -492,7 +673,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         px24: Int,
         onSelected: (Int) -> Unit,
     ): RadioGroup {
-        val dm  = ctx.resources.displayMetrics
+        val dm   = ctx.resources.displayMetrics
         val px12 = (12 * dm.density).toInt()
         val intervalLabels = ctx.resources.getStringArray(R.array.settings_backup_interval_labels)
 

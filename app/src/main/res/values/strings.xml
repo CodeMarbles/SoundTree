@@ -474,11 +474,26 @@
     <string name="backup_log_detail_btn_hide_info">Hide milestones</string>
     <string name="backup_log_detail_no_events">No events recorded for this run.</string>
     <string name="backup_log_detail_error_message_label">Run error</string>
+
     <!-- Duration format strings: %1$d=minutes  %2$d=seconds -->
     <string name="backup_log_duration_minutes">%1$dm %2$ds</string>
     <string name="backup_log_duration_seconds">%1$ds</string>
+
     <!-- SimpleDateFormat pattern used by BackupLogUi.bindLog() and BackupLogDetailDialog -->
     <string name="backup_log_date_format" translatable="false">MMM d, yyyy · h:mm a</string>
+
+    <!-- Clear log actions — shared label and warning (2D + 2E) -->
+    <string name="backup_log_clear_action">Clear</string>
+    <string name="backup_log_clear_all_action">Clear all</string>
+    <string name="backup_log_clear_active_warning">Cannot clear history while a backup is in progress</string>
+
+    <!-- Per-volume clear confirmation (2D — BackupTargetConfigDialog) -->
+    <string name="backup_log_clear_volume_title">Clear backup history?</string>
+    <string name="backup_log_clear_volume_message">This will permanently delete all backup logs for this volume.</string>
+
+    <!-- All-volumes clear confirmation (2E — BackupLogHistoryDialog) -->
+    <string name="backup_log_clear_all_title">Clear all backup history?</string>
+    <string name="backup_log_clear_all_message">This will permanently delete all backup logs for every volume.</string>
 
     <!-- ── Backup progress card (in-settings) ────────────────────────────────── -->
     <string name="backup_progress_title">Backing up to %s</string>
