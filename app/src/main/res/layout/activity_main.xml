@@ -13,12 +13,6 @@
         android:orientation="vertical" >
 
         <!-- ── Title bar ──────────────────────────────────────── -->
-        <!--
-            titleBarContainer: outer vertical LinearLayout — unchanged.
-            topBar: was a horizontal LinearLayout; converted to FrameLayout
-            so that the pill overlay (view_title_pills) can sit on top of
-            tvTopTitle via Z-order without affecting the text view's layout.
-        -->
         <LinearLayout
             android:id="@+id/titleBarContainer"
             android:layout_width="match_parent"
@@ -54,14 +48,16 @@
                     android:layout_gravity="bottom"
                     android:layout_marginBottom="1px" />
 
-                <include
-                    android:id="@+id/backupStatusStrip"
-                    layout="@layout/view_backup_status_strip"
-                    android:layout_width="match_parent"
-                    android:layout_height="30dp"
-                    android:visibility="gone" />
-
             </FrameLayout>
+
+            <!-- Backup status strip — sits below topBar, pushes content down.
+                 Shown/hidden via VISIBLE/GONE; no translation animation. -->
+            <include
+                android:id="@+id/backupStatusStrip"
+                layout="@layout/view_backup_status_strip"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:visibility="gone" />
 
             <View
                 android:layout_width="match_parent"

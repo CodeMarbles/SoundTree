@@ -125,11 +125,10 @@ sealed class BackupStripState {
 
     /**
      * All jobs have finished; the strip is showing the outcome of [log].
-     * [autoDismissMs] is the delay before the strip auto-dismisses (null = persist until tapped).
+     * Persists until the user explicitly dismisses via the X button.
      */
     data class Completed(
         val log: BackupLogEntity,
-        val autoDismissMs: Long?,
     ) : BackupStripState()
 }
 
@@ -1700,12 +1699,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     val undismissed = state.recentlyCompletedJobs
                         .firstOrNull { it.id !in stripDismissedIds }
                     if (undismissed != null) BackupStripState.Completed(
-                        log          = undismissed,
-                        autoDismissMs = when (undismissed.status) {
-                            BackupLogEntity.BackupStatus.SUCCESS -> 8_000L
-                            BackupLogEntity.BackupStatus.PARTIAL -> 15_000L
-                            else                                 -> null   // FAILED — persist
-                        },
+                        log = undismissed,
                     ) else BackupStripState.Hidden
                 }
             }

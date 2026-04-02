@@ -1,34 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    view_backup_status_strip.xml
-    Title-bar status strip. Third child of titleBarContainer (vertical LinearLayout).
-    Slides down on job start, slides back up on dismiss.
-    Height is fixed at 30dp so the translate animation offset is constant.
--->
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="30dp"
-    android:background="?attr/colorSurfaceBase"
-    android:clickable="true"
-    android:focusable="true">
+    android:layout_height="30dp">
 
-    <!-- 4dp colored left-edge border (animated alpha when running) -->
-    <View
-        android:id="@+id/backupStripBorder"
-        android:layout_width="4dp"
-        android:layout_height="match_parent"
-        android:background="@color/backup_strip_running" />
-
-    <!-- Status text + "+N more" badge -->
+    <!-- Tappable navigation area — everything left of the X button.
+         Gets setOnClickListener in code to navigate to Settings. -->
     <LinearLayout
+        android:id="@+id/stripNavArea"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="44dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
 
         <TextView
             android:id="@+id/tvStripStatus"
@@ -53,7 +42,25 @@
 
     </LinearLayout>
 
-    <!-- Thin progress indicator along bottom edge (visible while running) -->
+    <!-- X dismiss button — fixed to trailing edge, sits above nav area in Z order.
+         Only shown in Completed state. -->
+    <TextView
+        android:id="@+id/btnStripDismiss"
+        android:layout_width="44dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:gravity="center"
+        android:text="✕"
+        android:textSize="13sp"
+        android:textColor="?attr/colorTextSecondary"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:ignore="HardcodedText" />
+
+    <!-- Progress indicator along bottom edge -->
     <ProgressBar
         android:id="@+id/progressStrip"
         style="@style/Widget.AppCompat.ProgressBar.Horizontal"

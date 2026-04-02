@@ -87,10 +87,26 @@
     <color name="black">#FF000000</color>
     <color name="transparent">#00000000</color>
 
-    <!-- Backup status colors -->
-    <color name="backup_strip_running">#2196F3</color>  <!-- blue -->
-    <color name="backup_strip_success">#4CAF50</color>  <!-- green -->
-    <color name="backup_strip_partial">#FF9800</color>  <!-- amber -->
-    <color name="backup_strip_failed">#F44336</color>   <!-- red -->
+    <!-- ── Semantic status surface + foreground pairs ──────────────────────── -->
+    <!-- Backgrounds and foreground text for status-tinted surfaces             -->
+    <!-- (backup strip, future log row highlights, etc.)                        -->
+    <!-- Light variants -->
+    <color name="statusRunningBgLight">#D6E8F7</color>
+    <color name="statusRunningFgLight">#0D2A45</color>
+    <color name="statusSuccessBgLight">#D4EDE0</color>
+    <color name="statusSuccessFgLight">#0D2E1C</color>
+    <color name="statusWarningBgLight">#FFF0C2</color>
+    <color name="statusWarningFgLight">#2E2000</color>
+    <color name="statusFailedBgLight">#FADADD</color>
+    <color name="statusFailedFgLight">#2E0D0D</color>
+    <!-- Dark variants -->
+    <color name="statusRunningBgDark">#1A3A5C</color>
+    <color name="statusRunningFgDark">#C2DFF5</color>
+    <color name="statusSuccessBgDark">#1A3D2B</color>
+    <color name="statusSuccessFgDark">#BFEAD3</color>
+    <color name="statusWarningBgDark">#3D2D00</color>
+    <color name="statusWarningFgDark">#F5DFA0</color>
+    <color name="statusFailedBgDark">#3D1A1A</color>
+    <color name="statusFailedFgDark">#F5C2C5</color>
 
 </resources>

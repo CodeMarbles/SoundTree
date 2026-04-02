@@ -77,4 +77,15 @@
     <attr name="colorStatusLockScreen"      format="color" />
     <attr name="colorStatusRecordingLabel"  format="color" />
 
+    <!-- Semantic status surface + foreground pairs.
+             Used by the backup strip and any future status-tinted surface. -->
+    <attr name="colorStatusRunningBackground"  format="color" />
+    <attr name="colorStatusRunningForeground"  format="color" />
+    <attr name="colorStatusSuccessBackground"  format="color" />
+    <attr name="colorStatusSuccessForeground"  format="color" />
+    <attr name="colorStatusWarningBackground"  format="color" />
+    <attr name="colorStatusWarningForeground"  format="color" />
+    <attr name="colorStatusFailedBackground"   format="color" />
+    <attr name="colorStatusFailedForeground"   format="color" />
+
 </resources>

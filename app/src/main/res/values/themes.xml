@@ -93,6 +93,16 @@
         <item name="colorStatusLockScreen">@color/yellow_600</item>
         <item name="colorStatusRecordingLabel">@color/amber_800</item>
 
+        <!-- Semantic status surfaces — light -->
+        <item name="colorStatusRunningBackground">@color/statusRunningBgLight</item>
+        <item name="colorStatusRunningForeground">@color/statusRunningFgLight</item>
+        <item name="colorStatusSuccessBackground">@color/statusSuccessBgLight</item>
+        <item name="colorStatusSuccessForeground">@color/statusSuccessFgLight</item>
+        <item name="colorStatusWarningBackground">@color/statusWarningBgLight</item>
+        <item name="colorStatusWarningForeground">@color/statusWarningFgLight</item>
+        <item name="colorStatusFailedBackground">@color/statusFailedBgLight</item>
+        <item name="colorStatusFailedForeground">@color/statusFailedFgLight</item>
+
     </style>
 
     <style name="Theme.TreeCast.Splash" parent="Theme.TreeCast">

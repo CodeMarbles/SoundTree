@@ -45,9 +45,10 @@ import kotlinx.coroutines.launch
 internal fun MainActivity.applyLayoutOrder() {
     val order         = viewModel.layoutOrder.value
     val showTitle     = viewModel.showTitleBar.value
-    val anyPillActive = viewModel.playerPillMinimized.value   || viewModel.recorderPillMinimized.value ||
-            viewModel.alwaysShowPlayerPill.value  || viewModel.alwaysShowRecorderPill.value
-    val pillOnlyMode  = !showTitle && anyPillActive
+    val anyPillActive = viewModel.playerPillMinimized.value    || viewModel.recorderPillMinimized.value ||
+            viewModel.alwaysShowPlayerPill.value   || viewModel.alwaysShowRecorderPill.value
+    val stripActive   = viewModel.backupStripState.value !is BackupStripState.Hidden
+    val pillOnlyMode  = !showTitle && (anyPillActive || stripActive)
 
     val viewMap = mapOf(
         LayoutElement.TITLE_BAR     to binding.titleBarContainer,
@@ -63,7 +64,7 @@ internal fun MainActivity.applyLayoutOrder() {
 
     for (element in order) {
         val view = viewMap[element] ?: continue
-        if (element == LayoutElement.TITLE_BAR && !showTitle && !anyPillActive) continue
+        if (element == LayoutElement.TITLE_BAR && !showTitle && !anyPillActive && !stripActive) continue
         if (element == LayoutElement.CONTENT) {
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
@@ -74,9 +75,9 @@ internal fun MainActivity.applyLayoutOrder() {
                 LayoutElement.MINI_PLAYER   -> (108 * dp).toInt()
                 LayoutElement.MINI_RECORDER -> (108 * dp).toInt()
                 LayoutElement.NAV           -> (64 * dp).toInt()
-                LayoutElement.TITLE_BAR     ->
-                    if (pillOnlyMode) LinearLayout.LayoutParams.WRAP_CONTENT
-                    else              (53 * dp).toInt()
+                LayoutElement.TITLE_BAR ->
+                    if (pillOnlyMode || stripActive) LinearLayout.LayoutParams.WRAP_CONTENT
+                    else (53 * dp).toInt()
                 else -> LinearLayout.LayoutParams.WRAP_CONTENT
             }
             val lp = LinearLayout.LayoutParams(
@@ -119,8 +120,9 @@ internal fun MainActivity.observeLayoutOrder() {
         combine(
             innerFlow,
             viewModel.alwaysShowPlayerPill,
-            viewModel.alwaysShowRecorderPill
-        ) { _, _, _ -> }
+            viewModel.alwaysShowRecorderPill,
+            viewModel.backupStripState
+        ) { _, _, _, _ -> }
             .collect { applyLayoutOrder() }
     }
 }

@@ -3,8 +3,6 @@ package com.treecast.app.ui
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.treecast.app.databinding.ActivityMainBinding
@@ -69,9 +67,6 @@ class MainActivity : AppCompatActivity() {
 
     // Track whether we're restoring from a config change
     internal var isRestoredFromState = false
-
-    internal val stripAutoDismissHandler = Handler(Looper.getMainLooper())
-    internal var stripCurrentDismissLogId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
