@@ -66,7 +66,7 @@ import java.util.Locale
  */
 class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
 
-    override fun getTheme(): Int = R.style.Theme_TreeCast_FullscreenDialog
+    override fun getTheme(): Int = R.style.Theme_TreeCast_BottomSheet
 
     // ── Companion ─────────────────────────────────────────────────────
 
@@ -97,33 +97,6 @@ class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
 
     /** Stable ID for the recording being displayed. Extracted once from args. */
     private val recordingId: Long get() = requireArguments().getLong(ARG_RECORDING_ID)
-
-    // ── Window sizing ─────────────────────────────────────────────────
-
-    /**
-     * DialogFragment's window defaults to WRAP_CONTENT. Override here to
-     * fill the full screen. The slide-up animation is applied via the theme's
-     * windowAnimationStyle, but [setWindowAnimations] is called explicitly as
-     * a safety net in case the theme is ever swapped out.
-     */
-    override fun onStart() {
-        super.onStart()
-        (dialog as? BottomSheetDialog)?.behavior?.apply {
-            state        = BottomSheetBehavior.STATE_EXPANDED
-            skipCollapsed = true   // drag-down dismisses rather than collapsing to peek
-        }
-    }
-//    override fun onStart() {
-//        super.onStart()
-//        dialog?.window?.apply {
-//            setLayout(
-//                WindowManager.LayoutParams.MATCH_PARENT,
-//                WindowManager.LayoutParams.MATCH_PARENT,
-//            )
-//            setWindowAnimations(R.style.Animation_TreeCast_SlideUpDown)
-//        }
-//    }
-
 
     // ── Lifecycle ─────────────────────────────────────────────────────
 
