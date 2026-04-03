@@ -16,9 +16,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.treecast.app.R
+import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.databinding.DialogRecordingDetailsBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.util.Icons
 import com.treecast.app.util.WaveformCache
 import kotlinx.coroutines.Dispatchers
@@ -171,7 +173,7 @@ class RecordingDetailsDialogFragment : DialogFragment() {
         val recording = viewModel.allRecordings.value.find { it.id == recordingId }
         if (recording != null) {
             binding.tvRecordingName.text = recording.title
-            binding.tvMeta.text          = buildMetaString(recording.durationMs, recording.createdAt)
+            bindMetadata(recording)
         }
 
         // Name tap → rename dialog.
@@ -198,7 +200,7 @@ class RecordingDetailsDialogFragment : DialogFragment() {
         // height, giving a "postage stamp" overview of the whole recording shape.
         // Minimum 30 s/line so very short recordings still render cleanly.
         val durationSecs = (recording.durationMs / 1000L).coerceAtLeast(1L)
-        val secondsPerLine = (durationSecs / 4L).toInt().coerceAtLeast(30)
+        val secondsPerLine = (durationSecs / 1L).toInt().coerceAtLeast(30) + 1
 
         with(binding.multiLineWaveform) {
             scaleToFill           = true
@@ -210,6 +212,7 @@ class RecordingDetailsDialogFragment : DialogFragment() {
             // Apply user's waveform style immediately from the current snapshot.
             waveformStyle         = viewModel.waveformStyle.value
             waveformDisplayConfig = viewModel.waveformDisplayConfig.value
+            setDurationMs(recording.durationMs)
         }
 
         // Load amplitude data directly from the on-disk cache on the IO
@@ -275,7 +278,7 @@ class RecordingDetailsDialogFragment : DialogFragment() {
                             return@collect
                         }
                         binding.tvRecordingName.text = recording.title
-                        binding.tvMeta.text          = buildMetaString(recording.durationMs, recording.createdAt)
+                        bindMetadata(recording)
                     }
                 }
 
@@ -311,6 +314,17 @@ class RecordingDetailsDialogFragment : DialogFragment() {
                 launch {
                     viewModel.waveformDisplayConfig.collect { cfg ->
                         binding.multiLineWaveform.waveformDisplayConfig = cfg
+                    }
+                }
+
+                // ── Waveform marks ─────────────────────────────────────────────
+                // Loaded for this specific recording ID regardless of whether it
+                // is currently playing. Read-only — no selection state needed.
+                launch {
+                    viewModel.getMarksForRecording(recordingId).collect { marks ->
+                        binding.multiLineWaveform.setMarks(
+                            marks.map { WaveformMark(id = it.id, positionMs = it.positionMs) }
+                        )
                     }
                 }
             }
@@ -397,8 +411,11 @@ class RecordingDetailsDialogFragment : DialogFragment() {
         binding.tvTopicName.text = topic?.name ?: getString(R.string.topic_label_unsorted)
     }
 
-    private fun buildMetaString(durationMs: Long, createdAt: Long): String =
-        "${formatDuration(durationMs)} · ${formatDate(createdAt)}"
+    private fun bindMetadata(recording: RecordingEntity) {
+        binding.tvMetaDuration.text   = formatDuration(recording.durationMs)
+        binding.tvMetaFileSize.text   = formatFileSize(recording.fileSizeBytes)
+        binding.tvMetaRecordedAt.text = "${formatDate(recording.createdAt)}  ·  ${formatTime(recording.createdAt)}"
+    }
 
     private fun formatDuration(ms: Long): String {
         val s = ms / 1000
@@ -408,4 +425,13 @@ class RecordingDetailsDialogFragment : DialogFragment() {
 
     private fun formatDate(epochMs: Long): String =
         SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMs))
+
+    private fun formatTime(epochMs: Long): String =
+        SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(epochMs))
+
+    private fun formatFileSize(bytes: Long): String = when {
+        bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000     -> "%.1f KB".format(bytes / 1_000.0)
+        else               -> "$bytes B"
+    }
 }

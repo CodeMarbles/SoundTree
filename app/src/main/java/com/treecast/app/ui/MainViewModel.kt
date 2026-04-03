@@ -1128,6 +1128,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Returns a live flow of marks for any recording by ID.
+     * Used by [RecordingDetailsDialogFragment] to populate the condensed
+     * waveform overview independently of the now-playing state.
+     */
+    fun getMarksForRecording(id: Long): Flow<List<MarkEntity>> =
+        repo.getMarksForRecording(id)
+
     fun selectMark(id: Long?) { _selectedMarkId.value = id }
 
     fun addMark() {

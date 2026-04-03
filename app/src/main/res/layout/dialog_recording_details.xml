@@ -169,23 +169,114 @@
     </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════════════════
-         Metadata strip — duration · date, left-aligned under title.
-         Indented to align with the recording name text, not the play
-         button, so the two lines read as a visual unit.
+         Metadata block — duration, file size, and recorded date/time.
+         Two rows of labeled stat cells, indented to align with the
+         recording name (68dp = 48dp button + 4dp margin + 16dp gap).
          ══════════════════════════════════════════════════════════════ -->
 
-    <TextView
-        android:id="@+id/tvMeta"
+    <LinearLayout
+        android:id="@+id/metaBlock"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:layout_marginStart="68dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="0dp"
-        android:textColor="?attr/colorTextSecondary"
-        android:textSize="13sp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp"
         app:layout_constraintTop_toBottomOf="@id/titleRow"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Row 1 — Duration (left) | File Size (right) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Duration cell -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DURATION"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="10sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvMetaDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="17sp"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <!-- File Size cell -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FILE SIZE"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="10sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvMetaFileSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="17sp"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Row 2 — Recorded date + time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RECORDED"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="10sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvMetaRecordedAt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="17sp"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════════════════
          Divider above waveform section.
@@ -198,7 +289,7 @@
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="16dp"
         android:background="?attr/colorSurfaceElevated"
-        app:layout_constraintTop_toBottomOf="@id/tvMeta"
+        app:layout_constraintTop_toBottomOf="@id/metaBlock"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
