@@ -38,6 +38,7 @@
 
     <string name="common_btn_save">Save</string>
     <string name="common_btn_cancel">Cancel</string>
+    <string name="common_btn_close">Close</string>
     <string name="common_btn_delete">Delete</string>
     <string name="common_btn_rename">Rename</string>
     <string name="common_btn_move">Move</string>
@@ -143,6 +144,18 @@
     <string name="record_pill_status_idle">READY</string>
     <string name="record_pill_status_recording">REC</string>
     <string name="record_pill_status_paused">PAUSED</string>
+
+    <!-- Content description for the always-visible mic source button -->
+    <string name="record_btn_input_source_cd">Microphone input source</string>
+
+    <!-- Dialog title -->
+    <string name="record_dialog_input_source_title">Input Source</string>
+
+    <!-- First row in the picker list — uses the OS default routing -->
+    <string name="record_input_source_default">Default</string>
+
+    <!-- Message shown at the top of the dialog while a recording is active -->
+    <string name="record_input_source_recording_note">Source can\'t be changed while recording.</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════
