@@ -276,6 +276,34 @@
 
         </LinearLayout>
 
+        <!-- Row 3 — File location -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LOCATION"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="10sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvMetaFilePath"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════════════════

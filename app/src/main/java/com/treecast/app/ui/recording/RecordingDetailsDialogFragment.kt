@@ -6,26 +6,30 @@ import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.EditText
 import android.widget.PopupMenu
 import androidx.core.view.doOnLayout
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.treecast.app.R
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.databinding.DialogRecordingDetailsBinding
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.recording.RecordingDetailsDialogFragment.Companion.newInstance
 import com.treecast.app.ui.waveform.WaveformMark
 import com.treecast.app.util.Icons
+import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.util.WaveformCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,7 +64,7 @@ import java.util.Locale
  * Launched via [newInstance]; pass the recording's database ID.
  * Show via: RecordingDetailsDialogFragment.newInstance(id).show(fm, TAG)
  */
-class RecordingDetailsDialogFragment : DialogFragment() {
+class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
 
     override fun getTheme(): Int = R.style.Theme_TreeCast_FullscreenDialog
 
@@ -104,14 +108,22 @@ class RecordingDetailsDialogFragment : DialogFragment() {
      */
     override fun onStart() {
         super.onStart()
-        dialog?.window?.apply {
-            setLayout(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-            )
-            setWindowAnimations(R.style.Animation_TreeCast_SlideUpDown)
+        (dialog as? BottomSheetDialog)?.behavior?.apply {
+            state        = BottomSheetBehavior.STATE_EXPANDED
+            skipCollapsed = true   // drag-down dismisses rather than collapsing to peek
         }
     }
+//    override fun onStart() {
+//        super.onStart()
+//        dialog?.window?.apply {
+//            setLayout(
+//                WindowManager.LayoutParams.MATCH_PARENT,
+//                WindowManager.LayoutParams.MATCH_PARENT,
+//            )
+//            setWindowAnimations(R.style.Animation_TreeCast_SlideUpDown)
+//        }
+//    }
+
 
     // ── Lifecycle ─────────────────────────────────────────────────────
 
@@ -415,6 +427,7 @@ class RecordingDetailsDialogFragment : DialogFragment() {
         binding.tvMetaDuration.text   = formatDuration(recording.durationMs)
         binding.tvMetaFileSize.text   = formatFileSize(recording.fileSizeBytes)
         binding.tvMetaRecordedAt.text = "${formatDate(recording.createdAt)}  ·  ${formatTime(recording.createdAt)}"
+        binding.tvMetaFilePath.text   = formatFilePath(recording)
     }
 
     private fun formatDuration(ms: Long): String {
@@ -433,5 +446,21 @@ class RecordingDetailsDialogFragment : DialogFragment() {
         bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
         bytes >= 1_000     -> "%.1f KB".format(bytes / 1_000.0)
         else               -> "$bytes B"
+    }
+
+    private fun formatFilePath(recording: RecordingEntity): String {
+        val file   = File(recording.filePath)
+        val volume = StorageVolumeHelper.getVolumeByUuid(requireContext(), recording.storageVolumeUuid)
+            ?: return file.name
+        val rootCanon = runCatching { volume.rootDir.canonicalPath }.getOrElse { volume.rootDir.absolutePath }
+        val fileCanon = runCatching { file.canonicalPath           }.getOrElse { file.absolutePath }
+        // rootDir is already named "recordings", so strip the rootDir prefix to get
+        // just the filename, then re-add the directory name for display clarity.
+        val relative = if (fileCanon.startsWith(rootCanon)) {
+            fileCanon.removePrefix(rootCanon).trimStart('/')
+        } else {
+            file.name
+        }
+        return "${volume.label} / recordings/$relative"
     }
 }

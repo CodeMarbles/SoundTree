@@ -643,7 +643,10 @@ class WaveformLineView @JvmOverloads constructor(
             5_000L, 10_000L, 15_000L, 30_000L,
             60_000L, 2 * 60_000L, 5 * 60_000L
         )
-        return candidates.firstOrNull { it >= rawMs } ?: candidates.last()
+        candidates.firstOrNull { it >= rawMs }?.let { return it }
+        // For long single-line windows (raw interval > 5 min, i.e. recording > ~30 min),
+        // round up to the next whole minute so labels stay clean (e.g. "7:00", "14:00").
+        return ((rawMs + 60_000L - 1) / 60_000L) * 60_000L
     }
 
     /**
@@ -834,15 +837,17 @@ class WaveformLineView @JvmOverloads constructor(
      * the line's [windowMs] span. Aims for roughly 4–6 ticks per line.
      */
     private fun rulerIntervalMs(windowMs: Long): Long = when {
-        windowMs > 20 * 60_000L  -> 5 * 60_000L    // > 20 min  → 5 min ticks
-        windowMs > 10 * 60_000L  -> 2 * 60_000L    // > 10 min  → 2 min ticks
-        windowMs >  4 * 60_000L  ->     60_000L    //  > 4 min  → 1 min ticks
-        windowMs >  2 * 60_000L  ->     30_000L    //  > 2 min  → 30 sec ticks
-        windowMs >      60_000L  ->     15_000L    //  > 1 min  → 15 sec ticks
-        windowMs >      30_000L  ->     10_000L    // > 30 sec  → 10 sec ticks
-        else                     ->      5_000L    //  ≤ 30 sec →  5 sec ticks
+        windowMs > 60 * 60_000L  -> ((windowMs / 5 + 60_000L - 1) / 60_000L) * 60_000L
+        //                          > 1 hr   → ~5 ticks, rounded up to whole minute
+        windowMs > 30 * 60_000L  -> 10 * 60_000L   // > 30 min → 10 min ticks
+        windowMs > 20 * 60_000L  ->  5 * 60_000L   // > 20 min →  5 min ticks
+        windowMs > 10 * 60_000L  ->  2 * 60_000L   // > 10 min →  2 min ticks
+        windowMs >  4 * 60_000L  ->      60_000L   //  > 4 min →  1 min ticks
+        windowMs >  2 * 60_000L  ->      30_000L   //  > 2 min → 30 sec ticks
+        windowMs >      60_000L  ->      15_000L   //  > 1 min → 15 sec ticks
+        windowMs >      30_000L  ->      10_000L   // > 30 sec → 10 sec ticks
+        else                     ->       5_000L   //  ≤ 30 sec →  5 sec ticks
     }
-
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
