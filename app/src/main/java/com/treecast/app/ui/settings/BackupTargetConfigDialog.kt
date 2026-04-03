@@ -100,7 +100,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                     putInt(ARG_INTERVAL_HOURS,    state.entity.intervalHours)
                     putBoolean(ARG_IS_MOUNTED,    state.isMounted)
                     putString(ARG_DISPLAY_LABEL,  state.displayLabel)
-                    putString(ARG_VOLUME_LABEL,   state.volume?.label)
+                    putString(ARG_VOLUME_LABEL,   state.volume?.label ?: state.entity.volumeLabel)
                     putString(ARG_BACKUP_DIR_URI, state.entity.backupDirUri)
                 }
             }
@@ -376,12 +376,17 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         }
 
         // ── Chevron: only visible when scheduling is enabled ──────────────────
-        val tvChevron = TextView(ctx).apply {
-            text       = if (intervalExpanded) "▼" else "▶"
-            textSize   = 12f
+        val tvChevron = android.widget.ImageView(ctx).apply {
+            setImageResource(
+                if (intervalExpanded) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right
+            )
+            setColorFilter(ctx.themeColor(R.attr.colorTextSecondary))
+            val iconPx = (20 * ctx.resources.displayMetrics.density).toInt()
+            layoutParams = LinearLayout.LayoutParams(iconPx, iconPx).also {
+                it.marginStart = px8
+                it.marginEnd   = px8
+            }
             visibility = if (scheduledEnabled) View.VISIBLE else View.GONE
-            setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
-            setPadding(px8, 0, px8, 0)
         }
 
         // ── Interval picker — hidden when scheduling is off or collapsed ──────
@@ -396,7 +401,9 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         // ── Expand/collapse toggle ────────────────────────────────────────────
         fun toggleExpanded() {
             intervalExpanded = !intervalExpanded
-            tvChevron.text = if (intervalExpanded) "▼" else "▶"
+            tvChevron.setImageResource(
+                if (intervalExpanded) R.drawable.ic_chevron_down else R.drawable.ic_chevron_right
+            )
             intervalGroup.visibility = if (intervalExpanded) View.VISIBLE else View.GONE
         }
 
@@ -439,7 +446,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                 if (isChecked) {
                     // Auto-expand when first enabling so the user can see the options.
                     intervalExpanded    = true
-                    tvChevron.text      = "▼"
+                    tvChevron.setImageResource(R.drawable.ic_chevron_down)
                     intervalGroup.visibility = View.VISIBLE
                 } else {
                     intervalGroup.visibility = View.GONE

@@ -341,11 +341,19 @@ internal fun MainActivity.setupMiniRecorderMinimize() {
             viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.NEVER -> {
                 navigateTo(PAGE_RECORD)
             }
+            // WHILE_RECORDING mode but not currently recording — nothing to show,
+            // so navigate to the tab so the user can start a recording.
+            viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.WHILE_RECORDING &&
+                    viewModel.recordingState.value == RecordingService.State.IDLE -> {
+                viewModel.setRecorderHideOverriddenThisVisit(true)
+                viewModel.setRecorderPillMinimized(false)
+            }
             // Widget is already visible → navigate to tab
             isRecorderWidgetVisible() -> {
                 navigateTo(PAGE_RECORD)
             }
-            // Widget is hidden → show it, override suppression if needed
+            // Widget is hidden (suppressed by tab or minimized) → restore it,
+            // overriding the tab-suppress if needed.
             else -> {
                 viewModel.setRecorderHideOverriddenThisVisit(true)
                 viewModel.setRecorderPillMinimized(false)

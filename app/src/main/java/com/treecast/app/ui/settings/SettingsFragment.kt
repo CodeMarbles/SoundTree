@@ -146,7 +146,19 @@ class SettingsFragment : Fragment() {
             binding.tabStorage  to Tab.STORAGE,
             binding.tabTools    to Tab.TOOLS,
         ).forEach { (view, t) ->
-            view.isSelected = (t == tab)
+            val isActive = t == tab
+            view.isSelected = isActive
+            view.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
+            view.setTextColor(
+                if (isActive) requireContext().themeColor(R.attr.colorTextPrimary)
+                else          requireContext().themeColor(R.attr.colorTextSecondary)
+            )
+            view.background = if (isActive) android.graphics.drawable.GradientDrawable().apply {
+                shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = resources.getDimension(R.dimen.settings_card_corner_radius) -
+                        resources.displayMetrics.density * 3f
+                setColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
+            } else null
         }
     }
 
@@ -290,15 +302,18 @@ class SettingsFragment : Fragment() {
             })
 
             // Gear icon — tappable affordance hint; row click handles the action.
-            val tvGear = TextView(requireContext()).apply {
-                text = "⚙️"
-                textSize = 18f
-                setPadding(16, 0, 0, 0)
+            val ivGear = android.widget.ImageView(requireContext()).apply {
+                setImageResource(R.drawable.ic_gear)
+                setColorFilter(requireContext().themeColor(R.attr.colorTextSecondary))
+                val iconPx = (20 * resources.displayMetrics.density).toInt()
+                layoutParams = LinearLayout.LayoutParams(iconPx, iconPx).also {
+                    it.marginStart = 16
+                }
                 isClickable = false
             }
 
             row.addView(textBlock)
-            row.addView(tvGear)
+            row.addView(ivGear)
             container.addView(row)
 
             if (state != targets.last()) container.addView(rowDivider())
