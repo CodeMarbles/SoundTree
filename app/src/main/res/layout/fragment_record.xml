@@ -135,6 +135,19 @@
 
         </LinearLayout>
 
+        <!-- Input source picker button (always visible) -->
+        <ImageButton
+            android:id="@+id/btnInputSource"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:padding="7dp"
+            android:src="@drawable/ic_audio_source"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/record_btn_input_source_cd"
+            app:tint="?attr/colorTextSecondary" />
+
         <!-- Header bottom border -->
         <View
             android:layout_width="match_parent"
