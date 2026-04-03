@@ -1,9 +1,12 @@
 package com.treecast.app.service
 
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
@@ -118,12 +121,24 @@ class RecordingService : Service() {
         _notificationSaveEvent.asSharedFlow()
 
     private var mediaRecorder: MediaRecorder? = null
-    // ── Preferred input device ────────────────────────────────────
+
+    // ── Audio input source ────────────────────────────────────────────
+    private val audioManager by lazy { getSystemService(AudioManager::class.java) }
+
+    // True while SCO is active for the current recording session.
+    // Cleared in stopRecording() so we know to call stopBluetoothSco().
+    private var scoActive = false
+
+    // Holds the BroadcastReceiver registered during SCO handshake.
+    // Null at all other times.
+    private var scoReceiver: BroadcastReceiver? = null
+
     // Set by RecordFragment via setPreferredInputDevice() before startRecording()
     // is called. Null = system default routing (MediaRecorder.AudioSource.MIC
     // with no device override). Cleared back to null when the service goes idle
     // so stale BT device handles from a previous session can't leak forward.
     private var preferredInputDevice: AudioDeviceInfo? = null
+
     private var currentFilePath: String? = null
     private var startTimeMs: Long = 0L
     private var accumulatedMs: Long = 0L
@@ -193,6 +208,13 @@ class RecordingService : Service() {
         }
     }
 
+    private val scoTimeoutRunnable = Runnable {
+        Log.w(TAG, "SCO connect timeout — falling back to default mic")
+        unregisterScoReceiver()
+        preferredInputDevice = null
+        doStartMediaRecorder()
+    }
+
     private val mainHandler by lazy { android.os.Handler(mainLooper) }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -259,10 +281,87 @@ class RecordingService : Service() {
         pendingMarks.clear()
         _pendingMarkCount.value = 0
         _pendingMarksFlow.value = emptyList()
-
         pendingDisplayName    = ""
         pendingUserHasRenamed = false
 
+        // Start foreground immediately — before the SCO handshake — so the OS
+        // doesn't kill us during the ~200–500 ms wait for SCO to connect.
+        // buildNotification() reads _state, which is still IDLE here, so the
+        // notification will show the pause action (correct for "about to record").
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_record_status_recording)))
+
+        // setPreferredDevice is a best-effort routing hint introduced in API 28.
+        // If the device becomes unavailable after recording starts (e.g. BT drops),
+        // Android silently falls back to the built-in mic — the recording is not
+        // interrupted and no error is thrown.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            preferredInputDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
+            startWithSco()
+        } else {
+            doStartMediaRecorder()
+        }
+
+        return currentFilePath
+    }
+
+    /**
+     * Initiates the Bluetooth SCO handshake, then calls doStartMediaRecorder()
+     * once the SCO audio channel is confirmed connected.
+     *
+     * SCO connection typically completes in 200–500 ms. A 3-second timeout
+     * guards against headphones that are paired but not reachable — in that
+     * case we fall back to the default mic so recording still starts.
+     *
+     * The receiver is registered BEFORE startBluetoothSco() is called to
+     * eliminate the race where the state broadcast fires before we're listening.
+     */
+    private fun startWithSco() {
+        scoReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1)
+                when (state) {
+                    AudioManager.SCO_AUDIO_STATE_CONNECTED -> {
+                        mainHandler.removeCallbacks(scoTimeoutRunnable)
+                        unregisterScoReceiver()
+                        scoActive = true
+                        doStartMediaRecorder()
+                    }
+                    AudioManager.SCO_AUDIO_STATE_ERROR -> {
+                        mainHandler.removeCallbacks(scoTimeoutRunnable)
+                        unregisterScoReceiver()
+                        Log.w(TAG, "SCO failed (state=$state) — falling back to default mic")
+                        // Clear preferredInputDevice so setPreferredDevice() is skipped
+                        // and MediaRecorder routes to the built-in mic cleanly.
+                        preferredInputDevice = null
+                        doStartMediaRecorder()
+                    }
+                }
+            }
+        }
+        registerReceiver(
+            scoReceiver,
+            IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED)
+        )
+        audioManager.startBluetoothSco()
+        mainHandler.postDelayed(scoTimeoutRunnable, SCO_TIMEOUT_MS)
+    }
+
+    /** Safely unregisters the SCO state receiver, ignoring double-unregister. */
+    private fun unregisterScoReceiver() {
+        scoReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: IllegalArgumentException) {}
+            scoReceiver = null
+        }
+    }
+
+    /**
+     * Configures and starts MediaRecorder. Called either directly from
+     * startRecording() (non-BT path) or from the SCO broadcast receiver
+     * once the SCO channel is confirmed connected (BT path).
+     *
+     * Preconditions: currentFilePath is set, startForeground() already called.
+     */
+    private fun doStartMediaRecorder() {
         mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
         } else {
@@ -274,25 +373,21 @@ class RecordingService : Service() {
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setAudioEncodingBitRate(128_000)
             setAudioSamplingRate(44_100)
-            setOutputFile(file.absolutePath)
+            setOutputFile(currentFilePath)
             prepare()
-            // setPreferredDevice is a best-effort routing hint introduced in API 28.
-            // If the device becomes unavailable after recording starts (e.g. BT drops),
-            // Android silently falls back to the built-in mic — the recording is not
-            // interrupted and no error is thrown.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 preferredInputDevice?.let { setPreferredDevice(it) }
             }
             start()
         }
 
-        startTimeMs = System.currentTimeMillis()
+        startTimeMs   = System.currentTimeMillis()
         accumulatedMs = 0L
-        _state.value = State.RECORDING
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_record_status_recording)))
+        _state.value  = State.RECORDING
+        updateNotification(getString(R.string.notif_record_status_recording))
         mainHandler.post(amplitudeRunnable)
-        return currentFilePath
     }
+
 
     fun pauseRecording() {
         if (_state.value != State.RECORDING) return
@@ -313,7 +408,14 @@ class RecordingService : Service() {
     }
 
     fun stopRecording(): StopResult {
-        mainHandler.removeCallbacks(amplitudeRunnable)
+        // Cancel any pending SCO timeout and clean up SCO resources.
+        mainHandler.removeCallbacks(scoTimeoutRunnable)
+        unregisterScoReceiver()
+        if (scoActive) {
+            audioManager.stopBluetoothSco()
+            scoActive = false
+        }
+
         val duration = if (_state.value == State.RECORDING) {
             accumulatedMs + (System.currentTimeMillis() - startTimeMs)
         } else {
@@ -685,6 +787,8 @@ class RecordingService : Service() {
         const val ACTION_SAVE      = "com.treecast.SAVE"
         const val ACTION_SET_TOPIC = "com.treecast.SET_TOPIC"
         const val ACTION_DROP_MARK = "com.treecast.DROP_MARK"
+
+        private const val SCO_TIMEOUT_MS = 3_000L
 
         // Intent extras
         const val EXTRA_TOPIC_ID = "com.treecast.extra.TOPIC_ID"

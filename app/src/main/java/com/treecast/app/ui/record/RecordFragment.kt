@@ -618,7 +618,8 @@ class RecordFragment : Fragment() {
 
                 // Header: topic zone only
                 binding.headerDivider.visibility     = View.GONE
-                binding.recordingNameZone.visibility = View.GONE
+                binding.recordingNameZone.visibility = View.INVISIBLE
+                binding.recordingNameZone.isClickable = false
 
                 resetRecordingState()
                 binding.tvTimer.text = "0:00"
@@ -648,6 +649,7 @@ class RecordFragment : Fragment() {
                 // Header: show recording name
                 binding.headerDivider.visibility     = View.VISIBLE
                 binding.recordingNameZone.visibility = View.VISIBLE
+                binding.recordingNameZone.isClickable = true
                 binding.tvRecordingName.text = currentRecordingDisplayName
             }
 

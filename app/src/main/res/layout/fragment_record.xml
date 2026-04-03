@@ -96,7 +96,7 @@
                 android:focusable="true"
                 android:paddingVertical="4dp"
                 android:paddingStart="2dp"
-                android:visibility="gone">
+                android:visibility="invisible">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -112,6 +112,7 @@
                     android:id="@+id/tvRecordingName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="center"
                     android:text="—"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="12sp"
@@ -125,6 +126,7 @@
                 android:id="@+id/btnInputSource"
                 android:layout_width="38dp"
                 android:layout_height="38dp"
+                android:gravity="end"
                 android:padding="7dp"
                 android:src="@drawable/ic_audio_source"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -134,19 +136,6 @@
                 app:tint="?attr/colorTextSecondary" />
 
         </LinearLayout>
-
-        <!-- Input source picker button (always visible) -->
-        <ImageButton
-            android:id="@+id/btnInputSource"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:padding="7dp"
-            android:src="@drawable/ic_audio_source"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="@string/record_btn_input_source_cd"
-            app:tint="?attr/colorTextSecondary" />
 
         <!-- Header bottom border -->
         <View
