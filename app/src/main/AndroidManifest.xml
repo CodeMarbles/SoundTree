@@ -9,6 +9,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Required for AudioManager.startBluetoothSco() -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Required for any Bluetooth interaction on API < 31 -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <!-- Required for Bluetooth interaction on API 31+ (runtime permission) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <!--
         Required for WorkManager to reschedule periodic backup jobs after a
