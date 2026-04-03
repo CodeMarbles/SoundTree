@@ -27,7 +27,7 @@ import com.treecast.app.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -247,6 +247,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v10 → v11: Add volume_label column to backup_targets.
+         *
+         * Caches the OS-provided display label for each backup target volume
+         * so the Settings tab can show a human-readable name even when the
+         * drive is not currently connected.
+         *
+         * The column is nullable with no default — existing rows will have
+         * NULL until the first time a backup runs or the user has the volume
+         * mounted, at which point [BackupTargetDao.setVolumeLabel] populates it.
+         * The UI falls back through: live OS label → cached label → UUID.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE backup_targets ADD COLUMN volume_label TEXT"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -262,6 +282,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_7_8,
                         MIGRATION_8_9,
                         MIGRATION_9_10,
+                        MIGRATION_10_11,
                     )
                     .fallbackToDestructiveMigration()
                     .build()

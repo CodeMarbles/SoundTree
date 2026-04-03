@@ -232,6 +232,14 @@ class TreeCastRepository(context: Context) {
         backupTargetDao.setBackupDirUri(volumeUuid, uri)
 
     /**
+     * Caches the OS-provided display label for a backup target volume.
+     * Called when a target is first added (label available from live AppVolume)
+     * and after each backup run (BackupWorker has the label via StorageVolumeHelper).
+     */
+    suspend fun setBackupTargetLabel(volumeUuid: String, label: String) =
+        backupTargetDao.setVolumeLabel(volumeUuid, label)
+
+    /**
      * Toggles the on-connect backup trigger for a target.
      * No WorkManager changes needed — [StorageMountReceiver] reads this flag
      * live from the DB at mount time.

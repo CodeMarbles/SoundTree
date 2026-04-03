@@ -129,7 +129,7 @@
                         android:id="@+id/ivSettingsIcon"
                         android:layout_width="26dp"
                         android:layout_height="26dp"
-                        android:src="@drawable/ic_nav_settings" />
+                        android:src="@drawable/ic_gear" />
 
                     <TextView
                         android:id="@+id/tvSettingsLabel"

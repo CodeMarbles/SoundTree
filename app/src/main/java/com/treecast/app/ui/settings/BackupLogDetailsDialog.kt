@@ -18,6 +18,7 @@ import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.databinding.DialogBackupLogDetailBinding
 import com.treecast.app.databinding.ItemBackupLogEventBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.backupDirDisplayPath
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +54,8 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
 
         private const val ARG_LOG_ID         = "log_id"
         private const val ARG_VOLUME_LABEL   = "volume_label"
+        private const val ARG_VOLUME_UUID    = "volume_uuid"
+        private const val ARG_BACKUP_DIR_URI = "backup_dir_uri"
         private const val ARG_STARTED_AT     = "started_at"
         private const val ARG_ENDED_AT       = "ended_at"      // 0L when null
         private const val ARG_STATUS         = "status"
@@ -67,7 +70,9 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
         fun newInstance(log: BackupLogEntity) = BackupLogDetailDialog().apply {
             arguments = Bundle().apply {
                 putLong(ARG_LOG_ID,          log.id)
-                putString(ARG_VOLUME_LABEL,  log.volumeLabel)
+                putString(ARG_VOLUME_LABEL,   log.volumeLabel)
+                putString(ARG_VOLUME_UUID,    log.volumeUuid)
+                putString(ARG_BACKUP_DIR_URI, log.backupDirUri)
                 putLong(ARG_STARTED_AT,      log.startedAt)
                 putLong(ARG_ENDED_AT,        log.endedAt ?: 0L)
                 putString(ARG_STATUS,        log.status)
@@ -108,9 +113,9 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
         val seedLog = BackupLogEntity(
             id               = logId,
             backupTargetUuid = null,
-            volumeUuid       = "",
+            volumeUuid       = args.getString(ARG_VOLUME_UUID, ""),
             volumeLabel      = args.getString(ARG_VOLUME_LABEL, ""),
-            backupDirUri     = "",
+            backupDirUri     = args.getString(ARG_BACKUP_DIR_URI, ""),
             trigger          = args.getString(ARG_TRIGGER, ""),
             status           = args.getString(ARG_STATUS),
             startedAt        = args.getLong(ARG_STARTED_AT),
@@ -162,9 +167,29 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
 
     // ── Header ────────────────────────────────────────────────────────────────
 
+    /**
+     * Populates the three-line volume identity block and status chip.
+     *
+     * Line 1 (tvDetailVolume):     volume label, bold 18sp
+     * Line 2 (tvDetailVolumeUuid): volume UUID, monospace secondary
+     * Line 3 (tvDetailVolumeDir):  root-relative backup path — hidden when
+     *                              the URI is absent or unparseable
+     *
+     * The layout mirrors the volume info header in [BackupTargetConfigDialog].
+     */
     private fun bindHeader(log: BackupLogEntity) {
-        binding.tvDetailVolume.text = log.volumeLabel
-        binding.tvDetailDate.text   = formatDateTime(log.startedAt)
+        binding.tvDetailVolume.text     = log.volumeLabel.ifBlank { log.volumeUuid }
+        binding.tvDetailVolumeUuid.text = log.volumeUuid
+
+        val path = backupDirDisplayPath(log.backupDirUri)
+        if (path != null) {
+            binding.tvDetailVolumeDir.text       = path
+            binding.tvDetailVolumeDir.visibility = View.VISIBLE
+        } else {
+            binding.tvDetailVolumeDir.visibility = View.GONE
+        }
+
+        binding.tvDetailDate.text = formatDateTime(log.startedAt)
 
         val (chipLabel, chipColor) = log.statusChipParams(requireContext())
         binding.tvDetailStatusChip.text       = chipLabel

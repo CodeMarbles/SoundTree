@@ -456,6 +456,11 @@ class BackupWorker(
         if (status != BackupStatus.FAILED) {
             targetDao.setLastBackupAt(volumeUuid, System.currentTimeMillis())
         }
+        // Keep the cached label fresh so Settings shows a name when disconnected.
+        // volumeLabel is resolved earlier in doWork(); if it fell back to the UUID
+        // (volume not in system list), we still write it — it's no worse than what
+        // was there before.
+        targetDao.setVolumeLabel(volumeUuid, volumeLabel)
 
         // ── 9. Resolve notification and WorkManager result ────────────
         val notifText = when (status) {

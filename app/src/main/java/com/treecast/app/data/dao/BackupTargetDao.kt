@@ -63,6 +63,14 @@ interface BackupTargetDao {
 
     // ── Targeted field updates ────────────────────────────────────────────────
 
+    /**
+     * Caches the OS-provided display label for this volume.
+     * Called when a target is first added and after each successful backup run,
+     * so the label remains readable in Settings even when the drive is away.
+     */
+    @Query("UPDATE backup_targets SET volume_label = :label WHERE volume_uuid = :volumeUuid")
+    suspend fun setVolumeLabel(volumeUuid: String, label: String)
+
     @Query("UPDATE backup_targets SET on_connect_enabled = :enabled WHERE volume_uuid = :volumeUuid")
     suspend fun setOnConnectEnabled(volumeUuid: String, enabled: Boolean)
 

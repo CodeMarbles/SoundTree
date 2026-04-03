@@ -30,6 +30,7 @@ import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.util.backupDirDisplayPath
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
@@ -362,7 +363,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         }
 
         var scheduledEnabled      = args.getBoolean(ARG_SCHEDULED)
-        var intervalExpanded      = scheduledEnabled   // start open if already enabled
+        var intervalExpanded      = false   // start open if already enabled
         var currentSelectedHours  = args.getInt(ARG_INTERVAL_HOURS)
 
         // ── Sublabel: static hint when off; selected interval name when on ────
@@ -709,28 +710,6 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                 LinearLayout.LayoutParams.MATCH_PARENT, px1,
             ).also { it.setMargins(px24, 0, px24, 0) }
             setBackgroundColor(ctx.themeColor(R.attr.colorSurfaceElevated))
-        }
-    }
-
-    /**
-     * Extracts a human-readable root-relative path from a SAF tree URI.
-     *
-     * External-storage document IDs have the form "<uuid>:<path>" (e.g.
-     * "1A2B-3C4D:TreeCast/backups") or "primary:<path>" for internal storage.
-     * We drop the volume prefix and prepend "/" to produce "/TreeCast/backups".
-     *
-     * Returns null when [dirUri] is null, blank, or cannot be parsed — the
-     * caller simply omits the path line rather than showing a raw URI.
-     */
-    private fun backupDirDisplayPath(dirUri: String?): String? {
-        if (dirUri.isNullOrBlank()) return null
-        return try {
-            val docId = android.provider.DocumentsContract.getTreeDocumentId(
-                android.net.Uri.parse(dirUri)
-            )
-            "/" + docId.substringAfter(":", missingDelimiterValue = docId)
-        } catch (_: Exception) {
-            null
         }
     }
 }

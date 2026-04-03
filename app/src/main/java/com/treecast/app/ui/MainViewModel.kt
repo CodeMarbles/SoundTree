@@ -160,7 +160,7 @@ data class BackupTargetUiState(
     val volume: AppVolume?,
 ) {
     val isMounted: Boolean get() = volume?.isMounted == true
-    val displayLabel: String get() = volume?.label ?: entity.volumeUuid
+    val displayLabel: String get() = volume?.label ?: entity.volumeLabel ?: entity.volumeUuid
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -1751,6 +1751,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.addBackupTarget(volumeUuid)
             repo.setBackupTargetDirUri(volumeUuid, dirUri)
+            // Cache the label while we know the volume is mounted (it's in
+            // backupAvailableVolumes, so the OS label is guaranteed available).
+            storageVolumes.value
+                .firstOrNull { it.uuid == volumeUuid }
+                ?.label
+                ?.let { repo.setBackupTargetLabel(volumeUuid, it) }
         }
     }
 
@@ -1787,6 +1793,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setBackupOnConnectEnabled(volumeUuid: String, enabled: Boolean) {
         viewModelScope.launch { repo.setBackupOnConnectEnabled(volumeUuid, enabled) }
+    }
+
+    fun setBackupTargetLabel(volumeUuid: String, label: String) {
+        viewModelScope.launch { repo.setBackupTargetLabel(volumeUuid, label) }
     }
 
     /**

@@ -470,9 +470,9 @@
     <!-- %1$d=copied  %2$d=skipped  %3$d=failed -->
     <string name="backup_log_detail_files_summary">%1$d copied · %2$d skipped · %3$d failed</string>
     <string name="backup_log_detail_events_title">Events</string>
-    <string name="backup_log_detail_btn_show_info">Show milestones</string>
+    <string name="backup_log_detail_btn_show_info">Show all milestones</string>
     <string name="backup_log_detail_btn_hide_info">Hide milestones</string>
-    <string name="backup_log_detail_no_events">No events recorded for this run.</string>
+    <string name="backup_log_detail_no_events">No problems recorded for this backup.</string>
     <string name="backup_log_detail_error_message_label">Run error</string>
 
     <!-- Duration format strings: %1$d=minutes  %2$d=seconds -->

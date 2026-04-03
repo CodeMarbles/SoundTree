@@ -6,13 +6,15 @@
 
   Structure (ScrollView → vertical LinearLayout):
     1. Title row: volume label + status chip
-    2. Date subtitle
-    3. Divider
-    4. Metadata rows: trigger · duration · files · bytes · database · [error message]
+    2. Volume UUID (monospace, secondary)
+    3. Volume backup path (secondary, gone when unavailable)
+    4. Date subtitle
     5. Divider
-    6. Events header + "Show milestones" toggle
-    7. containerEvents — LinearLayout populated dynamically with ItemBackupLogEventBinding
-    8. tvEventsEmpty  — visible when the event list is empty
+    6. Metadata rows: trigger · duration · files · bytes · database · [error message]
+    7. Divider
+    8. Events header + "Show milestones" toggle
+    9. containerEvents — LinearLayout populated dynamically with ItemBackupLogEventBinding
+   10. tvEventsEmpty  — visible when the event list is empty
 -->
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -68,25 +70,60 @@
 
         </LinearLayout>
 
-        <!-- ── 2. Date subtitle ───────────────────────────────────────────────── -->
+        <!-- ── 2. Volume UUID ─────────────────────────────────────────────────── -->
+        <!--
+            Always visible. Monospace for legibility, matches the UUID line in
+            BackupTargetConfigDialog. Set by BackupLogDetailDialog.bindHeader().
+        -->
+        <TextView
+            android:id="@+id/tvDetailVolumeUuid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="2dp"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            tools:text="1A2B-3C4D" />
+
+        <!-- ── 3. Volume backup path ──────────────────────────────────────────── -->
+        <!--
+            Root-relative SAF path (e.g. "/TreeCast/backups"). Gone by default;
+            set to VISIBLE in bindHeader() when backupDirUri is non-empty and
+            can be parsed. Matches the path line in BackupTargetConfigDialog.
+        -->
+        <TextView
+            android:id="@+id/tvDetailVolumeDir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="2dp"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="/TreeCast/backups"
+            tools:visibility="visible" />
+
+        <!-- ── 4. Date subtitle ───────────────────────────────────────────────── -->
         <TextView
             android:id="@+id/tvDetailDate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingHorizontal="24dp"
+            android:paddingTop="4dp"
             android:paddingBottom="16dp"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="13sp"
             tools:text="Mar 31, 2026 · 2:14 PM" />
 
-        <!-- ── 3. Divider ─────────────────────────────────────────────────────── -->
+        <!-- ── 5. Divider ─────────────────────────────────────────────────────── -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="?attr/colorSurfaceElevated"
             android:layout_marginHorizontal="24dp" />
 
-        <!-- ── 4. Metadata rows ───────────────────────────────────────────────── -->
+        <!-- ── 6. Metadata rows ───────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -238,14 +275,14 @@
 
         </LinearLayout>
 
-        <!-- ── 5. Divider before events ──────────────────────────────────────── -->
+        <!-- ── 7. Divider before events ──────────────────────────────────────── -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="?attr/colorSurfaceElevated"
             android:layout_marginHorizontal="24dp" />
 
-        <!-- ── 6. Events header + toggle ─────────────────────────────────────── -->
+        <!-- ── 8. Events header + toggle ─────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -277,39 +314,34 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/backup_log_detail_btn_show_info"
-                android:textSize="12sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp" />
+                android:textSize="12sp" />
 
         </LinearLayout>
 
-        <!-- ── 7. Dynamic event list ─────────────────────────────────────────── -->
+        <!-- ── 9. Events list ─────────────────────────────────────────────────── -->
         <!--
-            Populated by BackupLogDetailDialog.bindEvents() each time the
-            observed event flow emits. Items are ItemBackupLogEventBinding rows.
+            Populated dynamically from BackupLogDetailDialog.bindEvents().
+            Each child is inflated from item_backup_log_event.xml.
         -->
         <LinearLayout
             android:id="@+id/containerEvents"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp" />
 
-        <!-- ── 8. Empty state ─────────────────────────────────────────────────── -->
-        <!--
-            Shown when the current event filter (problems-only or all-events)
-            returns an empty list. Hidden whenever at least one event is rendered.
-        -->
+        <!-- ── 10. Empty-events placeholder ──────────────────────────────────── -->
         <TextView
             android:id="@+id/tvEventsEmpty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/backup_log_detail_no_events"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="13sp"
-            android:paddingHorizontal="24dp"
-            android:paddingVertical="12dp"
             android:visibility="gone"
-            tools:visibility="visible" />
+            android:text="@string/backup_log_detail_no_events" />
 
     </LinearLayout>
 

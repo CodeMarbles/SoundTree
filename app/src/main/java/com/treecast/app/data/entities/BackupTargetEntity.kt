@@ -44,6 +44,18 @@ data class BackupTargetEntity(
     val volumeUuid: String,
 
     /**
+     * Human-readable OS label for this volume (e.g. "USB Drive", "SD Card").
+     * Cached here so the Settings tab can display a name even when the drive
+     * is not currently connected. Updated whenever the user first adds the
+     * target and again each time a backup runs successfully.
+     *
+     * Null for targets added before schema v11, or when the OS has never
+     * provided a label for this volume.
+     */
+    @ColumnInfo(name = "volume_label")
+    val volumeLabel: String? = null,
+
+    /**
      * When true, [com.treecast.app.receiver.StorageMountReceiver] will enqueue
      * a [com.treecast.app.worker.BackupWorker] job each time this volume mounts.
      *
