@@ -3,6 +3,7 @@ package com.treecast.app.service
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceInfo
 import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
@@ -117,6 +118,12 @@ class RecordingService : Service() {
         _notificationSaveEvent.asSharedFlow()
 
     private var mediaRecorder: MediaRecorder? = null
+    // ── Preferred input device ────────────────────────────────────
+    // Set by RecordFragment via setPreferredInputDevice() before startRecording()
+    // is called. Null = system default routing (MediaRecorder.AudioSource.MIC
+    // with no device override). Cleared back to null when the service goes idle
+    // so stale BT device handles from a previous session can't leak forward.
+    private var preferredInputDevice: AudioDeviceInfo? = null
     private var currentFilePath: String? = null
     private var startTimeMs: Long = 0L
     private var accumulatedMs: Long = 0L
@@ -140,6 +147,16 @@ class RecordingService : Service() {
 
     fun getPendingDisplayName(): String = pendingDisplayName
     fun getPendingUserHasRenamed(): Boolean = pendingUserHasRenamed
+
+    // ── Audio Input Source ─────────────────────────────────────────────
+    /**
+     * Sets the preferred audio input device for the next recording.
+     * Pass null to use the system default.
+     * Must be called before [startRecording]; ignored once recording is underway.
+     */
+    fun setPreferredInputDevice(device: AudioDeviceInfo?) {
+        preferredInputDevice = device
+    }
 
     // ── Storage ───────────────────────────────────────────────────────
     /**
@@ -259,6 +276,13 @@ class RecordingService : Service() {
             setAudioSamplingRate(44_100)
             setOutputFile(file.absolutePath)
             prepare()
+            // setPreferredDevice is a best-effort routing hint introduced in API 28.
+            // If the device becomes unavailable after recording starts (e.g. BT drops),
+            // Android silently falls back to the built-in mic — the recording is not
+            // interrupted and no error is thrown.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                preferredInputDevice?.let { setPreferredDevice(it) }
+            }
             start()
         }
 
@@ -333,6 +357,9 @@ class RecordingService : Service() {
 
         pendingDisplayName    = ""
         pendingUserHasRenamed = false
+
+        // Uncomment if you want the audio input device to be reset between recordings
+        //preferredInputDevice = null
 
         return result
     }

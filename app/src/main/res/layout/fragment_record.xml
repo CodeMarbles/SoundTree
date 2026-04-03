@@ -90,7 +90,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="end"
+                android:gravity="center"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
@@ -119,6 +119,19 @@
                     android:maxLines="1" />
 
             </LinearLayout>
+
+            <!-- Input source picker button (always visible) -->
+            <ImageButton
+                android:id="@+id/btnInputSource"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:padding="7dp"
+                android:src="@drawable/ic_audio_source"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/record_btn_input_source_cd"
+                app:tint="?attr/colorTextSecondary" />
 
         </LinearLayout>
 

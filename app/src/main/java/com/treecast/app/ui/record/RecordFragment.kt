@@ -8,6 +8,8 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Bundle
 import android.os.IBinder
 import android.text.InputType
@@ -65,6 +67,13 @@ class RecordFragment : Fragment() {
     // When true, stopAndSave() uses currentRecordingDisplayName verbatim
     // (no "Recording – " prefix). When false (auto-stamp), the prefix is applied.
     private var userHasRenamedRecording: Boolean = false
+
+    // ── Recording audio input source ──────────────────────────────────
+
+    // Null = system default. Set by showInputSourceDialog() and passed to
+    // the service in doStartRecording(). Intentionally not persisted — resets
+    // to Default on cold start, which is the safest behaviour.
+    private var preferredInputDevice: AudioDeviceInfo? = null
 
     // ── Recording service ─────────────────────────────────────────────
     private var recordingService: RecordingService? = null
@@ -174,9 +183,11 @@ class RecordFragment : Fragment() {
         }
 
         binding.btnLockScreen.setOnClickListener { viewModel.setLocked(true) }
+
+        binding.btnInputSource.setOnClickListener { showInputSourceDialog() }
     }
 
-    // ── New controls (dead-space, mark extended, recording name) ──────
+    // ── New controls (mark extended, recording name) ──────
     private fun setupNewControls() {
         // ── Mark extended controls ────────────────────────────────────
         // Confirm: UI-only dismiss — no data written.
@@ -199,6 +210,72 @@ class RecordFragment : Fragment() {
         // ── Recording name zone ───────────────────────────────────────
         binding.recordingNameZone.setOnClickListener { showRenameDialog() }
     }
+
+    private fun showInputSourceDialog() {
+        val audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val isRecording  = recordingService?.state?.value != RecordingService.State.IDLE
+
+        // Collect available input devices, filtered to microphone-relevant types.
+        val relevantTypes = setOf(
+            AudioDeviceInfo.TYPE_BUILTIN_MIC,
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_USB_DEVICE,
+            AudioDeviceInfo.TYPE_USB_HEADSET
+        )
+        val devices = audioManager
+            .getDevices(AudioManager.GET_DEVICES_INPUTS)
+            .filter { it.type in relevantTypes }
+
+        // Build parallel display-name and device-reference lists.
+        // Index 0 is always "Default" (null device).
+        val labels  = mutableListOf(getString(R.string.record_input_source_default))
+        val entries = mutableListOf<AudioDeviceInfo?>(null)
+        devices.forEach { device ->
+            labels.add(device.productName.toString())
+            entries.add(device)
+        }
+
+        // Determine which row is currently selected.
+        val currentIndex = entries.indexOf(preferredInputDevice).takeIf { it >= 0 } ?: 0
+
+        val builder = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.record_dialog_input_source_title)
+
+        if (isRecording) {
+            // Read-only mode: show explanatory note, selections are no-ops.
+            builder.setMessage(R.string.record_input_source_recording_note)
+            builder.setSingleChoiceItems(
+                labels.toTypedArray(),
+                currentIndex
+            ) { _, _ ->
+                // No-op: source cannot be changed mid-recording.
+            }
+            builder.setPositiveButton(R.string.common_btn_close, null)
+        } else {
+            // Interactive mode: selection updates preferredInputDevice immediately.
+            builder.setSingleChoiceItems(
+                labels.toTypedArray(),
+                currentIndex
+            ) { dialog, which ->
+                preferredInputDevice = entries[which]
+                updateInputSourceButtonTint()
+                dialog.dismiss()
+            }
+        }
+
+        builder.show()
+    }
+
+    private fun updateInputSourceButtonTint() {
+        val color = if (preferredInputDevice != null)
+            context?.themeColor(R.attr.colorAccent)
+        else
+            context?.themeColor(R.attr.colorTextSecondary)
+        binding.btnInputSource.imageTintList = ColorStateList.valueOf(color!!)
+    }
+
 
     // ── Multi-line waveform ───────────────────────────────────────────
     private fun setupMultiLineWaveform() {
@@ -691,6 +768,7 @@ class RecordFragment : Fragment() {
         svc.setDisplayName(currentRecordingDisplayName, userRenamed = false)
 
         userHasRenamedRecording = false
+        svc.setPreferredInputDevice(preferredInputDevice)
         svc.startRecording(topicId = viewModel.recordingTopicId.value)
     }
 
