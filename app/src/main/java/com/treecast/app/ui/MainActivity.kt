@@ -9,7 +9,7 @@ import com.treecast.app.databinding.ActivityMainBinding
 import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.library.LibraryFragment
 import com.treecast.app.ui.record.RecordFragment
-import com.treecast.app.util.StorageVolumeEventReceiver
+import com.treecast.app.storage.StorageVolumeEventReceiver
 
 class MainActivity : AppCompatActivity() {
 

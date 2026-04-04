@@ -5,7 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.treecast.app.util.StorageVolumeHelper
+import com.treecast.app.storage.StorageVolumeHelper
 import com.treecast.app.util.WaveformStatus
 
 /**

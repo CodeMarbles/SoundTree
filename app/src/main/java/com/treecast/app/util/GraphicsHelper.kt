@@ -10,7 +10,7 @@ import java.io.ByteArrayOutputStream
 private const val FALLBACK_COLOR = "#6C63FF"
 
 /** Parses [hex] as a color, falling back to [FALLBACK_COLOR] if the string is invalid. */
-private fun parseColorSafe(hex: String): Int =
+internal fun parseColorSafe(hex: String): Int =
     try {
         Color.parseColor(hex)
     } catch (_: IllegalArgumentException) {
@@ -33,10 +33,6 @@ fun buildTopicArtwork(color: String, icon: String, sizePx: Int = 512): Bitmap {
     canvas.drawText(icon, sizePx / 2f, yPos, paint)
 
     return bitmap
-}
-
-fun bitmapToPngByteArray(bmp: Bitmap): ByteArray {
-    return ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
 }
 
 /**
@@ -70,4 +66,8 @@ fun emojiToColor(emoji: String, sizePx: Int = 128): String {
     hsv[2] = hsv[2].coerceIn(0.35f, 0.62f)        // clamp brightness for notification bg
 
     return "#%06X".format(0xFFFFFF and Color.HSVToColor(hsv))
+}
+
+fun bitmapToPngByteArray(bmp: Bitmap): ByteArray {
+    return ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
 }

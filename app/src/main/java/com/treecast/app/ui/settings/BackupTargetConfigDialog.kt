@@ -30,6 +30,13 @@ import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.clearBackupLogsForVolume
+import com.treecast.app.ui.getBackupLogsForVolume
+import com.treecast.app.ui.removeBackupTarget
+import com.treecast.app.ui.setBackupIntervalHours
+import com.treecast.app.ui.setBackupOnConnectEnabled
+import com.treecast.app.ui.setBackupScheduledEnabled
+import com.treecast.app.ui.triggerManualBackup
 import com.treecast.app.util.backupDirDisplayPath
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch

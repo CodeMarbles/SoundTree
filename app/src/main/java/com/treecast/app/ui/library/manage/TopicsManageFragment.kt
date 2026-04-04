@@ -20,8 +20,14 @@ import com.treecast.app.data.repository.TreeItem
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.EmojiPickerBottomSheet
 import com.treecast.app.ui.common.TopicPickerBottomSheet
+import com.treecast.app.ui.createTopic
+import com.treecast.app.ui.deleteTopic
+import com.treecast.app.ui.getTopicWithDescendantIds
 import com.treecast.app.ui.library.LibraryFragment
+import com.treecast.app.ui.reparentTopic
+import com.treecast.app.ui.toggleCollapse
 import com.treecast.app.ui.topics.NewTopicDialog
+import com.treecast.app.ui.updateTopic
 import com.treecast.app.util.emojiToColor
 import kotlinx.coroutines.launch
 

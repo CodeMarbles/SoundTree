@@ -18,6 +18,9 @@ import com.treecast.app.data.entities.BackupLogEventEntity
 import com.treecast.app.databinding.DialogBackupLogDetailBinding
 import com.treecast.app.databinding.ItemBackupLogEventBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.getBackupLog
+import com.treecast.app.ui.getBackupLogEvents
+import com.treecast.app.ui.getBackupLogProblems
 import com.treecast.app.util.backupDirDisplayPath
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.ExperimentalCoroutinesApi

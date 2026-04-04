@@ -11,7 +11,7 @@ import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.util.Icons
 import com.treecast.app.util.RecordingStructureMigrator
-import com.treecast.app.util.StorageVolumeHelper
+import com.treecast.app.storage.StorageVolumeHelper
 import com.treecast.app.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

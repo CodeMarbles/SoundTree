@@ -25,6 +25,7 @@ import com.treecast.app.R
 import com.treecast.app.data.entities.BackupLogEntity
 import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.clearAllBackupLogs
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 

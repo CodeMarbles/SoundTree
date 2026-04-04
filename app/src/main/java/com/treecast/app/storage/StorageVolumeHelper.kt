@@ -1,4 +1,4 @@
-package com.treecast.app.util
+package com.treecast.app.storage
 
 import android.content.Context
 import android.os.StatFs

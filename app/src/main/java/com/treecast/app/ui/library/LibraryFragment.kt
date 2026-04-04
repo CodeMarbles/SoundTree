@@ -18,6 +18,7 @@ import com.treecast.app.R
 import com.treecast.app.databinding.FragmentLibraryBinding
 import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.setLibraryDetailsTopic
 import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
