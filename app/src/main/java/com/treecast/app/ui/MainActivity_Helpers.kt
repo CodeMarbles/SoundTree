@@ -3,7 +3,7 @@ package com.treecast.app.ui
 import android.graphics.drawable.GradientDrawable
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityHelpers.kt
+// MainActivity_Helpers.kt
 //
 // Shared utility extension functions on MainActivity:
 //   • pillBackground()       — pill-shaped GradientDrawable with stroke

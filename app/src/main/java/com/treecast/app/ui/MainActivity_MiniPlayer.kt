@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityMiniPlayer.kt
+// MainActivity_MiniPlayer.kt
 //
 // Extension functions on MainActivity covering the Mini Player widget:
 //   • Transport controls and timeline wiring           (setupMiniPlayer)
@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
 //   • isPlayerWidgetVisible() helper
 //
 // Calls into:
-//   • pillBackground() / solidPillBackground()  → MainActivityHelpers.kt (internal)
-//   • updateTitleTextAlpha()                    → MainActivityLayoutOrder.kt (internal)
-//   • formatMs()                                → MainActivityHelpers.kt (internal)
+//   • pillBackground() / solidPillBackground()  → MainActivity_Helpers.kt (internal)
+//   • updateTitleTextAlpha()                    → MainActivity_LayoutOrder.kt (internal)
+//   • formatMs()                                → MainActivity_Helpers.kt (internal)
 //   • navigateTo()                              → MainActivity.kt (public)
 // ─────────────────────────────────────────────────────────────────────────────
 

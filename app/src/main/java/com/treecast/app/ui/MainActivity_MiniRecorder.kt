@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityMiniRecorder.kt
+// MainActivity_MiniRecorder.kt
 //
 // Extension functions on MainActivity covering the Mini Recorder widget:
 //   • Background color animation, state label, transport controls  (setupMiniRecorder)
@@ -25,9 +25,9 @@ import kotlinx.coroutines.launch
 //   • isRecorderWidgetVisible() helper
 //
 // Calls into:
-//   • pillBackground() / solidPillBackground()  → MainActivityHelpers.kt (internal)
-//   • updateTitleTextAlpha()                    → MainActivityLayoutOrder.kt (internal)
-//   • formatMs()                                → MainActivityHelpers.kt (internal)
+//   • pillBackground() / solidPillBackground()  → MainActivity_Helpers.kt (internal)
+//   • updateTitleTextAlpha()                    → MainActivity_LayoutOrder.kt (internal)
+//   • formatMs()                                → MainActivity_Helpers.kt (internal)
 //   • navigateTo()                              → MainActivity.kt (public)
 //   • recordFragment.triggerQuickRecord()       → MainActivity.kt field (internal)
 //   • recordFragment.triggerSaveFromExternal()  → MainActivity.kt field (internal)

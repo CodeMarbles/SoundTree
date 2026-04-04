@@ -11,7 +11,7 @@ import com.treecast.app.util.OrphanRecording
 import java.io.File
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityIntentHandling.kt
+// MainActivity_IntentHandling.kt
 //
 // Extension functions on MainActivity covering intent-driven entry points:
 //   • handleNotificationSaveIntent() — navigates to a just-saved recording

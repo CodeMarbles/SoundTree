@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityLayoutOrder.kt
+// MainActivity_LayoutOrder.kt
 //
 // Extension functions on MainActivity covering the layout order system:
 //   • applyLayoutOrder()              — rebuilds the root vertical stack
@@ -22,8 +22,8 @@ import kotlinx.coroutines.launch
 //   • updateTitleTextAlpha()          — dims/restores the title when pills overlay it
 //
 // updateTitleTextAlpha() is marked internal because it is also called from:
-//   • MainActivityMiniPlayer.kt   (setupMiniPlayerMinimize)
-//   • MainActivityMiniRecorder.kt (setupMiniRecorderMinimize)
+//   • MainActivity_MiniPlayer.kt   (setupMiniPlayerMinimize)
+//   • MainActivity_MiniRecorder.kt (setupMiniRecorderMinimize)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

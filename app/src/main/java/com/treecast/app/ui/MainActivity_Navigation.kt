@@ -28,7 +28,7 @@ import com.treecast.app.ui.MainActivity.Companion.PAGE_LISTEN
 import com.treecast.app.ui.MainActivity.Companion.PAGE_WORKSPACE
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityNavigation.kt
+// MainActivity_Navigation.kt
 //
 // Extension functions on MainActivity covering:
 //   • ViewPager2 setup and page-change callback

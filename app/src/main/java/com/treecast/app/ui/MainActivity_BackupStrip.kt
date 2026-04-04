@@ -11,7 +11,7 @@ import com.treecast.app.util.themeColor
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivityBackupStrip.kt
+// MainActivity_BackupStrip.kt
 //
 // Extension functions on MainActivity covering the title-bar backup status strip.
 //   • setupBackupStatusStrip() — wires the strip to backupStripState Flow,
