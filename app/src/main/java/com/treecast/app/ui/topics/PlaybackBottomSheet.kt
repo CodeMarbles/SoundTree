@@ -13,6 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.treecast.app.R
 import com.treecast.app.databinding.BottomSheetPlaybackBinding
 import com.treecast.app.ui.MainViewModel
+import com.treecast.app.ui.moveRecording
 import com.treecast.app.ui.play
 import com.treecast.app.ui.seekTo
 import com.treecast.app.ui.skipBack

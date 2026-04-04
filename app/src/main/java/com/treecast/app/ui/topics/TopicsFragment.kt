@@ -18,6 +18,7 @@ import com.treecast.app.ui.createTopic
 import com.treecast.app.ui.deleteRecording
 import com.treecast.app.ui.deleteTopic
 import com.treecast.app.ui.library.LibraryFragment
+import com.treecast.app.ui.moveRecording
 import com.treecast.app.ui.play
 import com.treecast.app.ui.refreshStorageVolumes
 import com.treecast.app.ui.renameRecording

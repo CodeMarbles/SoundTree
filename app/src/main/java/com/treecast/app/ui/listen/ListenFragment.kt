@@ -41,6 +41,7 @@ import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.deleteRecording
 import com.treecast.app.ui.deleteSelectedMark
 import com.treecast.app.ui.jumpMark
+import com.treecast.app.ui.moveRecording
 import com.treecast.app.ui.nudgePlaybackMarkBack
 import com.treecast.app.ui.nudgePlaybackMarkForward
 import com.treecast.app.ui.recording.RecordingDetailsDialogFragment

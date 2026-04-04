@@ -13,10 +13,7 @@ import com.treecast.app.ui.MainViewModel.Companion.PREF_BG_ALPHA
 import com.treecast.app.ui.MainViewModel.Companion.PREF_BG_EXTENDS_UNDER_RULER
 import com.treecast.app.ui.MainViewModel.Companion.PREF_BG_UNPLAYED_ONLY
 import com.treecast.app.ui.MainViewModel.Companion.PREF_INVERT_WAVEFORM_THEME
-import com.treecast.app.ui.MainViewModel.Companion.PREF_STYLIZED_WAVEFORMS
 import com.treecast.app.ui.MainViewModel.Companion.PREF_WAVEFORM_STYLE
-import com.treecast.app.ui.MainViewModel.Companion.STYLE_SKY
-import com.treecast.app.ui.MainViewModel.Companion.STYLE_STANDARD
 import com.treecast.app.util.WaveformExtractor
 import com.treecast.app.worker.WaveformWorker
 import kotlinx.coroutines.Dispatchers
@@ -143,21 +140,4 @@ fun MainViewModel.setBgExtendsUnderRuler(extends: Boolean) {
 fun MainViewModel.setBgUnplayedOnly(unplayedOnly: Boolean) {
     _bgUnplayedOnly.value = unplayedOnly
     prefs.edit().putBoolean(PREF_BG_UNPLAYED_ONLY, unplayedOnly).apply()
-}
-
-// ── Internal helpers ──────────────────────────────────────────────────────────
-
-/**
- * Reads the current waveform style key from SharedPreferences, migrating from
- * the legacy boolean [PREF_STYLIZED_WAVEFORMS] pref if the new string pref is
- * not yet written. Called once during ViewModel init.
- */
-internal fun MainViewModel.readOrMigrateWaveformStyleKey(): String {
-    val stored = prefs.getString(PREF_WAVEFORM_STYLE, null)
-    if (stored != null) return stored
-    // Legacy migration: if the old boolean was true the user had Sky active.
-    val legacy = prefs.getBoolean(PREF_STYLIZED_WAVEFORMS, false)
-    val migrated = if (legacy) STYLE_SKY else STYLE_STANDARD
-    prefs.edit().putString(PREF_WAVEFORM_STYLE, migrated).apply()
-    return migrated
 }

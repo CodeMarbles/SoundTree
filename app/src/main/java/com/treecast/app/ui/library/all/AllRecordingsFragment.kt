@@ -17,6 +17,7 @@ import com.treecast.app.ui.MainActivity
 import com.treecast.app.ui.MainViewModel
 import com.treecast.app.ui.common.TopicPickerBottomSheet
 import com.treecast.app.ui.deleteRecording
+import com.treecast.app.ui.moveRecording
 import com.treecast.app.ui.play
 import com.treecast.app.ui.recording.RecordingDetailsDialogFragment
 import com.treecast.app.ui.refreshStorageVolumes

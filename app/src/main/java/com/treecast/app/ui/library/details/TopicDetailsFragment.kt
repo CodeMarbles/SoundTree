@@ -39,6 +39,7 @@ import com.treecast.app.ui.topics.NewTopicDialog
 import com.treecast.app.ui.topics.RecordingsAdapter
 import com.treecast.app.ui.updateTopic
 import com.treecast.app.storage.AppVolume
+import com.treecast.app.ui.moveRecording
 import com.treecast.app.ui.refreshStorageVolumes
 import com.treecast.app.ui.selectRecording
 import com.treecast.app.ui.setLibraryDetailsTopic

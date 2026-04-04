@@ -189,12 +189,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
 
         // ── Waveform style prefs ──────────────────────────────────────────────
-        //
-        // PREF_STYLIZED_WAVEFORMS is the legacy boolean pref (v1).  It is never
-        // written again — only read once during migration in
-        // readOrMigrateWaveformStyleKey().  The source of truth is now the string
-        // pref PREF_WAVEFORM_STYLE.
-        internal const val PREF_STYLIZED_WAVEFORMS    = "stylized_waveforms"      // read-only (migration)
         internal const val PREF_WAVEFORM_STYLE        = "waveform_style"          // "standard" | "sky" | "sky_lights"
         internal const val PREF_INVERT_WAVEFORM_THEME = "invert_waveform_theme"
 
@@ -392,17 +386,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     fun setSearchQuery(q: String) { _searchQuery.value = q }
 
-    fun moveRecording(id: Long, topicId: Long?) = viewModelScope.launch {
-        repo.moveRecording(id, topicId)
-        // Keep nowPlaying in sync so observers (Listen tab header, mini player)
-        // see the new topic immediately without waiting for a DB re-query
-        if (_nowPlaying.value?.recording?.id == id) {
-            _nowPlaying.value = _nowPlaying.value?.copy(
-                recording = _nowPlaying.value!!.recording.copy(topicId = topicId)
-            )
-        }
-    }
-
     // ── Topics ────────────────────────────────────────────────────────
     val allTopics: StateFlow<List<TopicEntity>> = repo.getAllTopics()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -451,16 +434,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     //
     // The active style is stored as a string pref ("standard" | "sky" |
     // "sky_lights") so that adding a new style never requires a pref migration.
-    //
-    // On first launch after the v1→v2 migration, readOrMigrateWaveformStyleKey()
-    // checks the legacy boolean pref (PREF_STYLIZED_WAVEFORMS) and seeds the new
-    // string pref accordingly, then never reads the boolean pref again.
-    //
     // waveformDisplayConfig carries the three draw-time settings (alpha, ruler
     // coverage, unplayed-only clip).  Changing these does NOT require a bitmap
     // rebuild — only invalidateItemDecorations() in MultiLineWaveformView.
 
-    internal val _waveformStyleKey = MutableStateFlow(readOrMigrateWaveformStyleKey())
+    internal val _waveformStyleKey = MutableStateFlow(
+        prefs.getString(PREF_WAVEFORM_STYLE, STYLE_STANDARD) ?: STYLE_STANDARD
+    )
 
     val waveformStyleKey: StateFlow<String> = _waveformStyleKey
 
@@ -674,15 +654,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             repo.getMarksForRecording(recordingId).collect { _marks.value = it }
         }
     }
-
-    /**
-     * Returns a live flow of marks for any recording by ID.
-     * Used by [RecordingDetailsDialogFragment] to populate the condensed
-     * waveform overview independently of the now-playing state.
-     */
-    fun getMarksForRecording(id: Long): Flow<List<MarkEntity>> =
-        repo.getMarksForRecording(id)
-
 
     private val _dropMarkEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val dropMarkEvent: SharedFlow<Unit> = _dropMarkEvent
