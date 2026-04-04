@@ -3,24 +3,7 @@ package com.treecast.app.ui
 // ─────────────────────────────────────────────────────────────────────────────
 // MainViewModel_Playback.kt
 //
-// Extension functions on MainViewModel covering all Media3 / playback concerns:
-//   • play(), togglePlayPause(), seekTo(), seekToMark(), skipBack(), skipForward()
-//   • jumpMark() — unified prev/next mark entry point
-//   • stopAndClear() — full player teardown
-//   • requestToggleRecordingPause() — cross-fragment recording pause signal
-//   • Mark lifecycle: addMark(), deleteSelectedMark(), selectMark(),
-//     getMarksForRecording(), startObservingMarks()
-//   • Playback mark nudge: nudgePlaybackMarkBack/Forward(), commitPlaybackMarkNudge()
-//   • Progress polling: startProgressPolling(), stopProgressPolling()
-//   • Position persistence: saveCurrentPosition()
-//   • Artwork helpers: buildTopicArtwork(), bitmapToPngByteArray()
-//
-// Fields accessed from MainViewModel.kt that must be `internal` (not `private`):
-//   mediaController, progressJob, marksJob, waveformJob, waveformCache,
-//   _nowPlaying, _marks, _selectedMarkId, _playbackMarkNudgeLocked,
-//   _markJumpMs, _toggleRecordingPauseEvent, _selectedRecordingId,
-//   _playerPillMinimized, markRewindThresholdMs, _markNudgeSecs, _playbackSpeed,
-//   _playbackMarkNudgeLocked
+// Extension functions on MainViewModel covering all Media3 / playback concerns
 // ─────────────────────────────────────────────────────────────────────────────
 
 import android.net.Uri

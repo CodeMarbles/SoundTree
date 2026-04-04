@@ -37,10 +37,6 @@ import com.treecast.app.ui.MainActivity.Companion.PAGE_WORKSPACE
 //   • Tab-change override resets (mini player/recorder hide suppression)
 //   • Top title observation
 //   • Lock overlay observation
-//
-// All instance state (navHistory, isNavigatingBack, libraryFragment,
-// recordFragment, binding, viewModel) lives in MainActivity.kt and is
-// accessed here via the implicit `this` receiver.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── ViewPager ─────────────────────────────────────────────────────────────────

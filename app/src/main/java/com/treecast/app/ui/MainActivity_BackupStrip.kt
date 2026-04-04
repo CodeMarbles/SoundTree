@@ -14,20 +14,16 @@ import kotlinx.coroutines.launch
 // MainActivity_BackupStrip.kt
 //
 // Extension functions on MainActivity covering the title-bar backup status strip.
-//   • setupBackupStatusStrip() — wires the strip to backupStripState Flow,
-//                                drives Running/Completed content and visibility,
-//                                and tap-to-navigate / X-dismiss behaviour.
-//
-// The strip background and text color are set per-state using semantic theme
-// attributes (colorStatusRunning/Success/Warning/Failed Background/Foreground),
-// making it theme-aware automatically.
-//
-// Pass 1B: all strip states now show volume identity — "Label (UUID)" when the
-// volume has a name, or just "UUID" when it doesn't. The helper volumeStripLabel()
-// encapsulates this rule so it is applied consistently across Running, Completed,
-// and (via BackupWorker) the system notification.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Wires the strip to backupStripState Flow, drives Running/Completed content
+ * and visibility, and tap-to-navigate / X-dismiss behaviour.
+ *
+ * The strip background and text color are set per-state using semantic theme
+ * attributes (colorStatusRunning/Success/Warning/Failed Background/Foreground),
+ * making it theme-aware automatically.
+ */
 internal fun MainActivity.setupBackupStatusStrip() {
     val strip = binding.backupStatusStrip
 

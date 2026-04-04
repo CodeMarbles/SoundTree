@@ -4,52 +4,7 @@ package com.treecast.app.ui
 // MainViewModel_Settings.kt
 //
 // Extension functions on MainViewModel covering SharedPreferences-backed
-// settings and ephemeral UI state:
-//
-// Session:
-//   onAppClose(), getLastSessionOpenedAt(), getTotalRecordingTime()
-//
-// Theme:
-//   setThemeMode()
-//
-// Navigation prefs:
-//   setAutoNavigateToListen(), setJumpToLibrary()
-//
-// Playback control prefs:
-//   setScrubBackSecs(), setScrubForwardSecs(), setPlaybackSpeed(),
-//   setMarkNudgeSecs(), setMarkRewindThresholdSecs()
-//
-// Layout / chrome prefs:
-//   setLayoutOrder(), setShowTitleBar()
-//
-// Widget visibility prefs:
-//   setRecorderWidgetVisibility(), setPlayerWidgetVisibility(),
-//   setAlwaysShowPlayerPill(), setAlwaysShowRecorderPill(),
-//   setHideRecorderOnRecordTab(), setHidePlayerOnListenTab()
-//
-// Ephemeral UI state (not persisted):
-//   setTopTitle(), setCurrentPage(), selectRecording(),
-//   setLibraryDetailsTopic(), setIsLocked(),
-//   setPlayerPillMinimized(), setRecorderPillMinimized()
-//
-// Dev options:
-//   setFutureMode()
-//
-// Cross-domain note: onAppClose() calls saveCurrentPosition() which lives in
-// MainViewModel_Playback.kt. This works fine — internal extension functions
-// are visible across files within the same module.
-//
-// Fields accessed from MainViewModel.kt that must be `internal` (not `private`):
-//   _themeMode, _autoNavigateToListen, _scrubBackSecs, _scrubForwardSecs,
-//   _jumpToLibrary, _layoutOrder, _showTitleBar,
-//   _recorderWidgetVisibility, _playerWidgetVisibility,
-//   _alwaysShowPlayerPill, _alwaysShowRecorderPill,
-//   _hideRecorderOnRecordTab, _hidePlayerOnListenTab,
-//   _markNudgeSecs, _markRewindThresholdSecs, _playbackSpeed,
-//   _topTitle, _currentPage, _selectedRecordingId,
-//   _libraryDetailsTopicId, _isLocked,
-//   _playerPillMinimized, _recorderPillMinimized,
-//   _futureMode, prefs, mediaController
+// settings and ephemeral UI state
 // ─────────────────────────────────────────────────────────────────────────────
 
 import androidx.appcompat.app.AppCompatDelegate

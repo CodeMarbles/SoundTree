@@ -6,27 +6,15 @@ package com.treecast.app.ui
 // Extension functions on MainViewModel covering two related concerns:
 //
 // 1. Stored recording CRUD:
-//      saveRecording(), saveRecordingWithMarks(), deleteRecording(),
-//      moveRecording(), renameRecording(), setFavourite()
 //
 // 2. Live recording state — pushed from RecordFragment while a recording
 //    session is in progress:
-//      setRecordingState(), setRecordingTopicId(), setRecordingElapsedMs(),
-//      setLiveAmplitude(), setRecordingMarks(), selectRecordingMark(),
-//      deleteSelectedRecordingMark(), resetMarkNudgeLock(),
-//      requestNudgeBack(), requestNudgeForward()
 //
 // Cross-domain note: moveRecording() and renameRecording() also patch
 // _nowPlaying in-memory so the Listen tab header updates immediately without
 // waiting for a DB re-query. This is intentional — MainViewModel is the right
 // place for cross-domain orchestration, and extension functions have full
 // access to internal state.
-//
-// Fields accessed from MainViewModel.kt that must be `internal` (not `private`):
-//   _nowPlaying, _recordingState, _recordingTopicId, _recordingElapsedMs,
-//   _liveAmplitude, _recordingMarks, _selectedRecordingMarkIndex,
-//   _markNudgeLocked, _nudgeBackEvent, _nudgeForwardEvent, _markNudgeSecs,
-//   waveformCache
 // ─────────────────────────────────────────────────────────────────────────────
 
 import androidx.lifecycle.viewModelScope

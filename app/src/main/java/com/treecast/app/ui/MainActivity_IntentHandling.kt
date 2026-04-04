@@ -13,14 +13,7 @@ import java.io.File
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity_IntentHandling.kt
 //
-// Extension functions on MainActivity covering intent-driven entry points:
-//   • handleNotificationSaveIntent() — navigates to a just-saved recording
-//                                      when launched from the notification action
-//   • checkAndShowOrphanRecovery()   — reads orphan extras from SplashActivity
-//                                      and shows OrphanRecoveryDialogFragment
-//
-// Both are called from MainActivity.kt (onCreate / onNewIntent) and are
-// marked internal so they remain accessible from the class body.
+// Extension functions on MainActivity covering intent-driven entry points
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

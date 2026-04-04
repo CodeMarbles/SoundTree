@@ -16,21 +16,7 @@ import kotlinx.coroutines.launch
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity_MiniRecorder.kt
 //
-// Extension functions on MainActivity covering the Mini Recorder widget:
-//   • Background color animation, state label, transport controls  (setupMiniRecorder)
-//   • Timeline, elapsed time, mark cluster wiring                  (setupMiniRecorder)
-//   • Topic picker integration                                      (setupMiniRecorder)
-//   • Minimize/restore button and title-bar pill                    (setupMiniRecorderMinimize)
-//   • Widget and pill visibility logic                              (setupMiniRecorderMinimize)
-//   • isRecorderWidgetVisible() helper
-//
-// Calls into:
-//   • pillBackground() / solidPillBackground()  → MainActivity_Helpers.kt (internal)
-//   • updateTitleTextAlpha()                    → MainActivity_LayoutOrder.kt (internal)
-//   • formatMs()                                → MainActivity_Helpers.kt (internal)
-//   • navigateTo()                              → MainActivity.kt (public)
-//   • recordFragment.triggerQuickRecord()       → MainActivity.kt field (internal)
-//   • recordFragment.triggerSaveFromExternal()  → MainActivity.kt field (internal)
+// Extension functions on MainActivity covering the Mini Recorder widget
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Mini Recorder — controls + content observers ──────────────────────────────

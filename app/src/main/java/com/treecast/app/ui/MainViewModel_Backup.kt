@@ -3,34 +3,7 @@ package com.treecast.app.ui
 // ─────────────────────────────────────────────────────────────────────────────
 // MainViewModel_Backup.kt
 //
-// Extension functions on MainViewModel covering the automatic backup system:
-//
-// Log queries (thin repo delegations):
-//   getBackupLog(), getBackupLogsForVolume(),
-//   getBackupLogEvents(), getBackupLogProblems()
-//
-// Target management:
-//   addBackupTarget(), removeBackupTarget(),
-//   setBackupOnConnectEnabled(), setBackupTargetLabel(),
-//   setBackupScheduledEnabled(), setBackupIntervalHours()
-//
-// Log management:
-//   clearBackupLogsForVolume(), clearAllBackupLogs()
-//
-// Operational:
-//   triggerManualBackup(), cancelBackupForVolume()
-//
-// Strip / navigation:
-//   dismissBackupStrip(), requestNavigateToStorageTab()
-//
-// Migration (Future Mode only):
-//   migrateRecordingStructure()
-//
-// Fields accessed from MainViewModel.kt that must be `internal` (not `private`):
-//   _stripDismissedIds, _navigateToStorageTab,
-//   storageVolumes (public StateFlow — already accessible),
-//   backupUiState  (public StateFlow — already accessible),
-//   _migrationState
+// Extension functions on MainViewModel covering the automatic backup system
 // ─────────────────────────────────────────────────────────────────────────────
 
 import androidx.lifecycle.viewModelScope

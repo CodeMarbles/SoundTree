@@ -13,17 +13,7 @@ import kotlinx.coroutines.launch
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity_LayoutOrder.kt
 //
-// Extension functions on MainActivity covering the layout order system:
-//   • applyLayoutOrder()              — rebuilds the root vertical stack
-//   • observeLayoutOrder()            — re-applies on any relevant Flow change
-//   • updateMiniPlayerAccentLine()    — repositions the player's accent line
-//   • updateMiniRecorderAccentLine()  — repositions the recorder's accent line
-//   • updatePillChevronDirections()   — flips minimize chevrons to face the title bar
-//   • updateTitleTextAlpha()          — dims/restores the title when pills overlay it
-//
-// updateTitleTextAlpha() is marked internal because it is also called from:
-//   • MainActivity_MiniPlayer.kt   (setupMiniPlayerMinimize)
-//   • MainActivity_MiniRecorder.kt (setupMiniRecorderMinimize)
+// Extension functions on MainActivity covering the layout order system
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

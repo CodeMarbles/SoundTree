@@ -5,14 +5,7 @@ import android.graphics.drawable.GradientDrawable
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity_Helpers.kt
 //
-// Shared utility extension functions on MainActivity:
-//   • pillBackground()       — pill-shaped GradientDrawable with stroke
-//   • solidPillBackground()  — pill-shaped GradientDrawable without stroke
-//   • formatMs()             — formats a millisecond duration as "m:ss"
-//
-// All three are internal because they are called from multiple extension files:
-//   pillBackground / solidPillBackground → MiniPlayer, MiniRecorder, LayoutOrder
-//   formatMs                             → MiniPlayer, MiniRecorder
+// Shared utility extension functions on MainActivity
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
