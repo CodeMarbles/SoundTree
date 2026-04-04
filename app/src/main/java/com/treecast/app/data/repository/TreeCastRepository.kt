@@ -10,6 +10,7 @@ import com.treecast.app.data.entities.MarkEntity
 import com.treecast.app.data.entities.RecordingEntity
 import com.treecast.app.data.entities.TopicEntity
 import com.treecast.app.util.Icons
+import com.treecast.app.util.RecordingStructureMigrator
 import com.treecast.app.util.StorageVolumeHelper
 import com.treecast.app.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
@@ -370,6 +371,20 @@ class TreeCastRepository(context: Context) {
      */
     fun getLatestInfoMessageForLog(logId: Long): Flow<String?> =
         backupLogDao.getLatestInfoMessagesForLog(logId).map { it.firstOrNull() }
+
+    /**
+     * Delegates to [RecordingStructureMigrator] to move any flat-placed
+     * recording files into their correct YYYY/MM subdirectories and update
+     * the DB to match.
+     *
+     * [onProgress] receives the running moved count and the filename that
+     * was just moved, for use by the UI progress display.
+     */
+    suspend fun migrateRecordingStructure(
+        onProgress: suspend (movedSoFar: Int, filename: String) -> Unit = { _, _ -> },
+    ): RecordingStructureMigrator.Result =
+        RecordingStructureMigrator.migrate(recordingDao, onProgress)
+
 
     // ── Singleton ─────────────────────────────────────────────────────────────
 

@@ -538,6 +538,41 @@
     <string name="settings_tools_job_analysing">Analysing…</string>
     <string name="settings_tools_no_jobs">No jobs running</string>
 
+    <!-- ══════════════════════════════════════════════════════════════
+     settings_migration_  —  Recording folder structure migration
+     Future Mode only — section can be removed once install base
+     has been migrated to YYYY/MM layout.
+     ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Section header (rendered with textAllCaps="true" in layout) -->
+    <string name="settings_section_recording_migration">Recording Migration</string>
+
+    <!-- Card description -->
+    <string name="settings_migration_description">Move any recordings stored flat in the recordings folder into year/month subfolders. This is a one-time fix for recordings saved before the folder structure was introduced.</string>
+
+    <!-- Action button -->
+    <string name="settings_migration_btn_run">Migrate Recordings</string>
+
+    <!-- Confirmation dialog -->
+    <string name="settings_migration_confirm_title">Migrate recording folders?</string>
+    <string name="settings_migration_confirm_message">Recordings will be moved into YYYY/MM subfolders and the database will be updated to match. The app must not be recording when this runs. This action cannot be automatically undone.</string>
+    <string name="settings_migration_confirm_action">Migrate</string>
+
+    <!-- Status line while running — %s = current filename -->
+    <string name="settings_migration_scanning">Scanning…</string>
+    <string name="settings_migration_running">Moving %s…</string>
+
+    <!-- Status line after completion -->
+    <string name="settings_migration_done_none">All recordings already correctly placed.</string>
+    <!-- %1$d = moved count -->
+    <string name="settings_migration_done_clean">Done — %1$d recording(s) moved.</string>
+    <!-- %1$d = moved, %2$d = failed -->
+    <string name="settings_migration_done">Done — %1$d moved, %2$d failed. Check orphan recovery for any affected files.</string>
+
+    <!-- Toast shown when migration is attempted during an active recording -->
+    <string name="settings_migration_blocked_recording">Stop the current recording before migrating.</string>
+
+
     <!-- Tools: Dev options -->
     <string name="settings_dev_future_mode">Future Mode</string>
 

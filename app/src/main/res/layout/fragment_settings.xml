@@ -2168,6 +2168,84 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- ═══════════════════════════════════════════════════════════
+                     RECORDING MIGRATION section
+                     Gated behind Future Mode — visibility set programmatically
+                     in SettingsFragment.setupMigrationSection().
+                     ═══════════════════════════════════════════════════════════ -->
+                <LinearLayout
+                    android:id="@+id/containerMigrationSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_section_recording_migration"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="11sp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        app:cardBackgroundColor="?attr/colorSurfaceBase"
+                        app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                        app:cardElevation="0dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <TextView
+                                android:id="@+id/tvMigrationDescription"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_migration_description"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp"
+                                android:layout_marginBottom="12dp" />
+
+                            <!-- Indeterminate progress — visible only while running -->
+                            <ProgressBar
+                                android:id="@+id/progressMigration"
+                                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="4dp"
+                                android:layout_marginBottom="6dp"
+                                android:indeterminate="true"
+                                android:visibility="gone" />
+
+                            <!-- Status line: updated during and after a run -->
+                            <TextView
+                                android:id="@+id/tvMigrationStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textSize="12sp"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:layout_marginBottom="12dp"
+                                android:visibility="gone" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnMigrateRecordings"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_migration_btn_run" />
+
+                        </LinearLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+
                 <!-- DEV OPTIONS section -->
                 <TextView
                     android:layout_width="match_parent"

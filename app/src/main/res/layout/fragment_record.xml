@@ -255,7 +255,7 @@
                     app:iconTint="@color/white"
                     app:cornerRadius="40dp"
                     app:strokeColor="?attr/colorRecordButtonBorder"
-                    app:strokeWidth="0.75dp"
+                    app:strokeWidth="1.5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"

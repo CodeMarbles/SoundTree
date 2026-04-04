@@ -1835,4 +1835,42 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             trigger    = BackupLogEntity.BackupTrigger.MANUAL,
         )
     }
+    // ── Recording folder structure migration (Future Mode only) ──────────────
+
+    /**
+     * Represents the lifecycle of a single migration run.
+     * [Idle]    — no run in progress, button enabled.
+     * [Running] — migration is executing; [movedSoFar] and [currentFile]
+     *             are updated on each successful move for the progress line.
+     * [Done]    — last run is complete; counters shown in status text.
+     *             Stays in Done until the next run starts (i.e. survives
+     *             tab switches within the same session).
+     */
+    sealed class MigrationState {
+        object Idle : MigrationState()
+        data class Running(val movedSoFar: Int, val currentFile: String) : MigrationState()
+        data class Done(val moved: Int, val failed: Int) : MigrationState()
+    }
+
+    private val _migrationState =
+        MutableStateFlow<MigrationState>(MigrationState.Idle)
+    val migrationState: StateFlow<MigrationState> = _migrationState.asStateFlow()
+
+    /**
+     * Kicks off a recording structure migration run.
+     *
+     * No-ops if a run is already in progress. The caller (SettingsFragment)
+     * should separately guard against active recording before calling this.
+     */
+    fun migrateRecordingStructure() {
+        if (_migrationState.value is MigrationState.Running) return
+        viewModelScope.launch {
+            _migrationState.value = MigrationState.Running(0, "")
+            val result = repo.migrateRecordingStructure { movedSoFar, filename ->
+                _migrationState.value = MigrationState.Running(movedSoFar, filename)
+            }
+            _migrationState.value = MigrationState.Done(result.moved, result.failed)
+        }
+    }
+
 }

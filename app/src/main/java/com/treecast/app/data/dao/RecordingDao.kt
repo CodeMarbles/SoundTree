@@ -108,4 +108,12 @@ interface RecordingDao {
 
     @Query("SELECT file_path FROM recordings")
     suspend fun getAllFilePaths(): List<String>
+
+    /**
+     * Updates the on-disk path for a single recording.
+     * Called by [RecordingStructureMigrator] after a file has been
+     * successfully moved to its correct YYYY/MM subdirectory.
+     */
+    @Query("UPDATE recordings SET file_path = :newPath WHERE id = :id")
+    suspend fun updateFilePath(id: Long, newPath: String)
 }
