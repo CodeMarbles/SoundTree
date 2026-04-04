@@ -156,7 +156,7 @@
             android:layout_marginTop="10dp"
             android:background="?attr/colorSurfaceBase">
 
-            <com.treecast.app.ui.record.WaveformView
+            <app.treecast.ui.record.WaveformView
                 android:id="@+id/waveformView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
@@ -295,7 +295,7 @@
              showPlayedSplit=false: no playhead on the Record tab.
              secondsPerLine configured in RecordFragment.setupMultiLineWaveform().
              ─────────────────────────────────────────────────────── -->
-        <com.treecast.app.ui.waveform.MultiLineWaveformView
+        <app.treecast.ui.waveform.MultiLineWaveformView
             android:id="@+id/multiLineWaveformView"
             android:layout_width="match_parent"
             android:layout_height="0dp"

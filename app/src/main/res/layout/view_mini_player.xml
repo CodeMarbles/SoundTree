@@ -167,7 +167,7 @@
                 app:tint="?attr/colorTextPrimary" />
 
             <!-- Playback timeline — fills rest of Row 2 -->
-            <com.treecast.app.ui.widget.MiniPlayerTimelineView
+            <app.treecast.ui.widget.MiniPlayerTimelineView
                 android:id="@+id/miniPlayerTimeline"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"

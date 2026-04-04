@@ -333,7 +333,7 @@
          the fragment will not push them. Leave as a future option.
          ══════════════════════════════════════════════════════════════ -->
 
-    <com.treecast.app.ui.waveform.MultiLineWaveformView
+    <app.treecast.ui.waveform.MultiLineWaveformView
         android:id="@+id/multiLineWaveform"
         android:layout_width="0dp"
         android:layout_height="180dp"

@@ -316,7 +316,7 @@
     <!-- ════════════════════════════════════════════════════════════════
          Zone B — MultiLineWaveformView
          ════════════════════════════════════════════════════════════════ -->
-    <com.treecast.app.ui.waveform.MultiLineWaveformView
+    <app.treecast.ui.waveform.MultiLineWaveformView
         android:id="@+id/multiLineWaveform"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -458,7 +458,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <com.treecast.app.ui.listen.FlowLayout
+        <app.treecast.ui.listen.FlowLayout
             android:id="@+id/markTimestampList"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

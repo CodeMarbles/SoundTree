@@ -579,7 +579,7 @@
                                         android:layout_height="1dp"
                                         android:layout_weight="1" />
 
-                                    <com.treecast.app.ui.settings.LayoutReorderWidget
+                                    <app.treecast.ui.settings.LayoutReorderWidget
                                         android:id="@+id/layoutReorderWidget"
                                         android:layout_width="170dp"
                                         android:layout_height="wrap_content" />

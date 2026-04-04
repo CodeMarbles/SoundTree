@@ -8,18 +8,18 @@ plugins {
 
 def major = 0
 def minor = 8
-def patch = 6
+def patch = 7
 
 room {
     schemaDirectory "$projectDir/schemas"
 }
 
 android {
-    namespace 'com.treecast.app'
+    namespace 'app.treecast'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.treecast.app"
+        applicationId "app.treecast"
         minSdk 28
         targetSdk 34
         versionCode major * 1_000_000 + minor * 1_000 + patch

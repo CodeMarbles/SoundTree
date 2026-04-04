@@ -1,4 +1,4 @@
--keep class com.treecast.app.data.entities.** { *; }
+-keep class app.treecast.data.entities.** { *; }
 -keepclassmembers class * {
     @androidx.room.* *;
 }
