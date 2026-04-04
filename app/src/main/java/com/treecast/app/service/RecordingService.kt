@@ -1,5 +1,6 @@
 package com.treecast.app.service
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -272,6 +273,7 @@ class RecordingService : Service() {
      * from [RecordFragment]; passing it here keeps [pendingTopicId] in sync
      * from the very first moment of recording.
      */
+    @SuppressLint("ObsoleteSdkInt")
     fun startRecording(topicId: Long? = null): String? {
         if (_state.value != State.IDLE) return currentFilePath
         if (topicId != null) pendingTopicId = topicId
@@ -342,7 +344,21 @@ class RecordingService : Service() {
             scoReceiver,
             IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED)
         )
-        audioManager.startBluetoothSco()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // API 31+: setCommunicationDevice replaces startBluetoothSco.
+            // Returns false if the device isn't available; fall back immediately.
+            val accepted = preferredInputDevice?.let { audioManager.setCommunicationDevice(it) } ?: false
+            if (!accepted) {
+                mainHandler.removeCallbacks(scoTimeoutRunnable)
+                unregisterScoReceiver()
+                preferredInputDevice = null
+                doStartMediaRecorder()
+                return
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.startBluetoothSco()
+        }
         mainHandler.postDelayed(scoTimeoutRunnable, SCO_TIMEOUT_MS)
     }
 
@@ -361,6 +377,7 @@ class RecordingService : Service() {
      *
      * Preconditions: currentFilePath is set, startForeground() already called.
      */
+    @SuppressLint("ObsoleteSdkInt")
     private fun doStartMediaRecorder() {
         mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
@@ -412,7 +429,12 @@ class RecordingService : Service() {
         mainHandler.removeCallbacks(scoTimeoutRunnable)
         unregisterScoReceiver()
         if (scoActive) {
-            audioManager.stopBluetoothSco()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.stopBluetoothSco()
+            }
             scoActive = false
         }
 
