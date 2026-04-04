@@ -162,7 +162,7 @@ class BackupWorker(
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     periodicName(volumeUuid),
-                    ExistingPeriodicWorkPolicy.REPLACE,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     request,
                 )
         }
@@ -305,29 +305,65 @@ class BackupWorker(
         } else {
             info("recordings/ directory resolved on backup destination")
 
-            // Build an index of files already on the destination keyed by name,
-            // so existence checks are O(1) rather than O(n) per source file.
-            val destIndex: Map<String, Long> = recordingDestDir
-                .listFiles()
-                .associate { it.name.orEmpty() to it.length() }
+            // ── Build destination index ───────────────────────────────────────────
+            // Walk only expected subdirectories (YYYY/MM) plus the flat root, so we
+            // never descend into arbitrary user directories on the volume.
+            //
+            // The index is keyed by filename → DestEntry, which carries the file's
+            // current size and its parent DocumentFile so we can detect misplacement
+            // and delete the stale copy after a successful reorganisation move.
+
+            data class DestEntry(
+                val size      : Long,
+                val parentDir : DocumentFile,   // dir currently containing the file
+                val file      : DocumentFile,   // the file itself, for deletion
+            )
+
+            val destIndex = mutableMapOf<String, DestEntry>()
+
+            // Helper: collect TC_*.m4a files from a DocumentFile directory into destIndex.
+            fun indexDir(dir: DocumentFile) {
+                dir.listFiles().forEach { child ->
+                    val name = child.name.orEmpty()
+                    if (child.isFile && name.startsWith("TC_") && name.endsWith(".m4a")) {
+                        destIndex[name] = DestEntry(
+                            size      = child.length(),
+                            parentDir = dir,
+                            file      = child,
+                        )
+                    }
+                }
+            }
+
+            // Flat root — catches files written by old backup runs.
+            indexDir(recordingDestDir)
+
+            // YYYY/MM subdirectories — the canonical layout.
+            recordingDestDir.listFiles().forEach { yearDir ->
+                val yearName = yearDir.name.orEmpty()
+                if (yearDir.isDirectory && yearName.matches(Regex("\\d{4}"))) {
+                    yearDir.listFiles().forEach { monthDir ->
+                        val monthName = monthDir.name.orEmpty()
+                        if (monthDir.isDirectory && monthName.matches(Regex("\\d{2}"))) {
+                            indexDir(monthDir)
+                        }
+                    }
+                }
+            }
 
             val sourceDirs = recordingSourceDirs()
             val totalOnSource = sourceDirs.sumOf { dir ->
                 dir.listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }
                     ?.size ?: 0
             }
-            val alreadyOnDest = destIndex.count { (name, _) -> name.startsWith("TC_") }
+            val alreadyOnDest = destIndex.size
             info(
                 "Pre-scan complete — $totalOnSource recording(s) on source, " +
                         "$alreadyOnDest already on destination"
             )
 
-            // ── Pre-scan: walk all source dirs recursively to compute total bytes ──────
-            // Done before the copy loop so the notification and progress bar have a
-            // denominator from the first file. Uses File.walkTopDown() so nested
-            // subdirectories are automatically included if the directory structure
-            // ever becomes more complex than a flat recordings/ folder.
-            val walkFailures = mutableListOf<Pair<String, String>>()  // path → message
+            // ── Pre-scan: walk all source dirs to compute total bytes ─────────────
+            val walkFailures = mutableListOf<Pair<String, String>>()
             val allSourceFiles: List<File> = recordingSourceDirs()
                 .flatMap { dir ->
                     dir.walkTopDown()
@@ -337,31 +373,100 @@ class BackupWorker(
                         .filter { it.isFile && it.name.startsWith("TC_") }
                         .toList()
                 }
-            // Flush any walk errors now that we're back in a suspending context.
             walkFailures.forEach { (path, message) ->
                 warning("Could not read $path: $message", path)
             }
             val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
 
+            // ── Copy loop ─────────────────────────────────────────────────────────
             for (sourceDir in sourceDirs) {
-                val allSourceFiles = sourceDir
+                val sourceFiles = sourceDir
                     .walkTopDown()
                     .filter { it.isFile && it.name.startsWith("TC_") && it.extension == "m4a" }
                     .toList()
 
-                for (file in allSourceFiles) {
+                for (file in sourceFiles) {
                     filesExamined++
-                    val destSize = destIndex[file.name]
+
+                    // Derive the canonical YYYY/MM destination directory for this file.
+                    // TC_ filenames are TC_yyyyMMdd_HHmmss.m4a — year is chars 3-6, month 7-8.
+                    val stem  = file.nameWithoutExtension.removePrefix("TC_")
+                    val yyyy  = stem.take(4)
+                    val mm    = stem.drop(4).take(2)
+                    val validYM = yyyy.matches(Regex("\\d{4}")) && mm.matches(Regex("\\d{2}"))
+
+                    val targetDir: DocumentFile? = if (validYM) {
+                        recordingDestDir.findOrCreateDir(yyyy)?.findOrCreateDir(mm)
+                    } else null
+
+                    if (targetDir == null) {
+                        // Filename doesn't match expected pattern or SAF dir creation failed.
+                        filesFailed++
+                        error(
+                            message = "Could not resolve destination directory for ${file.name}",
+                            path    = file.absolutePath,
+                        )
+                        continue
+                    }
+
+                    val existing = destIndex[file.name]
 
                     when {
-                        destSize == file.length() -> {
-                            // Already present and same size — skip.
+                        existing != null && existing.parentDir.uri == targetDir.uri
+                                && existing.size == file.length() -> {
+                            // Already present in the correct place with matching size — skip.
                             filesSkipped++
                         }
-                        else -> {
-                            // New or changed — copy.
+
+                        existing != null && existing.parentDir.uri != targetDir.uri
+                                && existing.size == file.length() -> {
+                            // Present on destination but in the wrong location (e.g. flat root
+                            // from an old backup run). Move it to the correct YYYY/MM dir.
                             try {
-                                copyFileToDocumentDir(file, recordingDestDir, file.name)
+                                copyFileToDocumentDir(
+                                    source   = existing.file.let { df ->
+                                        // Materialise as a File via the content URI so
+                                        // copyFileToDocumentDir can open an InputStream.
+                                        // We re-copy from source rather than dest-to-dest
+                                        // because SAF has no rename/move primitive.
+                                        file   // use original source — same content, avoids
+                                        // content-to-content stream complexity
+                                    },
+                                    destDir  = targetDir,
+                                    destName = file.name,
+                                )
+                                // Verify the new copy before removing the old one.
+                                val newCopy = targetDir.findFile(file.name)
+                                if (newCopy != null && newCopy.length() == file.length()) {
+                                    existing.file.delete()
+                                    info(
+                                        message = "Reorganised ${file.name} → $yyyy/$mm/",
+                                        path    = file.absolutePath,
+                                    )
+                                    filesCopied++
+                                    bytesCopied += file.length()
+                                } else {
+                                    // Verification failed — leave old copy in place.
+                                    newCopy?.delete()
+                                    filesFailed++
+                                    error(
+                                        message = "Size mismatch after reorganising ${file.name}; original preserved",
+                                        path    = file.absolutePath,
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                filesFailed++
+                                error(
+                                    message = "Failed to reorganise ${file.name}: ${e.message}",
+                                    path    = file.absolutePath,
+                                )
+                            }
+                        }
+
+                        else -> {
+                            // Not on destination (or size mismatch) — copy fresh.
+                            try {
+                                copyFileToDocumentDir(file, targetDir, file.name)
                                 filesCopied++
                                 bytesCopied += file.length()
                             } catch (e: Exception) {
@@ -374,8 +479,7 @@ class BackupWorker(
                         }
                     }
 
-                    // Flush stats to DB every 5 files so the UI can show live progress.
-                    //if (filesExamined % 5 == 0) {
+                    // Flush stats to DB so the UI shows live progress.
                     logDao.updateStats(
                         id               = logId,
                         filesExamined    = filesExamined,
@@ -388,28 +492,39 @@ class BackupWorker(
                         totalBytesOnDest = 0L,
                         dbBackedUp       = dbBackedUp,
                     )
-                    //}
-                    // Update the notification progress bar every 10 files.
-                    //if (filesExamined % 10 == 0) {
-                        postNotification(
-                            context          = applicationContext,
-                            volumeUuid       = volumeUuid,
-                            volumeLabel      = volumeLabel,
-                            text             = "Copying files…",
-                            ongoing          = true,
-                            bytesCopied      = bytesCopied,
-                            totalBytes       = totalBytesOnSource,
-                        )
-                    //}
+                    postNotification(
+                        context     = applicationContext,
+                        volumeUuid  = volumeUuid,
+                        volumeLabel = volumeLabel,
+                        text        = "Copying files…",
+                        ongoing     = true,
+                        bytesCopied = bytesCopied,
+                        totalBytes  = totalBytesOnSource,
+                    )
                 }
             }
 
-            // Total state of destination after this run.
-            val destFiles        = recordingDestDir.listFiles()
-            val totalOnDest      = destFiles.count { it.name.orEmpty().startsWith("TC_") }
-            val totalBytesOnDest = destFiles
-                .filter { it.name.orEmpty().startsWith("TC_") }
-                .sumOf { it.length() }
+            // ── Destination totals (post-run) ─────────────────────────────────────
+            // Re-walk YYYY/MM subdirs only — flat root files are legacy/errors and
+            // should not be counted as successfully backed-up.
+            var totalOnDest      = 0
+            var totalBytesOnDest = 0L
+            recordingDestDir.listFiles().forEach { yearDir ->
+                val yearName = yearDir.name.orEmpty()
+                if (yearDir.isDirectory && yearName.matches(Regex("\\d{4}"))) {
+                    yearDir.listFiles().forEach { monthDir ->
+                        val monthName = monthDir.name.orEmpty()
+                        if (monthDir.isDirectory && monthName.matches(Regex("\\d{2}"))) {
+                            monthDir.listFiles().forEach { f ->
+                                if (f.isFile && f.name.orEmpty().startsWith("TC_")) {
+                                    totalOnDest++
+                                    totalBytesOnDest += f.length()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // ── 5. Flush stats to log row ─────────────────────────────
             logDao.updateStats(
