@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
@@ -20,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.WorkInfo
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import com.treecast.app.R
 import com.treecast.app.data.entities.BackupLogEntity
@@ -27,6 +29,7 @@ import com.treecast.app.databinding.FragmentSettingsBinding
 import com.treecast.app.databinding.ItemBackupAvailableVolumeBinding
 import com.treecast.app.databinding.ItemBackupLogRowBinding
 import com.treecast.app.databinding.ViewBackupProgressCardBinding
+import com.treecast.app.service.RecordingService
 import com.treecast.app.ui.BackupTargetUiState
 import com.treecast.app.ui.BackupUiState
 import com.treecast.app.ui.MainViewModel
@@ -110,6 +113,7 @@ class SettingsFragment : Fragment() {
         setupRecordingRecoverySection()
         setupBackupSection()
         setupProcessingSection()
+        setupMigrationSection()
         setupDevOptionsSection()
         loadStats()
     }
@@ -676,6 +680,88 @@ class SettingsFragment : Fragment() {
         row.addView(tvTime)
         row.addView(tvStatus)
         container.addView(row)
+    }
+
+    /**
+     * Wires the recording folder migration section in the Tools tab.
+     *
+     * Visibility of the entire section is gated on the Future Mode flag so it
+     * can be removed cleanly once the install base has been migrated.
+     *
+     * Guards against starting a migration while a recording is active — the
+     * migrator would be moving files that RecordingService has open.
+     */
+    private fun setupMigrationSection() {
+        // Gate visibility on futureMode.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.futureMode.collect { enabled ->
+                    binding.containerMigrationSection.visibility =
+                        if (enabled) View.VISIBLE else View.GONE
+                }
+            }
+        }
+
+        binding.btnMigrateRecordings.setOnClickListener {
+            if (viewModel.recordingState.value != RecordingService.State.IDLE) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.settings_migration_blocked_recording),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.settings_migration_confirm_title))
+                .setMessage(getString(R.string.settings_migration_confirm_message))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(getString(R.string.settings_migration_confirm_action)) { _, _ ->
+                    viewModel.migrateRecordingStructure()
+                }
+                .show()
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.migrationState.collect { state ->
+                    renderMigrationState(state)
+                }
+            }
+        }
+    }
+
+    private fun renderMigrationState(state: MainViewModel.MigrationState) {
+        when (state) {
+            is MainViewModel.MigrationState.Idle -> {
+                binding.progressMigration.visibility    = View.GONE
+                binding.tvMigrationStatus.visibility    = View.GONE
+                binding.btnMigrateRecordings.isEnabled  = true
+            }
+            is MainViewModel.MigrationState.Running -> {
+                binding.progressMigration.visibility    = View.VISIBLE
+                binding.tvMigrationStatus.visibility    = View.VISIBLE
+                binding.tvMigrationStatus.text          = if (state.currentFile.isNotEmpty()) {
+                    getString(R.string.settings_migration_running, state.currentFile)
+                } else {
+                    getString(R.string.settings_migration_scanning)
+                }
+                binding.btnMigrateRecordings.isEnabled  = false
+            }
+            is MainViewModel.MigrationState.Done -> {
+                binding.progressMigration.visibility    = View.GONE
+                binding.tvMigrationStatus.visibility    = View.VISIBLE
+                binding.tvMigrationStatus.text          = when {
+                    state.moved == 0 && state.failed == 0 ->
+                        getString(R.string.settings_migration_done_none)
+                    state.failed == 0 ->
+                        getString(R.string.settings_migration_done_clean, state.moved)
+                    else ->
+                        getString(R.string.settings_migration_done, state.moved, state.failed)
+                }
+                binding.btnMigrateRecordings.isEnabled  = true
+            }
+        }
     }
 
     private fun setupDevOptionsSection() {
