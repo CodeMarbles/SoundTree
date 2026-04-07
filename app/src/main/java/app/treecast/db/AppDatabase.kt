@@ -289,5 +289,24 @@ abstract class AppDatabase : RoomDatabase() {
                     .also { INSTANCE = it }
             }
         }
+
+        /**
+         * Closes the current Room instance and nulls the singleton reference.
+         *
+         * Called by [app.treecast.util.DatabaseRestoreManager] before swapping
+         * the database file on disk. After this call, the next [getInstance]
+         * invocation will open a fresh handle against whatever file is now present
+         * at the database path.
+         *
+         * Must not be called while any DAO operation is in flight. Callers are
+         * responsible for cancelling WorkManager jobs and stopping any coroutines
+         * that hold DAO references before invoking this.
+         */
+        fun closeAndReset() {
+            synchronized(this) {
+                INSTANCE?.close()
+                INSTANCE = null
+            }
+        }
     }
 }

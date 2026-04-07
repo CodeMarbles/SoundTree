@@ -48,6 +48,7 @@ import app.treecast.ui.labelForJob
 import app.treecast.ui.migrateRecordingStructure
 import app.treecast.ui.refreshStorageVolumes
 import app.treecast.ui.reprocessAllWaveforms
+import app.treecast.ui.restoreFromBackup
 import app.treecast.ui.setAlwaysShowPlayerPill
 import app.treecast.ui.setAlwaysShowRecorderPill
 import app.treecast.ui.setAutoNavigateToListen
@@ -122,6 +123,58 @@ class SettingsFragment : Fragment() {
         viewModel.addBackupTarget(volumeUuid, uri.toString())
     }
 
+    /**
+     * SAF directory picker for restore.
+     *
+     * After the user picks a directory, validates that db/treecast.db is present
+     * before showing the destructive confirmation dialog, giving a clear early
+     * error rather than failing mid-restore.
+     */
+    private val openDocumentTreeForRestore = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+
+        requireContext().contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        )
+
+        val dirUri = uri.toString()
+        val root   = androidx.documentfile.provider.DocumentFile.fromTreeUri(requireContext(), uri)
+        val hasDb  = root?.findFile("db")?.findFile("treecast.db")?.isFile == true
+
+        if (!hasDb) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.settings_restore_no_db_title))
+                .setMessage(getString(R.string.settings_restore_no_db_message))
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return@registerForActivityResult
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.settings_restore_confirm_title))
+            .setMessage(getString(R.string.settings_restore_confirm_message))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(getString(R.string.settings_restore_confirm_action)) { _, _ ->
+                viewModel.restoreFromBackup(
+                    volumeUuid   = "",
+                    backupDirUri = dirUri,
+                    onError      = { reason ->
+                        if (isAdded) {
+                            MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(getString(R.string.settings_restore_failed_title))
+                                .setMessage(reason)
+                                .setPositiveButton(android.R.string.ok, null)
+                                .show()
+                        }
+                    },
+                )
+            }
+            .show()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -143,6 +196,7 @@ class SettingsFragment : Fragment() {
         setupBackupProgressCard()
         setupRecordingRecoverySection()
         setupBackupSection()
+        setupRestoreSection()
         setupProcessingSection()
         setupMigrationSection()
         setupDevOptionsSection()
@@ -276,6 +330,12 @@ class SettingsFragment : Fragment() {
         binding.btnViewAllHistory.setOnClickListener {
             BackupLogHistoryDialog()
                 .show(childFragmentManager, BackupLogHistoryDialog.TAG)
+        }
+    }
+
+    private fun setupRestoreSection() {
+        binding.btnRestoreFromBackup.setOnClickListener {
+            openDocumentTreeForRestore.launch(null)
         }
     }
 
