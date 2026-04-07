@@ -961,6 +961,139 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- LIBRARY DISPLAY section label -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_section_library_display"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Playhead Visualisation card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Card header -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_playhead_vis_title"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.06"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="16dp"
+                            android:paddingBottom="8dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp"
+                            android:layout_marginBottom="4dp" />
+
+                        <!-- Enabled toggle -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playhead_vis_enabled"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playhead_vis_enabled_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/switchPlayheadVisEnabled"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                        <!-- Intensity slider row (shown when enabled) -->
+                        <LinearLayout
+                            android:id="@+id/rowPlayheadVisIntensity"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playhead_vis_intensity"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playhead_vis_intensity_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/sliderPlayheadVisIntensity"
+                                android:layout_width="120dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:valueFrom="0.1"
+                                android:valueTo="1.0"
+                                android:stepSize="0.05" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
             </LinearLayout>
 
         </ScrollView>
@@ -1423,6 +1556,455 @@
                                 android:padding="0dp"
                                 app:strokeColor="?attr/colorSurfaceElevated"
                                 app:cornerRadius="18dp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- PLAYBACK section label -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_section_playback"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Playback Memory card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <!-- Card header -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_playback_memory_title"
+                            android:textColor="?attr/colorTextPrimary"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.06"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="16dp"
+                            android:paddingBottom="8dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp"
+                            android:layout_marginBottom="4dp" />
+
+                        <!-- Remember mode row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_memory_mode"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_memory_mode_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <!-- Three-way picker: Always · Long only · Never -->
+                            <LinearLayout
+                                android:id="@+id/pickerRememberMode"
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:orientation="horizontal"
+                                android:background="?attr/colorSurfaceBase"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnRememberAlways"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="@string/settings_playback_memory_always"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnRememberLongOnly"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="@string/settings_playback_memory_long_only"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/btnRememberNever"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:text="@string/settings_playback_memory_never"
+                                    android:textSize="12sp"
+                                    android:gravity="center"
+                                    android:paddingHorizontal="10dp"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Long-recording threshold row (conditionally shown) -->
+                        <LinearLayout
+                            android:id="@+id/rowRememberLongThreshold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_memory_long_threshold"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_memory_long_threshold_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <!-- Stepper: − N min + -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnRememberThresholdDown"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="−"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                                <TextView
+                                    android:id="@+id/tvRememberThresholdValue"
+                                    android:layout_width="48dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/btnRememberThresholdUp"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="+"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Divider before Near-End section -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp"
+                            android:layout_marginVertical="4dp" />
+
+                        <!-- Near-End sub-header -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_playback_near_end_title"
+                            android:textColor="?attr/colorTextSecondary"
+                            android:textSize="11sp"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.08"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="10dp"
+                            android:paddingBottom="4dp" />
+
+                        <!-- Near-end short window row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_short"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <!-- Description is set dynamically in SettingsFragment (includes threshold minutes) -->
+                                <TextView
+                                    android:id="@+id/tvNearEndShortDesc"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnNearEndShortDown"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="−"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                                <TextView
+                                    android:id="@+id/tvNearEndShortValue"
+                                    android:layout_width="48dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/btnNearEndShortUp"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="+"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Near-end long window row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_long"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_long_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnNearEndLongDown"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="−"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                                <TextView
+                                    android:id="@+id/tvNearEndLongValue"
+                                    android:layout_width="48dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/btnNearEndLongUp"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="+"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Duration threshold row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_duration_threshold"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_duration_threshold_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/btnNearEndThresholdDown"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="−"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                                <TextView
+                                    android:id="@+id/tvNearEndThresholdValue"
+                                    android:layout_width="52dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/btnNearEndThresholdUp"
+                                    android:layout_width="32dp"
+                                    android:layout_height="32dp"
+                                    android:text="+"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:textColor="?attr/colorAccent" />
+
+                            </LinearLayout>
 
                         </LinearLayout>
 

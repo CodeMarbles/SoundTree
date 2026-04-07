@@ -368,6 +368,63 @@
     <string name="settings_player_hide_on_listen_tab_desc">Don\'t show widget while Listen tab is active</string>
     <string name="settings_player_always_show_shortcut">Always show player shortcut</string>
 
+    <!-- ── Behavior tab: Playback Memory card ──────────────────────────────────── -->
+
+    <!-- Section header (all-caps label above the card) -->
+    <string name="settings_section_playback">Playback</string>
+
+    <!-- Card header -->
+    <string name="settings_playback_memory_title">Remember Position</string>
+
+    <!-- Mode row -->
+    <string name="settings_playback_memory_mode">Remember playback position</string>
+    <string name="settings_playback_memory_mode_desc">When to save where you left off in a recording</string>
+
+    <!-- Mode picker button labels -->
+    <string name="settings_playback_memory_always">Always</string>
+    <string name="settings_playback_memory_never">Never</string>
+    <string name="settings_playback_memory_long_only">Long only</string>
+
+    <!-- Long-recording threshold row (shown when mode = long_only) -->
+    <string name="settings_playback_memory_long_threshold">Minimum length to remember</string>
+    <string name="settings_playback_memory_long_threshold_desc">Positions are saved only for recordings at least this long</string>
+
+    <!-- Near-end reset sub-header -->
+    <string name="settings_playback_near_end_title">Near-End Reset</string>
+
+    <!-- Short-recording reset row -->
+    <string name="settings_playback_near_end_short">Reset window (short recordings)</string>
+    <string name="settings_playback_near_end_short_desc">Restart from the beginning if this close to the end (recordings under %d min)</string>
+
+    <!-- Long-recording reset row -->
+    <string name="settings_playback_near_end_long">Reset window (long recordings)</string>
+    <string name="settings_playback_near_end_long_desc">Restart from the beginning if within this percentage of the end</string>
+
+    <!-- Duration threshold that separates short/long for near-end purposes -->
+    <string name="settings_playback_near_end_duration_threshold">Short/long boundary</string>
+    <string name="settings_playback_near_end_duration_threshold_desc">Recordings shorter than this use the seconds window; longer ones use the percentage</string>
+
+    <!-- Unit suffixes for stepper rows -->
+    <string name="settings_unit_seconds">s</string>
+    <string name="settings_unit_minutes">min</string>
+    <string name="settings_unit_percent">%%</string>   <!-- %% = literal % in Android strings -->
+
+    <!-- ── Display tab: Playhead Visualisation card ─────────────────────────────── -->
+
+    <!-- Section header -->
+    <string name="settings_section_library_display">Library Display</string>
+
+    <!-- Card header -->
+    <string name="settings_playhead_vis_title">Playhead Visualisation</string>
+
+    <!-- Master toggle -->
+    <string name="settings_playhead_vis_enabled">Show playback progress in lists</string>
+    <string name="settings_playhead_vis_enabled_desc">Tints each recording row to show how much you have listened to</string>
+
+    <!-- Colour intensity row -->
+    <string name="settings_playhead_vis_intensity">Tint intensity</string>
+    <string name="settings_playhead_vis_intensity_desc">How strong the played/unplayed colour difference appears</string>
+
     <!-- Stats section header -->
     <string name="settings_section_stats">Stats</string>
 

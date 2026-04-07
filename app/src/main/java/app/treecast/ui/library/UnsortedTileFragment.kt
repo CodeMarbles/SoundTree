@@ -1,5 +1,6 @@
 package app.treecast.ui.library
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -22,6 +23,7 @@ import app.treecast.ui.renameRecording
 import app.treecast.ui.selectRecording
 import app.treecast.ui.togglePlayPause
 import app.treecast.ui.topics.RecordingsAdapter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class UnsortedTileFragment : Fragment() {
@@ -99,6 +101,7 @@ class UnsortedTileFragment : Fragment() {
             onTopicDetailsRequested  = {}, // (hidden on this tab)
             onSelect        = { id -> viewModel.selectRecording(id) },
         )
+        adapter.prefs = requireContext().getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
 
         binding.recyclerInbox.apply {
             this.adapter = this@UnsortedTileFragment.adapter
@@ -116,12 +119,33 @@ class UnsortedTileFragment : Fragment() {
                         adapter.topics = topics
                     }
                 }
+                // Playhead visualisation settings — full rebind only when toggled
+                launch {
+                    combine(
+                        viewModel.playheadVisEnabled,
+                        viewModel.playheadVisIntensity
+                    ) { enabled, intensity -> Pair(enabled, intensity) }
+                        .collect { (enabled, intensity) ->
+                            adapter.playheadVisEnabled   = enabled
+                            adapter.playheadVisIntensity = intensity
+                        }
+                }
+                // Live playback position — partial bind (PAYLOAD_PROGRESS) on each tick,
+                // touching only the now-playing row's split background.
                 launch {
                     viewModel.nowPlaying.collect { state ->
                         adapter.nowPlayingId = state?.recording?.id ?: -1L
                         adapter.isPlaying    = state?.isPlaying ?: false
+                        // Push the position — updateNowPlayingProgress handles the targeted notify.
+                        adapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
                     }
                 }
+//                launch {
+//                    viewModel.nowPlaying.collect { state ->
+//                        adapter.nowPlayingId = state?.recording?.id ?: -1L
+//                        adapter.isPlaying    = state?.isPlaying ?: false
+//                    }
+//                }
                 launch {
                     viewModel.selectedRecordingId.collect { id ->
                         adapter.selectedRecordingId = id

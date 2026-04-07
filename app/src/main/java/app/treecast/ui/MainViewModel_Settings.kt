@@ -22,6 +22,8 @@ import app.treecast.ui.MainViewModel.Companion.PREF_LAYOUT_ORDER
 import app.treecast.ui.MainViewModel.Companion.PREF_MARK_NUDGE_SECS
 import app.treecast.ui.MainViewModel.Companion.PREF_PLAYBACK_SPEED
 import app.treecast.ui.MainViewModel.Companion.PREF_PLAYER_WIDGET_VISIBILITY
+import app.treecast.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_ENABLED
+import app.treecast.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_INTENSITY
 import app.treecast.ui.MainViewModel.Companion.PREF_RECORDER_WIDGET_VISIBILITY
 import app.treecast.ui.MainViewModel.Companion.PREF_SCRUB_BACK_SECS
 import app.treecast.ui.MainViewModel.Companion.PREF_SCRUB_FORWARD_SECS
@@ -31,6 +33,7 @@ import app.treecast.ui.MainViewModel.Companion.SPEED_MAX
 import app.treecast.ui.MainViewModel.Companion.SPEED_MIN
 import app.treecast.ui.MainViewModel.Companion.SPEED_STEP
 import app.treecast.util.MarkJumpLogic
+import app.treecast.util.PlaybackPositionHelper
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -187,4 +190,74 @@ fun MainViewModel.setRecorderPillMinimized(minimized: Boolean) {
 fun MainViewModel.setFutureMode(enabled: Boolean) {
     _futureMode.value = enabled
     prefs.edit().putBoolean(PREF_FUTURE_MODE, enabled).apply()
+}
+
+// ── Playback memory mode ──────────────────────────────────────────────────────
+
+fun MainViewModel.setRememberPositionMode(mode: String) {
+    _rememberPositionMode.value = mode
+    prefs.edit().putString(PlaybackPositionHelper.PREF_REMEMBER_POSITION_MODE, mode).apply()
+}
+
+fun MainViewModel.getRememberLongThresholdSecs(): Int =
+    prefs.getInt(
+        PlaybackPositionHelper.PREF_REMEMBER_LONG_THRESHOLD_SECS,
+        PlaybackPositionHelper.DEFAULT_REMEMBER_LONG_THRESHOLD_SECS
+    )
+
+fun MainViewModel.setRememberLongThresholdSecs(secs: Int) {
+    prefs.edit()
+        .putInt(PlaybackPositionHelper.PREF_REMEMBER_LONG_THRESHOLD_SECS, secs.coerceAtLeast(1))
+        .apply()
+}
+
+// ── Near-end reset ────────────────────────────────────────────────────────────
+
+fun MainViewModel.getNearEndShortSecs(): Int =
+    prefs.getInt(
+        PlaybackPositionHelper.PREF_NEAR_END_SHORT_SECS,
+        PlaybackPositionHelper.DEFAULT_NEAR_END_SHORT_SECS
+    )
+
+fun MainViewModel.setNearEndShortSecs(secs: Int) {
+    prefs.edit()
+        .putInt(PlaybackPositionHelper.PREF_NEAR_END_SHORT_SECS, secs.coerceAtLeast(0))
+        .apply()
+}
+
+fun MainViewModel.getNearEndLongPct(): Int =
+    prefs.getInt(
+        PlaybackPositionHelper.PREF_NEAR_END_LONG_PCT,
+        PlaybackPositionHelper.DEFAULT_NEAR_END_LONG_PCT
+    )
+
+fun MainViewModel.setNearEndLongPct(pct: Int) {
+    prefs.edit()
+        .putInt(PlaybackPositionHelper.PREF_NEAR_END_LONG_PCT, pct.coerceIn(1, 50))
+        .apply()
+}
+
+fun MainViewModel.getNearEndDurationThresholdSecs(): Int =
+    prefs.getInt(
+        PlaybackPositionHelper.PREF_NEAR_END_DURATION_THRESHOLD_SECS,
+        PlaybackPositionHelper.DEFAULT_NEAR_END_DURATION_THRESHOLD_SECS
+    )
+
+fun MainViewModel.setNearEndDurationThresholdSecs(secs: Int) {
+    prefs.edit()
+        .putInt(PlaybackPositionHelper.PREF_NEAR_END_DURATION_THRESHOLD_SECS, secs.coerceAtLeast(30))
+        .apply()
+}
+
+// ── Playhead visualisation ────────────────────────────────────────────────────
+
+fun MainViewModel.setPlayheadVisEnabled(enabled: Boolean) {
+    _playheadVisEnabled.value = enabled
+    prefs.edit().putBoolean(PREF_PLAYHEAD_VIS_ENABLED, enabled).apply()
+}
+
+fun MainViewModel.setPlayheadVisIntensity(intensity: Float) {
+    val v = intensity.coerceIn(0.1f, 1.0f)
+    _playheadVisIntensity.value = v
+    prefs.edit().putFloat(PREF_PLAYHEAD_VIS_INTENSITY, v).apply()
 }

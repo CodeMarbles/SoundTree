@@ -43,6 +43,10 @@ import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.addBackupTarget
 import app.treecast.ui.cancelBackupForVolume
 import app.treecast.ui.getLastSessionOpenedAt
+import app.treecast.ui.getNearEndDurationThresholdSecs
+import app.treecast.ui.getNearEndLongPct
+import app.treecast.ui.getNearEndShortSecs
+import app.treecast.ui.getRememberLongThresholdSecs
 import app.treecast.ui.getTotalRecordingTime
 import app.treecast.ui.labelForJob
 import app.treecast.ui.migrateRecordingStructure
@@ -64,14 +68,22 @@ import app.treecast.ui.setJumpToLibraryOnSave
 import app.treecast.ui.setLayoutOrder
 import app.treecast.ui.setMarkNudgeSecs
 import app.treecast.ui.setMarkRewindThresholdSecs
+import app.treecast.ui.setNearEndDurationThresholdSecs
+import app.treecast.ui.setNearEndLongPct
+import app.treecast.ui.setNearEndShortSecs
 import app.treecast.ui.setPlayerWidgetVisibility
+import app.treecast.ui.setPlayheadVisEnabled
+import app.treecast.ui.setPlayheadVisIntensity
 import app.treecast.ui.setRecorderWidgetVisibility
+import app.treecast.ui.setRememberLongThresholdSecs
+import app.treecast.ui.setRememberPositionMode
 import app.treecast.ui.setScrubBackSecs
 import app.treecast.ui.setScrubForwardSecs
 import app.treecast.ui.setShowTitleBar
 import app.treecast.ui.setThemeMode
 import app.treecast.ui.setWaveformStyleKey
 import app.treecast.ui.tickProcessingRefresh
+import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -189,6 +201,8 @@ class SettingsFragment : Fragment() {
         setupHeader()
         setupTheme()
         setupWaveformStyleSettings()
+        setupPlayheadVis()
+        setupPlaybackMemory()
         setupLayoutSection()
         setupRecordingWidgetSection()
         setupPlaybackSettings()
@@ -1140,6 +1154,138 @@ class SettingsFragment : Fragment() {
 
         switchUnplayed.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setBgUnplayedOnly(isChecked)
+        }
+    }
+
+    private fun setupPlayheadVis() {
+        val switch   = binding.switchPlayheadVisEnabled
+        val rowIntensity = binding.rowPlayheadVisIntensity
+        val slider   = binding.sliderPlayheadVisIntensity
+
+        // Initial state
+        switch.isChecked = viewModel.playheadVisEnabled.value
+        slider.value     = viewModel.playheadVisIntensity.value
+        rowIntensity.visibility = if (switch.isChecked) View.VISIBLE else View.GONE
+
+        switch.setOnCheckedChangeListener { _, checked ->
+            viewModel.setPlayheadVisEnabled(checked)
+            rowIntensity.visibility = if (checked) View.VISIBLE else View.GONE
+        }
+
+        slider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) viewModel.setPlayheadVisIntensity(value)
+        }
+    }
+
+// ── In setupBehavior() — wire the new Playback Memory card ───────────────────
+
+    private fun setupPlaybackMemory() {
+        // Mode picker
+        val btnAlways   = binding.btnRememberAlways
+        val btnLongOnly = binding.btnRememberLongOnly
+        val btnNever    = binding.btnRememberNever
+        val rowThreshold = binding.rowRememberLongThreshold
+        val tvThreshold  = binding.tvRememberThresholdValue
+
+        fun highlightMode(mode: String) {
+            listOf(
+                btnAlways   to PlaybackPositionHelper.MODE_ALWAYS,
+                btnLongOnly to PlaybackPositionHelper.MODE_LONG_ONLY,
+                btnNever    to PlaybackPositionHelper.MODE_NEVER,
+            ).forEach { (btn, m) ->
+                val isActive = m == mode
+                btn.background = if (isActive) {
+                    android.graphics.drawable.GradientDrawable().apply {
+                        shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                        cornerRadius = resources.getDimension(R.dimen.settings_card_corner_radius) -
+                                resources.displayMetrics.density * 3f
+                        setColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
+                    }
+                } else null
+                btn.setTextColor(
+                    requireContext().themeColor(
+                        if (isActive) R.attr.colorTextPrimary else R.attr.colorTextSecondary
+                    )
+                )
+            }
+            rowThreshold.visibility = if (mode == PlaybackPositionHelper.MODE_LONG_ONLY) View.VISIBLE else View.GONE
+        }
+
+        val initialMode = viewModel.rememberPositionMode.value
+        highlightMode(initialMode)
+
+        btnAlways.setOnClickListener   { viewModel.setRememberPositionMode(PlaybackPositionHelper.MODE_ALWAYS);    highlightMode(PlaybackPositionHelper.MODE_ALWAYS) }
+        btnLongOnly.setOnClickListener { viewModel.setRememberPositionMode(PlaybackPositionHelper.MODE_LONG_ONLY); highlightMode(PlaybackPositionHelper.MODE_LONG_ONLY) }
+        btnNever.setOnClickListener    { viewModel.setRememberPositionMode(PlaybackPositionHelper.MODE_NEVER);     highlightMode(PlaybackPositionHelper.MODE_NEVER) }
+
+        // Long threshold stepper
+        fun renderThreshold() {
+            val secs = viewModel.getRememberLongThresholdSecs()
+            tvThreshold.text = if (secs % 60 == 0) "${secs / 60} min" else "${secs}s"
+        }
+        renderThreshold()
+        binding.btnRememberThresholdDown.setOnClickListener {
+            val current = viewModel.getRememberLongThresholdSecs()
+            viewModel.setRememberLongThresholdSecs((current - 60).coerceAtLeast(60))
+            renderThreshold()
+        }
+        binding.btnRememberThresholdUp.setOnClickListener {
+            val current = viewModel.getRememberLongThresholdSecs()
+            viewModel.setRememberLongThresholdSecs(current + 60)
+            renderThreshold()
+        }
+
+        // Near-end short window stepper
+        val tvShort = binding.tvNearEndShortValue
+        val tvShortDesc = binding.tvNearEndShortDesc
+
+        fun renderNearEndShort() {
+            val secs = viewModel.getNearEndShortSecs()
+            tvShort.text = "${secs}s"
+            val thresholdMins = viewModel.getNearEndDurationThresholdSecs() / 60
+            tvShortDesc.text = getString(R.string.settings_playback_near_end_short_desc, thresholdMins)
+        }
+        renderNearEndShort()
+        binding.btnNearEndShortDown.setOnClickListener {
+            viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() - 5)
+            renderNearEndShort()
+        }
+        binding.btnNearEndShortUp.setOnClickListener {
+            viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() + 5)
+            renderNearEndShort()
+        }
+
+        // Near-end long percentage stepper
+        val tvLong = binding.tvNearEndLongValue
+        fun renderNearEndLong() { tvLong.text = "${viewModel.getNearEndLongPct()}%" }
+        renderNearEndLong()
+        binding.btnNearEndLongDown.setOnClickListener {
+            viewModel.setNearEndLongPct(viewModel.getNearEndLongPct() - 1)
+            renderNearEndLong()
+        }
+        binding.btnNearEndLongUp.setOnClickListener {
+            viewModel.setNearEndLongPct(viewModel.getNearEndLongPct() + 1)
+            renderNearEndLong()
+        }
+
+        // Duration threshold stepper
+        val tvDurThresh = binding.tvNearEndThresholdValue
+        fun renderDurThreshold() {
+            val mins = viewModel.getNearEndDurationThresholdSecs() / 60
+            tvDurThresh.text = "${mins} min"
+        }
+        renderDurThreshold()
+        binding.btnNearEndThresholdDown.setOnClickListener {
+            val current = viewModel.getNearEndDurationThresholdSecs()
+            viewModel.setNearEndDurationThresholdSecs((current - 60).coerceAtLeast(60))
+            renderDurThreshold()
+            renderNearEndShort()  // description references this value
+        }
+        binding.btnNearEndThresholdUp.setOnClickListener {
+            val current = viewModel.getNearEndDurationThresholdSecs()
+            viewModel.setNearEndDurationThresholdSecs(current + 60)
+            renderDurThreshold()
+            renderNearEndShort()
         }
     }
 

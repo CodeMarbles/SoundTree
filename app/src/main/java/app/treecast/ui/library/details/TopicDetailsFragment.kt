@@ -1,6 +1,7 @@
 package app.treecast.ui.library.details
 
 import android.app.AlertDialog
+import android.content.Context
 import android.os.Bundle
 import android.text.InputType
 import android.view.LayoutInflater
@@ -45,6 +46,7 @@ import app.treecast.ui.selectRecording
 import app.treecast.ui.setLibraryDetailsTopic
 import app.treecast.util.emojiToColor
 import app.treecast.util.themeColor
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -140,12 +142,33 @@ class TopicDetailsFragment : Fragment() {
                         updateTopicStats(filtered)
                     }
                 }
+                // Playhead visualisation settings — full rebind only when toggled
+                launch {
+                    combine(
+                        viewModel.playheadVisEnabled,
+                        viewModel.playheadVisIntensity
+                    ) { enabled, intensity -> Pair(enabled, intensity) }
+                        .collect { (enabled, intensity) ->
+                            recordingsAdapter.playheadVisEnabled   = enabled
+                            recordingsAdapter.playheadVisIntensity = intensity
+                        }
+                }
+                // Live playback position — partial bind (PAYLOAD_PROGRESS) on each tick,
+                // touching only the now-playing row's split background.
                 launch {
                     viewModel.nowPlaying.collect { state ->
                         recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
                         recordingsAdapter.isPlaying    = state?.isPlaying ?: false
+                        // Push the position — updateNowPlayingProgress handles the targeted notify.
+                        recordingsAdapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
                     }
                 }
+//                launch {
+//                    viewModel.nowPlaying.collect { state ->
+//                        recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
+//                        recordingsAdapter.isPlaying    = state?.isPlaying ?: false
+//                    }
+//                }
                 launch {
                     viewModel.orphanVolumeUuids.collect { uuids ->
                         recordingsAdapter.orphanVolumeUuids = uuids
@@ -416,6 +439,7 @@ class TopicDetailsFragment : Fragment() {
                     .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
             },
         )
+        recordingsAdapter.prefs = requireContext().getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
 
         binding.recyclerTopicRecordings.apply {
             adapter = recordingsAdapter

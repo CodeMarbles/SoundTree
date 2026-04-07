@@ -34,6 +34,7 @@ import app.treecast.ui.waveform.WaveformStyle
 import app.treecast.util.MarkJumpLogic
 import app.treecast.util.OrphanRecording
 import app.treecast.util.OrphanRecordingScanner
+import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.WaveformCache
 import app.treecast.worker.WaveformWorker
 import com.google.common.util.concurrent.ListenableFuture
@@ -179,6 +180,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         internal const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         internal const val PREF_FUTURE_MODE = "future_mode"
+        internal const val PREF_PLAYHEAD_VIS_ENABLED = "playhead_vis_enabled"
+        internal const val PREF_PLAYHEAD_VIS_INTENSITY = "playhead_vis_intensity"
 
         internal const val PREF_PLAYBACK_SPEED = "playback_speed"
         const val SPEED_MIN  = 0.25f
@@ -1034,4 +1037,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     internal val _migrationState =
         MutableStateFlow<MigrationState>(MigrationState.Idle)
     val migrationState: StateFlow<MigrationState> = _migrationState.asStateFlow()
+
+    internal val _playheadVisEnabled =
+        MutableStateFlow(prefs.getBoolean(PREF_PLAYHEAD_VIS_ENABLED, true))
+    val playheadVisEnabled: StateFlow<Boolean> = _playheadVisEnabled
+
+    internal val _playheadVisIntensity =
+        MutableStateFlow(prefs.getFloat(PREF_PLAYHEAD_VIS_INTENSITY, 0.5f))
+    val playheadVisIntensity: StateFlow<Float> = _playheadVisIntensity
+
+    // Remember-mode is read directly from prefs by PlaybackPositionHelper —
+    // no separate StateFlow needed for playback logic.  But the Settings UI
+    // wants a reactive value to drive its picker highlight, so we expose one.
+    internal val _rememberPositionMode =
+        MutableStateFlow(
+            prefs.getString(
+                PlaybackPositionHelper.PREF_REMEMBER_POSITION_MODE,
+                PlaybackPositionHelper.DEFAULT_REMEMBER_MODE
+            ) ?: PlaybackPositionHelper.DEFAULT_REMEMBER_MODE
+        )
+    val rememberPositionMode: StateFlow<String> = _rememberPositionMode
 }

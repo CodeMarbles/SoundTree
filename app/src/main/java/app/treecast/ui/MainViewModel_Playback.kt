@@ -16,6 +16,7 @@ import app.treecast.R
 import app.treecast.data.entities.MarkEntity
 import app.treecast.data.entities.RecordingEntity
 import app.treecast.util.MarkJumpLogic
+import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.bitmapToPngByteArray
 import app.treecast.util.buildTopicArtwork
 import kotlinx.coroutines.delay
@@ -67,15 +68,33 @@ fun MainViewModel.play(recording: RecordingEntity) {
     controller.prepare()
     controller.setPlaybackParameters(PlaybackParameters(_playbackSpeed.value))
 
-    if (recording.playbackPositionMs > 0L) {
-        controller.seekTo(recording.playbackPositionMs)
+    // Determine where playback should start.
+    //
+    // Priority 1: if this is the same recording already loaded in the session
+    // (e.g. the user paused and tapped play again), restore the in-memory
+    // position regardless of the DB persist setting — this is the "current
+    // session exception" and requires no DB read.
+    //
+    // Priority 2: use PlaybackPositionHelper.effectivePositionMs(), which
+    // reads the DB value and applies both the remember-mode setting and the
+    // near-end dead-zone rule.
+    val startPos: Long = run {
+        val inSession = _nowPlaying.value
+        if (inSession != null && inSession.recording.id == recording.id) {
+            inSession.positionMs
+        } else {
+            PlaybackPositionHelper.effectivePositionMs(recording, prefs)
+        }
+    }
+    if (startPos > 0L) {
+        controller.seekTo(startPos)
     }
     controller.play()
 
     _nowPlaying.value = NowPlayingState(
         recording  = recording,
         isPlaying  = true,
-        positionMs = recording.playbackPositionMs,
+        positionMs = startPos,
         durationMs = recording.durationMs
     )
 
@@ -261,5 +280,12 @@ internal fun MainViewModel.stopProgressPolling() {
 internal suspend fun MainViewModel.saveCurrentPosition() {
     val state = _nowPlaying.value ?: return
     val pos   = mediaController?.currentPosition ?: state.positionMs
-    repo.updatePlayback(state.recording.id, pos, false)
+
+    if (PlaybackPositionHelper.shouldPersistPosition(state.recording, prefs)) {
+        repo.updatePlayback(state.recording.id, pos, false)
+    } else {
+        // Zero out any previously-stored position so it cannot resurface if
+        // the user later changes the setting back to Always/Long Only.
+        repo.updatePlayback(state.recording.id, 0L, false)
+    }
 }

@@ -1,5 +1,6 @@
 package app.treecast.ui.library.all
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +26,7 @@ import app.treecast.ui.renameRecording
 import app.treecast.ui.selectRecording
 import app.treecast.ui.togglePlayPause
 import app.treecast.ui.topics.RecordingsAdapter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -103,7 +105,7 @@ class AllRecordingsFragment : Fragment() {
     private fun setupAdapter() {
         adapter = RecordingsAdapter(
             showTopicIcon            = true,
-            showTopicDetails         = true,                                        // ← new
+            showTopicDetails         = true,
             onPlayPause              = { rec ->
                 val nowPlaying = viewModel.nowPlaying.value
                 if (nowPlaying?.recording?.id == rec.id) {
@@ -129,6 +131,7 @@ class AllRecordingsFragment : Fragment() {
                     .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
             },
         )
+        adapter.prefs = requireContext().getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
 
         binding.recyclerAllRecordings.apply {
             this.adapter = this@AllRecordingsFragment.adapter
@@ -174,12 +177,33 @@ class AllRecordingsFragment : Fragment() {
                         submitSorted(recordings)
                     }
                 }
+                // Playhead visualisation settings — full rebind only when toggled
+                launch {
+                    combine(
+                        viewModel.playheadVisEnabled,
+                        viewModel.playheadVisIntensity
+                    ) { enabled, intensity -> Pair(enabled, intensity) }
+                        .collect { (enabled, intensity) ->
+                            adapter.playheadVisEnabled   = enabled
+                            adapter.playheadVisIntensity = intensity
+                        }
+                }
+                // Live playback position — partial bind (PAYLOAD_PROGRESS) on each tick,
+                // touching only the now-playing row's split background.
                 launch {
                     viewModel.nowPlaying.collect { state ->
                         adapter.nowPlayingId = state?.recording?.id ?: -1L
                         adapter.isPlaying    = state?.isPlaying ?: false
+                        // Push the position — updateNowPlayingProgress handles the targeted notify.
+                        adapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
                     }
                 }
+//                launch {
+//                    viewModel.nowPlaying.collect { state ->
+//                        adapter.nowPlayingId = state?.recording?.id ?: -1L
+//                        adapter.isPlaying    = state?.isPlaying ?: false
+//                    }
+//                }
                 launch {
                     viewModel.selectedRecordingId.collect { id ->
                         adapter.selectedRecordingId = id

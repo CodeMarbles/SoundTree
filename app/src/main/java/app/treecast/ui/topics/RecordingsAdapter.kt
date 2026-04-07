@@ -1,6 +1,7 @@
 package app.treecast.ui.topics
 
 import android.app.AlertDialog
+import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
@@ -17,7 +18,9 @@ import com.google.android.material.snackbar.Snackbar
 import app.treecast.R
 import app.treecast.data.entities.RecordingEntity
 import app.treecast.data.entities.TopicEntity
+import app.treecast.ui.library.SplitBackgroundDrawable
 import app.treecast.util.Icons
+import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.themeColor
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -77,6 +80,9 @@ class RecordingsAdapter(
             override fun areContentsTheSame(a: RecordingEntity, b: RecordingEntity) = a == b
         }
         private const val NEW_THRESHOLD_MS = 30 * 60 * 1_000L
+
+        /** Payload object used to request a progress-only partial bind. */
+        val PAYLOAD_PROGRESS = Any()
     }
 
     var topics: List<TopicEntity> = emptyList()
@@ -91,10 +97,54 @@ class RecordingsAdapter(
     var selectedRecordingId: Long = -1L
         set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
 
+    /** Whether the split-background visualisation is enabled (from settings). */
+    var playheadVisEnabled: Boolean = true
+        set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
+
+    /** Intensity in [0.1, 1.0]: controls alpha of the played-region colour. */
+    var playheadVisIntensity: Float = 0.5f
+        set(value) { if (field != value) { field = value; notifyDataSetChanged() } }
+
+    /** Current now-playing position in ms. Set only via [updateNowPlayingProgress]. */
+    var nowPlayingPositionMs: Long = 0L
+        private set
+
+    /**
+     * SharedPreferences injected by the host fragment so the adapter can call
+     * PlaybackPositionHelper without needing a Context on every bind.
+     * Set once in setupAdapter(): adapter.prefs = requireContext().getSharedPreferences(...)
+     */
+    var prefs: SharedPreferences? = null
+
+    /**
+     * Updates the live playback position and issues a targeted partial rebind
+     * (PAYLOAD_PROGRESS) for only the now-playing row, so the split background
+     * moves in real time without triggering a full rebind of every item.
+     */
+    fun updateNowPlayingProgress(positionMs: Long) {
+        if (nowPlayingPositionMs == positionMs) return
+        nowPlayingPositionMs = positionMs
+        val idx = currentList.indexOfFirst { it.id == nowPlayingId }
+        if (idx >= 0) notifyItemChanged(idx, PAYLOAD_PROGRESS)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
         VH(LayoutInflater.from(parent.context).inflate(R.layout.item_recording, parent, false))
 
     override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
+
+    /**
+     * This intercepts PAYLOAD_PROGRESS partial binds and only updates the split
+     * background, falling through to a full bind for all other payloads.
+     */
+    override fun onBindViewHolder(holder: VH, position: Int, payloads: List<Any>) {
+        if (payloads.isNotEmpty() && payloads.all { it === PAYLOAD_PROGRESS }) {
+            holder.updateProgress(getItem(position))
+        } else {
+            super.onBindViewHolder(holder, position, payloads)
+        }
+    }
+
 
     // ── ViewHolder ────────────────────────────────────────────────────────────
 
@@ -105,6 +155,8 @@ class RecordingsAdapter(
         private val tvTitle:       TextView  = v.findViewById(R.id.tvTitle)
         private val tvMeta:        TextView  = v.findViewById(R.id.tvMeta)
         private val ivOverflow:    ImageView = v.findViewById(R.id.ivOverflow)
+        /** Retained across partial binds so updateProgress can move the split cheaply. */
+        private var splitBg: SplitBackgroundDrawable? = null
 
         fun bind(rec: RecordingEntity) {
             tvTitle.text = rec.title
@@ -125,6 +177,7 @@ class RecordingsAdapter(
                 if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
                 else android.graphics.Color.TRANSPARENT
             )
+            applySplitBackground(rec, isSelected)
 
             // ── Orphan (storage-offline) state ────────────────────────
             val isOrphan = rec.storageVolumeUuid in orphanVolumeUuids
@@ -276,6 +329,99 @@ class RecordingsAdapter(
                 .setPositiveButton(R.string.common_btn_delete) { _, _ -> onDelete(rec) }
                 .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
+        }
+
+        // ── Playback Position Background Helpers ──────────────────────
+
+        /**
+         * Fast-path update for PAYLOAD_PROGRESS. Moves the split fraction without
+         * touching any other views.  Falls back to a full bind if no drawable exists yet.
+         */
+        fun updateProgress(rec: RecordingEntity) {
+            val bg = splitBg ?: run { bind(rec); return }
+            bg.setFraction(computeFraction(rec))
+        }
+
+        /**
+         * Applies or updates the split background drawable.
+         * When [isSelected] is true, the solid selection colour already occupies
+         * itemView.background so we skip the split and clear any stale drawable reference.
+         */
+        private fun applySplitBackground(rec: RecordingEntity, isSelected: Boolean) {
+            if (!playheadVisEnabled || isSelected) {
+                // Either vis is off or a solid selection bg is already set — nothing to do.
+                // Clear the reference so the next full bind starts fresh.
+                if (splitBg != null) splitBg = null
+                return
+            }
+
+            val context = itemView.context
+            val fraction = computeFraction(rec)
+            val (playedColor, unplayedColor) = buildColors(context)
+
+            val existing = splitBg
+            if (existing != null) {
+                existing.playedColor   = playedColor
+                existing.unplayedColor = unplayedColor
+                existing.setFraction(fraction)
+                // The drawable is already set as the background; no need to re-set it.
+            } else {
+                val bg = SplitBackgroundDrawable(
+                    playedColor   = playedColor,
+                    unplayedColor = unplayedColor,
+                    fraction      = fraction,
+                )
+                splitBg = bg
+                itemView.background = bg
+            }
+        }
+
+        /**
+         * Computes the display fraction for [rec].
+         *
+         * For the now-playing recording: uses the live [nowPlayingPositionMs] so the
+         * split moves in real time without needing a DB value.
+         *
+         * For all others: delegates to PlaybackPositionHelper.displayFraction(), which
+         * reads the DB-stored position and applies the near-end reset rules so a
+         * recording that is effectively "done" shows as 0% (unplayed), exactly matching
+         * what would happen if you tapped play on it.
+         */
+        private fun computeFraction(rec: RecordingEntity): Float {
+            if (rec.durationMs <= 0L) return 0f
+            return if (rec.id == nowPlayingId) {
+                // Take whichever is further along: live position or stored position.
+                // This handles the brief moment between a seek and the next progress tick.
+                val pos = nowPlayingPositionMs.coerceAtLeast(rec.playbackPositionMs)
+                (pos.toFloat() / rec.durationMs).coerceIn(0f, 1f)
+            } else {
+                prefs?.let { PlaybackPositionHelper.displayFraction(rec, it) } ?: 0f
+            }
+        }
+
+        /**
+         * Builds (playedColor, unplayedColor) for the split.
+         *
+         * The played region is colorAccent at alpha = intensity * 255, so the
+         * intensity slider gives direct visual control without a second colour pref.
+         * The unplayed region is always the natural item surface colour (transparent),
+         * so the card/row background shows through unchanged.
+         *
+         * NOTE: tune these colours once you see them on device. You may find a
+         * slightly tinted surface colour for the "unplayed" side looks better than
+         * full transparency, especially in dark mode.
+         */
+        private fun buildColors(context: android.content.Context): Pair<Int, Int> {
+            val accentRaw = context.themeColor(R.attr.colorAccent)
+
+            // Apply intensity as alpha, leaving RGB unchanged.
+            val alpha      = (playheadVisIntensity * 255f).toInt().coerceIn(0, 255)
+            val playedColor = (accentRaw and 0x00FFFFFF) or (alpha shl 24)
+
+            // Unplayed = fully transparent so the card surface colour shows through.
+            val unplayedColor = android.graphics.Color.TRANSPARENT
+
+            return Pair(playedColor, unplayedColor)
         }
     }
 
