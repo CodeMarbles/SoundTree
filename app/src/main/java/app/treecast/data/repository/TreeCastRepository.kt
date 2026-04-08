@@ -1,6 +1,7 @@
 package app.treecast.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import app.treecast.data.dao.VolumeUsage
 import app.treecast.data.db.AppDatabase
 import app.treecast.data.entities.BackupLogEntity
@@ -136,9 +137,15 @@ class TreeCastRepository(context: Context) {
 
     suspend fun updateRecording(recording: RecordingEntity) = recordingDao.update(recording)
     suspend fun deleteRecording(recording: RecordingEntity) = recordingDao.delete(recording)
-    suspend fun moveRecording(id: Long, topicId: Long?)     = recordingDao.moveToTopic(id, topicId)
-    suspend fun renameRecording(id: Long, title: String)    = recordingDao.rename(id, title)
-    suspend fun setFavourite(id: Long, fav: Boolean)        = recordingDao.setFavourite(id, fav)
+
+    suspend fun moveRecording(id: Long, topicId: Long?) =
+        recordingDao.moveToTopic(id, topicId, System.currentTimeMillis())
+
+    suspend fun renameRecording(id: Long, title: String) =
+        recordingDao.rename(id, title, System.currentTimeMillis())
+
+    suspend fun setFavourite(id: Long, fav: Boolean) =
+        recordingDao.setFavourite(id, fav, System.currentTimeMillis())
     suspend fun updatePlayback(id: Long, posMs: Long, listened: Boolean) =
         recordingDao.updatePlaybackState(id, posMs, listened)
 
@@ -178,11 +185,40 @@ class TreeCastRepository(context: Context) {
         markDao.insertAll(entities)
     }
 
+    // ── Marks ─────────────────────────────────────────────────────────────────────
+
     fun getMarksForRecording(recordingId: Long) = markDao.getMarksForRecording(recordingId)
-    suspend fun addMark(recordingId: Long, positionMs: Long) =
-        markDao.insert(MarkEntity(recordingId = recordingId, positionMs = positionMs))
-    suspend fun deleteMark(id: Long)                = markDao.deleteById(id)
-    suspend fun nudgeMark(id: Long, deltaMs: Long)  = markDao.nudgeMark(id, deltaMs)
+
+    /**
+     * Inserts a new mark and atomically bumps [RecordingEntity.metadataUpdatedAt]
+     * so that the next backup export pass knows to regenerate the JSON.
+     */
+    suspend fun addMark(recordingId: Long, positionMs: Long): Long = db.withTransaction {
+        val markId = markDao.insert(MarkEntity(recordingId = recordingId, positionMs = positionMs))
+        recordingDao.touchMetadata(recordingId, System.currentTimeMillis())
+        markId
+    }
+
+    /**
+     * Deletes a mark by ID and atomically bumps [RecordingEntity.metadataUpdatedAt].
+     *
+     * **Callers must pass [recordingId]** — it is not stored on the call site
+     * but is available from the [MarkEntity] being deleted (mark.recordingId).
+     */
+    suspend fun deleteMark(markId: Long, recordingId: Long) = db.withTransaction {
+        markDao.deleteById(markId)
+        recordingDao.touchMetadata(recordingId, System.currentTimeMillis())
+    }
+
+    /**
+     * Nudges a mark's position and atomically bumps [RecordingEntity.metadataUpdatedAt].
+     *
+     * **Callers must pass [recordingId]** — available from the [MarkEntity] being nudged.
+     */
+    suspend fun nudgeMark(markId: Long, deltaMs: Long, recordingId: Long) = db.withTransaction {
+        markDao.nudgeMark(markId, deltaMs)
+        recordingDao.touchMetadata(recordingId, System.currentTimeMillis())
+    }
 
     // ── Backup targets ────────────────────────────────────────────────────────
 

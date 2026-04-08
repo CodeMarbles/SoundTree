@@ -47,20 +47,29 @@ interface RecordingDao {
     @Query("UPDATE recordings SET playback_position_ms = :positionMs, is_listened = :listened WHERE id = :id")
     suspend fun updatePlaybackState(id: Long, positionMs: Long, listened: Boolean)
 
-    @Query("UPDATE recordings SET is_favourite = :fav WHERE id = :id")
-    suspend fun setFavourite(id: Long, fav: Boolean)
+    @Query("UPDATE recordings SET is_favourite = :fav, metadata_updated_at = :nowMs WHERE id = :id")
+    suspend fun setFavourite(id: Long, fav: Boolean, nowMs: Long)
 
-    @Query("UPDATE recordings SET topic_id = :topicId WHERE id = :id")
-    suspend fun moveToTopic(id: Long, topicId: Long?)
+    @Query("UPDATE recordings SET topic_id = :topicId, metadata_updated_at = :nowMs WHERE id = :id")
+    suspend fun moveToTopic(id: Long, topicId: Long?, nowMs: Long)
 
-    @Query("UPDATE recordings SET title = :title WHERE id = :id")
-    suspend fun rename(id: Long, title: String)
+    @Query("UPDATE recordings SET title = :title, metadata_updated_at = :nowMs WHERE id = :id")
+    suspend fun rename(id: Long, title: String, nowMs: Long)
 
     @Query("SELECT COUNT(*) FROM recordings WHERE topic_id = :topicId")
     suspend fun countInTopic(topicId: Long): Int
 
     @Query("SELECT COUNT(*) FROM recordings")
     suspend fun countAll(): Int
+
+    /**
+     * Bumps [RecordingEntity.metadataUpdatedAt] without touching any other column.
+     * Called by repository mark-mutation wrappers so that adding, deleting, or
+     * nudging a mark is reflected in the export-freshness check.
+     */
+    @Query("UPDATE recordings SET metadata_updated_at = :nowMs WHERE id = :id")
+    suspend fun touchMetadata(id: Long, nowMs: Long)
+
 
     // ── Storage ───────────────────────────────────────────────────────────────
 

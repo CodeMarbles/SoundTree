@@ -29,4 +29,8 @@ interface MarkDao {
     /** Moves a mark's position by deltaMs (negative = back, positive = forward). Floors at 0. */
     @Query("UPDATE marks SET position_ms = MAX(0, position_ms + :deltaMs) WHERE id = :id")
     suspend fun nudgeMark(id: Long, deltaMs: Long)
+
+    /** One-shot read of marks for a single recording; used by the backup export pass. */
+    @Query("SELECT * FROM marks WHERE recording_id = :recordingId ORDER BY position_ms ASC")
+    suspend fun getMarksForRecordingOnce(recordingId: Long): List<MarkEntity>
 }

@@ -228,9 +228,10 @@ fun MainViewModel.addMark() {
 }
 
 fun MainViewModel.deleteSelectedMark() {
-    val id = _selectedMarkId.value ?: return
+    val id    = _selectedMarkId.value ?: return
+    val recId = _nowPlaying.value?.recording?.id ?: return
     viewModelScope.launch {
-        repo.deleteMark(id)
+        repo.deleteMark(id, recId)
         _selectedMarkId.value = null
     }
 }
@@ -252,16 +253,18 @@ fun MainViewModel.getMarksForRecording(id: Long): Flow<List<MarkEntity>> =
 
 fun MainViewModel.nudgePlaybackMarkBack() {
     if (_playbackMarkNudgeLocked.value) return
-    val id      = _selectedMarkId.value ?: return
+    val id    = _selectedMarkId.value ?: return
+    val recId = _nowPlaying.value?.recording?.id ?: return
     val deltaMs = -(_markNudgeSecs.value * 1000L).toLong()
-    viewModelScope.launch { repo.nudgeMark(id, deltaMs) }
+    viewModelScope.launch { repo.nudgeMark(id, deltaMs, recId) }
 }
 
 fun MainViewModel.nudgePlaybackMarkForward() {
     if (_playbackMarkNudgeLocked.value) return
-    val id      = _selectedMarkId.value ?: return
+    val id    = _selectedMarkId.value ?: return
+    val recId = _nowPlaying.value?.recording?.id ?: return
     val deltaMs = (_markNudgeSecs.value * 1000L).toLong()
-    viewModelScope.launch { repo.nudgeMark(id, deltaMs) }
+    viewModelScope.launch { repo.nudgeMark(id, deltaMs, recId) }
 }
 
 /** Clears selection and re-locks nudging until the next jump-and-select. */

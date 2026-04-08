@@ -23,13 +23,16 @@ import app.treecast.data.entities.BackupLogEntity.BackupStatus
 import app.treecast.data.entities.BackupLogEntity.BackupTrigger
 import app.treecast.data.entities.BackupLogEventEntity
 import app.treecast.data.entities.BackupLogEventEntity.EventType
+import app.treecast.export.RecordingExporter
 import app.treecast.ui.MainActivity
 import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -348,17 +351,22 @@ class BackupWorker(
             )
 
             val destIndex = mutableMapOf<String, DestEntry>()
+            val jsonIndex = mutableMapOf<String, DocumentFile>()   // stem → existing .json on dest
+            val dirCache  = mutableMapOf<String, DocumentFile>()   // "YYYY/MM" → resolved DocumentFile
 
             // Helper: collect TC_*.m4a files from a DocumentFile directory into destIndex.
             fun indexDir(dir: DocumentFile) {
                 dir.listFiles().forEach { child ->
                     val name = child.name.orEmpty()
-                    if (child.isFile && name.startsWith("TC_") && name.endsWith(".m4a")) {
-                        destIndex[name] = DestEntry(
-                            size      = child.length(),
-                            parentDir = dir,
-                            file      = child,
-                        )
+                    if (child.isFile && name.startsWith("TC_")) {
+                        when {
+                            name.endsWith(".m4a")  -> destIndex[name] = DestEntry(
+                                size      = child.length(),
+                                parentDir = dir,
+                                file      = child,
+                            )
+                            name.endsWith(".json") -> jsonIndex[name.removeSuffix(".json")] = child
+                        }
                     }
                 }
             }
@@ -373,10 +381,13 @@ class BackupWorker(
                     yearDir.listFiles().forEach { monthDir ->
                         val monthName = monthDir.name.orEmpty()
                         if (monthDir.isDirectory && monthName.matches(Regex("\\d{2}"))) {
+                            dirCache["$yearName/$monthName"] = monthDir
                             indexDir(monthDir)
                         }
+
                     }
                 }
+
             }
 
             val sourceDirs = recordingSourceDirs()
@@ -554,6 +565,75 @@ class BackupWorker(
                 }
             }
 
+            // ── 5a. Metadata export pass ─────────────────────────────────────────────────
+            if (target.exportMetadataEnabled) {
+                val recordingDao = db.recordingDao()
+                val topicDao     = db.topicDao()
+                val markDao      = db.markDao()
+
+                val allRecordings = recordingDao.getAllOnce()
+                val allTopics     = topicDao.getAllTopicsOnce()
+
+                var jsonExported = 0
+                var jsonSkipped  = 0
+                var jsonFailed   = 0
+
+                for (recording in allRecordings) {
+                    val audioFile = File(recording.filePath)
+                    val stem      = audioFile.nameWithoutExtension   // e.g. "TC_20240115_143022"
+
+                    val rawStem = stem.removePrefix("TC_")
+                    val yyyy    = rawStem.take(4)
+                    val mm      = rawStem.drop(4).take(2)
+                    if (!yyyy.matches(Regex("\\d{4}")) || !mm.matches(Regex("\\d{2}"))) continue
+
+                    val topic = recording.topicId?.let { id -> allTopics.find { it.id == id } }
+                    val freshnessThreshold = maxOf(
+                        recording.metadataUpdatedAt,
+                        topic?.updatedAt ?: 0L,
+                    )
+
+                    // O(1) map reads — no SAF calls for the skip path.
+                    val existingJson   = jsonIndex[stem]
+                    val destExportedAt = existingJson?.let {
+                        try { readExportedAt(it) } catch (_: Exception) { 0L }
+                    } ?: 0L
+
+                    if (destExportedAt >= freshnessThreshold) {
+                        jsonSkipped++
+                        continue
+                    }
+
+                    // Resolve target dir from cache; create and cache if this YYYY/MM is new
+                    // (i.e. a recording month not yet present on the destination at all).
+                    val targetDir = dirCache["$yyyy/$mm"]
+                        ?: recordingDestDir.findOrCreateDir(yyyy)
+                            ?.findOrCreateDir(mm)
+                            ?.also { dirCache["$yyyy/$mm"] = it }
+                        ?: continue
+
+                    try {
+                        val marks         = markDao.getMarksForRecordingOnce(recording.id)
+                        val localJsonFile = RecordingExporter.export(recording, marks, allTopics)
+                        copyFileToDocumentDir(localJsonFile, targetDir, "$stem.json")
+                        jsonExported++
+                    } catch (e: Exception) {
+                        jsonFailed++
+                        warning(
+                            message = "Metadata export failed for $stem: ${e.message}",
+                            path    = recording.filePath,
+                        )
+                    }
+                }
+
+                if (verbose) {
+                    info(
+                        "Metadata export pass complete — " +
+                                "$jsonExported written, $jsonSkipped up-to-date, $jsonFailed failed"
+                    )
+                }
+            }
+
             // ── 5. Flush stats to log row ─────────────────────────────
             logDao.updateStats(
                 id               = logId,
@@ -569,12 +649,7 @@ class BackupWorker(
             )
         }
 
-        // ── 6. Write event child rows ─────────────────────────────────
-//        if (events.isNotEmpty()) {
-//            logDao.insertEvents(events)
-//        }
-
-        // ── 7. Finalise log row ───────────────────────────────────────
+        // ── 6. Finalise log row ───────────────────────────────────────
         //
         // Problem count is WARNING + ERROR only — INFO milestones do not
         // count toward PARTIAL or FAILED status.
@@ -595,7 +670,7 @@ class BackupWorker(
             else null,
         )
 
-        // ── 8. Stamp target with last backup time ─────────────────────
+        // ── 7. Stamp target with last backup time ─────────────────────
         if (status != BackupStatus.FAILED) {
             targetDao.setLastBackupAt(volumeUuid, System.currentTimeMillis())
         }
@@ -605,7 +680,7 @@ class BackupWorker(
         // was there before.
         targetDao.setVolumeLabel(volumeUuid, volumeLabel)
 
-        // ── 9. Resolve notification and WorkManager result ────────────
+        // ── 8. Resolve notification and WorkManager result ────────────
         val notifText = when (status) {
             BackupStatus.SUCCESS -> "Backup complete — $filesCopied file(s) copied"
             BackupStatus.PARTIAL -> "Backup finished with $filesFailed error(s)"
@@ -665,6 +740,23 @@ class BackupWorker(
         applicationContext.contentResolver.openOutputStream(destFile.uri)?.use { out ->
             source.inputStream().use { inp -> inp.copyTo(out) }
         } ?: throw IOException("Could not open output stream for: $destName")
+    }
+
+    /**
+     * Reads the [RecordingExportMetadata.exportedAt] ISO-8601 string from a
+     * JSON file on the SAF destination and converts it to epoch milliseconds.
+     *
+     * Returns 0L on any failure (missing field, malformed instant, I/O error)
+     * so the caller treats the file as stale and triggers a re-export.
+     */
+    private fun readExportedAt(jsonFile: DocumentFile): Long {
+        val text = applicationContext.contentResolver
+            .openInputStream(jsonFile.uri)
+            ?.use { it.bufferedReader().readText() }
+            ?: return 0L
+        val isoStr = JSONObject(text).optString("exportedAt", "")
+        if (isoStr.isEmpty()) return 0L
+        return Instant.parse(isoStr).toEpochMilli()
     }
 
     // ── Notification ──────────────────────────────────────────────────────────
