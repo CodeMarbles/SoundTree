@@ -199,6 +199,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_BG_EXTENDS_UNDER_RULER = "waveform_bg_extends_under_ruler"
         internal const val PREF_BG_UNPLAYED_ONLY       = "waveform_bg_unplayed_only"
 
+        // ── Database snapshot pruning prefs ───────────────────────────────────
+        internal const val PREF_DB_PRUNE_ENABLED = "db_prune_enabled"  // Boolean, default false
+        internal const val PREF_DB_PRUNE_COUNT   = "db_prune_count"    // Int,     default 10
+        internal const val DEFAULT_DB_PRUNE_COUNT = 10
+
         // ── Waveform style key constants ──────────────────────────────────────
         // Public so SettingsFragment can reference them without string literals.
         const val STYLE_STANDARD   = "standard"

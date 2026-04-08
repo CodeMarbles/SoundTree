@@ -6,6 +6,7 @@ package app.treecast.ui
 // Extension functions on MainViewModel covering database restore from backup.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import app.treecast.util.DatabaseRestoreManager
@@ -15,8 +16,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Performs a destructive database restore from the backup directory associated
- * with [volumeUuid].
+ * Scans [backupDirUri] for restorable database snapshots and returns them
+ * sorted newest-first (legacy flat backup appended last if present).
+ *
+ * Runs on [Dispatchers.IO] internally — safe to call from any coroutine scope.
+ * Returns an empty list if the directory contains no recognisable snapshots.
+ */
+suspend fun MainViewModel.listDbSnapshots(
+    backupDirUri: String,
+): List<DatabaseRestoreManager.DbSnapshot> =
+    DatabaseRestoreManager.listSnapshots(getApplication(), backupDirUri)
+
+/**
+ * Performs a destructive database restore from [backupFile].
  *
  * ## Sequence
  * 1. Cancels all WorkManager jobs tagged [BackupWorker.TAG] so no backup
@@ -30,16 +42,17 @@ import kotlinx.coroutines.withContext
  *    the error occurred before the file copy, or in the best possible state
  *    if it occurred after (Room will still open, possibly after migrations).
  *
- * @param volumeUuid    UUID of the backup target (unused by restore logic itself,
- *                      kept for symmetry with other backup extension functions and
- *                      for future per-volume restore logging).
- * @param backupDirUri  SAF tree URI string from [BackupTargetEntity.backupDirUri].
- * @param onError       Called on the main thread if the restore fails. Not called
- *                      on success because the process is killed instead.
+ * @param volumeUuid  UUID of the backup target (unused by restore logic itself,
+ *                    kept for symmetry with other backup extension functions and
+ *                    for future per-volume restore logging).
+ * @param backupFile  The exact snapshot [DocumentFile] chosen by the user,
+ *                    as returned by [listDbSnapshots].
+ * @param onError     Called on the main thread if the restore fails. Not called
+ *                    on success because the process is killed instead.
  */
 fun MainViewModel.restoreFromBackup(
     @Suppress("UNUSED_PARAMETER") volumeUuid: String,
-    backupDirUri: String,
+    backupFile: DocumentFile,
     onError: (String) -> Unit,
 ) {
     viewModelScope.launch {
@@ -48,28 +61,21 @@ fun MainViewModel.restoreFromBackup(
             .cancelAllWorkByTag(BackupWorker.TAG)
 
         val result = DatabaseRestoreManager.restore(
-            context      = getApplication(),
-            backupDirUri = backupDirUri,
+            context    = getApplication(),
+            backupFile = backupFile,
         )
 
         when (result) {
             is DatabaseRestoreManager.Result.Success -> {
-                // Schedule restart on main thread then exit. Never returns.
                 withContext(Dispatchers.Main) {
                     DatabaseRestoreManager.scheduleRestartAndExit(getApplication())
                 }
             }
-
             is DatabaseRestoreManager.Result.NoDbFound -> {
                 withContext(Dispatchers.Main) {
-                    onError(
-                        "No database file was found in this backup. " +
-                                "The backup may be incomplete or was made before " +
-                                "database backup was enabled."
-                    )
+                    onError("No database file was found. The snapshot may have been deleted.")
                 }
             }
-
             is DatabaseRestoreManager.Result.Failed -> {
                 withContext(Dispatchers.Main) {
                     onError(result.reason)

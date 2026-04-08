@@ -25,6 +25,7 @@ import app.treecast.data.entities.BackupLogEventEntity
 import app.treecast.data.entities.BackupLogEventEntity.EventType
 import app.treecast.ui.MainActivity
 import app.treecast.storage.StorageVolumeHelper
+import app.treecast.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -280,16 +281,43 @@ class BackupWorker(
         try {
             val sqliteDb = db.openHelper.writableDatabase
             sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
-            info("WAL checkpoint complete")
+            if (verbose) info("WAL checkpoint complete")
 
             val dbSourceFile = applicationContext.getDatabasePath("treecast.db")
             val dbDestDir    = destRoot.findOrCreateDir("db")
 
             if (dbDestDir != null) {
-                info("db/ directory resolved on backup destination")
-                copyFileToDocumentDir(dbSourceFile, dbDestDir, "treecast.db")
+                if (verbose) info("db/ directory resolved on backup destination")
+
+                // Write a timestamped snapshot so previous copies are preserved.
+                val snapshotName = "treecast_${
+                    java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+                        .format(java.util.Date())
+                }.db"
+                copyFileToDocumentDir(dbSourceFile, dbDestDir, snapshotName)
                 dbBackedUp = true
-                info("Database copied — ${dbSourceFile.length()} bytes")
+                if (verbose) info("Database snapshot written — ${dbSourceFile.length()} bytes ($snapshotName)")
+
+                // Prune old snapshots if the user has opted in.
+                val prefs = applicationContext
+                    .getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
+                if (prefs.getBoolean(MainViewModel.PREF_DB_PRUNE_ENABLED, false)) {
+                    val keepCount = prefs.getInt(
+                        MainViewModel.PREF_DB_PRUNE_COUNT,
+                        MainViewModel.DEFAULT_DB_PRUNE_COUNT,
+                    )
+                    // Only touch timestamped snapshots — never the legacy treecast.db.
+                    val snapshots = dbDestDir.listFiles()
+                        .filter { it.isFile &&
+                                it.name?.matches(Regex("treecast_\\d{8}_\\d{6}\\.db")) == true }
+                        .sortedByDescending { it.name }  // lexicographic desc == newest-first
+
+                    val toDelete = snapshots.drop(keepCount)
+                    toDelete.forEach { it.delete() }
+                    if (verbose && toDelete.isNotEmpty()) {
+                        info("Pruned ${toDelete.size} old database snapshot(s), keeping $keepCount")
+                    }
+                }
             } else {
                 error("Could not create db/ directory on backup destination")
             }

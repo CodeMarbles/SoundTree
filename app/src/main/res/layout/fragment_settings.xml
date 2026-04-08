@@ -2350,6 +2350,104 @@
                             android:orientation="vertical"
                             android:paddingBottom="8dp" />
 
+                        <!-- DB snapshot pruning toggle -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_backup_prune_label"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_backup_prune_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchDbPrune"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp" />
+
+                        </LinearLayout>
+
+                        <!-- DB snapshot count (enabled/disabled by toggle above) -->
+                        <LinearLayout
+                            android:id="@+id/rowDbPruneCount"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_backup_prune_count_label"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="15sp" />
+
+                            <!-- Stepper: minus / value / plus — mirrors the pattern used by other
+                                 numeric pickers in the settings UI -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:orientation="horizontal"
+                                android:background="?attr/colorSurfaceBase">
+
+                                <TextView
+                                    android:id="@+id/btnDbPruneMinus"
+                                    android:layout_width="32dp"
+                                    android:layout_height="match_parent"
+                                    android:text="−"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                                <TextView
+                                    android:id="@+id/tvDbPruneCount"
+                                    android:layout_width="36dp"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:textSize="15sp"
+                                    android:textColor="?attr/colorTextPrimary" />
+
+                                <TextView
+                                    android:id="@+id/btnDbPrunePlus"
+                                    android:layout_width="32dp"
+                                    android:layout_height="match_parent"
+                                    android:text="+"
+                                    android:textSize="18sp"
+                                    android:gravity="center"
+                                    android:clickable="true"
+                                    android:focusable="true" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
                         <!-- ── Available to Add ──────────────────────────────────────────────── -->
                         <LinearLayout
                             android:id="@+id/cardBackupAvailable"

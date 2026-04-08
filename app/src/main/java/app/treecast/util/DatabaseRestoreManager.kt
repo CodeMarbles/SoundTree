@@ -8,31 +8,35 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import app.treecast.data.db.AppDatabase
 import app.treecast.ui.MainActivity
+import app.treecast.util.DatabaseRestoreManager.listSnapshots
+import app.treecast.util.DatabaseRestoreManager.restore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.system.exitProcess
 
 /**
- * Performs a destructive database restore from a TreeCast backup directory.
+ * Utilities for listing and restoring TreeCast database snapshots.
  *
- * ## What it does
- * 1. Locates `db/treecast.db` inside the SAF backup tree URI.
+ * ## Snapshot layout (inside the user-chosen backup root)
+ *
+ *   db/
+ *     treecast_YYYYMMDD_HHmmss.db   ← versioned snapshots (new format)
+ *     treecast.db                   ← legacy flat copy (old format, preserved forever)
+ *
+ * ## Restore sequence (see [restore])
+ * 1. Caller provides the exact [DocumentFile] to restore (chosen via [listSnapshots]).
  * 2. Checkpoints the live WAL so the current DB is fully flushed.
  * 3. Closes and nulls the Room singleton so no live handles remain.
  * 4. Deletes stale `-wal` and `-shm` sidecar files at the live DB path.
- * 5. Copies the backup DB file over the live DB path via SAF InputStream.
+ * 5. Copies the chosen snapshot file over the live DB path via SAF InputStream.
  * 6. Reopens Room and runs a `file_path` fixup UPDATE to rewrite any
- *    old-namespace paths (`com.treecast.app` → `app.treecast`) that may
- *    be present in a backup taken before the package rename.
- * 7. Closes Room again and schedules an app restart via [AlarmManager],
- *    then calls [exitProcess] so the fresh boot sees clean state throughout.
- *
- * ## Usage
- * Call [restore] from a coroutine (it switches internally to [Dispatchers.IO]).
- * On [Result.Success] call [scheduleRestartAndExit] — it does not return.
- * On failure the live DB is untouched if the error occurred before the copy,
- * and a best-effort recovery is attempted if the error occurred after.
+ *    old-namespace paths (`com.treecast.app` → `app.treecast`) present in
+ *    backups taken before the package rename.
+ * 7. Closes Room again, schedules an app restart via [AlarmManager], then
+ *    calls [exitProcess]. Does not return on success.
  *
  * ## Thread safety
  * [restore] must not be called concurrently. Callers should cancel any running
@@ -44,37 +48,86 @@ object DatabaseRestoreManager {
         /** Restore completed and fixup ran. Call [scheduleRestartAndExit] immediately. */
         object Success : Result()
 
-        /** The backup directory exists but contains no `db/treecast.db` file. */
+        /** The provided file was null, missing, or empty. */
         object NoDbFound : Result()
 
         /** An unexpected error occurred. [reason] is a human-readable description. */
         data class Failed(val reason: String) : Result()
     }
 
+    // ── Snapshot listing ──────────────────────────────────────────────────────
+
+    /**
+     * A single restorable database snapshot found in a backup's `db/` directory.
+     *
+     * @param file        The SAF [DocumentFile] for this snapshot.
+     * @param displayName Human-readable label shown in the selection dialog.
+     * @param isLegacy    True if this is the old flat `treecast.db` (no timestamp).
+     */
+    data class DbSnapshot(
+        val file: DocumentFile,
+        val displayName: String,
+        val isLegacy: Boolean,
+    )
+
+    /**
+     * Scans the `db/` subdirectory of [backupDirUri] and returns all restorable
+     * snapshots. Timestamped snapshots are sorted newest-first; the legacy flat
+     * `treecast.db`, if present, is appended at the end.
+     *
+     * Returns an empty list if the `db/` directory does not exist or contains
+     * no recognisable snapshot files.
+     */
+    suspend fun listSnapshots(context: Context, backupDirUri: String): List<DbSnapshot> =
+        withContext(Dispatchers.IO) {
+            val root = DocumentFile.fromTreeUri(
+                context.applicationContext, Uri.parse(backupDirUri)
+            ) ?: return@withContext emptyList()
+
+            val dbDir = root.findFile("db") ?: return@withContext emptyList()
+
+            val parseFmt   = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+            val displayFmt = SimpleDateFormat("MMM d, yyyy  h:mm a", Locale.getDefault())
+
+            val timestamped = mutableListOf<DbSnapshot>()
+            var legacy: DbSnapshot? = null
+
+            for (file in dbDir.listFiles()) {
+                val name = file.name ?: continue
+                if (!file.isFile) continue
+                when {
+                    name.matches(Regex("treecast_\\d{8}_\\d{6}\\.db")) -> {
+                        val raw = name.removePrefix("treecast_").removeSuffix(".db")
+                        val label = try {
+                            displayFmt.format(parseFmt.parse(raw)!!)
+                        } catch (_: Exception) { name }
+                        timestamped += DbSnapshot(file, label, isLegacy = false)
+                    }
+                    name == "treecast.db" -> {
+                        legacy = DbSnapshot(file, "Legacy backup (treecast.db)", isLegacy = true)
+                    }
+                }
+            }
+
+            timestamped.sortedByDescending { it.file.name } + listOfNotNull(legacy)
+        }
+
+    // ── Restore ───────────────────────────────────────────────────────────────
+
     /**
      * Executes the full restore sequence on [Dispatchers.IO].
      *
-     * @param context       Any context — the application context is used internally.
-     * @param backupDirUri  The SAF tree URI string stored in [BackupTargetEntity.backupDirUri].
+     * @param context    Any context — the application context is used internally.
+     * @param backupFile The exact snapshot [DocumentFile] chosen by the user via
+     *                   [listSnapshots]. The caller is responsible for validation
+     *                   (i.e. only pass files returned by [listSnapshots]).
      */
-    suspend fun restore(context: Context, backupDirUri: String): Result =
+    suspend fun restore(context: Context, backupFile: DocumentFile): Result =
         withContext(Dispatchers.IO) {
-
             val appContext = context.applicationContext
 
-            // ── 1. Locate the backup DB file via SAF ──────────────────────────
-            val backupRoot = DocumentFile.fromTreeUri(appContext, Uri.parse(backupDirUri))
-                ?: return@withContext Result.Failed(
-                    "Cannot open backup directory — permission may have been revoked."
-                )
-
-            val dbDir = backupRoot.findFile("db")
-                ?: return@withContext Result.NoDbFound
-
-            val backupDbFile = dbDir.findFile("treecast.db")
-                ?: return@withContext Result.NoDbFound
-
-            if (!backupDbFile.isFile || backupDbFile.length() == 0L) {
+            // ── 1. Validate the chosen snapshot file ──────────────────────────
+            if (!backupFile.isFile || backupFile.length() == 0L) {
                 return@withContext Result.NoDbFound
             }
 
@@ -99,9 +152,9 @@ object DatabaseRestoreManager {
             // Ensure the databases/ directory exists (first-run edge case).
             liveDbFile.parentFile?.mkdirs()
 
-            // ── 5. Copy backup DB over the live DB path ───────────────────────
+            // ── 5. Copy chosen snapshot over the live DB path ─────────────────
             try {
-                appContext.contentResolver.openInputStream(backupDbFile.uri)?.use { input ->
+                appContext.contentResolver.openInputStream(backupFile.uri)?.use { input ->
                     liveDbFile.outputStream().use { output ->
                         input.copyTo(output)
                     }
@@ -117,48 +170,37 @@ object DatabaseRestoreManager {
             // Rewrites any file_path values that still carry the old package
             // name from before the com.treecast.app → app.treecast rename.
             // Safe to run unconditionally — REPLACE() is a no-op when the
-            // substring is not present, so it will never corrupt a clean backup.
+            // substring is not present.
             try {
-                val freshDb = AppDatabase.getInstance(appContext)
-                freshDb.openHelper.writableDatabase.execSQL(
-                    """
-                    UPDATE recordings
-                    SET    file_path = REPLACE(file_path, 'com.treecast.app', 'app.treecast')
-                    WHERE  file_path LIKE '%com.treecast.app%'
-                    """.trimIndent()
+                val db = AppDatabase.getInstance(appContext)
+                db.openHelper.writableDatabase.execSQL(
+                    "UPDATE recordings SET file_path = REPLACE(file_path, " +
+                            "'com.treecast.app', 'app.treecast')"
                 )
-                // Close cleanly so the next open (after restart) is a fresh handle.
                 AppDatabase.closeAndReset()
             } catch (_: Exception) {
-                // Fixup failure is non-fatal — the DB restored successfully.
-                // The orphan scanner on next boot will surface any dead paths.
+                // Fixup failure is non-fatal — Room will still open.
             }
 
             Result.Success
         }
 
+    // ── Restart ───────────────────────────────────────────────────────────────
+
     /**
-     * Schedules a full app restart 500 ms from now, then kills the current
-     * process so all in-memory Room / ViewModel state is destroyed.
-     *
-     * Must be called on the main thread immediately after [restore] returns
-     * [Result.Success]. **Does not return.**
+     * Schedules an app restart via [AlarmManager] and kills the current process.
+     * Must be called on the main thread. Does not return.
      */
     fun scheduleRestartAndExit(context: Context) {
-        val appContext = context.applicationContext
-
-        val intent = Intent(appContext, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val pending = PendingIntent.getActivity(
-            appContext,
-            0,
-            intent,
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        val pi = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.set(AlarmManager.RTC, System.currentTimeMillis() + 500L, pending)
-
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        am.set(AlarmManager.RTC, System.currentTimeMillis() + 500L, pi)
         exitProcess(0)
     }
 }

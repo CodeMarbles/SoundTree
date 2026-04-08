@@ -522,6 +522,15 @@
     <string name="settings_restore_confirm_action">Restore</string>
     <string name="settings_restore_failed_title">Restore failed</string>
 
+    <!-- Restore: snapshot selection dialog -->
+    <string name="settings_restore_select_title">Choose a backup to restore</string>
+    <string name="settings_restore_select_action">Next</string>
+
+    <!-- Backup: DB snapshot pruning -->
+    <string name="settings_backup_prune_label">Limit saved database snapshots</string>
+    <string name="settings_backup_prune_desc">Automatically delete older backups when the limit is reached</string>
+    <string name="settings_backup_prune_count_label">Snapshots to keep</string>
+
     <!-- Backup: log UI — history dialog, row chips, and detail dialog
          backup_log_status_*    — chip labels for BackupStatus values
          backup_log_trigger_*   — human-readable trigger names in detail view

@@ -10,9 +10,12 @@ package app.treecast.ui
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.PlaybackParameters
+import app.treecast.ui.MainViewModel.Companion.DEFAULT_DB_PRUNE_COUNT
 import app.treecast.ui.MainViewModel.Companion.PREF_ALWAYS_SHOW_PLAYER_PILL
 import app.treecast.ui.MainViewModel.Companion.PREF_ALWAYS_SHOW_RECORDER_PILL
 import app.treecast.ui.MainViewModel.Companion.PREF_AUTO_NAVIGATE
+import app.treecast.ui.MainViewModel.Companion.PREF_DB_PRUNE_COUNT
+import app.treecast.ui.MainViewModel.Companion.PREF_DB_PRUNE_ENABLED
 import app.treecast.ui.MainViewModel.Companion.PREF_FUTURE_MODE
 import app.treecast.ui.MainViewModel.Companion.PREF_HIDE_PLAYER_ON_LISTEN_TAB
 import app.treecast.ui.MainViewModel.Companion.PREF_HIDE_RECORDER_ON_RECORD_TAB
@@ -273,4 +276,20 @@ fun MainViewModel.setPlayheadVisIntensity(intensity: Float) {
     val v = intensity.coerceIn(0.1f, 1.0f)
     _playheadVisIntensity.value = v
     prefs.edit().putFloat(PREF_PLAYHEAD_VIS_INTENSITY, v).apply()
+}
+
+// ── Database Restore ──────────────────────────────────────────────────────────
+
+fun MainViewModel.getDbPruneEnabled(): Boolean =
+    prefs.getBoolean(PREF_DB_PRUNE_ENABLED, false)
+
+fun MainViewModel.setDbPruneEnabled(enabled: Boolean) {
+    prefs.edit().putBoolean(PREF_DB_PRUNE_ENABLED, enabled).apply()
+}
+
+fun MainViewModel.getDbPruneCount(): Int =
+    prefs.getInt(PREF_DB_PRUNE_COUNT, DEFAULT_DB_PRUNE_COUNT)
+
+fun MainViewModel.setDbPruneCount(count: Int) {
+    prefs.edit().putInt(PREF_DB_PRUNE_COUNT, count.coerceAtLeast(1)).apply()
 }

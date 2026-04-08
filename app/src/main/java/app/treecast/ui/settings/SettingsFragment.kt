@@ -42,6 +42,8 @@ import app.treecast.util.OrphanRecording
 import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.addBackupTarget
 import app.treecast.ui.cancelBackupForVolume
+import app.treecast.ui.getDbPruneCount
+import app.treecast.ui.getDbPruneEnabled
 import app.treecast.ui.getLastSessionOpenedAt
 import app.treecast.ui.getNearEndDurationThresholdSecs
 import app.treecast.ui.getNearEndEnabled
@@ -50,6 +52,7 @@ import app.treecast.ui.getNearEndShortSecs
 import app.treecast.ui.getRememberLongThresholdSecs
 import app.treecast.ui.getTotalRecordingTime
 import app.treecast.ui.labelForJob
+import app.treecast.ui.listDbSnapshots
 import app.treecast.ui.migrateRecordingStructure
 import app.treecast.ui.refreshStorageVolumes
 import app.treecast.ui.reprocessAllWaveforms
@@ -60,6 +63,8 @@ import app.treecast.ui.setAutoNavigateToListen
 import app.treecast.ui.setBgAlpha
 import app.treecast.ui.setBgExtendsUnderRuler
 import app.treecast.ui.setBgUnplayedOnly
+import app.treecast.ui.setDbPruneCount
+import app.treecast.ui.setDbPruneEnabled
 import app.treecast.ui.setDefaultStorageUuid
 import app.treecast.ui.setFutureMode
 import app.treecast.ui.setHidePlayerOnListenTab
@@ -140,9 +145,11 @@ class SettingsFragment : Fragment() {
     /**
      * SAF directory picker for restore.
      *
-     * After the user picks a directory, validates that db/treecast.db is present
-     * before showing the destructive confirmation dialog, giving a clear early
-     * error rather than failing mid-restore.
+     * After the user picks a directory:
+     * 1. Scans db/ for available snapshots via [MainViewModel.listDbSnapshots].
+     * 2. Shows a single-choice selection dialog (newest pre-selected).
+     * 3. Shows the destructive confirmation dialog.
+     * 4. Executes the restore via [MainViewModel.restoreFromBackup].
      */
     private val openDocumentTreeForRestore = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -155,38 +162,54 @@ class SettingsFragment : Fragment() {
         )
 
         val dirUri = uri.toString()
-        val root   = androidx.documentfile.provider.DocumentFile.fromTreeUri(requireContext(), uri)
-        val hasDb  = root?.findFile("db")?.findFile("treecast.db")?.isFile == true
 
-        if (!hasDb) {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.settings_restore_no_db_title))
-                .setMessage(getString(R.string.settings_restore_no_db_message))
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-            return@registerForActivityResult
-        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val snapshots = viewModel.listDbSnapshots(dirUri)
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.settings_restore_confirm_title))
-            .setMessage(getString(R.string.settings_restore_confirm_message))
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(getString(R.string.settings_restore_confirm_action)) { _, _ ->
-                viewModel.restoreFromBackup(
-                    volumeUuid   = "",
-                    backupDirUri = dirUri,
-                    onError      = { reason ->
-                        if (isAdded) {
-                            MaterialAlertDialogBuilder(requireContext())
-                                .setTitle(getString(R.string.settings_restore_failed_title))
-                                .setMessage(reason)
-                                .setPositiveButton(android.R.string.ok, null)
-                                .show()
-                        }
-                    },
-                )
+            if (snapshots.isEmpty()) {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(getString(R.string.settings_restore_no_db_title))
+                    .setMessage(getString(R.string.settings_restore_no_db_message))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+                return@launch
             }
-            .show()
+
+            // ── Step 1: Snapshot selection ────────────────────────────────────
+            var selectedIndex = 0
+            val labels = snapshots.map { it.displayName }.toTypedArray()
+
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.settings_restore_select_title))
+                .setSingleChoiceItems(labels, 0) { _, which -> selectedIndex = which }
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(getString(R.string.settings_restore_select_action)) { _, _ ->
+                    val chosen = snapshots[selectedIndex]
+
+                    // ── Step 2: Destructive confirmation ──────────────────────
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(getString(R.string.settings_restore_confirm_title))
+                        .setMessage(getString(R.string.settings_restore_confirm_message))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setPositiveButton(getString(R.string.settings_restore_confirm_action)) { _, _ ->
+                            viewModel.restoreFromBackup(
+                                volumeUuid = "",
+                                backupFile = chosen.file,
+                                onError    = { reason ->
+                                    if (isAdded) {
+                                        MaterialAlertDialogBuilder(requireContext())
+                                            .setTitle(getString(R.string.settings_restore_failed_title))
+                                            .setMessage(reason)
+                                            .setPositiveButton(android.R.string.ok, null)
+                                            .show()
+                                    }
+                                },
+                            )
+                        }
+                        .show()
+                }
+                .show()
+        }
     }
 
     override fun onCreateView(
@@ -1463,6 +1486,38 @@ class SettingsFragment : Fragment() {
                     renderTotalUsed(usageMap)
                 }
             }
+        }
+
+        // ── DB snapshot pruning ───────────────────────────────────────────────────────
+        val switchDbPrune  = binding.switchDbPrune
+        val rowDbPruneCount = binding.rowDbPruneCount
+        val tvDbPruneCount  = binding.tvDbPruneCount
+        val btnMinus        = binding.btnDbPruneMinus
+        val btnPlus         = binding.btnDbPrunePlus
+
+        fun refreshPruneCount() {
+            tvDbPruneCount.text = viewModel.getDbPruneCount().toString()
+        }
+
+        switchDbPrune.isChecked = viewModel.getDbPruneEnabled()
+        rowDbPruneCount.alpha   = if (switchDbPrune.isChecked) 1f else 0.4f
+        rowDbPruneCount.isEnabled = switchDbPrune.isChecked
+        refreshPruneCount()
+
+        switchDbPrune.setOnCheckedChangeListener { _, checked ->
+            viewModel.setDbPruneEnabled(checked)
+            rowDbPruneCount.alpha     = if (checked) 1f else 0.4f
+            rowDbPruneCount.isEnabled = checked
+        }
+
+        btnMinus.setOnClickListener {
+            viewModel.setDbPruneCount(viewModel.getDbPruneCount() - 1)
+            refreshPruneCount()
+        }
+
+        btnPlus.setOnClickListener {
+            viewModel.setDbPruneCount(viewModel.getDbPruneCount() + 1)
+            refreshPruneCount()
         }
     }
 
