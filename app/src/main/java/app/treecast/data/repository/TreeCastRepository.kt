@@ -40,7 +40,8 @@ class TreeCastRepository(context: Context) {
         color: String = "#6C63FF"
     ): Long = topicDao.insert(TopicEntity(name = name, parentId = parentId, icon = icon, color = color))
 
-    suspend fun updateTopic(topic: TopicEntity) = topicDao.update(topic)
+    suspend fun updateTopic(topic: TopicEntity) =
+        topicDao.update(topic.copy(updatedAt = System.currentTimeMillis()))
     suspend fun deleteTopic(topic: TopicEntity) = topicDao.delete(topic)
     fun getAllTopics(): Flow<List<TopicEntity>> = topicDao.getAllTopics()
     suspend fun topicExists(id: Long): Boolean = topicDao.getById(id) != null

@@ -23,9 +23,13 @@ import androidx.room.PrimaryKey
  * "back up on connect AND on a 24-hour schedule." The user can selectively
  * disable either without losing the other's configuration.
  *
- * [backupPreferences] is stubbed for a future feature that will include
- * app preferences (SharedPreferences) in the backup archive. It has no effect
- * on backup behaviour in the current version.
+ * ## Column history
+ * - v8:  Initial columns (volume_uuid, on_connect_enabled, scheduled_enabled,
+ *        interval_hours, last_backup_at, backup_dir_uri, backup_preferences).
+ * - v11: Added volume_label (nullable — populated on first backup or mount).
+ * - v12: Added export_metadata_enabled — when true, the backup worker writes
+ *        a companion .json metadata file alongside each .m4a during backup.
+ *        Defaults to false; the user opts in via Settings.
  */
 @Entity(tableName = "backup_targets")
 data class BackupTargetEntity(
@@ -121,4 +125,17 @@ data class BackupTargetEntity(
      */
     @ColumnInfo(name = "backup_preferences")
     val backupPreferences: Boolean = false,
+
+    /**
+     * Whether to write a companion .json metadata file alongside each .m4a
+     * during backup. When enabled, the backup worker calls [RecordingExporter]
+     * for any recording whose [RecordingEntity.metadataUpdatedAt] (or its
+     * topic's [TopicEntity.updatedAt]) is newer than the existing destination
+     * JSON's exportedAt field. Recordings with a fresh destination JSON are
+     * skipped.
+     *
+     * Defaults to false — user opts in via Settings.
+     */
+    @ColumnInfo(name = "export_metadata_enabled")
+    val exportMetadataEnabled: Boolean = false,
 )

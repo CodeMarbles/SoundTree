@@ -19,6 +19,15 @@ import app.treecast.util.WaveformStatus
  * Existing rows are migrated to [WaveformStatus.PENDING] so they get picked
  * up by [app.treecast.worker.WaveformWorker] on the first launch after
  * the update.
+ *
+ * DB version 12 adds [metadataUpdatedAt] to track the freshness of all
+ * content metadata associated with this recording. Bumped by the repository
+ * on any mutation to the recording itself (title, description, tags, topic
+ * assignment, favourite status) or to any of its marks (add, delete, nudge).
+ * Backfilled from [createdAt] for existing rows.
+ *
+ * Intentionally NOT bumped by [updatePlayback] — playback position and
+ * listened state are device-local state, not content metadata.
  */
 @Entity(
     tableName = "recordings",
@@ -80,30 +89,24 @@ data class RecordingEntity(
      * Use this rather than parsing [filePath] to identify the volume, as path
      * prefixes can theoretically change between OS versions.
      */
-    @ColumnInfo(name = "storage_volume_uuid")
-    val storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
+    @ColumnInfo(name = "storage_volume_uuid") val storageVolumeUuid: String = StorageVolumeHelper.UUID_PRIMARY,
+
+    @ColumnInfo(name = "waveform_status") val waveformStatus: Int = WaveformStatus.PENDING,
+
+    @ColumnInfo(name = "db_inserted_at") val dbInsertedAt: Long = System.currentTimeMillis(),
 
     /**
-     * Background waveform generation state. One of [WaveformStatus.PENDING],
-     * [WaveformStatus.IN_PROGRESS], [WaveformStatus.DONE], or
-     * [WaveformStatus.FAILED].
+     * Epoch ms of the most recent change to this recording's content metadata.
      *
-     * New recordings start as PENDING and are immediately enqueued in
-     * [app.treecast.worker.WaveformWorker]. The worker transitions this
-     * to IN_PROGRESS → DONE (or FAILED). Once DONE, [WaveformCache] holds the
-     * amplitude array and this column is never updated again.
+     * "Content metadata" means anything that belongs in an export: title,
+     * description, tags, topic assignment, favourite status, and marks.
+     * Bumped transactionally alongside the change that caused it.
      *
-     * Default is PENDING so all rows created before this column existed get
-     * processed after the v4→v5 migration.
+     * Used by the backup export pass to decide whether the destination JSON
+     * is still fresh (skip) or needs to be regenerated (re-export).
+     *
+     * Backfilled from [createdAt] for rows existing before DB version 12.
+     * NOT bumped by playback state changes ([playbackPositionMs], [isListened]).
      */
-    @ColumnInfo(name = "waveform_status")
-    val waveformStatus: Int = WaveformStatus.PENDING,
-
-    /**
-     * Wall-clock time this row was inserted into the database.
-     * Used exclusively for bookkeeping and the "NEW" badge in [RecordingsAdapter].
-     * Use [createdAt] for display, sorting, and all feature logic.
-     */
-    @ColumnInfo(name = "db_inserted_at")
-    val dbInsertedAt: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "metadata_updated_at") val metadataUpdatedAt: Long = System.currentTimeMillis(),
 )

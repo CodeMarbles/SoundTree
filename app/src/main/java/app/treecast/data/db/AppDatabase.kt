@@ -27,7 +27,7 @@ import app.treecast.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -283,10 +283,45 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_8_9,
                         MIGRATION_9_10,
                         MIGRATION_10_11,
+                        MIGRATION_11_12,
                     )
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
+            }
+        }
+
+        /**
+         * v11 → v12: Add metadata_updated_at to recordings; add export_metadata_enabled
+         * to backup_targets.
+         *
+         * metadata_updated_at tracks the freshness of all exportable content metadata
+         * for a recording (title, description, tags, topic assignment, favourite,
+         * marks). It is bumped transactionally by the repository on any such mutation.
+         * Backfilled from created_at for existing rows — a reasonable proxy since
+         * we have no mutation history before this version.
+         *
+         * export_metadata_enabled is the per-target opt-in flag for writing companion
+         * .json metadata files during backup. Defaults to 0 (false) — user must
+         * explicitly enable in Settings.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // recordings: add metadata_updated_at, backfill from created_at.
+                // DEFAULT 0 satisfies the NOT NULL constraint during ALTER TABLE;
+                // the UPDATE immediately overwrites every existing row with a
+                // meaningful value before any app code can observe the column.
+                db.execSQL(
+                    "ALTER TABLE recordings ADD COLUMN metadata_updated_at INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "UPDATE recordings SET metadata_updated_at = created_at"
+                )
+
+                // backup_targets: add export_metadata_enabled, default off.
+                db.execSQL(
+                    "ALTER TABLE backup_targets ADD COLUMN export_metadata_enabled INTEGER NOT NULL DEFAULT 0"
+                )
             }
         }
 
