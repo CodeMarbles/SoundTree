@@ -25,6 +25,7 @@ import app.treecast.databinding.FragmentTopicDetailsBinding
 import app.treecast.ui.MainActivity
 import app.treecast.ui.MainViewModel
 import app.treecast.ui.common.EmojiPickerBottomSheet
+import app.treecast.ui.common.RecordingListController
 import app.treecast.ui.common.TopicPickerBottomSheet
 import app.treecast.ui.createTopic
 import app.treecast.ui.deleteRecording
@@ -35,7 +36,6 @@ import app.treecast.ui.play
 import app.treecast.ui.recording.RecordingDetailsDialogFragment
 import app.treecast.ui.renameRecording
 import app.treecast.ui.reparentTopic
-import app.treecast.ui.togglePlayPause
 import app.treecast.ui.topics.NewTopicDialog
 import app.treecast.ui.topics.RecordingsAdapter
 import app.treecast.ui.updateTopic
@@ -46,7 +46,6 @@ import app.treecast.ui.selectRecording
 import app.treecast.ui.setLibraryDetailsTopic
 import app.treecast.util.emojiToColor
 import app.treecast.util.themeColor
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -62,6 +61,11 @@ import kotlinx.coroutines.launch
  * This fragment observes [MainViewModel.libraryDetailsTopicId] to know which
  * topic to display. The DETAILS tab is greyed out until [openTopicDetails] is
  * called from [TopicsManageFragment].
+ *
+ * Recording-list wiring (move flow, adapter prefs, and the five shared
+ * adapter-state observers) is delegated to [RecordingListController].
+ * Topic-level wiring (hierarchy, header, stats, topic-reparent flow) remains
+ * here since it is unique to this fragment.
  */
 class TopicDetailsFragment : Fragment() {
 
@@ -70,6 +74,10 @@ class TopicDetailsFragment : Fragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var recordingsAdapter: RecordingsAdapter
+
+    // ── Recording-list controller ─────────────────────────────────────────────
+    // Owns: move flow, adapter.prefs, and the five shared adapter-state observers.
+    private lateinit var recordingListController: RecordingListController
 
     private var currentTopic: TopicEntity? = null
     private var newestFirst = true
@@ -87,16 +95,12 @@ class TopicDetailsFragment : Fragment() {
 
     private var previousTopicId: Long? = null
 
-    /**
-     * ID of the recording whose Move action is in flight.
-     * Set when the user taps "Move to topic…" on a recording row; cleared
-     * after the bottom sheet result is delivered.
-     */
-    private var pendingMoveRecordingId: Long = -1L
+    // NOTE: pendingMoveRecordingId has been removed — it now lives inside
+    // RecordingListController, which owns the full recording move flow.
 
     companion object {
         private const val REQUEST_REPARENT           = "TopicDetails_reparent"
-        private const val MOVE_RECORDING_REQUEST     = "RecordingMove_Details"
+        private const val MOVE_RECORDING_REQUEST     = "RecordingMove_Details"   // kept for controller
         private const val REQUEST_HIERARCHY_REPARENT = "TopicDetails_hierarchy_reparent"
     }
 
@@ -111,17 +115,38 @@ class TopicDetailsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupRecordingMoveResultListener()
+        // 1. Create the controller first — adapter references it via requestMove.
+        recordingListController = RecordingListController(
+            viewModel       = viewModel,
+            fragmentManager = childFragmentManager,
+            lifecycleOwner  = viewLifecycleOwner,
+            context         = requireContext(),
+            moveRequestKey  = MOVE_RECORDING_REQUEST,
+            movePickerTag   = "recording_move_picker_details",
+        )
+
+        // 2. Build the adapter.
         setupRecordingsAdapter()
+
+        // 3. Wire prefs + move-result listener into the controller.
+        recordingListController.setup(recordingsAdapter)
+
         setupSortButton()
-        setupHeaderInteractions()           // replaces setupEditButton()
+        setupHeaderInteractions()
         setupMoveButton()
         setupHierarchyReparentResultListener()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-                // Re-render whenever the selected topic changes OR topics list changes
+                // ── Shared: allTopics, playheadVis, nowPlaying, selectedRecordingId,
+                //           orphanVolumeUuids → all delegated to the controller.
+                with(recordingListController) { launchSharedObservers() }
+
+                // ── Fragment-specific: topic header + hierarchy ───────────
+                // Re-render whenever the selected topic changes OR topics list changes.
+                // Note: allTopics is also collected by the controller (for adapter.topics),
+                // which is fine — StateFlows support multiple independent collectors.
                 launch {
                     viewModel.libraryDetailsTopicId.collect { topicId ->
                         val topics = viewModel.allTopics.value
@@ -134,6 +159,8 @@ class TopicDetailsFragment : Fragment() {
                         renderForTopic(topicId, topics)
                     }
                 }
+
+                // ── Fragment-specific: data source ───────────────────────
                 launch {
                     viewModel.allRecordings.collect { recordings ->
                         val topicId = viewModel.libraryDetailsTopicId.value ?: return@collect
@@ -142,49 +169,37 @@ class TopicDetailsFragment : Fragment() {
                         updateTopicStats(filtered)
                     }
                 }
-                // Playhead visualisation settings — full rebind only when toggled
-                launch {
-                    combine(
-                        viewModel.playheadVisEnabled,
-                        viewModel.playheadVisIntensity
-                    ) { enabled, intensity -> Pair(enabled, intensity) }
-                        .collect { (enabled, intensity) ->
-                            recordingsAdapter.playheadVisEnabled   = enabled
-                            recordingsAdapter.playheadVisIntensity = intensity
-                        }
-                }
-                // Live playback position — partial bind (PAYLOAD_PROGRESS) on each tick,
-                // touching only the now-playing row's split background.
-                launch {
-                    viewModel.nowPlaying.collect { state ->
-                        // Push the position — updateNowPlayingProgress handles the targeted notify.
-                        recordingsAdapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
-                        recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
-                        recordingsAdapter.isPlaying    = state?.isPlaying ?: false
-                    }
-                }
-                launch {
-                    viewModel.orphanVolumeUuids.collect { uuids ->
-                        recordingsAdapter.orphanVolumeUuids = uuids
-                    }
-                }
-                launch {
-                    viewModel.selectedRecordingId.collect { id ->
-                        recordingsAdapter.selectedRecordingId = id
-                    }
-                }
             }
         }
     }
 
-    // ── Header interactions ────────────────────────────────────────────────────
+    // ── Adapter setup ─────────────────────────────────────────────────────────
+    // NOTE: adapter.prefs and onMoveRequested are now owned by the controller;
+    //       all other callbacks remain here as they are unique to this fragment.
 
-    /**
-     * Wires the always-active header controls:
-     *   • Icon tap  → emoji picker
-     *   • Name tap  → rename dialog
-     * Replaces the old edit-mode toggle approach.
-     */
+    private fun setupRecordingsAdapter() {
+        recordingsAdapter = RecordingsAdapter(
+            onPlayPause             = recordingListController.buildOnPlayPause {
+                (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
+            },
+            onRename                = { id, title -> viewModel.renameRecording(id, title) },
+            onMoveRequested         = { recId, topicId -> recordingListController.requestMove(recId, topicId) },
+            onDelete                = { rec -> viewModel.deleteRecording(rec) },
+            onTopicDetailsRequested = {}, // hidden on this tab
+            onSelect                = { id ->
+                viewModel.selectRecording(id)
+                RecordingDetailsDialogFragment.newInstance(id)
+                    .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
+            },
+        )
+
+        binding.recyclerTopicRecordings.apply {
+            adapter = recordingsAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+            isNestedScrollingEnabled = false
+        }
+    }
+
     private fun setupHeaderInteractions() {
         binding.tvTopicIcon.setOnClickListener {
             val topic = currentTopic ?: return@setOnClickListener
@@ -387,60 +402,7 @@ class TopicDetailsFragment : Fragment() {
             .show()
     }
 
-    // ── Recordings list ────────────────────────────────────────────────
-
-    private fun setupRecordingMoveResultListener() {
-        childFragmentManager.setFragmentResultListener(
-            MOVE_RECORDING_REQUEST, viewLifecycleOwner
-        ) { _, bundle ->
-            val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
-            val recId = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
-            viewModel.moveRecording(recId, topicId)
-            pendingMoveRecordingId = -1L
-        }
-    }
-
-    private fun requestRecordingMove(recordingId: Long, currentTopicId: Long?) {
-        pendingMoveRecordingId = recordingId
-        TopicPickerBottomSheet.newInstance(
-            selectedTopicId = currentTopicId,
-            requestKey      = MOVE_RECORDING_REQUEST
-        ).show(childFragmentManager, "recording_move_picker_details")
-    }
-
-    private fun setupRecordingsAdapter() {
-        recordingsAdapter = RecordingsAdapter(
-            onPlayPause = { rec ->
-                val nowPlaying = viewModel.nowPlaying.value
-                if (nowPlaying?.recording?.id == rec.id) {
-                    viewModel.togglePlayPause()
-                } else {
-                    viewModel.play(rec)
-                    if (viewModel.autoNavigateToListen.value) {
-                        (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
-                    }
-                }
-            },
-            onRename = { id, title -> viewModel.renameRecording(id, title) },
-            onMoveRequested = { recordingId, currentTopicId ->
-                requestRecordingMove(recordingId, currentTopicId)
-            },
-            onDelete = { rec -> viewModel.deleteRecording(rec) },
-            onTopicDetailsRequested = {},   // hidden on this tab
-            onSelect = { id ->
-                viewModel.selectRecording(id)
-                RecordingDetailsDialogFragment.newInstance(id)
-                    .show(childFragmentManager, RecordingDetailsDialogFragment.TAG)
-            },
-        )
-        recordingsAdapter.prefs = requireContext().getSharedPreferences("treecast_settings", Context.MODE_PRIVATE)
-
-        binding.recyclerTopicRecordings.apply {
-            adapter = recordingsAdapter
-            layoutManager = LinearLayoutManager(requireContext())
-            isNestedScrollingEnabled = false
-        }
-    }
+    // ── Sort button ───────────────────────────────────────────────────────────
 
     private fun setupSortButton() {
         binding.btnSortRecordings.setOnClickListener {
@@ -450,35 +412,15 @@ class TopicDetailsFragment : Fragment() {
                 else             R.string.library_sort_oldest_first
             )
             val topicId = viewModel.libraryDetailsTopicId.value ?: return@setOnClickListener
-            val recordings = viewModel.allRecordings.value.filter { it.topicId == topicId }
-            submitSortedRecordings(recordings)
+            val filtered = viewModel.allRecordings.value.filter { it.topicId == topicId }
+            submitSortedRecordings(filtered)
         }
     }
 
     private fun submitSortedRecordings(recordings: List<RecordingEntity>) {
-        val sorted = if (newestFirst) {
-            recordings.sortedByDescending { it.createdAt }
-        } else {
-            recordings.sortedBy { it.createdAt }
-        }
-        recordingsAdapter.topics = viewModel.allTopics.value
-        recordingsAdapter.submitList(sorted) {
-            val selectedId = viewModel.selectedRecordingId.value
-            if (selectedId != -1L) {
-                val pos = sorted.indexOfFirst { it.id == selectedId }
-                if (pos != -1) {
-                    binding.recyclerTopicRecordings.post {
-                        val itemView = (binding.recyclerTopicRecordings.layoutManager as? LinearLayoutManager)
-                            ?.findViewByPosition(pos)
-                        if (itemView != null) {
-                            val scrollY = binding.recyclerTopicRecordings.top + itemView.top
-                            binding.nestedScrollView.smoothScrollTo(0, scrollY)
-                        }
-                    }
-                }
-            }
-        }
-        binding.tvNoRecordings.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+        val sorted = if (newestFirst) recordings.sortedByDescending { it.createdAt }
+        else             recordings.sortedBy { it.createdAt }
+        recordingsAdapter.submitList(sorted)
     }
 
     // ── Hierarchy map ──────────────────────────────────────────────────
