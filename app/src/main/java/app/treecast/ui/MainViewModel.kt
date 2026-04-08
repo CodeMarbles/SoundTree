@@ -1046,6 +1046,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         MutableStateFlow(prefs.getFloat(PREF_PLAYHEAD_VIS_INTENSITY, 0.5f))
     val playheadVisIntensity: StateFlow<Float> = _playheadVisIntensity
 
+    internal val _nearEndEnabled =
+        MutableStateFlow(prefs.getBoolean(
+            PlaybackPositionHelper.PREF_NEAR_END_ENABLED,
+            PlaybackPositionHelper.DEFAULT_NEAR_END_ENABLED
+        ))
+    val nearEndEnabled: StateFlow<Boolean> = _nearEndEnabled
+
     // Remember-mode is read directly from prefs by PlaybackPositionHelper —
     // no separate StateFlow needed for playback logic.  But the Settings UI
     // wants a reactive value to drive its picker highlight, so we expose one.

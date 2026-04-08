@@ -44,6 +44,7 @@ import app.treecast.ui.addBackupTarget
 import app.treecast.ui.cancelBackupForVolume
 import app.treecast.ui.getLastSessionOpenedAt
 import app.treecast.ui.getNearEndDurationThresholdSecs
+import app.treecast.ui.getNearEndEnabled
 import app.treecast.ui.getNearEndLongPct
 import app.treecast.ui.getNearEndShortSecs
 import app.treecast.ui.getRememberLongThresholdSecs
@@ -69,6 +70,7 @@ import app.treecast.ui.setLayoutOrder
 import app.treecast.ui.setMarkNudgeSecs
 import app.treecast.ui.setMarkRewindThresholdSecs
 import app.treecast.ui.setNearEndDurationThresholdSecs
+import app.treecast.ui.setNearEndEnabled
 import app.treecast.ui.setNearEndLongPct
 import app.treecast.ui.setNearEndShortSecs
 import app.treecast.ui.setPlayerWidgetVisibility
@@ -665,6 +667,18 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    /**
+     * Recursively enables or disables all clickable/focusable children of [group].
+     * Used to prevent interaction with stepper rows when their section is toggled off.
+     */
+    private fun setChildrenEnabled(group: ViewGroup, enabled: Boolean) {
+        for (i in 0 until group.childCount) {
+            val child = group.getChildAt(i)
+            child.isEnabled = enabled
+            if (child is ViewGroup) setChildrenEnabled(child, enabled)
+        }
+    }
+
     private fun setupProcessingSection() {
         // Button: regenerate all waveforms from scratch.
         binding.btnReprocessWaveforms.setOnClickListener {
@@ -1235,9 +1249,40 @@ class SettingsFragment : Fragment() {
             renderThreshold()
         }
 
-        // Near-end short window stepper
-        val tvShort = binding.tvNearEndShortValue
-        val tvShortDesc = binding.tvNearEndShortDesc
+        // ── Near-End Reset ────────────────────────────────────────────────────────────
+
+        val switchNearEnd       = binding.switchNearEndEnabled
+        val rowShort            = binding.rowNearEndShort
+        val rowLong             = binding.rowNearEndLong
+        val rowNearEndThreshold = binding.rowNearEndThreshold
+        val tvShort             = binding.tvNearEndShortValue
+        val tvShortDesc         = binding.tvNearEndShortDesc
+        val tvLong              = binding.tvNearEndLongValue
+
+        /** Alpha applied to the stepper rows when the master toggle is off. */
+        val DISABLED_ALPHA = 0.38f
+
+        fun renderNearEndSection() {
+            val enabled = viewModel.getNearEndEnabled()
+
+            // Sync the switch without triggering its listener.
+            switchNearEnd.setOnCheckedChangeListener(null)
+            switchNearEnd.isChecked = enabled
+            switchNearEnd.setOnCheckedChangeListener { _, checked ->
+                viewModel.setNearEndEnabled(checked)
+                renderNearEndSection()
+            }
+
+            // Dim and block interaction on the three stepper rows when disabled.
+            val alpha = if (enabled) 1f else DISABLED_ALPHA
+            rowShort.alpha     = alpha;  rowShort.isEnabled     = enabled
+            rowLong.alpha      = alpha;  rowLong.isEnabled      = enabled
+            rowNearEndThreshold.alpha = alpha;  rowNearEndThreshold.isEnabled = enabled
+            // Propagate enabled state to children so the +/− buttons don't fire.
+            setChildrenEnabled(rowShort,     enabled)
+            setChildrenEnabled(rowLong,      enabled)
+            setChildrenEnabled(rowNearEndThreshold, enabled)
+        }
 
         fun renderNearEndShort() {
             val secs = viewModel.getNearEndShortSecs()
@@ -1245,7 +1290,12 @@ class SettingsFragment : Fragment() {
             val thresholdMins = viewModel.getNearEndDurationThresholdSecs() / 60
             tvShortDesc.text = getString(R.string.settings_playback_near_end_short_desc, thresholdMins)
         }
+        fun renderNearEndLong() { tvLong.text = "${viewModel.getNearEndLongPct()}%" }
+
+        renderNearEndSection()
         renderNearEndShort()
+        renderNearEndLong()
+
         binding.btnNearEndShortDown.setOnClickListener {
             viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() - 5)
             renderNearEndShort()
@@ -1254,11 +1304,6 @@ class SettingsFragment : Fragment() {
             viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() + 5)
             renderNearEndShort()
         }
-
-        // Near-end long percentage stepper
-        val tvLong = binding.tvNearEndLongValue
-        fun renderNearEndLong() { tvLong.text = "${viewModel.getNearEndLongPct()}%" }
-        renderNearEndLong()
         binding.btnNearEndLongDown.setOnClickListener {
             viewModel.setNearEndLongPct(viewModel.getNearEndLongPct() - 1)
             renderNearEndLong()

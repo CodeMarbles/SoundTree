@@ -1785,8 +1785,50 @@
                             android:paddingTop="10dp"
                             android:paddingBottom="4dp" />
 
+                        <!-- Near-End Reset master toggle -->
+                        <LinearLayout
+                            android:id="@+id/rowNearEndEnabled"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_enabled"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_playback_near_end_enabled_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchNearEndEnabled"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp" />
+
+                        </LinearLayout>
+
                         <!-- Near-end short window row -->
                         <LinearLayout
+                            android:id="@+id/rowNearEndShort"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
@@ -1862,6 +1904,7 @@
 
                         <!-- Near-end long window row -->
                         <LinearLayout
+                            android:id="@+id/rowNearEndLong"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
@@ -1936,6 +1979,7 @@
 
                         <!-- Duration threshold row -->
                         <LinearLayout
+                            android:id="@+id/rowNearEndThreshold"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"

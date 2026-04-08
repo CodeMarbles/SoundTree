@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.LifecycleOwner
 import app.treecast.data.entities.RecordingEntity
-import app.treecast.ui.MainActivity
 import app.treecast.ui.MainViewModel
 import app.treecast.ui.moveRecording
 import app.treecast.ui.play
@@ -44,6 +43,7 @@ import kotlinx.coroutines.launch
  *   3. `nowPlaying         → adapter.updateNowPlayingProgress / nowPlayingId / isPlaying`
  *   4. `selectedRecordingId → adapter.selectedRecordingId`
  *   5. `orphanVolumeUuids  → adapter.orphanVolumeUuids`
+ *   6. `nearEndEnabled → adapter.notifyDataSetChanged()`
  *
  * - **Standard onPlayPause callback** — [buildOnPlayPause] returns the lambda
  *   that is identical across all three fragments; callers supply a
@@ -186,6 +186,13 @@ class RecordingListController(
             viewModel.orphanVolumeUuids.collect { uuids ->
                 adapter.orphanVolumeUuids = uuids
             }
+        }
+
+        // 6. Near-end reset toggle — fractions computed by PlaybackPositionHelper
+        //    read the pref directly, so a full rebind is all that's needed when
+        //    the master switch changes.
+        launch {
+            viewModel.nearEndEnabled.collect { adapter.notifyDataSetChanged() }
         }
     }
 }

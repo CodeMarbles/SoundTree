@@ -389,6 +389,10 @@
     <string name="settings_playback_memory_long_threshold">Minimum length to remember</string>
     <string name="settings_playback_memory_long_threshold_desc">Positions are saved only for recordings at least this long</string>
 
+    <!-- Near-end reset master toggle -->
+    <string name="settings_playback_near_end_enabled">Reset near end of recording</string>
+    <string name="settings_playback_near_end_enabled_desc">Restart from the beginning if you stop close to the end</string>
+
     <!-- Near-end reset sub-header -->
     <string name="settings_playback_near_end_title">Near-End Reset</string>
 

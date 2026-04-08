@@ -1,6 +1,7 @@
 package app.treecast.ui.library
 
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
@@ -23,13 +24,20 @@ import android.graphics.drawable.Drawable
  * Drawable mutation).
  */
 class SplitBackgroundDrawable(
-    playedColor:   Int,
-    unplayedColor: Int,
-    fraction:      Float = 0f,
+    playedColor:    Int,
+    unplayedColor:  Int,
+    fraction:       Float = 0f,
+    strokeColor:    Int   = Color.TRANSPARENT,
+    strokeWidthPx:  Float = 0f,
 ) : Drawable() {
 
     private val playedPaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = playedColor }
     private val unplayedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = unplayedColor }
+    private val strokePaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = strokeColor
+        strokeWidth = strokeWidthPx
+    }
 
     private var _fraction: Float = fraction.coerceIn(0f, 1f)
 
@@ -40,6 +48,14 @@ class SplitBackgroundDrawable(
     var unplayedColor: Int
         get() = unplayedPaint.color
         set(value) { unplayedPaint.color = value; invalidateSelf() }
+
+    var strokeColor: Int
+        get() = strokePaint.color
+        set(value) { strokePaint.color = value; invalidateSelf() }
+
+    var strokeWidthPx: Float
+        get() = strokePaint.strokeWidth
+        set(value) { strokePaint.strokeWidth = value; invalidateSelf() }
 
     /** Current split position in [0f, 1f]. */
     val fraction: Float get() = _fraction
@@ -63,23 +79,29 @@ class SplitBackgroundDrawable(
 
         val split = w * _fraction
 
-        if (split > 0f) {
-            canvas.drawRect(0f, 0f, split, h, playedPaint)
-        }
-        if (split < w) {
-            canvas.drawRect(split, 0f, w, h, unplayedPaint)
+        if (split > 0f)  canvas.drawRect(0f, 0f, split, h, playedPaint)
+        if (split < w)   canvas.drawRect(split, 0f, w, h, unplayedPaint)
+
+        // Stroke drawn last so it sits on top of both fill regions.
+        // Inset by half stroke width so the line is fully inside the view bounds.
+        val sw = strokePaint.strokeWidth
+        if (sw > 0f && Color.alpha(strokePaint.color) > 0) {
+            val inset = sw / 2f
+            canvas.drawRect(inset, inset, w - inset, h - inset, strokePaint)
         }
     }
 
     override fun setAlpha(alpha: Int) {
         playedPaint.alpha   = alpha
         unplayedPaint.alpha = alpha
+        strokePaint.alpha   = alpha
         invalidateSelf()
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         playedPaint.colorFilter   = colorFilter
         unplayedPaint.colorFilter = colorFilter
+        strokePaint.colorFilter   = colorFilter
         invalidateSelf()
     }
 

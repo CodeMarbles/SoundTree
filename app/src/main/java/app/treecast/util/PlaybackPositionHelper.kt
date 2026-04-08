@@ -73,6 +73,16 @@ object PlaybackPositionHelper {
     const val DEFAULT_NEAR_END_SHORT_SECS           = 30
     const val DEFAULT_NEAR_END_LONG_PCT             = 5
     const val DEFAULT_NEAR_END_DURATION_THRESHOLD_SECS = 300
+    /**
+     * Master switch for near-end reset behaviour.
+     * When false, [isNearEnd] always returns false and stored positions are
+     * never clamped to zero on account of being close to the end.
+     * Default: true (feature on, preserving previous behaviour).
+     */
+    const val PREF_NEAR_END_ENABLED = "near_end_reset_enabled"
+
+    // In the defaults block:
+    const val DEFAULT_NEAR_END_ENABLED = true
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -135,6 +145,10 @@ object PlaybackPositionHelper {
 
     private fun isNearEnd(posMs: Long, durationMs: Long, prefs: SharedPreferences): Boolean {
         if (durationMs <= 0L) return false
+
+        // Master toggle — when off, never treat any position as near-end.
+        if (!prefs.getBoolean(PREF_NEAR_END_ENABLED, DEFAULT_NEAR_END_ENABLED)) return false
+
         val thresholdDurationMs = prefs.getInt(
             PREF_NEAR_END_DURATION_THRESHOLD_SECS,
             DEFAULT_NEAR_END_DURATION_THRESHOLD_SECS
@@ -143,14 +157,12 @@ object PlaybackPositionHelper {
         val remaining = durationMs - posMs
 
         return if (durationMs < thresholdDurationMs) {
-            // Short recording: use fixed-seconds window
             val windowMs = prefs.getInt(
                 PREF_NEAR_END_SHORT_SECS,
                 DEFAULT_NEAR_END_SHORT_SECS
             ) * 1_000L
             remaining <= windowMs
         } else {
-            // Long recording: use percentage window
             val pct = prefs.getInt(PREF_NEAR_END_LONG_PCT, DEFAULT_NEAR_END_LONG_PCT)
             val windowMs = (durationMs * pct / 100L)
             remaining <= windowMs

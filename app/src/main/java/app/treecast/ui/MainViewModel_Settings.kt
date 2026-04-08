@@ -213,6 +213,19 @@ fun MainViewModel.setRememberLongThresholdSecs(secs: Int) {
 
 // ── Near-end reset ────────────────────────────────────────────────────────────
 
+fun MainViewModel.getNearEndEnabled(): Boolean =
+    prefs.getBoolean(
+        PlaybackPositionHelper.PREF_NEAR_END_ENABLED,
+        PlaybackPositionHelper.DEFAULT_NEAR_END_ENABLED
+    )
+
+fun MainViewModel.setNearEndEnabled(enabled: Boolean) {
+    _nearEndEnabled.value = enabled
+    prefs.edit()
+        .putBoolean(PlaybackPositionHelper.PREF_NEAR_END_ENABLED, enabled)
+        .apply()
+}
+
 fun MainViewModel.getNearEndShortSecs(): Int =
     prefs.getInt(
         PlaybackPositionHelper.PREF_NEAR_END_SHORT_SECS,

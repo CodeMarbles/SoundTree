@@ -3,6 +3,7 @@ package app.treecast.ui.topics
 import android.app.AlertDialog
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -156,7 +157,7 @@ class RecordingsAdapter(
         private val tvMeta:        TextView  = v.findViewById(R.id.tvMeta)
         private val ivOverflow:    ImageView = v.findViewById(R.id.ivOverflow)
         /** Retained across partial binds so updateProgress can move the split cheaply. */
-        private var splitBg: SplitBackgroundDrawable? = null
+        private var splitBg:       SplitBackgroundDrawable? = null
 
         fun bind(rec: RecordingEntity) {
             tvTitle.text = rec.title
@@ -171,16 +172,12 @@ class RecordingsAdapter(
                 tvTopicIcon.visibility = View.GONE
             }
 
-            // ── Selection highlight ───────────────────────────────────
+            // ── Background (selection border + progress split) ────────
+            // applySplitBackground owns the background for all rows.
+            // When vis is enabled it draws the split + an accent-coloured border
+            // for selected rows. When vis is disabled it falls back to a flat
+            // selection colour or null.
             val isSelected = rec.id == selectedRecordingId
-            if (isSelected) {
-                // Selection colour: we own the background here, so clear any stale splitBg ref
-                // so applySplitBackground (which returns early for isSelected) doesn't interfere.
-                splitBg = null
-                itemView.setBackgroundColor(itemView.context.themeColor(R.attr.colorSurfaceElevated))
-            }
-            // For non-selected rows, DO NOT set the background here.
-            // applySplitBackground owns it: it will either set the split drawable or clear to null.
             applySplitBackground(rec, isSelected)
 
             // ── Orphan (storage-offline) state ────────────────────────
@@ -347,36 +344,57 @@ class RecordingsAdapter(
         }
 
         /**
-         * Applies or updates the split background drawable.
-         * When [isSelected] is true, the solid selection colour already occupies
-         * itemView.background so we skip the split and clear any stale drawable reference.
+         * Sets [itemView]'s background to reflect both playback progress and
+         * selection state.
+         *
+         * When vis is ENABLED:
+         *   - All rows use [SplitBackgroundDrawable] so progress is always visible.
+         *   - Selected rows additionally draw an accent-coloured border on top of
+         *     the split, so the selection indicator survives the split background.
+         *
+         * When vis is DISABLED:
+         *   - Selected rows get a flat [colorSurfaceElevated] background (previous
+         *     behaviour, preserved for the no-vis case).
+         *   - Unselected rows have no background (null).
          */
         private fun applySplitBackground(rec: RecordingEntity, isSelected: Boolean) {
-            if (!playheadVisEnabled || isSelected) {
-                // Either vis is off or a solid selection bg is already set — nothing to do.
-                // Clear the reference so the next full bind starts fresh.
-                if (splitBg != null) {
-                    splitBg = null
+            if (!playheadVisEnabled) {
+                // Vis off: discard any split drawable and fall back to flat colour.
+                splitBg = null
+                if (isSelected) {
+                    itemView.setBackgroundColor(
+                        itemView.context.themeColor(R.attr.colorSurfaceElevated))
+                } else {
                     itemView.background = null
                 }
                 return
             }
 
-            val context = itemView.context
-            val fraction = computeFraction(rec)
-            val (playedColor, unplayedColor) = buildColors(context)
+            // Vis on: SplitBackgroundDrawable handles everything, including the
+            // selection border via its stroke fields.
+            val context       = itemView.context
+            val fraction      = computeFraction(rec)
+            val (played, unplayed) = buildColors(context)
+            val strokeColor   = if (isSelected) context.themeColor(R.attr.colorAccent)
+            else Color.TRANSPARENT
+            val strokeWidthPx = if (isSelected) 2f * context.resources.displayMetrics.density
+            else 0f
 
             val existing = splitBg
             if (existing != null) {
-                existing.playedColor   = playedColor
-                existing.unplayedColor = unplayedColor
+                existing.playedColor   = played
+                existing.unplayedColor = unplayed
+                existing.strokeColor   = strokeColor
+                existing.strokeWidthPx = strokeWidthPx
                 existing.setFraction(fraction)
-                // The drawable is already set as the background; no need to re-set it.
+                // Drawable is already set as background; no re-set needed.
             } else {
                 val bg = SplitBackgroundDrawable(
-                    playedColor   = playedColor,
-                    unplayedColor = unplayedColor,
+                    playedColor   = played,
+                    unplayedColor = unplayed,
                     fraction      = fraction,
+                    strokeColor   = strokeColor,
+                    strokeWidthPx = strokeWidthPx,
                 )
                 splitBg = bg
                 itemView.background = bg
