@@ -157,18 +157,12 @@ class TopicDetailsFragment : Fragment() {
                 // touching only the now-playing row's split background.
                 launch {
                     viewModel.nowPlaying.collect { state ->
-                        recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
-                        recordingsAdapter.isPlaying    = state?.isPlaying ?: false
                         // Push the position — updateNowPlayingProgress handles the targeted notify.
                         recordingsAdapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
+                        recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
+                        recordingsAdapter.isPlaying    = state?.isPlaying ?: false
                     }
                 }
-//                launch {
-//                    viewModel.nowPlaying.collect { state ->
-//                        recordingsAdapter.nowPlayingId = state?.recording?.id ?: -1L
-//                        recordingsAdapter.isPlaying    = state?.isPlaying ?: false
-//                    }
-//                }
                 launch {
                     viewModel.orphanVolumeUuids.collect { uuids ->
                         recordingsAdapter.orphanVolumeUuids = uuids

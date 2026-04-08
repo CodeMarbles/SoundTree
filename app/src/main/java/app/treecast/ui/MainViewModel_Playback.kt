@@ -38,6 +38,25 @@ fun MainViewModel.play(recording: RecordingEntity) {
 
     stopProgressPolling()
 
+    // ── Save outgoing recording's position before switching ───────────────
+    // The normal save path (onIsPlayingChanged → saveCurrentPosition) is
+    // unreliable during a recording swap: by the time the listener fires,
+    // _nowPlaying already points to the new recording, and the controller's
+    // isPlaying/playbackState no longer reflect the outgoing item.
+    // Capture both values synchronously here, before any state mutation.
+    val outgoing = _nowPlaying.value
+    if (outgoing != null && outgoing.recording.id != recording.id) {
+        val outgoingPos = mediaController?.currentPosition ?: outgoing.positionMs
+        val outgoingRec = outgoing.recording
+        viewModelScope.launch {
+            if (PlaybackPositionHelper.shouldPersistPosition(outgoingRec, prefs)) {
+                repo.updatePlayback(outgoingRec.id, outgoingPos, false)
+            } else {
+                repo.updatePlayback(outgoingRec.id, 0L, false)
+            }
+        }
+    }
+
     val uri       = Uri.fromFile(File(recording.filePath))
     val topic     = allTopics.value.firstOrNull { it.id == recording.topicId }
     val topicName = topic?.name

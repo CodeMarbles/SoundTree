@@ -192,18 +192,12 @@ class AllRecordingsFragment : Fragment() {
                 // touching only the now-playing row's split background.
                 launch {
                     viewModel.nowPlaying.collect { state ->
-                        adapter.nowPlayingId = state?.recording?.id ?: -1L
-                        adapter.isPlaying    = state?.isPlaying ?: false
                         // Push the position — updateNowPlayingProgress handles the targeted notify.
                         adapter.updateNowPlayingProgress(state?.positionMs ?: 0L)
+                        adapter.nowPlayingId = state?.recording?.id ?: -1L
+                        adapter.isPlaying    = state?.isPlaying ?: false
                     }
                 }
-//                launch {
-//                    viewModel.nowPlaying.collect { state ->
-//                        adapter.nowPlayingId = state?.recording?.id ?: -1L
-//                        adapter.isPlaying    = state?.isPlaying ?: false
-//                    }
-//                }
                 launch {
                     viewModel.selectedRecordingId.collect { id ->
                         adapter.selectedRecordingId = id

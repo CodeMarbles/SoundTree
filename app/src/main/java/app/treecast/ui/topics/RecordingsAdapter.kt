@@ -173,10 +173,14 @@ class RecordingsAdapter(
 
             // ── Selection highlight ───────────────────────────────────
             val isSelected = rec.id == selectedRecordingId
-            itemView.setBackgroundColor(
-                if (isSelected) itemView.context.themeColor(R.attr.colorSurfaceElevated)
-                else android.graphics.Color.TRANSPARENT
-            )
+            if (isSelected) {
+                // Selection colour: we own the background here, so clear any stale splitBg ref
+                // so applySplitBackground (which returns early for isSelected) doesn't interfere.
+                splitBg = null
+                itemView.setBackgroundColor(itemView.context.themeColor(R.attr.colorSurfaceElevated))
+            }
+            // For non-selected rows, DO NOT set the background here.
+            // applySplitBackground owns it: it will either set the split drawable or clear to null.
             applySplitBackground(rec, isSelected)
 
             // ── Orphan (storage-offline) state ────────────────────────
@@ -351,7 +355,10 @@ class RecordingsAdapter(
             if (!playheadVisEnabled || isSelected) {
                 // Either vis is off or a solid selection bg is already set — nothing to do.
                 // Clear the reference so the next full bind starts fresh.
-                if (splitBg != null) splitBg = null
+                if (splitBg != null) {
+                    splitBg = null
+                    itemView.background = null
+                }
                 return
             }
 
@@ -390,10 +397,10 @@ class RecordingsAdapter(
         private fun computeFraction(rec: RecordingEntity): Float {
             if (rec.durationMs <= 0L) return 0f
             return if (rec.id == nowPlayingId) {
-                // Take whichever is further along: live position or stored position.
-                // This handles the brief moment between a seek and the next progress tick.
-                val pos = nowPlayingPositionMs.coerceAtLeast(rec.playbackPositionMs)
-                (pos.toFloat() / rec.durationMs).coerceIn(0f, 1f)
+                // nowPlayingPositionMs is always primed to the correct start position
+                // before nowPlayingId triggers a rebind (see collector ordering above),
+                // so no floor is needed and backward seeks reflect immediately.
+                (nowPlayingPositionMs.toFloat() / rec.durationMs).coerceIn(0f, 1f)
             } else {
                 prefs?.let { PlaybackPositionHelper.displayFraction(rec, it) } ?: 0f
             }
