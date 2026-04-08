@@ -202,7 +202,7 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
     // ── Metadata ──────────────────────────────────────────────────────────────
 
     private fun bindMetadata(log: BackupLogEntity) {
-        binding.tvDetailTrigger.text  = formatTrigger(log.trigger ?: "")
+        binding.tvDetailTrigger.text  = formatTrigger(log.trigger)
         binding.tvDetailDuration.text = formatDuration(log.startedAt, log.endedAt, requireContext())
         binding.tvDetailFiles.text = getString(
             R.string.backup_log_detail_files_summary,

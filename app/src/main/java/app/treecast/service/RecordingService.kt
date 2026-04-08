@@ -319,8 +319,7 @@ class RecordingService : Service() {
     private fun startWithSco() {
         scoReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                val state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1)
-                when (state) {
+                when (val state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1)) {
                     AudioManager.SCO_AUDIO_STATE_CONNECTED -> {
                         mainHandler.removeCallbacks(scoTimeoutRunnable)
                         unregisterScoReceiver()

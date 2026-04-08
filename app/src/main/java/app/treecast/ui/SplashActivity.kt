@@ -29,7 +29,7 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val repo = (application as app.treecast.TreeCastApp).repository
+        val repo = (application as TreeCastApp).repository
 
         lifecycleScope.launch(Dispatchers.IO) {
             val knownPaths = repo.getKnownFilePaths()

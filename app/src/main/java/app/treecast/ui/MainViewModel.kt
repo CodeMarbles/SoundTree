@@ -1035,7 +1035,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     internal val _migrationState =
-        MutableStateFlow<MigrationState>(MigrationState.Idle)
+        MutableStateFlow<MigrationState>(Idle)
     val migrationState: StateFlow<MigrationState> = _migrationState.asStateFlow()
 
     internal val _playheadVisEnabled =
