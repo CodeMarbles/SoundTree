@@ -220,6 +220,123 @@
                             android:background="?attr/colorSurfaceElevated"
                             android:layout_marginHorizontal="16dp" />
 
+                        <!-- Layout section (inside Appearance card) -->
+                        <LinearLayout
+                            android:id="@+id/cardLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/colorSurfaceBase"
+                            android:layout_marginBottom="12dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="14dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="@string/settings_label_layout"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_layout_title_bar"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginEnd="6dp" />
+
+                                <androidx.appcompat.widget.SwitchCompat
+                                    android:id="@+id/switchShowTitleBar"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checked="true" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="6dp"
+                                app:cardBackgroundColor="?attr/colorSurfaceElevated"
+                                app:cardCornerRadius="6dp"
+                                app:cardElevation="0dp"
+                                android:paddingHorizontal="16dp">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical"
+                                    android:paddingHorizontal="16dp"
+                                    android:paddingVertical="16dp">
+
+                                    <TextView
+                                        android:id="@+id/btnEditLayout"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="@string/settings_btn_layout_edit"
+                                        android:textSize="13sp"
+                                        android:textColor="?attr/colorAccent"
+                                        android:paddingHorizontal="12dp"
+                                        android:paddingVertical="8dp"
+                                        android:background="?attr/selectableItemBackground"
+                                        android:clickable="true"
+                                        android:focusable="true" />
+
+                                    <View
+                                        android:layout_width="0dp"
+                                        android:layout_height="1dp"
+                                        android:layout_weight="1" />
+
+                                    <app.treecast.ui.settings.LayoutReorderWidget
+                                        android:id="@+id/layoutReorderWidget"
+                                        android:layout_width="170dp"
+                                        android:layout_height="wrap_content" />
+
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ── WAVEFORM section ──────────────────────────────── -->
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_label_waveform"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:paddingHorizontal="4dp"
+                    android:paddingBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
                         <!-- Waveform style -->
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -495,109 +612,15 @@
                             </LinearLayout>
 
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="?attr/colorSurfaceElevated"
-                            android:layout_marginHorizontal="16dp" />
-
-                        <!-- Layout section (inside Appearance card) -->
-                        <LinearLayout
-                            android:id="@+id/cardLayout"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:background="?attr/colorSurfaceBase"
-                            android:layout_marginBottom="12dp">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:paddingHorizontal="16dp"
-                                android:paddingTop="14dp"
-                                android:paddingBottom="8dp">
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="@string/settings_label_layout"
-                                    android:textColor="?attr/colorTextPrimary"
-                                    android:textSize="15sp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/settings_layout_title_bar"
-                                    android:textColor="?attr/colorTextSecondary"
-                                    android:textSize="12sp"
-                                    android:layout_marginEnd="6dp" />
-
-                                <androidx.appcompat.widget.SwitchCompat
-                                    android:id="@+id/switchShowTitleBar"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:checked="true" />
-
-                            </LinearLayout>
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginBottom="6dp"
-                                app:cardBackgroundColor="?attr/colorSurfaceElevated"
-                                app:cardCornerRadius="6dp"
-                                app:cardElevation="0dp"
-                                android:paddingHorizontal="16dp">
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="horizontal"
-                                    android:gravity="center_vertical"
-                                    android:paddingHorizontal="16dp"
-                                    android:paddingVertical="16dp">
-
-                                    <TextView
-                                        android:id="@+id/btnEditLayout"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="@string/settings_btn_layout_edit"
-                                        android:textSize="13sp"
-                                        android:textColor="?attr/colorAccent"
-                                        android:paddingHorizontal="12dp"
-                                        android:paddingVertical="8dp"
-                                        android:background="?attr/selectableItemBackground"
-                                        android:clickable="true"
-                                        android:focusable="true" />
-
-                                    <View
-                                        android:layout_width="0dp"
-                                        android:layout_height="1dp"
-                                        android:layout_weight="1" />
-
-                                    <app.treecast.ui.settings.LayoutReorderWidget
-                                        android:id="@+id/layoutReorderWidget"
-                                        android:layout_width="170dp"
-                                        android:layout_height="wrap_content" />
-
-                                </LinearLayout>
-                            </com.google.android.material.card.MaterialCardView>
-
-                        </LinearLayout>
-
                     </LinearLayout>
-
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- ── WIDGETS section ───────────────────────────────── -->
+
+                <!-- ── RECORDING WIDGET section ───────────────────────────────── -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/settings_section_widgets"
+                    android:text="@string/settings_label_widget_recorder"
                     android:textColor="?attr/colorTextSecondary"
                     android:textSize="11sp"
                     android:textAllCaps="true"
@@ -785,11 +808,34 @@
 
                         </LinearLayout>
 
-                        <!-- Thick separator between widget sections -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="4dp"
-                            android:background="?attr/colorSurfaceElevated" />
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ── PLAYBACK WIDGET section ───────────────────────────────── -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_label_widget_player"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
 
                         <!-- Playback widget -->
                         <LinearLayout
@@ -2180,112 +2226,6 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- RECOVERY section -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_section_recording_recovery"
-                    android:textColor="?attr/colorTextSecondary"
-                    android:textSize="11sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.1"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp" />
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    app:cardBackgroundColor="?attr/colorSurfaceBase"
-                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="4dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingHorizontal="16dp"
-                            android:paddingVertical="12dp">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/settings_orphan_label_recoverable"
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="13sp" />
-
-                            <TextView
-                                android:id="@+id/tvOrphanRecoverableSummary"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="—"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="13sp" />
-
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="?attr/colorSurfaceElevated"
-                            android:layout_marginHorizontal="16dp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingHorizontal="16dp"
-                            android:paddingVertical="12dp">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/settings_orphan_label_unrecoverable"
-                                android:textColor="?attr/colorTextSecondary"
-                                android:textSize="13sp" />
-
-                            <TextView
-                                android:id="@+id/tvOrphanCorruptSummary"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="—"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="13sp" />
-
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="?attr/colorSurfaceElevated"
-                            android:layout_marginHorizontal="16dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnReviewOrphans"
-                            style="@style/Widget.MaterialComponents.Button.TextButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:layout_marginTop="4dp"
-                            android:layout_marginBottom="4dp"
-                            android:text="@string/settings_btn_review_orphans"
-                            android:textSize="13sp"
-                            android:textColor="?attr/colorAccent" />
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
                 <!-- BACKUPS section -->
                 <TextView
                     android:layout_width="match_parent"
@@ -2310,7 +2250,59 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <!-- Card header -->
+                        <!-- ── Recent Backups sub-section ───────────────────────────────────── -->
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="4dp"
+                            android:paddingBottom="4dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/backup_log_section_recent"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.06" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnViewAllHistory"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/backup_log_btn_view_all"
+                                android:textSize="12sp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp" />
+
+                        </LinearLayout>
+
+                        <!--
+                            Dynamically populated by SettingsFragment.renderBackupMiniLog().
+                            Shows the last 3 completed backup runs (any volume) using
+                            item_backup_log_row.xml with showVolumeLabel=true.
+                            Each row is tappable to open BackupLogDetailDialog.
+                        -->
+                        <LinearLayout
+                            android:id="@+id/containerBackupLog"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingBottom="8dp" />
+
+                        <!-- ── Automatic Backup Volumes subsection ──────────────────────────── -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -2500,59 +2492,6 @@
                             android:layout_height="wrap_content"
                             android:visibility="gone" />
 
-                        <!-- ── Recent Backups sub-section ───────────────────────────────────── -->
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="?attr/colorSurfaceElevated"
-                            android:layout_marginHorizontal="16dp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingStart="16dp"
-                            android:paddingEnd="4dp"
-                            android:paddingTop="12dp"
-                            android:paddingBottom="4dp">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/backup_log_section_recent"
-                                android:textColor="?attr/colorTextPrimary"
-                                android:textSize="13sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="0.06" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnViewAllHistory"
-                                style="@style/Widget.MaterialComponents.Button.TextButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/backup_log_btn_view_all"
-                                android:textSize="12sp"
-                                android:insetTop="0dp"
-                                android:insetBottom="0dp" />
-
-                        </LinearLayout>
-
-                        <!--
-                            Dynamically populated by SettingsFragment.renderBackupMiniLog().
-                            Shows the last 3 completed backup runs (any volume) using
-                            item_backup_log_row.xml with showVolumeLabel=true.
-                            Each row is tappable to open BackupLogDetailDialog.
-                        -->
-                        <LinearLayout
-                            android:id="@+id/containerBackupLog"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:paddingBottom="8dp" />
-
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
@@ -2599,6 +2538,112 @@
                             android:text="@string/settings_restore_btn_choose"
                             android:insetTop="0dp"
                             android:insetBottom="0dp" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- RECOVERY section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_section_recording_recovery"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceBase"
+                    app:cardCornerRadius="@dimen/settings_card_corner_radius"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_orphan_label_recoverable"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvOrphanRecoverableSummary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_orphan_label_unrecoverable"
+                                android:textColor="?attr/colorTextSecondary"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:id="@+id/tvOrphanCorruptSummary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="?attr/colorTextPrimary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="?attr/colorSurfaceElevated"
+                            android:layout_marginHorizontal="16dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReviewOrphans"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="4dp"
+                            android:text="@string/settings_btn_review_orphans"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorAccent" />
 
                     </LinearLayout>
 
@@ -3049,6 +3094,7 @@
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
                             android:paddingHorizontal="16dp"
+                            android:padding="4dp"
                             android:paddingVertical="12dp">
 
                             <TextView

@@ -469,7 +469,7 @@
     <string name="settings_label_total_used">Total used by TreeCast</string>
 
     <!-- Backup: card section titles -->
-    <string name="settings_backup_title">Automatic Backups</string>
+    <string name="settings_backup_title">Automatic Backup Devices</string>
     <string name="settings_backup_available_title">Available Backup Devices</string>
 
     <!-- Backup: designated target list — row content and empty states -->
