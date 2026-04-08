@@ -61,6 +61,9 @@ interface BackupTargetDao {
     @Query("DELETE FROM backup_targets WHERE volume_uuid = :volumeUuid")
     suspend fun deleteByUuid(volumeUuid: String)
 
+    @Query("UPDATE backup_targets SET export_metadata_enabled = :enabled WHERE volume_uuid = :volumeUuid")
+    suspend fun setExportMetadataEnabled(volumeUuid: String, enabled: Boolean)
+
     // ── Targeted field updates ────────────────────────────────────────────────
 
     /**

@@ -493,6 +493,8 @@
     <string name="settings_backup_config_sublabel_on_connect">Run a backup each time this drive is connected</string>
     <string name="settings_backup_config_label_scheduled">Scheduled backup</string>
     <string name="settings_backup_config_sublabel_scheduled">Run a backup on a fixed interval</string>
+    <string name="settings_backup_config_label_export_metadata">Export recording metadata</string>
+    <string name="settings_backup_config_sublabel_export_metadata">Write a JSON sidecar file for each recording during backup</string>
 
     <!-- Remove backup target — confirmation dialog -->
     <string name="settings_backup_config_remove_confirm_title">Remove backup target?</string>

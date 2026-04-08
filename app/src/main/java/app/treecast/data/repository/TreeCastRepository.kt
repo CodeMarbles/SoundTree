@@ -318,6 +318,13 @@ class TreeCastRepository(context: Context) {
         backupTargetDao.setBackupPreferences(volumeUuid, enabled)
 
     /**
+     * Toggles writing companion .json metadata files during backup for a target.
+     * No WorkManager changes needed — BackupWorker reads this flag at run time.
+     */
+    suspend fun setExportMetadataEnabled(volumeUuid: String, enabled: Boolean) =
+        backupTargetDao.setExportMetadataEnabled(volumeUuid, enabled)
+
+    /**
      * Re-enqueues a periodic WorkManager job for every backup target that has
      * scheduled backups enabled.
      *

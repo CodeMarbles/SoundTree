@@ -36,6 +36,7 @@ import app.treecast.ui.removeBackupTarget
 import app.treecast.ui.setBackupIntervalHours
 import app.treecast.ui.setBackupOnConnectEnabled
 import app.treecast.ui.setBackupScheduledEnabled
+import app.treecast.ui.setExportMetadataEnabled
 import app.treecast.ui.triggerManualBackup
 import app.treecast.util.backupDirDisplayPath
 import app.treecast.util.themeColor
@@ -93,6 +94,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         private const val ARG_DISPLAY_LABEL   = "display_label"
         private const val ARG_VOLUME_LABEL    = "volume_label"    // raw OS label; null when unnamed/unmounted
         private const val ARG_BACKUP_DIR_URI  = "backup_dir_uri"  // SAF tree URI; null when not yet chosen
+        private const val ARG_EXPORT_METADATA = "export_metadata_enabled"
 
         /** Interval options shown in the selector.
          *  Labels live in @array/settings_backup_interval_labels — parallel by index. */
@@ -109,6 +111,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                     putString(ARG_DISPLAY_LABEL,  state.displayLabel)
                     putString(ARG_VOLUME_LABEL,   state.volume?.label ?: state.entity.volumeLabel)
                     putString(ARG_BACKUP_DIR_URI, state.entity.backupDirUri)
+                    putBoolean(ARG_EXPORT_METADATA, state.entity.exportMetadataEnabled)
                 }
             }
 
@@ -282,6 +285,18 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         headerZone.addView(buildScheduledSection(ctx, args, px8, px12, px24))
 
         root.addView(headerZone)
+
+        // ── Metadata export toggle ────────────────────────────────────────────────
+        headerZone.addView(divider(px24))
+
+        headerZone.addView(switchRow(
+            ctx       = ctx,
+            label     = getString(R.string.settings_backup_config_label_export_metadata),
+            sublabel  = getString(R.string.settings_backup_config_sublabel_export_metadata),
+            checked   = args.getBoolean(ARG_EXPORT_METADATA),
+            px24      = px24,
+            onChanged = { enabled -> viewModel.setExportMetadataEnabled(volumeUuid, enabled) },
+        ))
 
         // ── History section header — title + Clear button (2D) ───────────────
         root.addView(divider(px24))

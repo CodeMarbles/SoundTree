@@ -92,6 +92,14 @@ fun MainViewModel.setBackupScheduledEnabled(volumeUuid: String, enabled: Boolean
 }
 
 /**
+ * Toggles companion .json metadata export for recordings backed up to [volumeUuid].
+ * No WorkManager side-effects — the worker reads this flag at the start of each run.
+ */
+fun MainViewModel.setExportMetadataEnabled(volumeUuid: String, enabled: Boolean) {
+    viewModelScope.launch { repo.setExportMetadataEnabled(volumeUuid, enabled) }
+}
+
+/**
  * Updates the scheduled interval and replaces the live WorkManager
  * periodic request if scheduling is currently enabled.
  */
