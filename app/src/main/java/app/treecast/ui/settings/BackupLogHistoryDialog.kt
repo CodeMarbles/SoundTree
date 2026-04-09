@@ -27,6 +27,7 @@ import app.treecast.databinding.ItemBackupLogRowBinding
 import app.treecast.ui.MainViewModel
 import app.treecast.ui.clearAllBackupLogs
 import app.treecast.util.themeColor
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /**
@@ -173,9 +174,9 @@ class BackupLogHistoryDialog : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.backupLogs.collect { logs ->
-                    backupLogAdapter.submitList(logs)
-                }
+                viewModel.backupLogs
+                    .filterNotNull()
+                    .collect { logs -> backupLogAdapter.submitList(logs) }
             }
         }
     }

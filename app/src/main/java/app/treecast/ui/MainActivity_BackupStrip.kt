@@ -55,7 +55,7 @@ internal fun MainActivity.setupBackupStatusStrip() {
                             getString(R.string.backup_strip_extra_jobs, state.extraCount)
 
                         strip.progressStrip.visibility = View.VISIBLE
-                        val estimatedTotal = viewModel.backupLogs.value
+                        val estimatedTotal = viewModel.backupLogs.value.orEmpty()
                             .firstOrNull { it.volumeUuid == log.volumeUuid && it.status != null }
                             ?.totalBytesOnDestination ?: 0L
                         if (estimatedTotal > 0 && log.bytesCopied > 0) {

@@ -97,6 +97,7 @@ import app.treecast.ui.tickProcessingRefresh
 import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.themeColor
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -363,9 +364,9 @@ class SettingsFragment : Fragment() {
 
                 // ── Mini backup log (last 3 runs) + "View all" button ─────────
                 launch {
-                    viewModel.backupLogs.collect { logs ->
-                        renderBackupMiniLog(logs)
-                    }
+                    viewModel.backupLogs
+                        .filterNotNull()
+                        .collect { logs -> renderBackupMiniLog(logs) }
                 }
             }
         }
@@ -644,7 +645,7 @@ class SettingsFragment : Fragment() {
         val estimatedTotal = if (log.totalBytesOnDestination > 0) {
             log.totalBytesOnDestination
         } else {
-            viewModel.backupLogs.value
+            viewModel.backupLogs.value.orEmpty()
                 .firstOrNull { it.volumeUuid == log.volumeUuid && it.status != null }
                 ?.totalBytesOnDestination ?: 0L
         }
@@ -733,10 +734,17 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnCancelWaveforms.setOnClickListener {
+            // Optimistically hide the cancel button — WorkManager cancellation is async
+            // and the flow won't confirm until WM emits the cancelled state.
+            binding.btnCancelWaveforms.visibility = View.GONE
             viewModel.cancelWaveformProcessing()
         }
 
         binding.btnClearWaveformOutput.setOnClickListener {
+            // Optimistically clear the UI immediately — don't wait for the flow.
+            binding.containerRecent.visibility        = View.GONE
+            binding.btnClearWaveformOutput.visibility = View.GONE
+            // Then do the actual data work (also triggers a flow emission as confirmation).
             viewModel.clearCompletedWaveformJobs()
         }
 

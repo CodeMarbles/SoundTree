@@ -973,31 +973,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-    // ── Backup log state ──────────────────────────────────────────────────────
+    // ── Backup log state ──────────────────────────────────────────────────────────
 
     /**
      * All backup log entries, newest first.
      * Observed by [BackupLogHistoryDialog] and the Settings backup card mini-list.
+     *
+     * Emits null until the first DB result arrives, allowing [backupUiState]
+     * to distinguish "not yet loaded" from a genuinely empty history.
      */
-    val backupLogs: StateFlow<List<BackupLogEntity>> =
+    val backupLogs: StateFlow<List<BackupLogEntity>?> =
         repo.getBackupLogs()
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    /**
-     * Live snapshot of all backup activity.
-     *
-     * Combines [activeBackupInfoFlow] (in-progress rows + events) with [backupLogs]
-     * (all rows) to detect transitions from in-progress → completed and populate
-     * [BackupUiState.recentlyCompletedJobs] for the title-bar strip.
-     *
-     * Observed by both [SettingsFragment] (progress card) and [MainActivity] (strip).
-     */
     val backupUiState: StateFlow<BackupUiState> = combine(
         activeBackupInfoFlow,
         backupLogs,
     ) { activeInfos, allLogs ->
+
+        if (allLogs == null) {
+            // DB hasn't emitted yet — hold steady, don't touch the known-IDs set.
+            return@combine BackupUiState(activeInfos, backupRecentlyCompleted.toList())
+        }
+
         if (!backupStateInitialized) {
-            // Snapshot existing completed rows at startup so we don't re-show them.
+            // First real DB emission — snapshot all existing completed IDs so the
+            // strip never re-shows backups the user already dismissed in a prior session.
             allLogs.filter { it.status != null }.forEach { backupKnownCompletedIds.add(it.id) }
             backupStateInitialized = true
         } else {
@@ -1007,9 +1008,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .forEach { log ->
                     backupKnownCompletedIds.add(log.id)
                     backupRecentlyCompleted.removeAll { it.id == log.id }
-                    backupRecentlyCompleted.add(0, log)   // prepend — newest first
+                    backupRecentlyCompleted.add(0, log)
                 }
         }
+
         BackupUiState(activeInfos, backupRecentlyCompleted.toList())
     }.stateIn(viewModelScope, SharingStarted.Eagerly, BackupUiState.IDLE)
 
