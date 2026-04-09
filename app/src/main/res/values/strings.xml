@@ -620,6 +620,13 @@
     <string name="settings_tools_btn_regenerate_waveforms">Regenerate all waveforms</string>
     <string name="settings_tools_job_analysing">Analysing…</string>
     <string name="settings_tools_no_jobs">No jobs running</string>
+    <string name="settings_tools_regenerate_confirm_title">Regenerate all waveforms?</string>
+    <string name="settings_tools_regenerate_confirm_message">All cached waveform data will be deleted and rebuilt from scratch for every recording. This may take several minutes for large libraries.</string>
+    <string name="settings_tools_regenerate_confirm_action">Regenerate</string>
+    <string name="settings_tools_btn_cancel_waveforms">Cancel Remaining</string>
+    <string name="settings_tools_btn_clear_output">Clear</string>
+    <!-- %1$d = completed count, %2$d = remaining count -->
+    <string name="settings_tools_jobs_summary">%1$d completed · %2$d remaining</string>
 
     <!-- ══════════════════════════════════════════════════════════════
      settings_migration_  —  Recording folder structure migration

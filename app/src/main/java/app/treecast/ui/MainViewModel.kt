@@ -130,7 +130,20 @@ data class ProcessingStatus(
      * All completed/failed jobs since the last app launch. Memory-only —
      * cleared on process restart. No size cap while in testing mode.
      */
-    val recent: List<ProcessingJobInfo>
+    val recent: List<ProcessingJobInfo>,
+    /**
+     * Total jobs enqueued in the current regeneration pass. Set once at the
+     * start of [reprocessAllWaveforms] and held until the next pass begins.
+     * Zero when no pass has run this session.
+     */
+    val totalEnqueued: Int = 0,
+    /**
+     * Monotonically increasing count of jobs that have reached a terminal
+     * state (SUCCEEDED or FAILED) in the current pass. Incremented alongside
+     * [recentlyCompletedJobs] but NOT reset by [clearCompletedWaveformJobs],
+     * so the progress bar remains accurate after the user clears the log.
+     */
+    val completedCount: Int = 0,
 ) {
     companion object {
         val IDLE = ProcessingStatus(null, emptyList(), emptyList())
@@ -775,9 +788,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Processing status (for Settings tab) ──────────────────────────────────
 
-    internal val recentlyCompletedJobs = mutableListOf<ProcessingJobInfo>()
-    private val startupTerminalIds = mutableSetOf<java.util.UUID>()
+    internal val recentlyCompletedJobs   = mutableListOf<ProcessingJobInfo>()
+    private  val startupTerminalIds      = mutableSetOf<java.util.UUID>()
+    internal val clearedJobIds           = mutableSetOf<java.util.UUID>()
     private var processingStatusInitialized = false
+
+    // Owned count of the current pass — not derived from WorkManager's live state,
+    // which cannot reliably report the full pending queue for large batches.
+    internal var totalWaveformJobsEnqueued  = 0
+    internal var completedWaveformJobCount  = 0
+
+    // Guard against double-triggering a full regeneration pass. Set to true
+    // at the start of reprocessAllWaveforms() and cleared in its finally block.
+    internal val isReprocessingWaveforms = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /**
      * Live snapshot of the waveform processing queue.
@@ -810,20 +833,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 } else {
                     workInfos
                         .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
-                        .filter { it.id !in startupTerminalIds }
+                        .filter { it.id !in startupTerminalIds && it.id !in clearedJobIds }
                         .forEach { wi ->
                             if (recentlyCompletedJobs.none { it.id == wi.id }) {
                                 recentlyCompletedJobs.add(
                                     infoFor(wi).copy(completedAt = System.currentTimeMillis())
                                 )
+                                completedWaveformJobCount++
                             }
                         }
                 }
 
                 ProcessingStatus(
-                    active  = workInfos.firstOrNull { it.state == WorkInfo.State.RUNNING  }?.let(::infoFor),
-                    pending = workInfos.filter      { it.state == WorkInfo.State.ENQUEUED }.map(::infoFor),
-                    recent  = recentlyCompletedJobs.toList().reversed()
+                    active         = workInfos.firstOrNull { it.state == WorkInfo.State.RUNNING }?.let(::infoFor),
+                    pending        = workInfos.filter      { it.state == WorkInfo.State.ENQUEUED }.map(::infoFor),
+                    recent         = recentlyCompletedJobs.toList().reversed(),
+                    totalEnqueued  = totalWaveformJobsEnqueued,
+                    completedCount = completedWaveformJobCount,
                 )
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProcessingStatus.IDLE)

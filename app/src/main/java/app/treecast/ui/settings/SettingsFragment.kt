@@ -20,6 +20,8 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
@@ -42,6 +44,8 @@ import app.treecast.util.OrphanRecording
 import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.addBackupTarget
 import app.treecast.ui.cancelBackupForVolume
+import app.treecast.ui.cancelWaveformProcessing
+import app.treecast.ui.clearCompletedWaveformJobs
 import app.treecast.ui.getDbPruneCount
 import app.treecast.ui.getDbPruneEnabled
 import app.treecast.ui.getLastSessionOpenedAt
@@ -702,24 +706,53 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    // ── Waveform processing output state ─────────────────────────────────────────
+    private var processingOutputExpanded = true
+    private lateinit var recentJobsAdapter: WaveformJobAdapter
+
     private fun setupProcessingSection() {
-        // Button: regenerate all waveforms from scratch.
+        recentJobsAdapter = WaveformJobAdapter()
+        binding.rvRecentJobs.apply {
+            layoutManager = LinearLayoutManager(requireContext()).also {
+                // Newest items are prepended, so we want the list to scroll to
+                // position 0 (top) on each update — no reverseLayout needed.
+            }
+            adapter = recentJobsAdapter
+        }
+
+        // Confirmation dialog guards the destructive button.
         binding.btnReprocessWaveforms.setOnClickListener {
-            viewModel.reprocessAllWaveforms()
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_tools_regenerate_confirm_title)
+                .setMessage(R.string.settings_tools_regenerate_confirm_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.settings_tools_regenerate_confirm_action) { _, _ ->
+                    viewModel.reprocessAllWaveforms()
+                }
+                .show()
+        }
+
+        binding.btnCancelWaveforms.setOnClickListener {
+            viewModel.cancelWaveformProcessing()
+        }
+
+        binding.btnClearWaveformOutput.setOnClickListener {
+            viewModel.clearCompletedWaveformJobs()
+        }
+
+        binding.btnToggleProcessingOutput.setOnClickListener {
+            processingOutputExpanded = !processingOutputExpanded
+            // Re-render with the current status so visibility updates immediately.
+            renderProcessingOutput(processingOutputExpanded)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Observe the processing status flow and render on every emission.
                 launch {
                     viewModel.processingStatus.collect { status ->
                         renderProcessingStatus(status)
                     }
                 }
-
-                // Safety-net: tick the ViewModel every 3 s while this fragment is
-                // visible so the combine chain re-evaluates even if WorkManager
-                // misses emitting the terminal-state change for the last job.
                 launch {
                     while (true) {
                         kotlinx.coroutines.delay(3_000L)
@@ -734,94 +767,186 @@ class SettingsFragment : Fragment() {
         val hasActive  = status.active != null
         val hasPending = status.pending.isNotEmpty()
         val hasRecent  = status.recent.isNotEmpty()
+        val isActive   = hasActive || hasPending
         val isIdle     = !hasActive && !hasPending && !hasRecent
 
-        binding.processingSpinner.visibility = if (hasActive) View.VISIBLE else View.GONE
-        binding.tvProcessingIdle.visibility  = if (isIdle) View.VISIBLE else View.GONE
+        // When we go idle, reset expansion so the next pass starts fresh.
+        if (isIdle) processingOutputExpanded = true
 
-        // ── Active job ────────────────────────────────────────────────
+        // ── Top-bar controls ──────────────────────────────────────────────────────
+        binding.processingSpinner.visibility     = if (hasActive) View.VISIBLE else View.GONE
+        binding.tvProcessingIdle.visibility      = if (isIdle)   View.VISIBLE else View.GONE
+        binding.btnToggleProcessingOutput.visibility = if (!isIdle) View.VISIBLE else View.GONE
+
+        // Disable the regenerate button while a pass is in flight.
+        binding.btnReprocessWaveforms.isEnabled = !isActive
+
+        // ── Active job row ────────────────────────────────────────────────────────
         binding.rowActiveJob.visibility = if (hasActive) View.VISIBLE else View.GONE
         status.active?.let { binding.tvActiveJobTitle.text = viewModel.labelForJob(it) }
 
-        // ── Pending jobs ──────────────────────────────────────────────
-        binding.containerPending.visibility = if (hasPending) View.VISIBLE else View.GONE
-        if (hasPending) {
-            binding.listPendingJobs.removeAllViews()
-            status.pending.forEach { job ->
-                addJobRow(binding.listPendingJobs, viewModel.labelForJob(job), isDone = false, failed = false)
-            }
+        // ── Progress bar ──────────────────────────────────────────────────────────
+        val showProgress = status.totalEnqueued > 0
+        binding.pbWaveformProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
+        if (showProgress) {
+            val progressFraction = status.completedCount.toFloat() / status.totalEnqueued
+            binding.pbWaveformProgress.progress = (progressFraction * 1000).toInt()
         }
 
-        // ── Recent jobs ───────────────────────────────────────────────
+        // ── Job counts ────────────────────────────────────────────────────────────
+        binding.tvJobCounts.visibility = if (showProgress) View.VISIBLE else View.GONE
+        if (showProgress) {
+            val remaining = (status.totalEnqueued - status.completedCount - (if (hasActive) 1 else 0))
+                .coerceAtLeast(0)
+            binding.tvJobCounts.text = getString(
+                R.string.settings_tools_jobs_summary,
+                status.completedCount,
+                remaining,
+            )
+        }
+
+        // ── Recent jobs RecyclerView ──────────────────────────────────────────────
         binding.containerRecent.visibility = if (hasRecent) View.VISIBLE else View.GONE
         if (hasRecent) {
-            binding.listRecentJobs.removeAllViews()
-            status.recent.forEach { job ->
+            val rows = status.recent.map { job ->
                 val failed    = job.state == WorkInfo.State.FAILED
                 val timeLabel = job.completedAt?.let { formatCompletionTime(it) } ?: ""
-                addJobRow(binding.listRecentJobs, viewModel.labelForJob(job), isDone = true, failed = failed, timeLabel = timeLabel)
-            }
-        }
-    }
-
-    private fun formatCompletionTime(epochMs: Long): String {
-        val fmt = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        return fmt.format(Date(epochMs))
-    }
-
-    private fun addJobRow(
-        container: LinearLayout,
-        label: String,
-        isDone: Boolean,
-        failed: Boolean,
-        timeLabel: String = ""
-    ) {
-        val density = resources.displayMetrics.density
-        val hPad = (16 * density).toInt()
-        val vPad = (6 * density).toInt()
-
-        val row = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(hPad, vPad, hPad, vPad)
-        }
-        val tvLabel = TextView(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            text  = label
-            textSize = 13f
-            setTextColor(requireContext().themeColor(R.attr.colorTextPrimary))
-        }
-        val tvTime = TextView(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            text = timeLabel
-            textSize = 12f
-            setTextColor(requireContext().themeColor(R.attr.colorTextSecondary))
-        }
-        val tvStatus = TextView(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            text = when {
-                !isDone -> "⏳"
-                failed  -> "✗"
-                else    -> "✓"
-            }
-            textSize = 13f
-            setTextColor(
-                requireContext().themeColor(
-                    if (failed) R.attr.colorTextSecondary else R.attr.colorAccent
+                WaveformJobAdapterRow(
+                    label     = viewModel.labelForJob(job),
+                    timeLabel = timeLabel,
+                    failed    = failed,
+                    isDone    = true,
                 )
-            )
+            }
+            recentJobsAdapter.submitList(rows)
+            // Scroll to top — newest items appear first (list is already reversed upstream).
+            binding.rvRecentJobs.scrollToPosition(0)
         }
 
-        row.addView(tvLabel)
-        row.addView(tvTime)
-        row.addView(tvStatus)
-        container.addView(row)
+        // ── Cancel / Clear button visibility ─────────────────────────────────────
+        binding.btnCancelWaveforms.visibility    = if (isActive)  View.VISIBLE else View.GONE
+        binding.btnClearWaveformOutput.visibility = if (hasRecent) View.VISIBLE else View.GONE
+
+        // ── Expandable output section ─────────────────────────────────────────────
+        renderProcessingOutput(processingOutputExpanded)
+    }
+
+    /** Applies the current expanded/collapsed state to the output container. */
+    private fun renderProcessingOutput(expanded: Boolean) {
+        val hasAnythingToShow = binding.containerRecent.visibility == View.VISIBLE ||
+                binding.btnCancelWaveforms.visibility == View.VISIBLE ||
+                binding.btnClearWaveformOutput.visibility == View.VISIBLE
+        binding.containerProcessingOutput.visibility =
+            if (expanded && hasAnythingToShow) View.VISIBLE else View.GONE
+
+        // Icon update lives here — the single place that knows the expanded state.
+        binding.btnToggleProcessingOutput.setImageResource(
+            if (expanded) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down
+        )
+    }
+
+    private fun formatCompletionTime(epochMs: Long): String =
+        SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            .format(Date(epochMs))
+
+    // ── Waveform job list adapter ─────────────────────────────────────────────────
+
+    private data class WaveformJobAdapterRow(
+        val label: String,
+        val timeLabel: String,
+        val failed: Boolean,
+        val isDone: Boolean,
+    )
+
+    /**
+     * RecyclerView adapter for the completed-waveform-jobs list in the Processing
+     * section of the Tools tab.
+     *
+     * Each row shows: topic emoji + recording title (left), completion timestamp
+     * (centre-right), and a ✓ / ✗ status glyph (far right).
+     *
+     * Backed by a plain list rather than DiffUtil because the list only ever
+     * prepends items (newest-first), so a full rebind is cheap and correct.
+     */
+    private inner class WaveformJobAdapter : RecyclerView.Adapter<WaveformJobAdapter.VH>() {
+
+        private var items: List<WaveformJobAdapterRow> = emptyList()
+
+        fun submitList(newItems: List<WaveformJobAdapterRow>) {
+            items = newItems
+            notifyDataSetChanged()
+        }
+
+        override fun getItemCount() = items.size
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+            val density = parent.context.resources.displayMetrics.density
+            val hPad = (16 * density).toInt()
+            val vPad = (6  * density).toInt()
+
+            val row = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = Gravity.CENTER_VERTICAL
+                setPadding(hPad, vPad, hPad, vPad)
+                layoutParams = RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT,
+                    RecyclerView.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            return VH(row, density)
+        }
+
+        override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(items[position])
+
+        inner class VH(private val row: LinearLayout, density: Float) : RecyclerView.ViewHolder(row) {
+
+            private val tvLabel  : TextView
+            private val tvTime   : TextView
+            private val tvStatus : TextView
+
+            init {
+                tvLabel = TextView(row.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                    )
+                    textSize = 13f
+                    setTextColor(row.context.themeColor(R.attr.colorTextPrimary))
+                }
+                tvTime = TextView(row.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                    textSize = 12f
+                    setTextColor(row.context.themeColor(R.attr.colorTextSecondary))
+                }
+                tvStatus = TextView(row.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).also { lp -> lp.marginStart = (8 * density).toInt() }
+                    textSize = 13f
+                }
+                row.addView(tvLabel)
+                row.addView(tvTime)
+                row.addView(tvStatus)
+            }
+
+            fun bind(item: WaveformJobAdapterRow) {
+                tvLabel.text  = item.label
+                tvTime.text   = item.timeLabel
+                tvStatus.text = when {
+                    !item.isDone -> "⏳"
+                    item.failed  -> "✗"
+                    else         -> "✓"
+                }
+                tvStatus.setTextColor(
+                    row.context.themeColor(
+                        if (item.failed) R.attr.colorTextSecondary else R.attr.colorAccent,
+                    )
+                )
+            }
+        }
     }
 
     /**

@@ -95,6 +95,9 @@ fun MainViewModel.tickProcessingRefresh() {
  * recording's waveform status to PENDING in the DB, clears the in-memory
  * completed-jobs list, then re-enqueues a fresh job for every recording.
  *
+ * Guarded by [isReprocessingWaveforms] so that rapid double-taps and
+ * confirmation-dialog races cannot launch two simultaneous passes.
+ *
  * Recordings on currently unmounted volumes cannot have their cache files
  * deleted here. Their statuses are still reset to PENDING, so WaveformWorker
  * will regenerate them the next time the volume is mounted and the app starts.
@@ -103,41 +106,75 @@ fun MainViewModel.tickProcessingRefresh() {
  * inside the viewModelScope coroutine.
  */
 fun MainViewModel.reprocessAllWaveforms() {
+    if (!isReprocessingWaveforms.compareAndSet(false, true)) return
     viewModelScope.launch {
-        // 1. Cancel whatever WorkManager currently has queued.
-        WorkManager.getInstance(getApplication<Application>())
-            .cancelAllWorkByTag(WaveformWorker.TAG)
+        try {
+            // 1. Cancel whatever WorkManager currently has queued.
+            WorkManager.getInstance(getApplication<Application>())
+                .cancelAllWorkByTag(WaveformWorker.TAG)
 
-        withContext(Dispatchers.IO) {
-            // 2a. Delete waveform cache on every currently-mounted volume.
-            StorageVolumeHelper.getVolumes(getApplication()).forEach { volume ->
-                WaveformCache(volume.rootDir).deleteAll()
+            withContext(Dispatchers.IO) {
+                // 2a. Delete waveform cache on every currently-mounted volume.
+                StorageVolumeHelper.getVolumes(getApplication()).forEach { volume ->
+                    WaveformCache(volume.rootDir).deleteAll()
+                }
+
+                // 2b. Purge the legacy internal-storage cache (filesDir/waveforms_v2/).
+                WaveformCache.legacyDir(getApplication()).deleteRecursively()
+
+                // 3. Reset every row in the DB to PENDING.
+                repo.resetAllWaveformStatuses()
             }
 
-            // 2b. Purge the legacy internal-storage cache (filesDir/waveforms_v2/).
-            //     This was the storage location before waveforms were co-located
-            //     with recordings. Safe to call repeatedly — a no-op once gone.
-            WaveformCache.legacyDir(getApplication()).deleteRecursively()
+            // 4. Clear the in-memory completed log and reset pass counters.
+            recentlyCompletedJobs.clear()
+            clearedJobIds.clear()
+            completedWaveformJobCount = 0
 
-            // 3. Reset every row in the DB to PENDING.
-            repo.resetAllWaveformStatuses()
-        }
-
-        // 4. Clear the in-memory completed log.
-        recentlyCompletedJobs.clear()
-
-        // 5. Re-enqueue a fresh job for every recording.
-        withContext(Dispatchers.IO) {
-            repo.getAllRecordingsOnce().forEach { recording ->
-                WaveformWorker.enqueue(
-                    context           = getApplication(),
-                    recordingId       = recording.id,
-                    filePath          = recording.filePath,
-                    storageVolumeUuid = recording.storageVolumeUuid,
-                )
+            // 5. Re-enqueue a fresh job for every recording.
+            withContext(Dispatchers.IO) {
+                val recordings = repo.getAllRecordingsOnce()
+                totalWaveformJobsEnqueued = recordings.size
+                recordings.forEach { recording ->
+                    WaveformWorker.enqueue(
+                        context           = getApplication(),
+                        recordingId       = recording.id,
+                        filePath          = recording.filePath,
+                        storageVolumeUuid = recording.storageVolumeUuid,
+                    )
+                }
             }
+        } finally {
+            isReprocessingWaveforms.set(false)
         }
     }
+}
+
+/**
+ * Cancels all queued and running waveform jobs without resetting the DB or
+ * deleting any cache files. Recordings whose waveforms were already processed
+ * retain their cache; only the remaining queue is discarded.
+ *
+ * The DB statuses of unprocessed recordings are left as PENDING, so normal
+ * on-demand loading will regenerate them lazily as each recording is opened.
+ */
+fun MainViewModel.cancelWaveformProcessing() {
+    WorkManager.getInstance(getApplication<Application>())
+        .cancelAllWorkByTag(WaveformWorker.TAG)
+}
+
+/**
+ * Clears the in-memory list of recently completed jobs so the output section
+ * of the Settings card goes blank. Has no effect on the processing queue itself.
+ */
+fun MainViewModel.clearCompletedWaveformJobs() {
+    // Register all currently-visible IDs as excluded before clearing, so the
+    // combine chain doesn't re-ingest them from WorkManager on its next emission.
+    recentlyCompletedJobs.forEach { clearedJobIds.add(it.id) }
+    recentlyCompletedJobs.clear()
+    // completedWaveformJobCount is intentionally NOT reset here — the progress
+    // bar should remain accurate even after the user clears the visible log.
+    _processingRefreshTick.value = System.currentTimeMillis()
 }
 
 /**
