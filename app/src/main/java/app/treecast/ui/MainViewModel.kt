@@ -829,6 +829,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     workInfos
                         .filter { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.FAILED }
                         .forEach { startupTerminalIds.add(it.id) }
+
+                    // Seed progress counters for jobs resumed from a prior session.
+                    // totalWaveformJobsEnqueued is only set by reprocessAllWaveforms() for a
+                    // fresh pass. If the app was killed mid-batch and WorkManager has resumed
+                    // the remaining jobs, bootstrap the denominator here so the progress bar
+                    // and job counts are visible. We count only non-terminal jobs (ENQUEUED
+                    // or RUNNING) since terminal ones belong to the prior session and are
+                    // already in startupTerminalIds.
+                    if (totalWaveformJobsEnqueued == 0) {
+                        val resumedJobCount = workInfos.count {
+                            it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING
+                        }
+                        if (resumedJobCount > 0) {
+                            totalWaveformJobsEnqueued = resumedJobCount
+                        }
+                    }
+
                     processingStatusInitialized = true
                 } else {
                     workInfos
