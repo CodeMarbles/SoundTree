@@ -223,9 +223,10 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             ).await()
 
             WaveformWorker.enqueue(
-                context     = requireContext(),
-                recordingId = recordingId,
-                filePath    = item.file.absolutePath,
+                context           = requireContext(),
+                recordingId       = recordingId,
+                filePath          = item.file.absolutePath,
+                storageVolumeUuid = volumeUuid,
             )
             removeItem(index)
         }

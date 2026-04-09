@@ -666,9 +666,10 @@ class RecordingService : Service() {
 
             // Enqueue background waveform generation, mirroring the in-app save path.
             WaveformWorker.enqueue(
-                context     = applicationContext,
-                recordingId = recordingId,
-                filePath    = filePath
+                context           = applicationContext,
+                recordingId       = recordingId,
+                filePath          = filePath,
+                storageVolumeUuid = result.storageVolumeUuid,
             )
 
             _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))

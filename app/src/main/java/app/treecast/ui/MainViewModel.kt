@@ -710,7 +710,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val nudgeForwardEvent: SharedFlow<NudgeEvent> = _nudgeForwardEvent
 
     // ── Waveform ──────────────────────────────────────────────────────
-    internal val waveformCache = WaveformCache(app)
     /**
      * Emits (recordingId, amplitudes) whenever a real waveform finishes
      * loading (from cache or freshly extracted). The fragment observes this

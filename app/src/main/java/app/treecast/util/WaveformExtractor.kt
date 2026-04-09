@@ -46,8 +46,9 @@ object WaveformExtractor {
      * stored waveform. 8 samples/sec gives smooth rendering down to ~1 minute
      * per line on a typical phone screen, which is our current minimum zoom.
      *
-     * Do not change this constant without bumping [WaveformCache.CACHE_VERSION]
-     * so that existing cached files are regenerated at the new resolution.
+     *   Do not change this constant without also deleting all existing .wfm cache
+     *   files (via "Regenerate all waveforms" in Settings) so that recordings are
+     *   re-extracted at the new resolution.
      */
     const val SAMPLES_PER_SECOND = 8
 

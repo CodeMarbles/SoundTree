@@ -48,9 +48,10 @@ class TreeCastApp : Application() {
             runCatching {
                 repository.getPendingWaveformRecordings().forEach { recording ->
                     WaveformWorker.Companion.enqueue(
-                        context = this@TreeCastApp,
-                        recordingId = recording.id,
-                        filePath = recording.filePath
+                        context           = this@TreeCastApp,
+                        recordingId       = recording.id,
+                        filePath          = recording.filePath,
+                        storageVolumeUuid = recording.storageVolumeUuid,
                     )
                 }
             }

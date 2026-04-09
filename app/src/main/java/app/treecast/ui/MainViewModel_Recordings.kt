@@ -71,16 +71,20 @@ fun MainViewModel.saveRecordingWithMarks(
         createdAt         = createdAt
     )
     WaveformWorker.enqueue(
-        context     = getApplication(),
-        recordingId = recordingId,
-        filePath    = filePath
+        context           = getApplication(),
+        recordingId       = recordingId,
+        filePath          = filePath,
+        storageVolumeUuid = storageVolumeUuid,
     )
     recordingId
 }
 
 fun MainViewModel.deleteRecording(r: RecordingEntity) = viewModelScope.launch {
     repo.deleteRecording(r)
-    waveformCache.delete(r.id)
+    // Delete the cache file from whichever volume the recording lived on.
+    // If the volume is currently unmounted the cache file stays on disk but
+    // becomes orphaned — acceptable, as the recording itself is also gone.
+    waveformCacheFor(r.storageVolumeUuid)?.delete(r.id)
 }
 
 fun MainViewModel.moveRecording(id: Long, topicId: Long?) = viewModelScope.launch {

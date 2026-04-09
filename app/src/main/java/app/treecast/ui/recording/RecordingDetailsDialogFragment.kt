@@ -209,7 +209,8 @@ class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
         // dispatcher. This path works whether or not the recording is currently
         // playing, keeping the dialog decoupled from the now-playing state.
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val amplitudes = WaveformCache(requireContext()).load(recordingId)
+            val volume     = StorageVolumeHelper.getVolumeByUuid(requireContext(), recording.storageVolumeUuid)
+            val amplitudes = volume?.let { WaveformCache(it.rootDir).load(recordingId) }
             if (amplitudes != null) {
                 withContext(Dispatchers.Main) {
                     val waveform = _binding?.multiLineWaveform ?: return@withContext

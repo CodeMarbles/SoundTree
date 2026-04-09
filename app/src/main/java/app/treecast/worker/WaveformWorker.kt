@@ -8,11 +8,10 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import app.treecast.data.db.AppDatabase
+import app.treecast.storage.StorageVolumeHelper
 import app.treecast.util.WaveformCache
 import app.treecast.util.WaveformExtractor
 import app.treecast.util.WaveformStatus
-import app.treecast.worker.WaveformWorker.Companion.TAG
-import app.treecast.worker.WaveformWorker.Companion.enqueue
 
 /**
  * WorkManager worker that generates a real PCM-decoded waveform for a single
@@ -24,6 +23,10 @@ import app.treecast.worker.WaveformWorker.Companion.enqueue
  *   - **Survivable**: WorkManager persists the queue across process death.
  *     If the app is killed mid-decode, the job is re-run on the next launch.
  *   - **Deduplicated**: enqueued via [enqueue] which uses [ExistingWorkPolicy.KEEP].
+ *   - **Volume-aware**: the cache is written to appdata/waveforms/ on the same
+ *     volume as the source recording. If the volume is unmounted when the job
+ *     runs, the worker returns [Result.failure] — WorkManager will not retry,
+ *     and the recording's status stays FAILED until the next reprocess.
  *
  * Tags applied to every job:
  *   - [TAG] ("waveform") — used to observe all waveform jobs as a group.
@@ -33,18 +36,20 @@ import app.treecast.worker.WaveformWorker.Companion.enqueue
  */
 class WaveformWorker(
     context: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
 
     companion object {
+
         /** WorkManager tag applied to every waveform job — use for group observation. */
         const val TAG = "waveform"
 
         /** Tag prefix for the per-job recording ID. Format: "rid:<id>" */
         const val TAG_RECORDING_ID_PREFIX = "rid:"
 
-        const val KEY_RECORDING_ID = "recording_id"
-        const val KEY_FILE_PATH    = "file_path"
+        const val KEY_RECORDING_ID        = "recording_id"
+        const val KEY_FILE_PATH           = "file_path"
+        const val KEY_STORAGE_VOLUME_UUID = "storage_volume_uuid"
 
         /** Extracts the recording ID embedded in a WorkInfo's tags, or null if absent. */
         fun recordingIdFromTags(tags: Set<String>): Long? =
@@ -57,17 +62,22 @@ class WaveformWorker(
          *
          * Uses [ExistingWorkPolicy.KEEP] so a second call for the same recording
          * while the first job is still ENQUEUED or RUNNING is a no-op.
+         *
+         * [storageVolumeUuid] is required so the worker can locate the correct
+         * appdata/waveforms/ directory on the recording's volume.
          */
         fun enqueue(
             context: Context,
             recordingId: Long,
-            filePath: String
+            filePath: String,
+            storageVolumeUuid: String,
         ) {
             val request = OneTimeWorkRequestBuilder<WaveformWorker>()
                 .setInputData(
                     workDataOf(
-                        KEY_RECORDING_ID to recordingId,
-                        KEY_FILE_PATH    to filePath
+                        KEY_RECORDING_ID        to recordingId,
+                        KEY_FILE_PATH           to filePath,
+                        KEY_STORAGE_VOLUME_UUID to storageVolumeUuid,
                     )
                 )
                 .addTag(TAG)
@@ -84,15 +94,20 @@ class WaveformWorker(
     }
 
     override suspend fun doWork(): Result {
-        val recordingId = inputData.getLong(KEY_RECORDING_ID, -1L)
-        val filePath    = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
+        val recordingId       = inputData.getLong(KEY_RECORDING_ID, -1L)
+        val filePath          = inputData.getString(KEY_FILE_PATH)           ?: return Result.failure()
+        val storageVolumeUuid = inputData.getString(KEY_STORAGE_VOLUME_UUID) ?: return Result.failure()
         if (recordingId < 0L) return Result.failure()
 
-        // ── Testing delay — remove when no longer needed ──────────────────────
-        //delay(500L)
+        // Resolve the volume. If unmounted, we cannot read the audio file or
+        // write the cache — return failure without marking IN_PROGRESS so the
+        // recording stays PENDING and will be retried on next app launch when
+        // the volume may be available again.
+        val volume = StorageVolumeHelper.getVolumeByUuid(applicationContext, storageVolumeUuid)
+            ?: return Result.failure()
 
         val db    = AppDatabase.getInstance(applicationContext)
-        val cache = WaveformCache(applicationContext)
+        val cache = WaveformCache(volume.rootDir)
 
         // ── Idempotency check ─────────────────────────────────────────────────
         if (cache.exists(recordingId)) {
