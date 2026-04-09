@@ -61,7 +61,6 @@ class WaveformLineView @JvmOverloads constructor(
 
     // ── Configuration (set by adapter at bind time) ───────────────────────────
 
-
     /** Start of this line's time window, milliseconds. */
     var startMs: Long = 0L
         private set
@@ -142,6 +141,9 @@ class WaveformLineView @JvmOverloads constructor(
 
     /** Width of the left-rail column when active; 0 when inactive. */
     private val railWidthPx get() = if (showLineRail) RAIL_WIDTH_DP * density else 0f
+
+    /** True when the waveform has not yet been generated; triggers the caution-tape pattern. */
+    private var isWaveformGenerating: Boolean = false
 
     // ── Bitmap cache ──────────────────────────────────────────────────────────
 
@@ -265,6 +267,11 @@ class WaveformLineView @JvmOverloads constructor(
         alpha     = 160
     }
 
+    private val isDarkTheme: Boolean
+        get() = (resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+
     // ── Reusable objects (avoid per-draw allocations) ─────────────────────────
 
     private val rect     = RectF()
@@ -289,7 +296,8 @@ class WaveformLineView @JvmOverloads constructor(
         scaleToFill:      Boolean,
         showLineRail:     Boolean,
         waveformStyle:    WaveformStyle = WaveformStyle.Standard,
-        candidateMarkMs:  Long? = null
+        candidateMarkMs:  Long? = null,
+        isWaveformGenerating: Boolean,
     ) {
         val windowChanged = this.startMs != startMs || this.endMs != endMs
         if (windowChanged) rulerBitmapDirty = true
@@ -309,6 +317,10 @@ class WaveformLineView @JvmOverloads constructor(
         this.showLineRail     = showLineRail
         this.waveformStyle    = waveformStyle
         this.candidateMarkMs = candidateMarkMs
+        if (this.isWaveformGenerating != isWaveformGenerating) {
+            this.isWaveformGenerating = isWaveformGenerating
+            bitmapDirty = true
+        }
 
         recomputeFillWidthPx()
 
@@ -510,6 +522,13 @@ class WaveformLineView @JvmOverloads constructor(
         val bmp = Bitmap.createBitmap(bitmapW, waveformH, Bitmap.Config.ARGB_8888)
         val c   = Canvas(bmp)
 
+        if (isWaveformGenerating) {
+            drawGeneratingPattern(c, bitmapW, waveformH, useAccent = true)
+            playedBitmap?.recycle()
+            playedBitmap = bmp
+            return
+        }
+
         // Number of bars that fit across the full view width — fixed for this line.
         val fullBarCount = (bitmapW / stride).toInt().coerceAtLeast(1)
 
@@ -579,6 +598,13 @@ class WaveformLineView @JvmOverloads constructor(
         val bmp = Bitmap.createBitmap(bitmapW, waveformH, Bitmap.Config.ARGB_8888)
         // Transparent by default — background decoration shows through.
         val c = Canvas(bmp)
+
+        if (isWaveformGenerating) {
+            drawGeneratingPattern(c, bitmapW, waveformH, useAccent = false)
+            unplayedBitmap?.recycle()
+            unplayedBitmap = bmp
+            return
+        }
 
         // Bar geometry mirrors rebuildPlayedBitmap exactly.
         val fullBarCount      = (bitmapW / stride).toInt().coerceAtLeast(1)
@@ -737,6 +763,57 @@ class WaveformLineView @JvmOverloads constructor(
         rulerBitmap?.recycle()
         rulerBitmap      = bmp
         rulerBitmapDirty = false
+    }
+
+    /**
+     * Fills [c] with the "caution tape" generating pattern — the word "Generating"
+     * tiled diagonally at −30° across the entire bitmap area.
+     *
+     * @param useAccent  true  → amber yellow (played/accent side)
+     *                   false → muted grey   (unplayed side)
+     */
+    private fun drawGeneratingPattern(c: Canvas, bmpW: Int, bmpH: Int, useAccent: Boolean) {
+        val density = resources.displayMetrics.density
+        val dark    = isDarkTheme
+
+        val textColor = when {
+            useAccent && dark  -> 0xFFFFD740.toInt()   // Amber A200 — vivid on dark
+            useAccent && !dark -> 0xFFF57F17.toInt()   // Amber 900  — readable on light
+            !useAccent && dark -> 0xFF4A4A4A.toInt()   // muted grey on dark
+            else               -> 0xFFBBBBBB.toInt()   // muted grey on light
+        }
+        val alpha = if (useAccent) 170 else 110
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
+            )
+            textSize  = density * 11f
+            color     = textColor
+            this.alpha = alpha
+        }
+
+        val text   = "GENERATING"
+        val textW  = paint.measureText(text)
+        val lineH  = paint.descent() - paint.ascent()
+        val colGap = textW  * 1.5f   // horizontal word-to-word gap
+        val rowGap = lineH  * 3.0f   // vertical stripe pitch
+
+        val diagonal = kotlin.math.hypot(bmpW.toFloat(), bmpH.toFloat())
+
+        c.save()
+        c.rotate(-30f, bmpW / 2f, bmpH / 2f)
+
+        var y = -(diagonal + rowGap)
+        while (y < bmpH + diagonal) {
+            var x = -(diagonal + colGap)
+            while (x < bmpW + diagonal) {
+                c.drawText(text, x, y - paint.ascent(), paint)
+                x += colGap
+            }
+            y += rowGap
+        }
+        c.restore()
     }
 
     // ── Mark overlay ──────────────────────────────────────────────────────────

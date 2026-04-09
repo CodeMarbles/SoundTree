@@ -185,6 +185,18 @@ class MultiLineWaveformView @JvmOverloads constructor(
         }
 
     /**
+     * When true, all lines render the "Generating" caution-tape pattern regardless
+     * of whether real amplitude data is present. Used by the Developer Options
+     * "Simulate waveform loading" toggle for visual testing.
+     */
+    var simulateWaveformLoading: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyAllVisibleLines()
+        }
+
+    /**
      * Called when the user taps a position on any line.
      *
      * @param positionMs  Tapped position in milliseconds (recording-relative).
@@ -721,6 +733,8 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 sps  = WaveformExtractor.SAMPLES_PER_SECOND
             }
 
+            val isGenerating = (amps == null) || simulateWaveformLoading
+
             // scaleToFill only applies to the Listen tab (showPlayedSplit) and only
             // when the recording fits on a single line. Multi-line recordings and all
             // Record tab lines always render proportionally.
@@ -742,6 +756,7 @@ class MultiLineWaveformView @JvmOverloads constructor(
                 showLineRail     = showLineRail,
                 waveformStyle    = waveformStyle,
                 candidateMarkMs  = candidateMarkMs,
+                isWaveformGenerating = isGenerating,
             )
         }
 

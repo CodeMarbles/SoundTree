@@ -16,6 +16,7 @@ import app.treecast.ui.MainViewModel.Companion.PREF_ALWAYS_SHOW_RECORDER_PILL
 import app.treecast.ui.MainViewModel.Companion.PREF_AUTO_NAVIGATE
 import app.treecast.ui.MainViewModel.Companion.PREF_DB_PRUNE_COUNT
 import app.treecast.ui.MainViewModel.Companion.PREF_DB_PRUNE_ENABLED
+import app.treecast.ui.MainViewModel.Companion.PREF_DEV_OPTIONS
 import app.treecast.ui.MainViewModel.Companion.PREF_FUTURE_MODE
 import app.treecast.ui.MainViewModel.Companion.PREF_HIDE_PLAYER_ON_LISTEN_TAB
 import app.treecast.ui.MainViewModel.Companion.PREF_HIDE_RECORDER_ON_RECORD_TAB
@@ -31,6 +32,7 @@ import app.treecast.ui.MainViewModel.Companion.PREF_RECORDER_WIDGET_VISIBILITY
 import app.treecast.ui.MainViewModel.Companion.PREF_SCRUB_BACK_SECS
 import app.treecast.ui.MainViewModel.Companion.PREF_SCRUB_FORWARD_SECS
 import app.treecast.ui.MainViewModel.Companion.PREF_SHOW_TITLE_BAR
+import app.treecast.ui.MainViewModel.Companion.PREF_SIMULATE_WF_LOADING
 import app.treecast.ui.MainViewModel.Companion.PREF_THEME_MODE
 import app.treecast.ui.MainViewModel.Companion.SPEED_MAX
 import app.treecast.ui.MainViewModel.Companion.SPEED_MIN
@@ -193,6 +195,18 @@ fun MainViewModel.setRecorderPillMinimized(minimized: Boolean) {
 fun MainViewModel.setFutureMode(enabled: Boolean) {
     _futureMode.value = enabled
     prefs.edit().putBoolean(PREF_FUTURE_MODE, enabled).apply()
+}
+
+fun MainViewModel.setDevOptions(enabled: Boolean) {
+    _devOptions.value = enabled
+    prefs.edit().putBoolean(PREF_DEV_OPTIONS, enabled).apply()
+    // Reset child dev settings when the panel is closed.
+    if (!enabled) setSimulateWaveformLoading(false)
+}
+
+fun MainViewModel.setSimulateWaveformLoading(enabled: Boolean) {
+    _simulateWaveformLoading.value = enabled
+    prefs.edit().putBoolean(PREF_SIMULATE_WF_LOADING, enabled).apply()
 }
 
 // ── Playback memory mode ──────────────────────────────────────────────────────

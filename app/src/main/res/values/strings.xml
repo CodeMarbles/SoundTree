@@ -665,6 +665,10 @@
 
     <!-- Tools: Dev options -->
     <string name="settings_dev_future_mode">Future Mode</string>
+    <string name="settings_section_developer_options">Developer Options</string>
+    <string name="settings_dev_developer_options">Developer Options</string>
+    <string name="settings_dev_simulate_wf_loading">Simulate waveform loading</string>
+    <string name="settings_dev_simulate_wf_loading_desc">Always show the generating pattern, even when waveform data is available</string>
 
 
     <!-- ══════════════════════════════════════════════════════════════

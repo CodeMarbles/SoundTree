@@ -458,6 +458,11 @@ class ListenFragment : Fragment() {
                         binding.multiLineWaveform.waveformDisplayConfig = cfg
                     }
                 }
+                launch {
+                    viewModel.simulateWaveformLoading.collect { simulate ->
+                        binding.multiLineWaveform.simulateWaveformLoading = simulate
+                    }
+                }
             }
         }
     }

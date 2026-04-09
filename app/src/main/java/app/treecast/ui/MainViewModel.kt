@@ -35,7 +35,6 @@ import app.treecast.util.MarkJumpLogic
 import app.treecast.util.OrphanRecording
 import app.treecast.util.OrphanRecordingScanner
 import app.treecast.util.PlaybackPositionHelper
-import app.treecast.util.WaveformCache
 import app.treecast.worker.WaveformWorker
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -193,6 +192,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         internal const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         internal const val PREF_FUTURE_MODE = "future_mode"
+
+        internal const val PREF_DEV_OPTIONS                     = "dev_options"
+        internal const val PREF_SIMULATE_WF_LOADING = "simulate_waveform_loading"
+
         internal const val PREF_PLAYHEAD_VIS_ENABLED = "playhead_vis_enabled"
         internal const val PREF_PLAYHEAD_VIS_INTENSITY = "playhead_vis_intensity"
 
@@ -614,6 +617,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.getBoolean(PREF_FUTURE_MODE, false)
     )
     val futureMode: StateFlow<Boolean> = _futureMode
+
+    // ── Developer Options ──────────────────────────────────────────────────────
+    internal val _devOptions = MutableStateFlow(
+        prefs.getBoolean(PREF_DEV_OPTIONS, false)
+    )
+    val devOptions: StateFlow<Boolean> = _devOptions
+
+    internal val _simulateWaveformLoading = MutableStateFlow(
+        prefs.getBoolean(PREF_SIMULATE_WF_LOADING, false)
+    )
+    val simulateWaveformLoading: StateFlow<Boolean> = _simulateWaveformLoading
 
     // ── Current page (tab index) — driven by MainActivity on every tab change ─
 

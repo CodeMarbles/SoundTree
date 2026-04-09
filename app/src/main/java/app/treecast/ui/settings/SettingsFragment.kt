@@ -70,6 +70,7 @@ import app.treecast.ui.setBgUnplayedOnly
 import app.treecast.ui.setDbPruneCount
 import app.treecast.ui.setDbPruneEnabled
 import app.treecast.ui.setDefaultStorageUuid
+import app.treecast.ui.setDevOptions
 import app.treecast.ui.setFutureMode
 import app.treecast.ui.setHidePlayerOnListenTab
 import app.treecast.ui.setHideRecorderOnRecordTab
@@ -91,6 +92,7 @@ import app.treecast.ui.setRememberPositionMode
 import app.treecast.ui.setScrubBackSecs
 import app.treecast.ui.setScrubForwardSecs
 import app.treecast.ui.setShowTitleBar
+import app.treecast.ui.setSimulateWaveformLoading
 import app.treecast.ui.setThemeMode
 import app.treecast.ui.setWaveformStyleKey
 import app.treecast.ui.tickProcessingRefresh
@@ -1040,9 +1042,34 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupDevOptionsSection() {
+        // ── Future Mode switch ────────────────────────────────────────────────────
         binding.switchFutureMode.isChecked = viewModel.futureMode.value
         binding.switchFutureMode.setOnCheckedChangeListener { _, checked ->
             viewModel.setFutureMode(checked)
+        }
+
+        // ── Developer Options switch ──────────────────────────────────────────────
+        binding.switchSimulateWfLoading.isChecked = viewModel.simulateWaveformLoading.value
+        binding.switchSimulateWfLoading.setOnCheckedChangeListener { _, checked ->
+            viewModel.setSimulateWaveformLoading(checked)
+        }
+
+        // ── Show/hide the Developer Options card based on devOptions flag ─────────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.devOptions.collect { enabled ->
+                    val vis = if (enabled) View.VISIBLE else View.GONE
+                    binding.labelDeveloperOptionsSection.visibility = vis
+                    binding.containerDeveloperOptionsCard.visibility = vis
+                    // Reset simulate switch when hiding, mirroring the VM reset.
+                    if (!enabled) binding.switchSimulateWfLoading.isChecked = false
+                }
+            }
+        }
+
+        binding.switchDevOptions.isChecked = viewModel.devOptions.value
+        binding.switchDevOptions.setOnCheckedChangeListener { _, checked ->
+            viewModel.setDevOptions(checked)
         }
     }
 
