@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  dialog_restore_wizard.xml
+  ─────────────────────────────────────────────────────────────────────────────
+  Root layout for RestoreWizardDialogFragment.
+
+  Structure:
+    ┌─ LinearLayout (vertical, full width) ─────────────────────────────────┐
+    │  Title bar                                                             │
+    │  ┌─ ViewFlipper ──────────────────────────────────────────────────┐   │
+    │  │  child[0]  Step 0 — Snapshot selection                         │   │
+    │  │  child[1]  Step 1 — Library summary + safety notice            │   │
+    │  │  child[2]  Step 2 — Destructive confirmation                   │   │
+    │  │  child[3]  Step 3 — Progress                                   │   │
+    │  └────────────────────────────────────────────────────────────────┘   │
+    │  Navigation row  [ Back ]                    [ Next / Restore ]       │
+    └────────────────────────────────────────────────────────────────────────┘
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Title bar -->
+    <TextView
+        android:id="@+id/tvWizardTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/restore_wizard_title"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Step container -->
+    <ViewFlipper
+        android:id="@+id/wizardFlipper"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateFirstView="false">
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             Step 0 — Snapshot selection
+             ───────────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:minHeight="120dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step0_desc"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/tvSnapshotLoading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step0_scanning"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="visible" />
+
+            <TextView
+                android:id="@+id/tvNoSnapshots"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step0_none_found"
+                android:textColor="#B3261E"
+                android:visibility="gone" />
+
+            <RadioGroup
+                android:id="@+id/rgSnapshots"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             Step 1 — Library summary
+             ───────────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:minHeight="120dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step1_your_library"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:id="@+id/tvSummaryLoading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step1_loading"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="visible" />
+
+            <!-- Count rows — hidden until loaded -->
+
+            <TextView
+                android:id="@+id/tvSummaryRecordings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvSummaryMarks"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvSummaryTopics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+
+            <!-- Safety notice -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_rounded_surface"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/restore_step1_safety_notice"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             Step 2 — Destructive confirmation
+             ───────────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:minHeight="120dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step2_heading"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#B3261E"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step2_body"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:lineSpacingMultiplier="1.4"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_step2_safety_note"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textColor="?android:attr/textColorSecondary"
+                android:lineSpacingMultiplier="1.3" />
+
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             Step 3 — Progress
+             ───────────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:minHeight="120dp">
+
+            <TextView
+                android:id="@+id/tvProgressLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/restore_progress_starting"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:layout_marginBottom="16dp" />
+
+            <ProgressBar
+                android:id="@+id/restoreProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:indeterminate="true" />
+
+            <TextView
+                android:id="@+id/tvProgressSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvProgressError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="#B3261E"
+                android:lineSpacingMultiplier="1.3"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </ViewFlipper>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:background="#CAC4D0" />
+
+    <!-- Navigation buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWizardBack"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/wizard_btn_back"
+            android:visibility="gone" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWizardNext"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/wizard_btn_next" />
+
+    </LinearLayout>
+
+</LinearLayout>

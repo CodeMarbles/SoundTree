@@ -53,6 +53,39 @@ object RecordingExporter {
         return jsonFile
     }
 
+    /**
+     * Builds and writes the export JSON for [recording] to an explicit
+     * [destDir] instead of alongside the audio file.
+     *
+     * Used by the restore pre-flight safety export, which writes all
+     * current recordings' metadata to a timestamped directory in
+     * internal storage before the destructive restore begins.
+     *
+     * The output file is named `{audioStem}.json` (e.g. `TC_20240115_143022.json`),
+     * matching the convention of the sibling-file exporter so the output is
+     * readable by the same tools.
+     *
+     * @param recording  The recording to export.
+     * @param marks      All marks belonging to this recording.
+     * @param allTopics  Full flat topic list — used to walk the ancestor chain.
+     * @param destDir    Directory to write the JSON into (must already exist).
+     * @return           The [File] that was written.
+     * @throws IOException if the JSON file cannot be written.
+     */
+    fun exportToDir(
+        recording: RecordingEntity,
+        marks:     List<MarkEntity>,
+        allTopics: List<TopicEntity>,
+        destDir:   File,
+    ): File {
+        val stem     = File(recording.filePath).nameWithoutExtension
+        val jsonFile = File(destDir, "$stem.json")
+
+        val metadata = buildMetadata(recording, marks, allTopics, File(recording.filePath).name)
+        jsonFile.writeText(metadata.toJson().toString(2))
+        return jsonFile
+    }
+
     // ── Metadata builders ─────────────────────────────────────────────────────
 
     private fun buildMetadata(

@@ -60,6 +60,7 @@ import app.treecast.ui.listDbSnapshots
 import app.treecast.ui.migrateRecordingStructure
 import app.treecast.ui.refreshStorageVolumes
 import app.treecast.ui.reprocessAllWaveforms
+import app.treecast.ui.restore.RestoreWizardDialogFragment
 import app.treecast.ui.restoreFromBackup
 import app.treecast.ui.setAlwaysShowPlayerPill
 import app.treecast.ui.setAlwaysShowRecorderPill
@@ -149,15 +150,6 @@ class SettingsFragment : Fragment() {
         viewModel.addBackupTarget(volumeUuid, uri.toString())
     }
 
-    /**
-     * SAF directory picker for restore.
-     *
-     * After the user picks a directory:
-     * 1. Scans db/ for available snapshots via [MainViewModel.listDbSnapshots].
-     * 2. Shows a single-choice selection dialog (newest pre-selected).
-     * 3. Shows the destructive confirmation dialog.
-     * 4. Executes the restore via [MainViewModel.restoreFromBackup].
-     */
     private val openDocumentTreeForRestore = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -168,55 +160,8 @@ class SettingsFragment : Fragment() {
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
         )
 
-        val dirUri = uri.toString()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            val snapshots = viewModel.listDbSnapshots(dirUri)
-
-            if (snapshots.isEmpty()) {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(getString(R.string.settings_restore_no_db_title))
-                    .setMessage(getString(R.string.settings_restore_no_db_message))
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show()
-                return@launch
-            }
-
-            // ── Step 1: Snapshot selection ────────────────────────────────────
-            var selectedIndex = 0
-            val labels = snapshots.map { it.displayName }.toTypedArray()
-
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.settings_restore_select_title))
-                .setSingleChoiceItems(labels, 0) { _, which -> selectedIndex = which }
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(getString(R.string.settings_restore_select_action)) { _, _ ->
-                    val chosen = snapshots[selectedIndex]
-
-                    // ── Step 2: Destructive confirmation ──────────────────────
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(getString(R.string.settings_restore_confirm_title))
-                        .setMessage(getString(R.string.settings_restore_confirm_message))
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .setPositiveButton(getString(R.string.settings_restore_confirm_action)) { _, _ ->
-                            viewModel.restoreFromBackup(
-                                volumeUuid = "",
-                                backupFile = chosen.file,
-                                onError    = { reason ->
-                                    if (isAdded) {
-                                        MaterialAlertDialogBuilder(requireContext())
-                                            .setTitle(getString(R.string.settings_restore_failed_title))
-                                            .setMessage(reason)
-                                            .setPositiveButton(android.R.string.ok, null)
-                                            .show()
-                                    }
-                                },
-                            )
-                        }
-                        .show()
-                }
-                .show()
-        }
+        RestoreWizardDialogFragment.newInstance(backupRootUri = uri.toString())
+            .show(parentFragmentManager, RestoreWizardDialogFragment.TAG)
     }
 
     override fun onCreateView(
