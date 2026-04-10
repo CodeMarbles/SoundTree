@@ -12,6 +12,7 @@
          ══════════════════════════════════════════════════════════════ -->
 
     <!-- Purple / brand -->
+    <color name="purple_100">#E8E7FF</color>
     <color name="purple_300">#9D96FF</color>
     <color name="purple_500">#6C63FF</color>
     <color name="purple_600">#4F48CC</color>

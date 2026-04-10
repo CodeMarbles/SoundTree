@@ -23,8 +23,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.slider.Slider
 import app.treecast.R
 import app.treecast.data.entities.BackupLogEntity
 import app.treecast.databinding.FragmentSettingsBinding
@@ -32,16 +30,14 @@ import app.treecast.databinding.ItemBackupAvailableVolumeBinding
 import app.treecast.databinding.ItemBackupLogRowBinding
 import app.treecast.databinding.ViewBackupProgressCardBinding
 import app.treecast.service.RecordingService
+import app.treecast.storage.AppVolume
+import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.BackupTargetUiState
 import app.treecast.ui.BackupUiState
 import app.treecast.ui.MainViewModel
 import app.treecast.ui.PlayerWidgetVisibility
 import app.treecast.ui.ProcessingStatus
 import app.treecast.ui.RecorderWidgetVisibility
-import app.treecast.ui.recovery.OrphanRecoveryDialogFragment
-import app.treecast.storage.AppVolume
-import app.treecast.util.OrphanRecording
-import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.addBackupTarget
 import app.treecast.ui.cancelBackupForVolume
 import app.treecast.ui.cancelWaveformProcessing
@@ -56,11 +52,11 @@ import app.treecast.ui.getNearEndShortSecs
 import app.treecast.ui.getRememberLongThresholdSecs
 import app.treecast.ui.getTotalRecordingTime
 import app.treecast.ui.labelForJob
-import app.treecast.ui.listDbSnapshots
 import app.treecast.ui.migrateRecordingStructure
+import app.treecast.ui.recovery.OrphanRecoveryDialogFragment
 import app.treecast.ui.refreshStorageVolumes
 import app.treecast.ui.reprocessAllWaveforms
-import app.treecast.ui.restoreFromBackup
+import app.treecast.ui.restore.RestoreWizardDialogFragment
 import app.treecast.ui.setAlwaysShowPlayerPill
 import app.treecast.ui.setAlwaysShowRecorderPill
 import app.treecast.ui.setAutoNavigateToListen
@@ -96,8 +92,11 @@ import app.treecast.ui.setSimulateWaveformLoading
 import app.treecast.ui.setThemeMode
 import app.treecast.ui.setWaveformStyleKey
 import app.treecast.ui.tickProcessingRefresh
+import app.treecast.util.OrphanRecording
 import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.themeColor
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -149,15 +148,6 @@ class SettingsFragment : Fragment() {
         viewModel.addBackupTarget(volumeUuid, uri.toString())
     }
 
-    /**
-     * SAF directory picker for restore.
-     *
-     * After the user picks a directory:
-     * 1. Scans db/ for available snapshots via [MainViewModel.listDbSnapshots].
-     * 2. Shows a single-choice selection dialog (newest pre-selected).
-     * 3. Shows the destructive confirmation dialog.
-     * 4. Executes the restore via [MainViewModel.restoreFromBackup].
-     */
     private val openDocumentTreeForRestore = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -168,55 +158,8 @@ class SettingsFragment : Fragment() {
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
         )
 
-        val dirUri = uri.toString()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            val snapshots = viewModel.listDbSnapshots(dirUri)
-
-            if (snapshots.isEmpty()) {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(getString(R.string.settings_restore_no_db_title))
-                    .setMessage(getString(R.string.settings_restore_no_db_message))
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show()
-                return@launch
-            }
-
-            // ── Step 1: Snapshot selection ────────────────────────────────────
-            var selectedIndex = 0
-            val labels = snapshots.map { it.displayName }.toTypedArray()
-
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.settings_restore_select_title))
-                .setSingleChoiceItems(labels, 0) { _, which -> selectedIndex = which }
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(getString(R.string.settings_restore_select_action)) { _, _ ->
-                    val chosen = snapshots[selectedIndex]
-
-                    // ── Step 2: Destructive confirmation ──────────────────────
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(getString(R.string.settings_restore_confirm_title))
-                        .setMessage(getString(R.string.settings_restore_confirm_message))
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .setPositiveButton(getString(R.string.settings_restore_confirm_action)) { _, _ ->
-                            viewModel.restoreFromBackup(
-                                volumeUuid = "",
-                                backupFile = chosen.file,
-                                onError    = { reason ->
-                                    if (isAdded) {
-                                        MaterialAlertDialogBuilder(requireContext())
-                                            .setTitle(getString(R.string.settings_restore_failed_title))
-                                            .setMessage(reason)
-                                            .setPositiveButton(android.R.string.ok, null)
-                                            .show()
-                                    }
-                                },
-                            )
-                        }
-                        .show()
-                }
-                .show()
-        }
+        RestoreWizardDialogFragment.newInstance(backupRootUri = uri.toString())
+            .show(parentFragmentManager, RestoreWizardDialogFragment.TAG)
     }
 
     override fun onCreateView(

@@ -125,4 +125,25 @@ interface RecordingDao {
      */
     @Query("UPDATE recordings SET file_path = :newPath WHERE id = :id")
     suspend fun updateFilePath(id: Long, newPath: String)
+
+    /**
+     * Updates both the on-disk path and the storage volume UUID for a single
+     * recording. Called by [DatabaseRestoreManager] after copying backup audio
+     * files to the restoring device's default storage volume.
+     */
+    @Query("UPDATE recordings SET file_path = :newPath, storage_volume_uuid = :volumeUuid WHERE id = :id")
+    suspend fun updateFilePathAndVolume(id: Long, newPath: String, volumeUuid: String)
+
+    /**
+     * Resets every recording's waveform_status to PENDING.
+     * Called after a database restore so WaveformWorker checks/rebuilds the
+     * cache for all recordings against the (potentially different) audio files
+     * that were just copied in.
+     *
+     * Named distinctly from [resetAllWaveformStatuses] to make the restore
+     * call site self-documenting — this is a post-restore reset, not a
+     * user-triggered regeneration.
+     */
+    @Query("UPDATE recordings SET waveform_status = 0")
+    suspend fun resetWaveformStatusesAfterRestore()
 }

@@ -36,4 +36,8 @@ interface TopicDao {
 
     @Query("UPDATE topics SET updated_at = :time WHERE id = :id")
     suspend fun touch(id: Long, time: Long = System.currentTimeMillis())
+
+    /** Total topic count. Used by the restore wizard summary step. */
+    @Query("SELECT COUNT(*) FROM topics")
+    suspend fun countAll(): Int
 }

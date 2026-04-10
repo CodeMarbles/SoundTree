@@ -738,4 +738,51 @@
     <string name="mark_cd_jump_next">Next mark</string>
     <string name="mark_cd_confirm">Lock mark position</string>
 
+    <!-- ══════════════════════════════════════════════════════════════
+         Restore Wizard  —  dialog_restore_wizard.xml
+         RestoreWizardDialogFragment
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Dialog title -->
+    <string name="restore_wizard_title">Restore from backup</string>
+
+    <!-- Wizard nav buttons -->
+    <string name="wizard_btn_back">Back</string>
+    <string name="wizard_btn_next">Next</string>
+    <string name="wizard_btn_restore">Restore</string>
+
+    <!-- Step 0: Snapshot selection -->
+    <string name="restore_step0_desc">Choose a database snapshot to restore from.</string>
+    <string name="restore_step0_scanning">Scanning backup…</string>
+    <string name="restore_step0_none_found">No snapshots found in this backup folder.</string>
+
+    <!-- Step 1: Library summary -->
+    <string name="restore_step1_your_library">Your current library</string>
+    <string name="restore_step1_loading">Loading…</string>
+    <string name="restore_step1_safety_notice">Before restoring, TreeCast will save a copy of your current database and export a JSON file for every recording — including all marks. This safety snapshot is stored in internal storage and can be used to recover mark data if anything goes wrong.</string>
+
+    <!-- Step 1 plurals: recording / mark / topic counts -->
+    <plurals name="restore_summary_recordings">
+        <item quantity="one">%d recording</item>
+        <item quantity="other">%d recordings</item>
+    </plurals>
+    <plurals name="restore_summary_marks">
+        <item quantity="one">%d mark</item>
+        <item quantity="other">%d marks</item>
+    </plurals>
+    <plurals name="restore_summary_topics">
+        <item quantity="one">%d topic</item>
+        <item quantity="other">%d topics</item>
+    </plurals>
+
+    <!-- Step 2: Confirmation -->
+    <string name="restore_step2_heading">This will overwrite your current library</string>
+    <string name="restore_step2_body">All recordings, topics, and marks created since this backup was made will be replaced by the backup\'s data. Any audio files on your device that exist in the backup will be re-copied to your default storage.\n\nThe app will restart automatically when the restore is complete.</string>
+    <string name="restore_step2_safety_note">A safety snapshot of your current database and a full metadata export (with marks) will be saved to internal storage before anything is changed.</string>
+
+    <!-- Step 3: Progress -->
+    <string name="restore_progress_starting">Starting restore…</string>
+    <string name="restore_progress_failed">Restore failed</string>
+    <string name="restore_progress_post_swap_note">The database has already been replaced. Your original data is preserved in the safety snapshot at Files → Android → data → app.treecast → files → restore-safety.</string>
+
 </resources>

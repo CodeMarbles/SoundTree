@@ -33,4 +33,8 @@ interface MarkDao {
     /** One-shot read of marks for a single recording; used by the backup export pass. */
     @Query("SELECT * FROM marks WHERE recording_id = :recordingId ORDER BY position_ms ASC")
     suspend fun getMarksForRecordingOnce(recordingId: Long): List<MarkEntity>
+
+    /** Total mark count across all recordings. Used by the restore wizard summary step. */
+    @Query("SELECT COUNT(*) FROM marks")
+    suspend fun countAll(): Int
 }
