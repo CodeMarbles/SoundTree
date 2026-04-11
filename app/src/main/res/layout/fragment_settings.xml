@@ -2250,6 +2250,18 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
+                        <!--
+                            containerBackupProgressCard
+                            Shown while any backup job is running. SettingsFragment inflates
+                            view_backup_progress_card.xml into this slot and fades it in/out.
+                            Visibility starts GONE so no space is reserved when idle.
+                            -->
+                        <FrameLayout
+                            android:id="@+id/containerBackupProgressCard"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
                         <!-- ── Recent Backups sub-section ───────────────────────────────────── -->
 
                         <View
@@ -2520,18 +2532,6 @@
                                 android:paddingBottom="8dp" />
 
                         </LinearLayout>
-
-                        <!--
-                            containerBackupProgressCard
-                            Shown while any backup job is running. SettingsFragment inflates
-                            view_backup_progress_card.xml into this slot and fades it in/out.
-                            Visibility starts GONE so no space is reserved when idle.
-                            -->
-                        <FrameLayout
-                            android:id="@+id/containerBackupProgressCard"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:visibility="gone" />
 
                     </LinearLayout>
 
