@@ -530,6 +530,10 @@ class BackupWorker(
                         totalOnDest      = 0,
                         totalBytesOnDest = 0L,
                         dbBackedUp       = dbBackedUp,
+                        0,0,0,
+                        0,0,0,
+                        0,0,0
+
                     )
                     postNotification(
                         context     = applicationContext,
@@ -646,6 +650,9 @@ class BackupWorker(
                 totalOnDest      = totalOnDest,
                 totalBytesOnDest = totalBytesOnDest,
                 dbBackedUp       = dbBackedUp,
+                0,0,0,
+                0,0,0,
+                0,0,0
             )
         }
 

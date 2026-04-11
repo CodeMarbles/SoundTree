@@ -27,7 +27,7 @@ import app.treecast.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -284,6 +284,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10,
                         MIGRATION_10_11,
                         MIGRATION_11_12,
+                        MIGRATION_12_13,
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -322,6 +323,38 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE backup_targets ADD COLUMN export_metadata_enabled INTEGER NOT NULL DEFAULT 0"
                 )
+            }
+        }
+
+        /**
+         * v12 → v13: Add per-category backup stats columns to backup_logs.
+         *
+         * Splits the opaque aggregate files_* counters into three per-category
+         * breakdowns — recordings, metadata (JSON sidecars), and waveforms —
+         * each with its own copied / skipped / failed columns. This allows the
+         * backup log detail dialog to render a granular summary rather than a
+         * single "X copied · Y skipped · Z failed" line.
+         *
+         * The aggregate files_* columns are retained for backward-compatible
+         * rendering of pre-v13 log rows in the detail UI.
+         *
+         * All nine new columns default to 0. Pre-v13 rows will show all zeros;
+         * the detail UI treats all-zero as "no breakdown available" and falls
+         * back to the legacy aggregate display for those rows.
+         *
+         * No existing data is affected beyond the schema addition.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN recordings_copied  INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN recordings_skipped INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN recordings_failed  INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN metadata_generated INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN metadata_skipped   INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN metadata_failed    INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_copied   INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_skipped  INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_failed   INTEGER NOT NULL DEFAULT 0")
             }
         }
 

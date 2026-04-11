@@ -106,8 +106,10 @@ interface BackupLogDao {
 
     /**
      * Updates the running stats columns on an in-progress log row.
-     * BackupWorker calls this incrementally as files are processed so
-     * the UI can show live progress if desired.
+     * BackupWorker calls this once after all copy passes complete.
+     *
+     * The aggregate files_* columns are kept in sync alongside the per-category
+     * breakdown so pre-v13 rendering paths continue to work without changes.
      */
     @Query("""
         UPDATE backup_logs
@@ -119,11 +121,21 @@ interface BackupLogDao {
             total_recordings_on_source   = :totalOnSource,
             total_recordings_on_dest     = :totalOnDest,
             total_bytes_on_destination   = :totalBytesOnDest,
-            db_backed_up                 = :dbBackedUp
+            db_backed_up                 = :dbBackedUp,
+            recordings_copied            = :recordingsCopied,
+            recordings_skipped           = :recordingsSkipped,
+            recordings_failed            = :recordingsFailed,
+            metadata_generated           = :metadataGenerated,
+            metadata_skipped             = :metadataSkipped,
+            metadata_failed              = :metadataFailed,
+            waveforms_copied             = :waveformsCopied,
+            waveforms_skipped            = :waveformsSkipped,
+            waveforms_failed             = :waveformsFailed
         WHERE id = :id
     """)
     suspend fun updateStats(
         id: Long,
+        // ── Aggregates (backward compat) ──────────────────────────────────────
         filesExamined: Int,
         filesCopied: Int,
         filesSkipped: Int,
@@ -133,6 +145,16 @@ interface BackupLogDao {
         totalOnDest: Int,
         totalBytesOnDest: Long,
         dbBackedUp: Boolean,
+        // ── Per-category breakdown (v13+) ─────────────────────────────────────
+        recordingsCopied: Int,
+        recordingsSkipped: Int,
+        recordingsFailed: Int,
+        metadataGenerated: Int,
+        metadataSkipped: Int,
+        metadataFailed: Int,
+        waveformsCopied: Int,
+        waveformsSkipped: Int,
+        waveformsFailed: Int,
     )
 
     // ── Log clearing ──────────────────────────────────────────────────────────

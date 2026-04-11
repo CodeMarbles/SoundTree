@@ -144,6 +144,67 @@ data class BackupLogEntity(
     @ColumnInfo(name = "bytes_copied")
     val bytesCopied: Long = 0L,
 
+    // ── Per-category delta stats (v13+) ───────────────────────────────────────
+    //
+    // Break the aggregate files_* columns into per-category counters so the
+    // detail screen can show "recordings / metadata / waveforms" rows rather
+    // than a single opaque total.
+    //
+    // Invariant (checkable per category):
+    //   *_copied + *_skipped + *_failed == files_examined  (recordings only)
+    //
+    // Pre-v13 rows will have all six fields as 0. The UI must treat all-zero
+    // as "no breakdown available" and fall back to the legacy aggregate display.
+
+    /** Audio .m4a files successfully copied to the backup destination this run. */
+    @ColumnInfo(name = "recordings_copied")
+    val recordingsCopied: Int = 0,
+
+    /**
+     * Audio .m4a files skipped because an identical copy (same name + size)
+     * already existed on the destination.
+     */
+    @ColumnInfo(name = "recordings_skipped")
+    val recordingsSkipped: Int = 0,
+
+    /** Audio .m4a files attempted but failed to copy. */
+    @ColumnInfo(name = "recordings_failed")
+    val recordingsFailed: Int = 0,
+
+    /**
+     * Companion .json metadata sidecar files written (generated) this run.
+     * "Generated" rather than "copied" because the file is always rebuilt
+     * from live DB data rather than transferred from a source location.
+     */
+    @ColumnInfo(name = "metadata_generated")
+    val metadataGenerated: Int = 0,
+
+    /**
+     * Metadata sidecars skipped because the destination copy was already
+     * up to date (mtime / size match, or metadata_updated_at unchanged).
+     */
+    @ColumnInfo(name = "metadata_skipped")
+    val metadataSkipped: Int = 0,
+
+    /** Metadata sidecar writes that failed. */
+    @ColumnInfo(name = "metadata_failed")
+    val metadataFailed: Int = 0,
+
+    /** Waveform .wfm cache files successfully copied to the backup destination. */
+    @ColumnInfo(name = "waveforms_copied")
+    val waveformsCopied: Int = 0,
+
+    /**
+     * Waveform cache files skipped because an identical copy already existed
+     * on the destination. This is the normal steady-state outcome on most runs.
+     */
+    @ColumnInfo(name = "waveforms_skipped")
+    val waveformsSkipped: Int = 0,
+
+    /** Waveform cache files attempted but failed to copy. */
+    @ColumnInfo(name = "waveforms_failed")
+    val waveformsFailed: Int = 0,
+
     // ── Total stats (state of destination after this run) ─────────────────────
 
     /** Total recording files present on the source at time of backup. */
