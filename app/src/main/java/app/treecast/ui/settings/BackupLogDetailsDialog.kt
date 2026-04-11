@@ -66,26 +66,44 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
         private const val ARG_FILES_COPIED   = "files_copied"
         private const val ARG_FILES_SKIPPED  = "files_skipped"
         private const val ARG_FILES_FAILED   = "files_failed"
+        private const val ARG_RECORDINGS_COPIED   = "recordings_copied"
+        private const val ARG_RECORDINGS_SKIPPED  = "recordings_skipped"
+        private const val ARG_RECORDINGS_FAILED   = "recordings_failed"
+        private const val ARG_METADATA_GENERATED  = "metadata_generated"
+        private const val ARG_METADATA_SKIPPED    = "metadata_skipped"
+        private const val ARG_METADATA_FAILED     = "metadata_failed"
+        private const val ARG_WAVEFORMS_COPIED    = "waveforms_copied"
+        private const val ARG_WAVEFORMS_SKIPPED   = "waveforms_skipped"
+        private const val ARG_WAVEFORMS_FAILED    = "waveforms_failed"
         private const val ARG_BYTES_COPIED   = "bytes_copied"
         private const val ARG_DB_BACKED_UP   = "db_backed_up"
         private const val ARG_ERROR_MESSAGE  = "error_message"
 
         fun newInstance(log: BackupLogEntity) = BackupLogDetailDialog().apply {
             arguments = Bundle().apply {
-                putLong(ARG_LOG_ID,          log.id)
-                putString(ARG_VOLUME_LABEL,   log.volumeLabel)
-                putString(ARG_VOLUME_UUID,    log.volumeUuid)
-                putString(ARG_BACKUP_DIR_URI, log.backupDirUri)
-                putLong(ARG_STARTED_AT,      log.startedAt)
-                putLong(ARG_ENDED_AT,        log.endedAt ?: 0L)
-                putString(ARG_STATUS,        log.status)
-                putString(ARG_TRIGGER,       log.trigger)
-                putInt(ARG_FILES_COPIED,     log.filesCopied)
-                putInt(ARG_FILES_SKIPPED,    log.filesSkipped)
-                putInt(ARG_FILES_FAILED,     log.filesFailed)
-                putLong(ARG_BYTES_COPIED,    log.bytesCopied)
-                putBoolean(ARG_DB_BACKED_UP, log.dbBackedUp)
-                putString(ARG_ERROR_MESSAGE, log.errorMessage)
+                putLong(ARG_LOG_ID,              log.id)
+                putString(ARG_VOLUME_LABEL,       log.volumeLabel)
+                putString(ARG_VOLUME_UUID,        log.volumeUuid)
+                putString(ARG_BACKUP_DIR_URI,     log.backupDirUri)
+                putLong(ARG_STARTED_AT,           log.startedAt)
+                putLong(ARG_ENDED_AT,             log.endedAt ?: 0L)
+                putString(ARG_STATUS,             log.status)
+                putString(ARG_TRIGGER,            log.trigger)
+                putInt(ARG_FILES_COPIED,          log.filesCopied)
+                putInt(ARG_FILES_SKIPPED,         log.filesSkipped)
+                putInt(ARG_FILES_FAILED,          log.filesFailed)
+                putInt(ARG_RECORDINGS_COPIED,     log.recordingsCopied)
+                putInt(ARG_RECORDINGS_SKIPPED,    log.recordingsSkipped)
+                putInt(ARG_RECORDINGS_FAILED,     log.recordingsFailed)
+                putInt(ARG_METADATA_GENERATED,    log.metadataGenerated)
+                putInt(ARG_METADATA_SKIPPED,      log.metadataSkipped)
+                putInt(ARG_METADATA_FAILED,       log.metadataFailed)
+                putInt(ARG_WAVEFORMS_COPIED,      log.waveformsCopied)
+                putInt(ARG_WAVEFORMS_SKIPPED,     log.waveformsSkipped)
+                putInt(ARG_WAVEFORMS_FAILED,      log.waveformsFailed)
+                putLong(ARG_BYTES_COPIED,         log.bytesCopied)
+                putBoolean(ARG_DB_BACKED_UP,      log.dbBackedUp)
+                putString(ARG_ERROR_MESSAGE,      log.errorMessage)
             }
         }
     }
@@ -202,16 +220,66 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
     // ── Metadata ──────────────────────────────────────────────────────────────
 
     private fun bindMetadata(log: BackupLogEntity) {
-        binding.tvDetailTrigger.text  = formatTrigger(log.trigger)
+        binding.tvDetailTrigger.text = formatTrigger(log.trigger)
         binding.tvDetailDuration.text = formatDuration(log.startedAt, log.endedAt, requireContext())
-        binding.tvDetailFiles.text = getString(
-            R.string.backup_log_detail_files_summary,
-            log.filesCopied, log.filesSkipped, log.filesFailed
-        )
+
+        // Detect v13+ entries: any per-category field non-zero means the new
+        // breakdown columns were populated. Fall back to the legacy single row
+        // for pre-v13 log entries where all nine fields are 0.
+        val args = requireArguments()
+        val recCopied = args.getInt(ARG_RECORDINGS_COPIED)
+        val recSkipped = args.getInt(ARG_RECORDINGS_SKIPPED)
+        val recFailed = args.getInt(ARG_RECORDINGS_FAILED)
+        val metaGen = args.getInt(ARG_METADATA_GENERATED)
+        val metaSkip = args.getInt(ARG_METADATA_SKIPPED)
+        val metaFail = args.getInt(ARG_METADATA_FAILED)
+        val wfmCopied = args.getInt(ARG_WAVEFORMS_COPIED)
+        val wfmSkipped = args.getInt(ARG_WAVEFORMS_SKIPPED)
+        val wfmFailed = args.getInt(ARG_WAVEFORMS_FAILED)
+
+        val hasBreakdown = recCopied + recSkipped + recFailed +
+                metaGen + metaSkip + metaFail +
+                wfmCopied + wfmSkipped + wfmFailed > 0
+
+        if (hasBreakdown) {
+            binding.tvDetailFiles.visibility = View.GONE
+            binding.groupDetailCategoryBreakdown.visibility = View.VISIBLE
+
+            binding.tvDetailRecordingsSummary.text = getString(
+                R.string.backup_log_detail_recordings_summary,
+                recCopied, recSkipped, recFailed,
+            )
+            binding.tvDetailMetadataSummary.text = getString(
+                R.string.backup_log_detail_metadata_summary,
+                metaGen, metaSkip, metaFail,
+            )
+
+            val hasWaveforms = wfmCopied + wfmSkipped + wfmFailed > 0
+            binding.rowDetailWaveforms.visibility = if (hasWaveforms) View.VISIBLE else View.GONE
+            if (hasWaveforms) {
+                binding.tvDetailWaveformsSummary.text = getString(
+                    R.string.backup_log_detail_waveforms_summary,
+                    wfmCopied, wfmSkipped, wfmFailed,
+                )
+            }
+
+            val totalSkipped = recSkipped + metaSkip + wfmSkipped
+            binding.tvDetailAlreadyUpToDate.text = getString(
+                R.string.backup_log_detail_already_uptodate, totalSkipped,
+            )
+        } else {
+            binding.tvDetailFiles.visibility = View.VISIBLE
+            binding.groupDetailCategoryBreakdown.visibility = View.GONE
+            binding.tvDetailFiles.text = getString(
+                R.string.backup_log_detail_files_summary,
+                log.filesCopied, log.filesSkipped, log.filesFailed,
+            )
+        }
+
         binding.tvDetailBytes.text = formatBytes(log.bytesCopied)
         binding.tvDetailDb.text = getString(
             if (log.dbBackedUp) R.string.backup_log_detail_db_backed_up
-            else                R.string.backup_log_detail_db_not_backed_up
+            else R.string.backup_log_detail_db_not_backed_up
         )
 
         if (log.status == BackupLogEntity.BackupStatus.FAILED && !log.errorMessage.isNullOrBlank()) {

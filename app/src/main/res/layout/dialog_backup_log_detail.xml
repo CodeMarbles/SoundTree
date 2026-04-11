@@ -176,7 +176,7 @@
                     tools:text="1m 43s" />
             </LinearLayout>
 
-            <!-- Files (copied · skipped · failed) -->
+            <!-- Files — legacy single-row display (pre-v13 log entries) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -196,6 +196,96 @@
                     android:textColor="?attr/colorTextPrimary"
                     android:textSize="13sp"
                     tools:text="12 copied · 0 skipped · 0 failed" />
+            </LinearLayout>
+
+            <!-- Files — v13+ per-category breakdown (visibility toggled in code) -->
+            <LinearLayout
+                android:id="@+id/groupDetailCategoryBreakdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <!-- Recordings row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/backup_log_detail_recordings_label"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/tvDetailRecordingsSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp"
+                        tools:text="12 copied · 0 skipped · 0 failed" />
+                </LinearLayout>
+
+                <!-- Metadata row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingBottom="6dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/backup_log_detail_metadata_label"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/tvDetailMetadataSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp"
+                        tools:text="12 generated · 0 skipped · 0 failed" />
+                </LinearLayout>
+
+                <!-- Waveforms row (hidden when all three waveform counters are 0) -->
+                <LinearLayout
+                    android:id="@+id/rowDetailWaveforms"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingBottom="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/backup_log_detail_waveforms_label"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/tvDetailWaveformsSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="13sp"
+                        tools:text="3 copied · 0 skipped · 0 failed" />
+                </LinearLayout>
+
+                <!-- Summary line: total skipped count, subtle secondary text -->
+                <TextView
+                    android:id="@+id/tvDetailAlreadyUpToDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="8dp"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="12sp"
+                    tools:text="47 files already up to date" />
+
             </LinearLayout>
 
             <!-- Data copied (bytes) -->

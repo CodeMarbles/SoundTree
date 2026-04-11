@@ -35,8 +35,7 @@ import kotlin.system.exitProcess
  *
  *   appdata/
  *     waveforms/
- *       {recordingId}.wfm           ← present only if BackupWorker has been
- *                                      updated to include waveforms (future)
+ *       {recordingId}.wfm
  *
  * ## Restore sequence (see [restore])
  *
@@ -358,6 +357,16 @@ object DatabaseRestoreManager {
 
                 val destFile = File(destDir, filename)
 
+                // Skip copy if an identical file is already in place (same-device
+                // restore where recordings were never deleted). Still add to
+                // copiedFileMap so the path-remap step correctly updates the DB row.
+                if (destFile.exists() && destFile.length() == sourceFile.length()) {
+                    copiedFileMap[filename] = destFile
+                    copiedCount++
+                    onProgress("Copying recordings…", copiedCount, totalFiles)
+                    continue
+                }
+
                 try {
                     appContext.contentResolver.openInputStream(sourceFile.uri)?.use { inp ->
                         destFile.outputStream().use { out -> inp.copyTo(out) }
@@ -366,8 +375,7 @@ object DatabaseRestoreManager {
                     copiedCount++
                     onProgress("Copying recordings…", copiedCount, totalFiles)
                 } catch (_: Exception) {
-                    // Per-file failure: leave the DB row pointing at the old
-                    // path — the UI's missing-file handling will surface it.
+                    // Per-file failure: leave the DB row pointing at the old path.
                 }
             }
         }

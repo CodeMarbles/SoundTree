@@ -34,6 +34,7 @@ import app.treecast.ui.MainViewModel.Companion.PREF_SCRUB_FORWARD_SECS
 import app.treecast.ui.MainViewModel.Companion.PREF_SHOW_TITLE_BAR
 import app.treecast.ui.MainViewModel.Companion.PREF_SIMULATE_WF_LOADING
 import app.treecast.ui.MainViewModel.Companion.PREF_THEME_MODE
+import app.treecast.ui.MainViewModel.Companion.PREF_VERBOSE_BACKUP_LOGGING
 import app.treecast.ui.MainViewModel.Companion.SPEED_MAX
 import app.treecast.ui.MainViewModel.Companion.SPEED_MIN
 import app.treecast.ui.MainViewModel.Companion.SPEED_STEP
@@ -277,6 +278,13 @@ fun MainViewModel.setNearEndDurationThresholdSecs(secs: Int) {
     prefs.edit()
         .putInt(PlaybackPositionHelper.PREF_NEAR_END_DURATION_THRESHOLD_SECS, secs.coerceAtLeast(30))
         .apply()
+}
+
+// ── Verbose backup logging ────────────────────────────────────────────────────
+
+fun MainViewModel.setVerboseBackupLogging(enabled: Boolean) {
+    _verboseBackupLogging.value = enabled
+    prefs.edit().putBoolean(PREF_VERBOSE_BACKUP_LOGGING, enabled).apply()
 }
 
 // ── Playhead visualisation ────────────────────────────────────────────────────

@@ -90,6 +90,7 @@ import app.treecast.ui.setScrubForwardSecs
 import app.treecast.ui.setShowTitleBar
 import app.treecast.ui.setSimulateWaveformLoading
 import app.treecast.ui.setThemeMode
+import app.treecast.ui.setVerboseBackupLogging
 import app.treecast.ui.setWaveformStyleKey
 import app.treecast.ui.tickProcessingRefresh
 import app.treecast.util.OrphanRecording
@@ -1589,6 +1590,16 @@ class SettingsFragment : Fragment() {
                     renderTotalUsed(usageMap)
                 }
             }
+        }
+
+        // ── Verbose backup logging ────────────────────────────────────────────
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.verboseBackupLogging.collect { enabled ->
+                binding.switchVerboseBackupLogging.isChecked = enabled
+            }
+        }
+        binding.switchVerboseBackupLogging.setOnCheckedChangeListener { _, checked ->
+            viewModel.setVerboseBackupLogging(checked)
         }
 
         // ── DB snapshot pruning ───────────────────────────────────────────────────────

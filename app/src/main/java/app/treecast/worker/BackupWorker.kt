@@ -36,9 +36,6 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
- * WorkManager worker that performs a full backup to a user-designated
- * SAF directory on a removable storage volume.
- *
  * ## What it does
  * 1. Resolves the [BackupTargetEntity] for the given [KEY_VOLUME_UUID].
  * 2. Opens the user-chosen SAF tree URI ([BackupTargetEntity.backupDirUri]).
@@ -47,18 +44,20 @@ import java.util.concurrent.TimeUnit
  * 5. Syncs all TC_*.m4a recording files from every source volume into a
  *    `recordings/` sub-directory, skipping files already present with a
  *    matching byte size.
- * 6. Writes a [BackupLogEntity] row (created at start, finalised at end)
+ * 6. Syncs .wfm waveform cache files from the default storage volume into
+ *    `appdata/waveforms/` on the destination. Non-fatal — waveform failures
+ *    are logged as warnings and do not degrade run status.
+ * 7. Writes a [BackupLogEntity] row (created at start, finalised at end)
  *    and [BackupLogEventEntity] child rows for any events (INFO milestones
  *    when verbose logging is on; WARNING and ERROR for problems always).
- * 7. Updates [BackupTargetEntity.lastBackupAt] on success.
- * 8. Posts a notification with the outcome.
+ * 8. Updates [BackupTargetEntity.lastBackupAt] on success.
+ * 9. Posts a notification with the outcome.
  *
  * ## Verbose logging
  * When the user enables "Detailed backup log" in Settings, [PREF_VERBOSE_LOGGING]
- * is true and INFO milestone events are emitted alongside the usual WARNING/ERROR
- * events. Milestones include: WAL checkpoint result, db/ directory resolution,
- * database copy, recordings/ directory resolution, and pre-scan statistics.
- * Individual file copies are never logged regardless of verbosity level.
+ * is true and INFO events are written for every individual file copy (recordings,
+ * metadata, waveforms) in addition to the standard milestone events (WAL
+ * checkpoint, directory resolution, pre-scan statistics, pass-complete summaries).
  *
  * ## Enqueuing
  * Use the [enqueueOneTime] helper for ON_CONNECT and MANUAL triggers.
@@ -280,6 +279,18 @@ class BackupWorker(
         var bytesCopied   = 0L
         var dbBackedUp    = false
 
+        // Per-category breakdown (v13+). The three aggregate files_* columns are
+        // derived from these at flush time rather than tracked redundantly.
+        var recordingsCopied  = 0
+        var recordingsSkipped = 0
+        var recordingsFailed  = 0
+        var metadataGenerated = 0
+        var metadataSkipped   = 0
+        var metadataFailed    = 0
+        var waveformsCopied   = 0
+        var waveformsSkipped  = 0
+        var waveformsFailed   = 0  // warning-only; does not affect run status
+
         // ── 3. Checkpoint WAL then copy DB ────────────────────────────
         try {
             val sqliteDb = db.openHelper.writableDatabase
@@ -440,7 +451,7 @@ class BackupWorker(
 
                     if (targetDir == null) {
                         // Filename doesn't match expected pattern or SAF dir creation failed.
-                        filesFailed++
+                        recordingsFailed++
                         error(
                             message = "Could not resolve destination directory for ${file.name}",
                             path    = file.absolutePath,
@@ -454,7 +465,7 @@ class BackupWorker(
                         existing != null && existing.parentDir.uri == targetDir.uri
                                 && existing.size == file.length() -> {
                             // Already present in the correct place with matching size — skip.
-                            filesSkipped++
+                            recordingsSkipped++
                         }
 
                         existing != null && existing.parentDir.uri != targetDir.uri
@@ -482,19 +493,19 @@ class BackupWorker(
                                         message = "Reorganised ${file.name} → $yyyy/$mm/",
                                         path    = file.absolutePath,
                                     )
-                                    filesCopied++
+                                    recordingsCopied++
                                     bytesCopied += file.length()
                                 } else {
                                     // Verification failed — leave old copy in place.
                                     newCopy?.delete()
-                                    filesFailed++
+                                    recordingsFailed++
                                     error(
                                         message = "Size mismatch after reorganising ${file.name}; original preserved",
                                         path    = file.absolutePath,
                                     )
                                 }
                             } catch (e: Exception) {
-                                filesFailed++
+                                recordingsFailed++
                                 error(
                                     message = "Failed to reorganise ${file.name}: ${e.message}",
                                     path    = file.absolutePath,
@@ -506,10 +517,14 @@ class BackupWorker(
                             // Not on destination (or size mismatch) — copy fresh.
                             try {
                                 copyFileToDocumentDir(file, targetDir, file.name)
-                                filesCopied++
+                                recordingsCopied++
                                 bytesCopied += file.length()
+                                if (verbose) {
+                                    val mb = "%.1f MB".format(file.length() / 1_048_576.0)
+                                    info("Copied ${file.name} ($mb)", path = file.absolutePath)
+                                }
                             } catch (e: Exception) {
-                                filesFailed++
+                                recordingsFailed++
                                 error(
                                     message = e.message ?: "Unknown error",
                                     path    = file.absolutePath,
@@ -519,21 +534,31 @@ class BackupWorker(
                     }
 
                     // Flush stats to DB so the UI shows live progress.
+                    // Metadata and waveform passes have not started yet; their
+                    // counters are still 0 and the aggregates equal recordings only.
                     logDao.updateStats(
-                        id               = logId,
-                        filesExamined    = filesExamined,
-                        filesCopied      = filesCopied,
-                        filesSkipped     = filesSkipped,
-                        filesFailed      = filesFailed,
-                        bytesCopied      = bytesCopied,
-                        totalOnSource    = totalOnSource,
-                        totalOnDest      = 0,
-                        totalBytesOnDest = 0L,
-                        dbBackedUp       = dbBackedUp,
-                        0,0,0,
-                        0,0,0,
-                        0,0,0
-
+                        id                = logId,
+                        filesExamined     = filesExamined,
+                        // We don't start updating the local files Copied/Skipped/Failed variables
+                        // until later. At this point only recordings have been look at so we use
+                        // those tracking variables. We do still use filesExamined.
+                        filesCopied       = recordingsCopied,
+                        filesSkipped      = recordingsSkipped,
+                        filesFailed       = recordingsFailed,
+                        bytesCopied       = bytesCopied,
+                        totalOnSource     = totalOnSource,
+                        totalOnDest       = 0,
+                        totalBytesOnDest  = 0L,
+                        dbBackedUp        = dbBackedUp,
+                        recordingsCopied  = recordingsCopied,
+                        recordingsSkipped = recordingsSkipped,
+                        recordingsFailed  = recordingsFailed,
+                        metadataGenerated = 0,
+                        metadataSkipped   = 0,
+                        metadataFailed    = 0,
+                        waveformsCopied   = 0,
+                        waveformsSkipped  = 0,
+                        waveformsFailed   = 0,
                     )
                     postNotification(
                         context     = applicationContext,
@@ -578,10 +603,6 @@ class BackupWorker(
                 val allRecordings = recordingDao.getAllOnce()
                 val allTopics     = topicDao.getAllTopicsOnce()
 
-                var jsonExported = 0
-                var jsonSkipped  = 0
-                var jsonFailed   = 0
-
                 for (recording in allRecordings) {
                     val audioFile = File(recording.filePath)
                     val stem      = audioFile.nameWithoutExtension   // e.g. "TC_20240115_143022"
@@ -604,7 +625,7 @@ class BackupWorker(
                     } ?: 0L
 
                     if (destExportedAt >= freshnessThreshold) {
-                        jsonSkipped++
+                        metadataSkipped++
                         continue
                     }
 
@@ -620,9 +641,12 @@ class BackupWorker(
                         val marks         = markDao.getMarksForRecordingOnce(recording.id)
                         val localJsonFile = RecordingExporter.export(recording, marks, allTopics)
                         copyFileToDocumentDir(localJsonFile, targetDir, "$stem.json")
-                        jsonExported++
+                        metadataGenerated++
+                        if (verbose) {
+                            info("Generated metadata for $stem", path = recording.filePath)
+                        }
                     } catch (e: Exception) {
-                        jsonFailed++
+                        metadataFailed++
                         warning(
                             message = "Metadata export failed for $stem: ${e.message}",
                             path    = recording.filePath,
@@ -633,30 +657,106 @@ class BackupWorker(
                 if (verbose) {
                     info(
                         "Metadata export pass complete — " +
-                                "$jsonExported written, $jsonSkipped up-to-date, $jsonFailed failed"
+                                "$metadataGenerated written, $metadataSkipped up-to-date, $metadataFailed failed"
                     )
                 }
             }
 
-            // ── 5. Flush stats to log row ─────────────────────────────
+            // ── 5. Sync waveform cache files ─────────────────────────────────────────────
+            //
+            // Waveforms are derived/re-computable data. Failures are logged as warnings
+            // only and must NOT cause the overall run status to degrade from SUCCESS to
+            // PARTIAL — waveformsFailed is intentionally excluded from the filesFailed
+            // aggregate computed at step 6.
+            val defaultVolume = StorageVolumeHelper.getDefaultVolume(applicationContext)
+            if (defaultVolume != null) {
+                val localWaveformDir = File(defaultVolume.rootDir.parentFile!!, "appdata/waveforms")
+                if (localWaveformDir.exists() && localWaveformDir.isDirectory) {
+                    val waveformDestDir = destRoot
+                        .findOrCreateDir("appdata")
+                        ?.findOrCreateDir("waveforms")
+
+                    if (waveformDestDir == null) {
+                        warning("Could not create appdata/waveforms/ on backup destination — skipping waveform sync")
+                    } else {
+                        val wfmFiles = localWaveformDir.listFiles()
+                            ?.filter { it.isFile && it.name.endsWith(".wfm") }
+                            .orEmpty()
+
+                        if (verbose) {
+                            info("Waveform sync: ${wfmFiles.size} cache file(s) found on source")
+                        }
+
+                        for (wfmFile in wfmFiles) {
+                            // Skip if destination already has an identically-sized copy.
+                            // This is the normal steady-state outcome on most runs.
+                            val existingOnDest = waveformDestDir.findFile(wfmFile.name)
+                            if (existingOnDest != null && existingOnDest.length() == wfmFile.length()) {
+                                waveformsSkipped++
+                                continue
+                            }
+                            // copyFileToDocumentDir deletes any stale destination copy
+                            // before writing, so size-mismatch is handled correctly.
+                            try {
+                                copyFileToDocumentDir(wfmFile, waveformDestDir, wfmFile.name)
+                                waveformsCopied++
+                                if (verbose) {
+                                    info("Copied waveform ${wfmFile.name}", path = wfmFile.absolutePath)
+                                }
+                            } catch (e: Exception) {
+                                // Non-fatal — waveforms are re-computable by WaveformWorker.
+                                waveformsFailed++
+                                warning(
+                                    message = "Waveform copy failed for ${wfmFile.name}: ${e.message}",
+                                    path    = wfmFile.absolutePath,
+                                )
+                            }
+                        }
+
+                        if (verbose) {
+                            info(
+                                "Waveform sync complete — " +
+                                        "$waveformsCopied copied, $waveformsSkipped up-to-date, $waveformsFailed failed"
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── 6. Flush stats to log row ─────────────────────────────
+            //
+            // Derive aggregate columns from per-category counters so pre-v13
+            // rendering paths continue to work without any changes.
+            // waveformsFailed is intentionally excluded from filesFailed —
+            // waveform failures are non-fatal and must not affect run status.
+            filesCopied  = recordingsCopied  + metadataGenerated + waveformsCopied
+            filesSkipped = recordingsSkipped + metadataSkipped   + waveformsSkipped
+            filesFailed  = recordingsFailed  + metadataFailed
+
             logDao.updateStats(
-                id               = logId,
-                filesExamined    = filesExamined,
-                filesCopied      = filesCopied,
-                filesSkipped     = filesSkipped,
-                filesFailed      = filesFailed,
-                bytesCopied      = bytesCopied,
-                totalOnSource    = totalOnSource,
-                totalOnDest      = totalOnDest,
-                totalBytesOnDest = totalBytesOnDest,
-                dbBackedUp       = dbBackedUp,
-                0,0,0,
-                0,0,0,
-                0,0,0
+                id                = logId,
+                filesExamined     = filesExamined,
+                filesCopied       = filesCopied,
+                filesSkipped      = filesSkipped,
+                filesFailed       = filesFailed,
+                bytesCopied       = bytesCopied,
+                totalOnSource     = totalOnSource,
+                totalOnDest       = totalOnDest,
+                totalBytesOnDest  = totalBytesOnDest,
+                dbBackedUp        = dbBackedUp,
+                recordingsCopied  = recordingsCopied,
+                recordingsSkipped = recordingsSkipped,
+                recordingsFailed  = recordingsFailed,
+                metadataGenerated = metadataGenerated,
+                metadataSkipped   = metadataSkipped,
+                metadataFailed    = metadataFailed,
+                waveformsCopied   = waveformsCopied,
+                waveformsSkipped  = waveformsSkipped,
+                waveformsFailed   = waveformsFailed,
             )
         }
 
-        // ── 6. Finalise log row ───────────────────────────────────────
+        // ── 7. Finalise log row ───────────────────────────────────────
         //
         // Problem count is WARNING + ERROR only — INFO milestones do not
         // count toward PARTIAL or FAILED status.
@@ -677,7 +777,7 @@ class BackupWorker(
             else null,
         )
 
-        // ── 7. Stamp target with last backup time ─────────────────────
+        // ── 8. Stamp target with last backup time ─────────────────────
         if (status != BackupStatus.FAILED) {
             targetDao.setLastBackupAt(volumeUuid, System.currentTimeMillis())
         }
@@ -687,7 +787,7 @@ class BackupWorker(
         // was there before.
         targetDao.setVolumeLabel(volumeUuid, volumeLabel)
 
-        // ── 8. Resolve notification and WorkManager result ────────────
+        // ── 9. Resolve notification and WorkManager result ────────────
         val notifText = when (status) {
             BackupStatus.SUCCESS -> "Backup complete — $filesCopied file(s) copied"
             BackupStatus.PARTIAL -> "Backup finished with $filesFailed error(s)"

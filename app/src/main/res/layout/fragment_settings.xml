@@ -2342,6 +2342,47 @@
                             android:orientation="vertical"
                             android:paddingBottom="8dp" />
 
+                        <!-- Verbose backup logging toggle -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_backup_verbose_logging_label"
+                                    android:textColor="?attr/colorTextPrimary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/settings_backup_verbose_logging_desc"
+                                    android:textColor="?attr/colorTextSecondary"
+                                    android:textSize="12sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchVerboseBackupLogging"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp" />
+
+                        </LinearLayout>
+
                         <!-- DB snapshot pruning toggle -->
                         <LinearLayout
                             android:layout_width="match_parent"

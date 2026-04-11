@@ -528,6 +528,10 @@
     <string name="settings_restore_select_title">Choose a backup to restore</string>
     <string name="settings_restore_select_action">Next</string>
 
+    <!-- Backup: verbose logging toggle -->
+    <string name="settings_backup_verbose_logging_label">Detailed backup log</string>
+    <string name="settings_backup_verbose_logging_desc">Log individual file copy events alongside milestones and errors</string>
+
     <!-- Backup: DB snapshot pruning -->
     <string name="settings_backup_prune_label">Limit saved database snapshots</string>
     <string name="settings_backup_prune_desc">Automatically delete older backups when the limit is reached</string>
@@ -565,11 +569,28 @@
     <string name="backup_log_detail_db_not_backed_up">Not included</string>
     <!-- %1$d=copied  %2$d=skipped  %3$d=failed -->
     <string name="backup_log_detail_files_summary">%1$d copied · %2$d skipped · %3$d failed</string>
+
+    <!-- Backup log detail: per-category breakdown labels -->
+    <string name="backup_log_detail_recordings_label">Recordings</string>
+    <string name="backup_log_detail_metadata_label">Metadata</string>
+    <string name="backup_log_detail_waveforms_label">Waveforms</string>
+
+    <!-- Backup log detail: per-category value format strings -->
+    <!-- %1$d=copied/generated  %2$d=skipped  %3$d=failed -->
+    <string name="backup_log_detail_recordings_summary">%1$d copied · %2$d skipped · %3$d failed</string>
+    <string name="backup_log_detail_metadata_summary">%1$d generated · %2$d skipped · %3$d failed</string>
+    <string name="backup_log_detail_waveforms_summary">%1$d copied · %2$d skipped · %3$d failed</string>
+
+    <!-- Backup log detail: summary line beneath breakdown -->
+    <!-- %1$d=total skipped across all categories -->
+    <string name="backup_log_detail_already_uptodate">%1$d files already up to date</string>
+
     <string name="backup_log_detail_events_title">Events</string>
     <string name="backup_log_detail_btn_show_info">Show all milestones</string>
     <string name="backup_log_detail_btn_hide_info">Hide milestones</string>
     <string name="backup_log_detail_no_events">No problems recorded for this backup.</string>
     <string name="backup_log_detail_error_message_label">Run error</string>
+
 
     <!-- Duration format strings: %1$d=minutes  %2$d=seconds -->
     <string name="backup_log_duration_minutes">%1$dm %2$ds</string>

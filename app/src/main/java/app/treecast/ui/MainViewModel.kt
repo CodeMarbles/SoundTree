@@ -35,6 +35,7 @@ import app.treecast.util.MarkJumpLogic
 import app.treecast.util.OrphanRecording
 import app.treecast.util.OrphanRecordingScanner
 import app.treecast.util.PlaybackPositionHelper
+import app.treecast.worker.BackupWorker
 import app.treecast.worker.WaveformWorker
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -218,6 +219,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // ── Database snapshot pruning prefs ───────────────────────────────────
         internal const val PREF_DB_PRUNE_ENABLED = "db_prune_enabled"  // Boolean, default false
         internal const val PREF_DB_PRUNE_COUNT   = "db_prune_count"    // Int,     default 10
+        internal const val PREF_VERBOSE_BACKUP_LOGGING = BackupWorker.PREF_VERBOSE_LOGGING
         internal const val DEFAULT_DB_PRUNE_COUNT = 10
 
         // ── Waveform style key constants ──────────────────────────────────────
@@ -1100,6 +1102,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     internal val _migrationState =
         MutableStateFlow<MigrationState>(Idle)
     val migrationState: StateFlow<MigrationState> = _migrationState.asStateFlow()
+
+    internal val _verboseBackupLogging =
+        MutableStateFlow(prefs.getBoolean(PREF_VERBOSE_BACKUP_LOGGING, false))
+    val verboseBackupLogging: StateFlow<Boolean> = _verboseBackupLogging.asStateFlow()
 
     internal val _playheadVisEnabled =
         MutableStateFlow(prefs.getBoolean(PREF_PLAYHEAD_VIS_ENABLED, true))
