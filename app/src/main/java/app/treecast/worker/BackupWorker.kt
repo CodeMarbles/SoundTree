@@ -12,7 +12,7 @@ import app.treecast.data.entities.BackupLogEntity
 import app.treecast.data.entities.BackupLogEntity.BackupStatus
 import app.treecast.data.entities.BackupLogEntity.BackupTrigger
 import app.treecast.data.entities.BackupLogEventEntity
-import app.treecast.data.entities.BackupLogEventEntity.*
+import app.treecast.data.entities.BackupLogEventEntity.EventType
 import app.treecast.data.entities.BackupTargetEntity
 import app.treecast.export.RecordingExporter
 import app.treecast.storage.StorageVolumeHelper
@@ -37,10 +37,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         const val TAG_VOLUME_PREFIX = "backup_volume_"
         const val KEY_VOLUME_UUID   = "volume_uuid"
         const val KEY_TRIGGER       = "trigger"
-        const val PREF_VERBOSE_LOGGING = "verbose_logging"
 
         private const val CHANNEL_ID           = "backup"
         private const val NOTIFICATION_ID      = 1001
+        const val PREF_VERBOSE_LOGGING = "verbose_logging"
 
         private fun oneTimeName(volumeUuid: String)  = "backup_once_$volumeUuid"
         private fun periodicName(volumeUuid: String) = "backup_periodic_$volumeUuid"
@@ -264,6 +264,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         // ── 3–6. Execute backup steps ─────────────────────────────────────────
         try {
+            run.info("Backup started — trigger: $trigger, destination: $dirUriString")
             stepCopyDb(run)
             stepCopyRecordings(run)
             if (run.target.exportMetadataEnabled) stepExportMetadata(run)
@@ -352,27 +353,44 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         val destIndex = mutableMapOf<String, DestEntry>()
 
-        fun indexDir(dir: DocumentFile) {
+        // Returns a pair of (m4aCount, jsonCount) for the files indexed from [dir].
+        fun indexDir(dir: DocumentFile): Pair<Int, Int> {
+            var m4a = 0; var json = 0
             dir.listFiles().forEach { child ->
                 val name = child.name.orEmpty()
                 if (child.isFile && name.startsWith("TC_")) {
                     when {
-                        name.endsWith(".m4a")  -> destIndex[name] = DestEntry(
-                            size      = child.length(),
-                            parentDir = dir,
-                            file      = child,
-                        )
-                        name.endsWith(".json") ->
+                        name.endsWith(".m4a")  -> {
+                            destIndex[name] = DestEntry(
+                                size      = child.length(),
+                                parentDir = dir,
+                                file      = child,
+                            )
+                            m4a++
+                        }
+                        name.endsWith(".json") -> {
                             run.jsonIndex[name.removeSuffix(".json")] = child
+                            json++
+                        }
                     }
                 }
             }
+            return m4a to json
         }
 
-        // Flat root — catches files written by old backup runs.
-        indexDir(recordingDestDir)
+        // Flat root — catches files written by old backup runs (legacy or errors).
+        if (run.verbose) run.info("Destination index: scanning flat recordings/ root…")
+        val (flatM4a, flatJson) = indexDir(recordingDestDir)
+        if (run.verbose && (flatM4a > 0 || flatJson > 0)) {
+            run.info(
+                "Destination index: flat root has $flatM4a misplaced recording(s) " +
+                        "and $flatJson metadata file(s) — these will be reorganised"
+            )
+        }
 
         // YYYY/MM subdirectories — the canonical layout.
+        if (run.verbose) run.info("Destination index: scanning YYYY/MM subdirectories…")
+        var nestedDirCount = 0
         recordingDestDir.listFiles().forEach { yearDir ->
             val yearName = yearDir.name.orEmpty()
             if (yearDir.isDirectory && yearName.matches(Regex("\\d{4}"))) {
@@ -381,9 +399,17 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     if (monthDir.isDirectory && monthName.matches(Regex("\\d{2}"))) {
                         run.dirCache["$yearName/$monthName"] = monthDir
                         indexDir(monthDir)
+                        nestedDirCount++
                     }
                 }
             }
+        }
+        if (run.verbose) {
+            run.info(
+                "Destination index complete — ${destIndex.size} recording(s) and " +
+                        "${run.jsonIndex.size} metadata file(s) across $nestedDirCount YYYY/MM dir(s)" +
+                        if (flatM4a > 0) ", plus $flatM4a flat-root file(s) pending reorganisation" else ""
+            )
         }
 
         // ── Compute source totals ─────────────────────────────────────────────
@@ -406,6 +432,13 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             run.warning("Could not read $path: $message", path)
         }
         val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
+
+        // Always log source totals — useful for verifying the scan found the right things.
+        val sourceMb = "%.1f MB".format(totalBytesOnSource / 1_048_576.0)
+        run.info(
+            "Pre-scan: ${run.totalOnSource} recording(s) ($sourceMb) " +
+                    "across ${sourceDirs.size} volume(s)"
+        )
 
         // ── Copy loop ─────────────────────────────────────────────────────────
         for (sourceDir in sourceDirs) {
@@ -448,6 +481,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                             && existing.size == file.length() -> {
                         // Already present in the correct place with matching size — skip.
                         run.recordingsSkipped++
+                        if (run.verbose) {
+                            run.info("Skipped ${file.name} — already up to date", path = file.absolutePath)
+                        }
                     }
 
                     existing != null
@@ -492,10 +528,8 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                             copyFileToDocumentDir(file, targetDir, file.name)
                             run.recordingsCopied++
                             run.bytesCopied += file.length()
-                            if (run.verbose) {
-                                val mb = "%.1f MB".format(file.length() / 1_048_576.0)
-                                run.info("Copied ${file.name} ($mb)", path = file.absolutePath)
-                            }
+                            val mb = "%.1f MB".format(file.length() / 1_048_576.0)
+                            run.info("Copied ${file.name} ($mb)", path = file.absolutePath)
                         } catch (e: Exception) {
                             run.recordingsFailed++
                             run.error(
@@ -561,6 +595,21 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 }
             }
         }
+
+        // Always log the recording copy pass summary.
+        val copiedMb = "%.1f MB".format(run.bytesCopied / 1_048_576.0)
+        run.info(
+            "Recordings pass complete — ${run.recordingsCopied} copied ($copiedMb), " +
+                    "${run.recordingsSkipped} skipped, ${run.recordingsFailed} failed"
+        )
+
+        // Verbose: destination state after the run.
+        if (run.verbose) {
+            val destMb = "%.1f MB".format(run.totalBytesOnDest / 1_048_576.0)
+            run.info(
+                "Destination state: ${run.totalOnDest} recording(s) on backup ($destMb)"
+            )
+        }
     }
 
     // ── Step 5: Metadata JSON export ──────────────────────────────────────────
@@ -609,6 +658,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
             if (destExportedAt >= freshnessThreshold) {
                 run.metadataSkipped++
+                if (run.verbose) {
+                    run.info("Skipped metadata for $stem — destination is up to date", path = recording.filePath)
+                }
                 continue
             }
 
@@ -625,9 +677,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 val localJsonFile = RecordingExporter.export(recording, marks, allTopics)
                 copyFileToDocumentDir(localJsonFile, targetDir, "$stem.json")
                 run.metadataGenerated++
-                if (run.verbose) {
-                    run.info("Generated metadata for $stem", path = recording.filePath)
-                }
+                run.info("Generated metadata for $stem", path = recording.filePath)
             } catch (e: Exception) {
                 run.metadataFailed++
                 run.warning(
@@ -637,12 +687,11 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             }
         }
 
-        if (run.verbose) {
-            run.info(
-                "Metadata export pass complete — ${run.metadataGenerated} written, " +
-                        "${run.metadataSkipped} up-to-date, ${run.metadataFailed} failed"
-            )
-        }
+        // Always log the metadata pass summary.
+        run.info(
+            "Metadata pass complete — ${run.metadataGenerated} generated, " +
+                    "${run.metadataSkipped} skipped, ${run.metadataFailed} failed"
+        )
     }
 
     // ── Step 5a: Sync waveform cache files ───────────────────────────────────
@@ -703,12 +752,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             }
             .distinctBy { it.name }
 
-        if (run.verbose) {
-            run.info(
-                "Waveform sync: ${wfmFiles.size} cache file(s) found across " +
-                        "${waveformSourceDirs.size} volume(s)"
-            )
-        }
+        run.info(
+            "Waveform sync: ${wfmFiles.size} cache file(s) found across " +
+                    "${waveformSourceDirs.size} volume(s)"
+        )
 
         for (wfmFile in wfmFiles) {
             // Skip if destination already has an identically-sized copy.
@@ -716,6 +763,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             val existingOnDest = waveformDestDir.findFile(wfmFile.name)
             if (existingOnDest != null && existingOnDest.length() == wfmFile.length()) {
                 run.waveformsSkipped++
+                if (run.verbose) {
+                    run.info("Skipped waveform ${wfmFile.name} — already up to date", path = wfmFile.absolutePath)
+                }
                 continue
             }
             // copyFileToDocumentDir deletes any stale destination copy before
@@ -735,12 +785,11 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             }
         }
 
-        if (run.verbose) {
-            run.info(
-                "Waveform sync complete — ${run.waveformsCopied} copied, " +
-                        "${run.waveformsSkipped} up-to-date, ${run.waveformsFailed} failed"
-            )
-        }
+        // Always log the waveform pass summary.
+        run.info(
+            "Waveforms pass complete — ${run.waveformsCopied} copied, " +
+                    "${run.waveformsSkipped} skipped, ${run.waveformsFailed} failed"
+        )
     }
 
     // ── Step 6: Flush final statistics ───────────────────────────────────────
