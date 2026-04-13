@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         /** Set as an extra on the backup notification PendingIntent. */
         const val EXTRA_NAVIGATE_TO_SETTINGS    = "navigate_to_settings"
         const val EXTRA_NAVIGATE_TO_STORAGE_TAB = "navigate_to_storage_tab"
+        const val EXTRA_NAVIGATE_TO_PAGE = "navigate_to_page"
     }
 
     internal lateinit var binding: ActivityMainBinding
@@ -126,6 +127,11 @@ class MainActivity : AppCompatActivity() {
                 viewModel.requestNavigateToStorageTab()
             }
         }
+        // ── Playback notification → navigate to target page ───────────────
+        val targetPage = intent.getIntExtra(EXTRA_NAVIGATE_TO_PAGE, -1)
+        if (targetPage != -1) {
+            binding.viewPager.setCurrentItem(targetPage, false)
+        }
 
         checkAndShowOrphanRecovery()
     }
@@ -174,6 +180,11 @@ class MainActivity : AppCompatActivity() {
             if (intent.getBooleanExtra(EXTRA_NAVIGATE_TO_STORAGE_TAB, false)) {
                 viewModel.requestNavigateToStorageTab()
             }
+        }
+        // ── Playback notification → navigate to target page ───────────────
+        val targetPage = intent?.getIntExtra(EXTRA_NAVIGATE_TO_PAGE, -1) ?: -1
+        if (targetPage != -1) {
+            binding.viewPager.setCurrentItem(targetPage, false)
         }
     }
 

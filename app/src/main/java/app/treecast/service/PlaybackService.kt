@@ -1,5 +1,6 @@
 package app.treecast.service
 
+import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import androidx.media3.common.AudioAttributes
@@ -17,6 +18,7 @@ import app.treecast.R
 import app.treecast.data.entities.MarkEntity
 import app.treecast.data.repository.TreeCastRepository
 import app.treecast.service.PlaybackService.MarkAwarePlayer
+import app.treecast.ui.MainActivity
 import app.treecast.util.MarkJumpLogic
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -251,6 +253,22 @@ class PlaybackService : MediaSessionService() {
                     .build()
             )
         )
+
+        val listenIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_PAGE, MainActivity.PAGE_LISTEN)
+        }
+        val listenPi = PendingIntent.getActivity(
+            this,
+            AppNotifications.REQUEST_PLAYBACK_SESSION_ACTIVITY,
+            listenIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // Tapping the notification body (or the lock screen card) navigates back to
+        // the Listen tab rather than being a no-op. setSessionActivity is the correct
+        // Media3 hook — it feeds the content intent into the auto-generated
+        // media-style notification, the lock screen, and any future Wear OS surface.
+        mediaSession?.setSessionActivity(listenPi)
     }
 
     override fun onGetSession(

@@ -288,8 +288,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         controllerFuture.addListener(
             {
                 try {
-                    mediaController = controllerFuture.get().also {
-                        it.addListener(playerListener)
+                    mediaController = controllerFuture.get().also { controller ->
+                        controller.addListener(playerListener)
+                        restoreNowPlayingFromController(controller)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "MediaController connection failed: ${e.message}")

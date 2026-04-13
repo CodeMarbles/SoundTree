@@ -59,7 +59,9 @@ import app.treecast.ui.waveform.WaveformTapType
 import app.treecast.util.Icons
 import app.treecast.util.UiConstants
 import app.treecast.util.themeColor
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 

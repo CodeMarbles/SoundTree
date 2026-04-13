@@ -2,10 +2,14 @@ package app.treecast.worker
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import androidx.core.app.NotificationCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.*
+import app.treecast.R
 import app.treecast.data.dao.BackupTargetDao
 import app.treecast.data.db.AppDatabase
 import app.treecast.data.entities.BackupLogEntity
@@ -15,7 +19,9 @@ import app.treecast.data.entities.BackupLogEventEntity
 import app.treecast.data.entities.BackupLogEventEntity.EventType
 import app.treecast.data.entities.BackupTargetEntity
 import app.treecast.export.RecordingExporter
+import app.treecast.service.AppNotifications
 import app.treecast.storage.StorageVolumeHelper
+import app.treecast.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -38,8 +44,20 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         const val KEY_VOLUME_UUID   = "volume_uuid"
         const val KEY_TRIGGER       = "trigger"
 
-        private const val CHANNEL_ID           = "backup"
-        private const val NOTIFICATION_ID      = 1001
+        /**
+         * Returns a stable per-volume notification ID.
+         *
+         * Uses a bounded hash of [volumeUuid] offset from [AppNotifications.NOTIF_BACKUP].
+         * Range 1003–5097 gives 4 096 slots — far more than any real deployment
+         * will need. The old fixed NOTIFICATION_ID is intentionally vacated so
+         * concurrent jobs on different volumes no longer overwrite each other.
+         *
+         * The same value is also used as the PendingIntent request code for that
+         * volume's deep-link intent, keeping both namespaces consistent per volume.
+         */
+        fun notifIdForVolume(volumeUuid: String): Int =
+            AppNotifications.NOTIF_BACKUP + (volumeUuid.hashCode() and 0x0FFF)
+
         const val PREF_VERBOSE_LOGGING = "verbose_logging"
 
         private fun oneTimeName(volumeUuid: String)  = "backup_once_$volumeUuid"
@@ -1011,15 +1029,45 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         nm.createNotificationChannel(
             NotificationChannel(
-                CHANNEL_ID,
+                AppNotifications.CHANNEL_BACKUP,
                 "Backup",
                 NotificationManager.IMPORTANCE_LOW,
-            ).apply { description = "TreeCast automatic backup progress" }
+            )
+            .apply { description = "TreeCast automatic backup progress" }
         )
 
         // Deep-link PendingIntent: opens MainActivity and navigates to Settings → Storage tab.
-        // (existing PendingIntent construction unchanged — omitted for brevity)
+        val deepLinkIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_SETTINGS, true)
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_STORAGE_TAB, true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notifIdForVolume(volumeUuid),   // unique request code per volume
+            deepLinkIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = NotificationCompat.Builder(context, AppNotifications.CHANNEL_BACKUP)
+            .setContentTitle(if (ongoing) "Backing up to $volumeLabel" else "TreeCast Backup")
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_save_check_wave)
+            .setOngoing(ongoing)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(pendingIntent)
 
-        // (existing notification builder and nm.notify() call unchanged — omitted for brevity)
+        // Attach progress bar when running.
+        if (ongoing) {
+            if (totalBytes > 0 && bytesCopied >= 0) {
+                val max      = 10_000
+                val progress = ((bytesCopied.toFloat() / totalBytes) * max)
+                    .toInt().coerceIn(0, max)
+                builder.setProgress(max, progress, /* indeterminate= */ false)
+            } else {
+                builder.setProgress(0, 0, /* indeterminate= */ true)
+            }
+        }
+
+        nm.notify(notifIdForVolume(volumeUuid), builder.build())
     }
 }

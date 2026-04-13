@@ -12,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
 import app.treecast.R
 import app.treecast.data.entities.MarkEntity
 import app.treecast.data.entities.RecordingEntity
@@ -274,6 +276,33 @@ fun MainViewModel.commitPlaybackMarkNudge() {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Called once when the MediaController first connects. If the ViewModel was
+ * freshly created (e.g. after Activity recreation) while PlaybackService was
+ * already running, _nowPlaying will be null even though audio is playing.
+ * This restores the full now-playing state from the controller and DB so the
+ * UI catches up without requiring a new play() call.
+ */
+internal fun MainViewModel.restoreNowPlayingFromController(controller: MediaController) {
+    if (_nowPlaying.value != null) return  // already set, nothing to do
+    val mediaId = controller.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+    if (!controller.isPlaying && controller.playbackState != Player.STATE_BUFFERING) return
+
+    viewModelScope.launch {
+        val recording = repo.getRecordingById(mediaId) ?: return@launch
+        _nowPlaying.value = NowPlayingState(
+            recording  = recording,
+            isPlaying  = controller.isPlaying,
+            positionMs = controller.currentPosition.coerceAtLeast(0L),
+            durationMs = recording.durationMs,
+        )
+        startProgressPolling()
+        startObservingMarks(mediaId)
+        loadWaveform(recording.id, recording.filePath,
+            recording.storageVolumeUuid, recording.createdAt)
+    }
+}
 
 internal fun MainViewModel.startObservingMarks(recordingId: Long) {
     marksJob?.cancel()

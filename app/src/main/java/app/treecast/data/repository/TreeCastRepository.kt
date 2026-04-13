@@ -49,6 +49,9 @@ class TreeCastRepository(context: Context) {
 
     // ── Recordings ────────────────────────────────────────────────────────────
 
+    suspend fun getRecordingById(id: Long): RecordingEntity? =
+        recordingDao.getById(id)
+
     suspend fun saveRecording(
         filePath: String,
         durationMs: Long,

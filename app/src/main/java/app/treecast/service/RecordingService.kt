@@ -289,7 +289,7 @@ class RecordingService : Service() {
         // doesn't kill us during the ~200–500 ms wait for SCO to connect.
         // buildNotification() reads _state, which is still IDLE here, so the
         // notification will show the pause action (correct for "about to record").
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_record_status_recording)))
+        startForeground(AppNotifications.NOTIF_RECORDING, buildNotification(getString(R.string.notif_record_status_recording)))
 
         // setPreferredDevice is a best-effort routing hint introduced in API 28.
         // If the device becomes unavailable after recording starts (e.g. BT drops),
@@ -704,7 +704,7 @@ class RecordingService : Service() {
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            CHANNEL_ID,
+            AppNotifications.CHANNEL_RECORDING,
             getString(R.string.notif_channel_record_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply { description = getString(R.string.notif_channel_record_desc) }
@@ -724,9 +724,13 @@ class RecordingService : Service() {
      * the lock screen and notification shade.
      */
     private fun buildNotification(statusText: String): Notification {
-        val openAppIntent = Intent(this, MainActivity::class.java)
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP  // consistent with the save-from-notification path
+            putExtra(MainActivity.EXTRA_NAVIGATE_TO_PAGE, MainActivity.PAGE_RECORD)
+        }
         val openAppPi = PendingIntent.getActivity(
-            this, 0, openAppIntent, PendingIntent.FLAG_IMMUTABLE
+            this, AppNotifications.REQUEST_RECORD_OPEN_APP, openAppIntent,
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         // ── Pause / Resume action ─────────────────────────────────────
@@ -734,14 +738,14 @@ class RecordingService : Service() {
             val resumeIntent = Intent(this, RecordingService::class.java)
                 .apply { action = ACTION_RESUME }
             val resumePi = PendingIntent.getService(
-                this, REQUEST_RESUME, resumeIntent, PendingIntent.FLAG_IMMUTABLE
+                this, AppNotifications.REQUEST_RECORD_RESUME, resumeIntent, PendingIntent.FLAG_IMMUTABLE
             )
             NotificationCompat.Action(R.drawable.ic_resume_circle, getString(R.string.notif_record_action_resume), resumePi)
         } else {
             val pauseIntent = Intent(this, RecordingService::class.java)
                 .apply { action = ACTION_PAUSE }
             val pausePi = PendingIntent.getService(
-                this, REQUEST_PAUSE, pauseIntent, PendingIntent.FLAG_IMMUTABLE
+                this, AppNotifications.REQUEST_RECORD_PAUSE, pauseIntent, PendingIntent.FLAG_IMMUTABLE
             )
             NotificationCompat.Action(R.drawable.ic_pause, getString(R.string.notif_record_action_pause), pausePi)
         }
@@ -750,7 +754,7 @@ class RecordingService : Service() {
         val saveIntent = Intent(this, RecordingService::class.java)
             .apply { action = ACTION_SAVE }
         val savePi = PendingIntent.getService(
-            this, REQUEST_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
+            this, AppNotifications.REQUEST_RECORD_SAVE, saveIntent, PendingIntent.FLAG_IMMUTABLE
         )
         val saveAction = NotificationCompat.Action(R.drawable.ic_save_check_wave, getString(R.string.notif_record_action_save), savePi)
 
@@ -758,7 +762,7 @@ class RecordingService : Service() {
         val markIntent = Intent(this, RecordingService::class.java)
             .apply { action = ACTION_DROP_MARK }
         val markPi = PendingIntent.getService(
-            this, REQUEST_MARK, markIntent, PendingIntent.FLAG_IMMUTABLE
+            this, AppNotifications.REQUEST_RECORD_MARK, markIntent, PendingIntent.FLAG_IMMUTABLE
         )
         val markAction = NotificationCompat.Action(R.drawable.ic_mark, getString(R.string.mark_btn_add), markPi)
 
@@ -772,7 +776,7 @@ class RecordingService : Service() {
         else
             statusText
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, AppNotifications.CHANNEL_RECORDING)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(markCountText)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
@@ -790,7 +794,7 @@ class RecordingService : Service() {
 
     private fun updateNotification(text: String) {
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(NOTIFICATION_ID, buildNotification(text))
+            .notify(AppNotifications.NOTIF_RECORDING, buildNotification(text))
     }
 
     private fun formatMs(ms: Long): String {
@@ -799,9 +803,7 @@ class RecordingService : Service() {
     }
 
     companion object {
-        private const val TAG            = "RecordingService"
-        private const val CHANNEL_ID     = "treecast_recording"
-        private const val NOTIFICATION_ID = 1001
+        private const val TAG = "RecordingService"
 
         // Intent actions
         const val ACTION_START     = "app.treecast.START"
@@ -816,13 +818,6 @@ class RecordingService : Service() {
 
         // Intent extras
         const val EXTRA_TOPIC_ID = "app.treecast.extra.TOPIC_ID"
-
-        // PendingIntent request codes (must be unique per action)
-        private const val REQUEST_PAUSE  = 10
-        private const val REQUEST_RESUME = 11
-        private const val REQUEST_STOP   = 12   // kept for completeness; not in notification
-        private const val REQUEST_MARK   = 13
-        private const val REQUEST_SAVE   = 14
 
         fun startIntent(ctx: Context, topicId: Long? = null) =
             Intent(ctx, RecordingService::class.java).apply {
