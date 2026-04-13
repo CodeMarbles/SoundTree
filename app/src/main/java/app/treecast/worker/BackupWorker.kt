@@ -22,6 +22,7 @@ import app.treecast.export.RecordingExporter
 import app.treecast.service.AppNotifications
 import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.MainActivity
+import app.treecast.util.BackupProgressCalc
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -56,7 +57,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
          * volume's deep-link intent, keeping both namespaces consistent per volume.
          */
         fun notifIdForVolume(volumeUuid: String): Int =
-            AppNotifications.NOTIF_BACKUP + (volumeUuid.hashCode() and 0x0FFF)
+            AppNotifications.NOTIF_BACKUP_BASE + (volumeUuid.hashCode() and 0x0FFF)
 
         const val PREF_VERBOSE_LOGGING = "verbose_logging"
 
@@ -131,6 +132,14 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         var waveformsCopied   = 0
         var waveformsSkipped  = 0
         var waveformsFailed   = 0  // Non-fatal; excluded from filesFailed aggregate.
+
+        // ── Live-progress fields (mirrored from DB for notification use) ──────
+        // Set by each step function before calling logDao.updatePhase so that
+        // postNotification can read them without an extra DB round-trip.
+        var currentPhase       : String? = null
+        var totalBytesOnSource : Long    = 0L
+        var totalMetadataFiles : Int     = 0
+        var totalWaveformFiles : Int     = 0
 
         /**
          * Number of WARNING or ERROR events logged during this run.
@@ -264,11 +273,12 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         )
 
         postNotification(
-            context     = applicationContext,
             volumeUuid  = volumeUuid,
             volumeLabel = volumeLabel,
             text        = "Backup in progress\u2026",
         )
+        // run is null → progress bar will be indeterminate, which is correct
+        // since no phase has been signalled yet.
 
         val run = BackupRun(
             db          = db,
@@ -307,8 +317,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
      * false, which can influence the FAILED vs. PARTIAL distinction at the end.
      */
     private suspend fun stepCopyDb(run: BackupRun) {
-
+        run.currentPhase = "DB"
         run.logDao.updatePhase(run.logId, "DB")
+        postNotification(run = run, text = "Backing up database\u2026")
 
         try {
             val sqliteDb = run.db.openHelper.writableDatabase
@@ -453,9 +464,12 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             run.warning("Could not read $path: $message", path)
         }
         val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
+        run.totalBytesOnSource = totalBytesOnSource
 
         // ── Signal phase start ────────────────────────────────────────────────
+        run.currentPhase = "RECORDINGS"
         run.logDao.updatePhase(run.logId, "RECORDINGS")
+        postNotification(run = run, text = "Copying files\u2026")
         // totalBytesOnSource is written on the first updateRecordingProgress()
         // call inside the loop — no separate write needed here.
 
@@ -568,16 +582,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     failed             = run.recordingsFailed,
                     totalBytesOnSource = totalBytesOnSource,
                 )
+                postNotification(run = run, text = "Copying files\u2026")
             }
-            postNotification(
-                context     = applicationContext,
-                volumeUuid  = run.volumeUuid,
-                volumeLabel = run.volumeLabel,
-                text        = "Copying files…",
-                ongoing     = true,
-                bytesCopied = run.bytesCopied,
-                totalBytes  = totalBytesOnSource,
-            )
+
         }
 
         // ── Destination totals (post-run) ─────────────────────────────────────
@@ -640,7 +647,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         val allRecordings = recordingDao.getAllOnce()
         val allTopics     = topicDao.getAllTopicsOnce()
 
+        run.totalMetadataFiles = allRecordings.size
+        run.currentPhase = "METADATA"
         run.logDao.updatePhase(run.logId, "METADATA")
+        postNotification(run = run, text = "Exporting metadata\u2026")
 
         for (recording in allRecordings) {
             val audioFile = File(recording.filePath)
@@ -700,6 +710,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 failed     = run.metadataFailed,
                 totalFiles = allRecordings.size,
             )
+            postNotification(run = run, text = "Exporting metadata\u2026")
         }
 
         // Always log the metadata pass summary.
@@ -785,7 +796,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         // Signal phase start here, immediately after wfmFiles is known so
         // totalFiles is available to the first progress write.
+        run.totalWaveformFiles = wfmFiles.size
+        run.currentPhase = "WAVEFORMS"
         run.logDao.updatePhase(run.logId, "WAVEFORMS")
+        postNotification(run = run, text = "Syncing waveforms\u2026")
 
         // Per-subdirectory cache so we issue at most one findOrCreateDir() pair
         // per YYYY/MM combination rather than one per file.
@@ -848,6 +862,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 failed     = run.waveformsFailed,
                 totalFiles = wfmFiles.size,
             )
+            postNotification(run = run, text = "Syncing waveforms\u2026")
         }
 
         // Always log the waveform pass summary.
@@ -940,13 +955,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             BackupStatus.PARTIAL -> "Backup finished with ${run.filesFailed} error(s)"
             else                 -> "Backup failed"
         }
-        postNotification(
-            context     = applicationContext,
-            volumeUuid  = run.volumeUuid,
-            volumeLabel = run.volumeLabel,
-            text        = notifText,
-            ongoing     = false,
-        )
+        postNotification(run = run, text = notifText, ongoing = false)
 
         return if (status == BackupStatus.FAILED) Result.failure() else Result.success()
     }
@@ -1017,14 +1026,15 @@ class BackupWorker(context: Context, params: WorkerParameters) :
     // ── Notification ──────────────────────────────────────────────────────────
 
     private fun postNotification(
-        context     : Context,
-        volumeUuid  : String,
-        volumeLabel : String,
-        text        : String,
-        ongoing     : Boolean = true,
-        bytesCopied : Long    = 0L,
-        totalBytes  : Long    = 0L,
+        run     : BackupRun? = null,
+        text    : String,
+        ongoing : Boolean = true,
+        // For the terminal (non-ongoing) notification, run is null and these
+        // carry the display strings.  When run is non-null they are ignored.
+        volumeUuid  : String = run?.volumeUuid  ?: "",
+        volumeLabel : String = run?.volumeLabel ?: "",
     ) {
+        val context = applicationContext
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         nm.createNotificationChannel(
@@ -1032,9 +1042,11 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 AppNotifications.CHANNEL_BACKUP,
                 "Backup",
                 NotificationManager.IMPORTANCE_LOW,
-            )
-            .apply { description = "TreeCast automatic backup progress" }
+            ).apply { description = "TreeCast automatic backup progress" }
         )
+
+        val resolvedUuid  = run?.volumeUuid  ?: volumeUuid
+        val resolvedLabel = run?.volumeLabel ?: volumeLabel
 
         // Deep-link PendingIntent: opens MainActivity and navigates to Settings → Storage tab.
         val deepLinkIntent = Intent(context, MainActivity::class.java).apply {
@@ -1044,12 +1056,13 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notifIdForVolume(volumeUuid),   // unique request code per volume
+            notifIdForVolume(resolvedUuid),
             deepLinkIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+
         val builder = NotificationCompat.Builder(context, AppNotifications.CHANNEL_BACKUP)
-            .setContentTitle(if (ongoing) "Backing up to $volumeLabel" else "TreeCast Backup")
+            .setContentTitle(if (ongoing) "Backing up to $resolvedLabel" else "TreeCast Backup")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_save_check_wave)
             .setOngoing(ongoing)
@@ -1058,16 +1071,28 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         // Attach progress bar when running.
         if (ongoing) {
-            if (totalBytes > 0 && bytesCopied >= 0) {
-                val max      = 10_000
-                val progress = ((bytesCopied.toFloat() / totalBytes) * max)
-                    .toInt().coerceIn(0, max)
-                builder.setProgress(max, progress, /* indeterminate= */ false)
+            val fraction = run?.let {
+                BackupProgressCalc.fraction(
+                    currentPhase       = it.currentPhase,
+                    bytesCopied        = it.bytesCopied,
+                    totalBytesOnSource = it.totalBytesOnSource,
+                    metadataDone       = it.metadataGenerated + it.metadataSkipped + it.metadataFailed,
+                    totalMetadataFiles = it.totalMetadataFiles,
+                    waveformsDone      = it.waveformsCopied + it.waveformsSkipped + it.waveformsFailed,
+                    totalWaveformFiles = it.totalWaveformFiles,
+                )
+            }
+            if (fraction != null) {
+                builder.setProgress(
+                    BackupProgressCalc.PROGRESS_MAX,
+                    BackupProgressCalc.toProgress(fraction),
+                    false,
+                )
             } else {
-                builder.setProgress(0, 0, /* indeterminate= */ true)
+                builder.setProgress(0, 0, true)
             }
         }
 
-        nm.notify(notifIdForVolume(volumeUuid), builder.build())
+        nm.notify(notifIdForVolume(resolvedUuid), builder.build())
     }
 }

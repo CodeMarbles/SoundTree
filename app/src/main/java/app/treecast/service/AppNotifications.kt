@@ -15,15 +15,20 @@ package app.treecast.service
  * ── Allocation map ────────────────────────────────────────────────────────
  *
  *  Notification IDs
- *    1001  NOTIF_RECORDING   RecordingService foreground notification
- *    1002  NOTIF_PLAYBACK    PlaybackService / Media3 foreground notification
- *    1003  NOTIF_BACKUP      BackupWorker progress / result notification
+ *    1001        NOTIF_RECORDING   RecordingService foreground notification
+ *    1002        NOTIF_PLAYBACK    PlaybackService / Media3 foreground notification
+ *    1003–5097   Per-volume backup notifications, computed by
+ *                BackupWorker.notifIdForVolume(uuid) as:
+ *                  NOTIF_BACKUP_BASE + (uuid.hashCode() and 0x0FFF)
+ *                The same value doubles as the PendingIntent request code for
+ *                that volume's deep-link intent, keeping both namespaces
+ *                consistent and avoiding cross-volume PendingIntent collisions.
  *
  *  PendingIntent request codes
  *    Recording service (1x)
  *      10  REQUEST_RECORD_PAUSE
  *      11  REQUEST_RECORD_RESUME
- *      12  REQUEST_RECORD_STOP      (reserved; not currently in notification)
+ *      12  REQUEST_RECORD_STOP      (reserved; not currently wired to a notification action)
  *      13  REQUEST_RECORD_MARK
  *      14  REQUEST_RECORD_SAVE
  *      15  REQUEST_RECORD_OPEN_APP  content-intent → Record tab
@@ -32,15 +37,23 @@ package app.treecast.service
  *      20  REQUEST_PLAYBACK_SESSION_ACTIVITY  content-intent → Listen tab
  *
  *    Backup worker (3x)
- *      30  REQUEST_BACKUP_OPEN_SETTINGS  content-intent → Settings/Storage tab
+ *      Per-volume, 1003–5097 — see NOTIF_BACKUP_BASE note above.
  */
 object AppNotifications {
 
     // ── Notification IDs ──────────────────────────────────────────────────────
 
     const val NOTIF_RECORDING = 1001
-    const val NOTIF_PLAYBACK  = 1002  // Currently un-used as media3 handles this internally.   Kept as a placeholder for when we eventually, maybe, take finer control of playback notification controls
-    const val NOTIF_BACKUP    = 1003
+    /** Currently unused — Media3 manages the playback notification internally.
+     *  Kept as a placeholder for eventual finer control of playback actions. */
+    const val NOTIF_PLAYBACK  = 1002
+
+    /**
+     * Base value for per-volume backup notification IDs.
+     * Never used as a bare ID — always passed through [BackupWorker.notifIdForVolume].
+     * Allocated range: 1003–5097 (4 095 slots via a 12-bit hash).
+     */
+    const val NOTIF_BACKUP_BASE = 1003
 
     // ── Channel IDs ───────────────────────────────────────────────────────────
 
@@ -62,6 +75,7 @@ object AppNotifications {
     const val REQUEST_PLAYBACK_SESSION_ACTIVITY = 20
 
     // ── PendingIntent request codes — Backup ──────────────────────────────────
-
-    const val REQUEST_BACKUP_OPEN_SETTINGS = 30
+    //
+    // Backup uses per-volume codes derived from notifIdForVolume(uuid) — see
+    // NOTIF_BACKUP_BASE above. No single fixed constant is defined here.
 }

@@ -93,6 +93,7 @@ import app.treecast.ui.setThemeMode
 import app.treecast.ui.setVerboseBackupLogging
 import app.treecast.ui.setWaveformStyleKey
 import app.treecast.ui.tickProcessingRefresh
+import app.treecast.util.BackupProgressCalc
 import app.treecast.util.OrphanRecording
 import app.treecast.util.PlaybackPositionHelper
 import app.treecast.util.themeColor
@@ -598,51 +599,15 @@ class SettingsFragment : Fragment() {
         // was just inserted and hasn't called updatePhase() yet — show
         // indeterminate until it does.  Also null for any unrecognised phase
         // value (forward-compat guard).
-        val progressFraction: Float? = when (log.currentPhase) {
+        val progressFraction = BackupProgressCalc.fraction(log)
 
-            "DB" -> {
-                // Duration is short and opaque; hold at the slice midpoint so
-                // the bar isn't frozen at 0 while the DB checkpoint runs.
-                0.05f
-            }
-
-            "RECORDINGS" -> {
-                if (log.totalBytesOnSource > 0L) {
-                    val within = (log.bytesCopied.toFloat() / log.totalBytesOnSource)
-                        .coerceIn(0f, 1f)
-                    0.10f + within * 0.65f
-                } else {
-                    // Phase signalled but denominator not yet written (first DB
-                    // write hasn't landed in the UI yet). Show slice floor.
-                    0.10f
-                }
-            }
-
-            "METADATA" -> {
-                if (log.totalMetadataFiles > 0) {
-                    val done = log.metadataGenerated + log.metadataSkipped + log.metadataFailed
-                    val within = (done.toFloat() / log.totalMetadataFiles).coerceIn(0f, 1f)
-                    0.75f + within * 0.13f
-                } else {
-                    // Metadata export disabled for this target, or denominator
-                    // not yet written. Show slice floor.
-                    0.75f
-                }
-            }
-
-            "WAVEFORMS" -> {
-                if (log.totalWaveformFiles > 0) {
-                    val done = log.waveformsCopied + log.waveformsSkipped + log.waveformsFailed
-                    val within = (done.toFloat() / log.totalWaveformFiles).coerceIn(0f, 1f)
-                    0.88f + within * 0.12f
-                } else {
-                    // No waveform files found, or denominator not yet written.
-                    // Show slice floor so the bar at least advances past METADATA.
-                    0.88f
-                }
-            }
-
-            else -> null    // Pre-phase (job just inserted) or unknown value → indeterminate.
+        // The setProgress / isIndeterminate block below is unchanged:
+        if (progressFraction != null) {
+            val prog = BackupProgressCalc.toProgress(progressFraction)
+            card.progressBackup.isIndeterminate = false
+            card.progressBackup.setProgress(prog, true)
+        } else {
+            card.progressBackup.isIndeterminate = true
         }
 
         if (progressFraction != null) {
