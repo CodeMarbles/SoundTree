@@ -289,6 +289,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
      * false, which can influence the FAILED vs. PARTIAL distinction at the end.
      */
     private suspend fun stepCopyDb(run: BackupRun) {
+
+        run.logDao.updatePhase(run.logId, "DB")
+
         try {
             val sqliteDb = run.db.openHelper.writableDatabase
             sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
@@ -433,12 +436,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         }
         val totalBytesOnSource: Long = allSourceFiles.sumOf { it.length() }
 
-        // Always log source totals — useful for verifying the scan found the right things.
-        val sourceMb = "%.1f MB".format(totalBytesOnSource / 1_048_576.0)
-        run.info(
-            "Pre-scan: ${run.totalOnSource} recording(s) ($sourceMb) " +
-                    "across ${sourceDirs.size} volume(s)"
-        )
+        // ── Signal phase start ────────────────────────────────────────────────
+        run.logDao.updatePhase(run.logId, "RECORDINGS")
+        // totalBytesOnSource is written on the first updateRecordingProgress()
+        // call inside the loop — no separate write needed here.
 
         // ── Copy loop ─────────────────────────────────────────────────────────
         for (sourceDir in sourceDirs) {
@@ -539,31 +540,17 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                         }
                     }
                 }
-            }
 
-            // Flush recording stats to DB after each source dir so the UI reflects
-            // live progress. Metadata and waveform counters are still 0 at this point.
-            run.logDao.updateStats(
-                id                = run.logId,
-                filesExamined     = run.filesExamined,
-                filesCopied       = run.recordingsCopied,
-                filesSkipped      = run.recordingsSkipped,
-                filesFailed       = run.recordingsFailed,
-                bytesCopied       = run.bytesCopied,
-                totalOnSource     = run.totalOnSource,
-                totalOnDest       = 0,
-                totalBytesOnDest  = 0L,
-                dbBackedUp        = run.dbBackedUp,
-                recordingsCopied  = run.recordingsCopied,
-                recordingsSkipped = run.recordingsSkipped,
-                recordingsFailed  = run.recordingsFailed,
-                metadataGenerated = 0,
-                metadataSkipped   = 0,
-                metadataFailed    = 0,
-                waveformsCopied   = 0,
-                waveformsSkipped  = 0,
-                waveformsFailed   = 0,
-            )
+                run.logDao.updateRecordingProgress(
+                    id                 = run.logId,
+                    bytesCopied        = run.bytesCopied,
+                    filesExamined      = run.filesExamined,
+                    copied             = run.recordingsCopied,
+                    skipped            = run.recordingsSkipped,
+                    failed             = run.recordingsFailed,
+                    totalBytesOnSource = totalBytesOnSource,
+                )
+            }
             postNotification(
                 context     = applicationContext,
                 volumeUuid  = run.volumeUuid,
@@ -635,6 +622,8 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         val allRecordings = recordingDao.getAllOnce()
         val allTopics     = topicDao.getAllTopicsOnce()
 
+        run.logDao.updatePhase(run.logId, "METADATA")
+
         for (recording in allRecordings) {
             val audioFile = File(recording.filePath)
             val stem      = audioFile.nameWithoutExtension   // e.g. "TC_20240115_143022"
@@ -685,6 +674,14 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     path    = recording.filePath,
                 )
             }
+
+            run.logDao.updateMetadataProgress(
+                id         = run.logId,
+                generated  = run.metadataGenerated,
+                skipped    = run.metadataSkipped,
+                failed     = run.metadataFailed,
+                totalFiles = allRecordings.size,
+            )
         }
 
         // Always log the metadata pass summary.
@@ -757,6 +754,10 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     "${waveformSourceDirs.size} volume(s)"
         )
 
+        // signal phase start here, immediately after wfmFiles is
+        // known so totalFiles is available to the first progress write.
+        run.logDao.updatePhase(run.logId, "WAVEFORMS")
+
         for (wfmFile in wfmFiles) {
             // Skip if destination already has an identically-sized copy.
             // This is the normal steady-state outcome on most runs.
@@ -783,6 +784,14 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     path    = wfmFile.absolutePath,
                 )
             }
+
+            run.logDao.updateWaveformProgress(
+                id         = run.logId,
+                copied     = run.waveformsCopied,
+                skipped    = run.waveformsSkipped,
+                failed     = run.waveformsFailed,
+                totalFiles = wfmFiles.size,
+            )
         }
 
         // Always log the waveform pass summary.

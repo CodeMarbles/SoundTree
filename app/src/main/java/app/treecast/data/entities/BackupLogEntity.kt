@@ -218,6 +218,47 @@ data class BackupLogEntity(
     /** Total bytes occupied by recordings on the destination after this run. */
     @ColumnInfo(name = "total_bytes_on_destination")
     val totalBytesOnDestination: Long = 0L,
+
+    // ── Live progress fields (v14+) ───────────────────────────────────────────
+    //
+    // Written by BackupWorker during an active run so the UI can render
+    // meaningful phase-aware progress without relying on the prior run's
+    // destination totals as a proxy.
+    //
+    // All four default to 0/null. Pre-v14 completed rows leave them at
+    // defaults, which the UI treats as "no phase data — show indeterminate".
+
+    /**
+     * The phase currently executing. One of "DB", "RECORDINGS", "METADATA",
+     * "WAVEFORMS". Null before the first step starts or once the run finalises.
+     * Used by the progress card to pick the correct slice formula.
+     */
+    @ColumnInfo(name = "current_phase")
+    val currentPhase: String? = null,
+
+    /**
+     * Total bytes of all source `.m4a` recording files, computed once at the
+     * start of [stepCopyRecordings] before the copy loop begins.
+     * Denominator for the RECORDINGS slice (10–75 %) of the progress bar.
+     */
+    @ColumnInfo(name = "total_bytes_on_source")
+    val totalBytesOnSource: Long = 0L,
+
+    /**
+     * Total number of recordings to process during [stepExportMetadata].
+     * Written at the start of that step; denominator for the METADATA slice
+     * (75–88 %). Zero when metadata export is disabled for this target.
+     */
+    @ColumnInfo(name = "total_metadata_files")
+    val totalMetadataFiles: Int = 0,
+
+    /**
+     * Total number of `.wfm` files found during [stepSyncWaveforms].
+     * Written at the start of that step; denominator for the WAVEFORMS slice
+     * (88–100 %).
+     */
+    @ColumnInfo(name = "total_waveform_files")
+    val totalWaveformFiles: Int = 0,
 ) {
     /** Sentinel values for the [trigger] column. */
     object BackupTrigger {

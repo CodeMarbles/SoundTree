@@ -27,7 +27,7 @@ import app.treecast.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -285,6 +285,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
+                        MIGRATION_13_14,
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -355,6 +356,32 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_copied   INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_skipped  INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN waveforms_failed   INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v13 → v14: Add live progress-tracking columns to backup_logs.
+         *
+         * Four new columns let BackupWorker signal its current phase and publish
+         * per-phase denominator totals so the in-settings progress card can render
+         * a meaningful single continuous bar — divided into four phase slices —
+         * without relying on the previous run's destination totals as a proxy.
+         *
+         *   current_phase          TEXT    nullable  "DB"|"RECORDINGS"|"METADATA"|"WAVEFORMS"
+         *   total_bytes_on_source  INTEGER NOT NULL  denominator for the RECORDINGS slice
+         *   total_metadata_files   INTEGER NOT NULL  denominator for the METADATA slice
+         *   total_waveform_files   INTEGER NOT NULL  denominator for the WAVEFORMS slice
+         *
+         * All new columns default to 0/null. Pre-v14 completed rows are unaffected
+         * and will show indeterminate progress if ever re-observed while in-progress
+         * (which cannot happen in practice — they are already finalised).
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN current_phase         TEXT")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_bytes_on_source  INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_metadata_files   INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_waveform_files   INTEGER NOT NULL DEFAULT 0")
             }
         }
 

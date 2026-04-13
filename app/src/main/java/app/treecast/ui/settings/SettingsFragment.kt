@@ -585,20 +585,68 @@ class SettingsFragment : Fragment() {
             viewModel.cancelBackupForVolume(log.volumeUuid)
         }
 
-        // Progress bar — byte-based if we can estimate the total, else indeterminate.
-        // Use the current log's totalBytesOnDestination once it is non-zero (end of run),
-        // falling back to the most recent *completed* log for this volume as a proxy.
-        val estimatedTotal = if (log.totalBytesOnDestination > 0) {
-            log.totalBytesOnDestination
-        } else {
-            viewModel.backupLogs.value.orEmpty()
-                .firstOrNull { it.volumeUuid == log.volumeUuid && it.status != null }
-                ?.totalBytesOnDestination ?: 0L
+        // Progress bar — phase-aware single continuous bar.
+        //
+        // The bar is divided into four slices with fixed boundary points:
+        //
+        //   0  – 10 %  DB snapshot      (opaque duration; hold at slice midpoint)
+        //   10 – 75 %  Recording copy   (byte-based within-slice progress)
+        //   75 – 88 %  Metadata export  (file-count-based)
+        //   88 – 100%  Waveform sync    (file-count-based)
+        //
+        // progressFraction is null when currentPhase is null, meaning the job
+        // was just inserted and hasn't called updatePhase() yet — show
+        // indeterminate until it does.  Also null for any unrecognised phase
+        // value (forward-compat guard).
+        val progressFraction: Float? = when (log.currentPhase) {
+
+            "DB" -> {
+                // Duration is short and opaque; hold at the slice midpoint so
+                // the bar isn't frozen at 0 while the DB checkpoint runs.
+                0.05f
+            }
+
+            "RECORDINGS" -> {
+                if (log.totalBytesOnSource > 0L) {
+                    val within = (log.bytesCopied.toFloat() / log.totalBytesOnSource)
+                        .coerceIn(0f, 1f)
+                    0.10f + within * 0.65f
+                } else {
+                    // Phase signalled but denominator not yet written (first DB
+                    // write hasn't landed in the UI yet). Show slice floor.
+                    0.10f
+                }
+            }
+
+            "METADATA" -> {
+                if (log.totalMetadataFiles > 0) {
+                    val done = log.metadataGenerated + log.metadataSkipped + log.metadataFailed
+                    val within = (done.toFloat() / log.totalMetadataFiles).coerceIn(0f, 1f)
+                    0.75f + within * 0.13f
+                } else {
+                    // Metadata export disabled for this target, or denominator
+                    // not yet written. Show slice floor.
+                    0.75f
+                }
+            }
+
+            "WAVEFORMS" -> {
+                if (log.totalWaveformFiles > 0) {
+                    val done = log.waveformsCopied + log.waveformsSkipped + log.waveformsFailed
+                    val within = (done.toFloat() / log.totalWaveformFiles).coerceIn(0f, 1f)
+                    0.88f + within * 0.12f
+                } else {
+                    // No waveform files found, or denominator not yet written.
+                    // Show slice floor so the bar at least advances past METADATA.
+                    0.88f
+                }
+            }
+
+            else -> null    // Pre-phase (job just inserted) or unknown value → indeterminate.
         }
 
-        if (estimatedTotal > 0 && log.bytesCopied > 0) {
-            val prog = ((log.bytesCopied.toFloat() / estimatedTotal) * 10_000)
-                .toInt().coerceIn(0, 10_000)
+        if (progressFraction != null) {
+            val prog = (progressFraction * 10_000).toInt().coerceIn(0, 10_000)
             card.progressBackup.isIndeterminate = false
             card.progressBackup.setProgress(prog, true)
         } else {

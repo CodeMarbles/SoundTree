@@ -157,6 +157,94 @@ interface BackupLogDao {
         waveformsFailed: Int,
     )
 
+    // ── Live progress updates (v14+) ──────────────────────────────────────────
+    //
+    // Called by BackupWorker on every file during an active run.
+    // Each query is deliberately narrow — only the columns that change within
+    // the current phase are touched, keeping writes as cheap as possible.
+    // The final consolidated updateStats() call in stepFlushStats() remains
+    // authoritative for the log detail dialog; these are UI progress feeds only.
+
+    /**
+     * Signals which phase is currently executing. Called once at the top of
+     * each step function so the UI can select the correct progress slice formula.
+     *
+     * Passing null clears the field (used if we ever want to mark "done" before
+     * finalise() runs, though currently not called with null in the worker).
+     */
+    @Query("UPDATE backup_logs SET current_phase = :phase WHERE id = :id")
+    suspend fun updatePhase(id: Long, phase: String?)
+
+    /**
+     * Persists per-file recording progress during [stepCopyRecordings].
+     *
+     * [totalBytesOnSource] is the same value on every call within a run, but
+     * bundling it here avoids a separate round-trip at phase start and ensures
+     * the UI always has a valid denominator alongside the numerator.
+     */
+    @Query("""
+        UPDATE backup_logs
+        SET bytes_copied            = :bytesCopied,
+            files_examined          = :filesExamined,
+            recordings_copied       = :copied,
+            recordings_skipped      = :skipped,
+            recordings_failed       = :failed,
+            total_bytes_on_source   = :totalBytesOnSource
+        WHERE id = :id
+    """)
+    suspend fun updateRecordingProgress(
+        id                 : Long,
+        bytesCopied        : Long,
+        filesExamined      : Int,
+        copied             : Int,
+        skipped            : Int,
+        failed             : Int,
+        totalBytesOnSource : Long,
+    )
+
+    /**
+     * Persists per-file metadata progress during [stepExportMetadata].
+     *
+     * [totalFiles] is [allRecordings.size], constant for the run; bundled here
+     * for the same reason as [totalBytesOnSource] in [updateRecordingProgress].
+     */
+    @Query("""
+        UPDATE backup_logs
+        SET metadata_generated   = :generated,
+            metadata_skipped     = :skipped,
+            metadata_failed      = :failed,
+            total_metadata_files = :totalFiles
+        WHERE id = :id
+    """)
+    suspend fun updateMetadataProgress(
+        id         : Long,
+        generated  : Int,
+        skipped    : Int,
+        failed     : Int,
+        totalFiles : Int,
+    )
+
+    /**
+     * Persists per-file waveform progress during [stepSyncWaveforms].
+     *
+     * [totalFiles] is [wfmFiles.size], constant for the run.
+     */
+    @Query("""
+        UPDATE backup_logs
+        SET waveforms_copied     = :copied,
+            waveforms_skipped    = :skipped,
+            waveforms_failed     = :failed,
+            total_waveform_files = :totalFiles
+        WHERE id = :id
+    """)
+    suspend fun updateWaveformProgress(
+        id         : Long,
+        copied     : Int,
+        skipped    : Int,
+        failed     : Int,
+        totalFiles : Int,
+    )
+
     // ── Log clearing ──────────────────────────────────────────────────────────
 
     /** Deletes all log entries (and their child event rows via CASCADE). */
