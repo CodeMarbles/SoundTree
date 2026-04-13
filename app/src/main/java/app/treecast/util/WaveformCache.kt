@@ -1,17 +1,21 @@
 package app.treecast.util
 
 import android.content.Context
+import android.util.Log
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Persists waveform amplitude arrays to disk so they never need to be
  * recomputed after the first load.
  *
- * Storage location: [volumeRootDir]/../appdata/waveforms/{recordingId}.wfm
+ * Storage location: [volumeRootDir]/../appdata/waveforms/YYYY/MM/{recordingId}.wfm
  *
  * Cache files are co-located with their source recordings on the same storage
  * volume, under an appdata/ sibling directory rather than alongside the
@@ -20,12 +24,24 @@ import java.io.FileOutputStream
  * app-derived data (waveforms, and future additions like clip indexes,
  * playlists, etc.) in one place.
  *
+ * Within appdata/waveforms/, files are organised into YYYY/MM/ subdirectories
+ * derived from the recording's creation timestamp — mirroring the recordings/
+ * hierarchy. This keeps individual directory entry counts bounded for heavy
+ * users (voice notes, frequent recordings) who might otherwise accumulate
+ * 10 000+ flat files over several years of use.
+ *
  * Concretely:
- *   Primary volume  →  [phone]/Android/data/app.treecast/files/appdata/waveforms/
- *   SD card         →  [SD card]/Android/data/app.treecast/files/appdata/waveforms/
+ *   Primary volume  →  [phone]/Android/data/app.treecast/files/appdata/waveforms/YYYY/MM/
+ *   SD card         →  [SD card]/Android/data/app.treecast/files/appdata/waveforms/YYYY/MM/
  *
  * If a recording's volume is unmounted, its cache is inaccessible. Load will
  * return null and extraction is deferred until the volume is available again.
+ *
+ * ## Lazy migration from the previous flat layout
+ * Older builds stored cache files directly in appdata/waveforms/{recordingId}.wfm.
+ * [load] checks the flat path as a fallback when the YYYY/MM path is absent,
+ * and promotes the file to its correct subdirectory on a cache hit. No migration
+ * pass or user action is required — files are silently relocated on first access.
  *
  * File format (little-endian, matches [DataOutputStream] defaults):
  *   4-byte int  — sample count (N)
@@ -52,6 +68,13 @@ class WaveformCache(volumeRootDir: File) {
         private const val MAX_SAMPLE_COUNT = 1_000_000
 
         /**
+         * Formats epoch-ms timestamps into the YYYY/MM relative directory path
+         * used inside [cacheDir]. Not thread-safe; used only on IO threads via
+         * [fileFor] which is always called from a single coroutine context.
+         */
+        private val YEAR_MONTH_FORMAT = SimpleDateFormat("yyyy/MM", Locale.US)
+
+        /**
          * The legacy cache directory that existed before waveforms were
          * co-located with their recordings (formerly filesDir/waveforms_v2/).
          *
@@ -63,21 +86,55 @@ class WaveformCache(volumeRootDir: File) {
     }
 
     /**
-     * Resolves to [volumeRootDir]/../appdata/waveforms/.
+     * Root of the waveform cache for this volume. Resolves to
+     * [volumeRootDir]/../appdata/waveforms/.
      *
      * [volumeRootDir] is the recordings/ subdirectory on the volume, so its
      * parent is the volume's app-private files/ root — the natural home for
-     * all app-derived data on that volume.
+     * all app-derived data on that volume. YYYY/MM subdirectories are created
+     * lazily inside here as recordings are first cached.
      */
     private val cacheDir: File =
         File(volumeRootDir.parentFile!!, "appdata/waveforms").also { it.mkdirs() }
 
-    /** Returns the cached amplitude array for [recordingId], or null if not cached. */
-    fun load(recordingId: Long): FloatArray? {
-        val file = fileFor(recordingId)
-        if (!file.exists()) return null
+    /**
+     * Returns the cached amplitude array for [recordingId], or null if not cached.
+     *
+     * Checks the canonical YYYY/MM path first. If absent, falls back to the
+     * legacy flat path (appdata/waveforms/{recordingId}.wfm) and promotes the
+     * file to its correct YYYY/MM location on a hit, so subsequent loads use
+     * the fast path. No external migration step is required.
+     */
+    fun load(recordingId: Long, recordedAt: Long): FloatArray? {
+        val canonical = fileFor(recordingId, recordedAt)
+
+        val source = when {
+            canonical.exists() -> canonical
+            else -> {
+                // Lazy migration: check the legacy flat location.
+                val flat = File(cacheDir, "$recordingId.wfm")
+                if (!flat.exists()) return null
+
+                // Promote the flat file to its canonical YYYY/MM location.
+                runCatching {
+                    canonical.parentFile?.mkdirs()
+                    flat.copyTo(canonical, overwrite = true)
+                    if (canonical.length() == flat.length()) {
+                        flat.delete()
+                        Log.i("WaveformCache", "Lazily migrated $recordingId.wfm → ${canonical.absolutePath}")
+                        canonical
+                    } else {
+                        // Partial copy — discard and fall back to the flat file.
+                        // It will be promoted successfully on the next attempt.
+                        canonical.delete()
+                        flat
+                    }
+                }.getOrElse { flat }
+            }
+        }
+
         return runCatching {
-            DataInputStream(FileInputStream(file).buffered()).use { dis ->
+            DataInputStream(FileInputStream(source).buffered()).use { dis ->
                 val count = dis.readInt()
                 if (count <= 0 || count > MAX_SAMPLE_COUNT) return null
                 FloatArray(count) { dis.readFloat() }
@@ -86,34 +143,64 @@ class WaveformCache(volumeRootDir: File) {
     }
 
     /** Persists [amplitudes] to disk for [recordingId]. Silently swallows I/O errors. */
-    fun save(recordingId: Long, amplitudes: FloatArray) {
+    fun save(recordingId: Long, amplitudes: FloatArray, recordedAt: Long) {
         runCatching {
-            DataOutputStream(FileOutputStream(fileFor(recordingId)).buffered()).use { dos ->
+            val file = fileFor(recordingId, recordedAt)
+            file.parentFile?.mkdirs()
+            DataOutputStream(FileOutputStream(file).buffered()).use { dos ->
                 dos.writeInt(amplitudes.size)
                 amplitudes.forEach { dos.writeFloat(it) }
             }
         }
     }
 
-    /** Removes the cached file for [recordingId]. Call when a recording is deleted. */
-    fun delete(recordingId: Long) {
-        runCatching { fileFor(recordingId).delete() }
+    /**
+     * Removes the cached file for [recordingId]. Call when a recording is deleted.
+     *
+     * Deletes both the canonical YYYY/MM path and any surviving legacy flat copy
+     * so that un-promoted files are not left behind as orphans.
+     */
+    fun delete(recordingId: Long, recordedAt: Long) {
+        runCatching { fileFor(recordingId, recordedAt).delete() }
+        // Also remove any un-promoted flat copy that may still exist.
+        runCatching { File(cacheDir, "$recordingId.wfm").delete() }
     }
 
     /**
-     * Deletes ALL cached waveform files in this volume's waveform directory.
+     * Deletes ALL cached waveform files in this volume's waveform directory,
+     * including all YYYY/MM subdirectories and any surviving flat files.
      * Used by the "Regenerate all waveforms" action so every recording on
      * this volume is re-decoded from scratch.
      */
     fun deleteAll() {
         runCatching {
-            cacheDir.listFiles()?.forEach { it.delete() }
+            cacheDir.listFiles()?.forEach { child ->
+                if (child.isDirectory) child.deleteRecursively() else child.delete()
+            }
         }
     }
 
-    /** Returns true if a cache entry already exists for [recordingId]. */
-    fun exists(recordingId: Long): Boolean = fileFor(recordingId).exists()
+    /**
+     * Returns true if a cache entry already exists at the canonical YYYY/MM
+     * location for [recordingId].
+     *
+     * The legacy flat path is intentionally not checked here. [WaveformWorker]
+     * uses this for its idempotency guard: returning false for a flat file
+     * causes the worker to re-decode and save to the canonical path, cleanly
+     * migrating the file as a side effect of normal processing.
+     */
+    fun exists(recordingId: Long, recordedAt: Long): Boolean =
+        fileFor(recordingId, recordedAt).exists()
 
-    private fun fileFor(recordingId: Long): File =
-        File(cacheDir, "$recordingId.wfm")
+    /**
+     * Resolves the canonical cache path for [recordingId]:
+     *   appdata/waveforms/YYYY/MM/{recordingId}.wfm
+     *
+     * The YYYY/MM subdir is derived from [recordedAt] (epoch ms). The directory
+     * itself is created lazily by [save]; [load] and [exists] do not create it.
+     */
+    private fun fileFor(recordingId: Long, recordedAt: Long): File {
+        val relDir = YEAR_MONTH_FORMAT.format(Date(recordedAt))  // e.g. "2024/03"
+        return File(cacheDir, "$relDir/$recordingId.wfm")
+    }
 }

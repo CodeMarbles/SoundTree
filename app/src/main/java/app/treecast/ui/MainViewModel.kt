@@ -805,9 +805,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ── Processing status (for Settings tab) ──────────────────────────────────
 
     internal val recentlyCompletedJobs   = mutableListOf<ProcessingJobInfo>()
-    private  val startupTerminalIds      = mutableSetOf<java.util.UUID>()
+    internal val startupTerminalIds      = mutableSetOf<java.util.UUID>()
     internal val clearedJobIds           = mutableSetOf<java.util.UUID>()
-    private var processingStatusInitialized = false
+    internal var processingStatusInitialized = false
 
     // Owned count of the current pass — not derived from WorkManager's live state,
     // which cannot reliably report the full pending queue for large batches.

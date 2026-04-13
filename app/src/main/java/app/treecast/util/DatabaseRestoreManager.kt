@@ -35,7 +35,10 @@ import kotlin.system.exitProcess
  *
  *   appdata/
  *     waveforms/
- *       {recordingId}.wfm
+ *       YYYY/             ← subdirectory layout introduced alongside recordings/
+ *         MM/
+ *           {recordingId}.wfm
+ *       {recordingId}.wfm ← flat files may be present in backups made by older builds
  *
  * ## Restore sequence (see [restore])
  *
@@ -403,7 +406,7 @@ object DatabaseRestoreManager {
             }
         }
 
-        // ── 11. Restore waveform cache files if present in backup ─────────────
+        // ── 11. Restore waveform cache files if present in backup ──────────────
         val backupWaveformDir = backupRootDir
             .findFile("appdata")
             ?.takeIf { it.isDirectory }
@@ -418,14 +421,29 @@ object DatabaseRestoreManager {
                 "appdata/waveforms"
             ).also { it.mkdirs() }
 
-            val waveformFiles = backupWaveformDir.listFiles()
-                .filter { it.isFile && it.name?.endsWith(".wfm") == true }
-            val totalWfm = waveformFiles.size
+            // Collect all .wfm files recursively, tracking each file's path
+            // relative to backupWaveformDir so the local structure is mirrored
+            // exactly — whether the backup uses the new YYYY/MM layout or the
+            // legacy flat layout from older builds.
+            val waveformEntries = mutableListOf<Pair<DocumentFile, String>>()
+            collectWfmFiles(backupWaveformDir, waveformEntries, relativeDir = "")
+
+            val totalWfm = waveformEntries.size
             var copiedWfm = 0
 
-            for (wfmFile in waveformFiles) {
+            for ((wfmFile, relDir) in waveformEntries) {
                 val name = wfmFile.name ?: continue
-                val destFile = File(localWaveformDir, name)
+
+                val destFile = if (relDir.isEmpty()) {
+                    // Flat legacy file → copy directly into waveforms/ root.
+                    // WaveformCache's lazy-migration fallback will promote it
+                    // to YYYY/MM on first load.
+                    File(localWaveformDir, name)
+                } else {
+                    // YYYY/MM structured file → recreate the subdirectory.
+                    File(localWaveformDir, relDir).also { it.mkdirs() }.let { File(it, name) }
+                }
+
                 try {
                     appContext.contentResolver.openInputStream(wfmFile.uri)?.use { inp ->
                         destFile.outputStream().use { out -> inp.copyTo(out) }
@@ -461,6 +479,36 @@ object DatabaseRestoreManager {
                 when {
                     child.isDirectory -> stack.addLast(child)
                     child.isFile && child.name?.endsWith(".m4a") == true -> out.add(child)
+                }
+            }
+        }
+    }
+
+    /**
+     * Recursively collects all `.wfm` [DocumentFile]s under [dir] into [out],
+     * pairing each file with its directory path relative to the initial [dir]
+     * (e.g. `"2024/03"` for a file in `waveforms/2024/03/`, or `""` for a
+     * file stored directly in `waveforms/`).
+     *
+     * This allows the restore step to reconstruct whichever layout is present
+     * in the backup — the new YYYY/MM structure or the legacy flat layout from
+     * older builds — without special-casing either format at the call site.
+     */
+    private fun collectWfmFiles(
+        dir: DocumentFile,
+        out: MutableList<Pair<DocumentFile, String>>,
+        relativeDir: String,
+    ) {
+        for (child in dir.listFiles()) {
+            when {
+                child.isDirectory -> {
+                    val childName  = child.name ?: continue
+                    val childRelDir = if (relativeDir.isEmpty()) childName
+                    else "$relativeDir/$childName"
+                    collectWfmFiles(child, out, childRelDir)
+                }
+                child.isFile && child.name?.endsWith(".wfm") == true -> {
+                    out.add(child to relativeDir)
                 }
             }
         }

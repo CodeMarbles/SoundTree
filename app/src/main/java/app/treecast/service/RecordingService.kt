@@ -653,6 +653,7 @@ class RecordingService : Service() {
             // recording was in progress. Fall back to Inbox (null) rather than
             // producing a foreign key violation on save.
             val resolvedTopicId = if (topicId != null && repo.topicExists(topicId)) topicId else null
+            val createdAt = System.currentTimeMillis()
 
             val recordingId = repo.saveRecordingWithMarks(
                 filePath          = filePath,
@@ -661,7 +662,8 @@ class RecordingService : Service() {
                 title             = title,
                 topicId           = resolvedTopicId,
                 markTimestamps    = marks,
-                storageVolumeUuid = result.storageVolumeUuid
+                storageVolumeUuid = result.storageVolumeUuid,
+                createdAt         = createdAt,
             )
 
             // Enqueue background waveform generation, mirroring the in-app save path.
@@ -670,6 +672,7 @@ class RecordingService : Service() {
                 recordingId       = recordingId,
                 filePath          = filePath,
                 storageVolumeUuid = result.storageVolumeUuid,
+                createdAt         = createdAt,
             )
 
             _notificationSaveEvent.emit(SavedFromNotification(recordingId, resolvedTopicId))

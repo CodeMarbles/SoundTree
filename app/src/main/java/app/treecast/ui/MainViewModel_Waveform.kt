@@ -48,6 +48,8 @@ internal fun MainViewModel.waveformCacheFor(volumeUuid: String): WaveformCache? 
  *      the cache and the audio file are both inaccessible until the volume
  *      returns, so there is nothing to do.
  *   3. If a cached array exists on disk, emit it immediately (< 5 ms).
+ *      [WaveformCache.load] also handles lazy promotion of any flat legacy
+ *      file to the canonical YYYY/MM location as a side effect.
  *   4. Otherwise, extract from the audio file on an IO thread
  *      (typically 300–800 ms even for a 1-hour M4A), cache the result,
  *      then emit.
@@ -59,21 +61,22 @@ internal fun MainViewModel.loadWaveform(
     recordingId: Long,
     filePath: String,
     storageVolumeUuid: String,
+    createdAt: Long,
 ) {
     waveformJob?.cancel()
     waveformJob = viewModelScope.launch(Dispatchers.IO) {
         val cache = waveformCacheFor(storageVolumeUuid) ?: return@launch
 
-        // Fast path: already cached
-        val cached = cache.load(recordingId)
+        // Fast path: already cached (also promotes flat legacy files on hit).
+        val cached = cache.load(recordingId, createdAt)
         if (cached != null) {
             _waveformState.value = recordingId to cached
             return@launch
         }
 
-        // Slow path: extract from file then persist
+        // Slow path: extract from file then persist.
         val amps = WaveformExtractor.extract(filePath)
-        cache.save(recordingId, amps)
+        cache.save(recordingId, amps, createdAt)
         _waveformState.value = recordingId to amps
     }
 }
@@ -115,6 +118,7 @@ fun MainViewModel.reprocessAllWaveforms() {
 
             withContext(Dispatchers.IO) {
                 // 2a. Delete waveform cache on every currently-mounted volume.
+                //     deleteAll() now recursively removes all YYYY/MM subdirs.
                 StorageVolumeHelper.getVolumes(getApplication()).forEach { volume ->
                     WaveformCache(volume.rootDir).deleteAll()
                 }
@@ -122,27 +126,25 @@ fun MainViewModel.reprocessAllWaveforms() {
                 // 2b. Purge the legacy internal-storage cache (filesDir/waveforms_v2/).
                 WaveformCache.legacyDir(getApplication()).deleteRecursively()
 
-                // 3. Reset every row in the DB to PENDING.
+                // 3. Reset waveform statuses to PENDING in DB.
                 repo.resetAllWaveformStatuses()
             }
 
-            // 4. Clear the in-memory completed log and reset pass counters.
-            recentlyCompletedJobs.clear()
-            clearedJobIds.clear()
+            // 4. Clear in-memory completed jobs list.
             completedWaveformJobCount = 0
+            startupTerminalIds.clear()
 
             // 5. Re-enqueue a fresh job for every recording.
-            withContext(Dispatchers.IO) {
-                val recordings = repo.getAllRecordingsOnce()
-                totalWaveformJobsEnqueued = recordings.size
-                recordings.forEach { recording ->
-                    WaveformWorker.enqueue(
-                        context           = getApplication(),
-                        recordingId       = recording.id,
-                        filePath          = recording.filePath,
-                        storageVolumeUuid = recording.storageVolumeUuid,
-                    )
-                }
+            val allRecordings = repo.getAllRecordingsOnce()
+            totalWaveformJobsEnqueued = allRecordings.size
+            allRecordings.forEach { recording ->
+                WaveformWorker.enqueue(
+                    context           = getApplication(),
+                    recordingId       = recording.id,
+                    filePath          = recording.filePath,
+                    storageVolumeUuid = recording.storageVolumeUuid,
+                    createdAt         = recording.createdAt,
+                )
             }
         } finally {
             isReprocessingWaveforms.set(false)

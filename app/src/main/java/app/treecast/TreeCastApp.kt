@@ -47,11 +47,12 @@ class TreeCastApp : Application() {
         appScope.launch {
             runCatching {
                 repository.getPendingWaveformRecordings().forEach { recording ->
-                    WaveformWorker.Companion.enqueue(
+                    WaveformWorker.enqueue(
                         context           = this@TreeCastApp,
                         recordingId       = recording.id,
                         filePath          = recording.filePath,
                         storageVolumeUuid = recording.storageVolumeUuid,
+                        createdAt         = recording.createdAt,
                     )
                 }
             }

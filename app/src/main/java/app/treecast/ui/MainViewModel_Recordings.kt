@@ -75,6 +75,7 @@ fun MainViewModel.saveRecordingWithMarks(
         recordingId       = recordingId,
         filePath          = filePath,
         storageVolumeUuid = storageVolumeUuid,
+        createdAt         = createdAt,
     )
     recordingId
 }
@@ -84,7 +85,7 @@ fun MainViewModel.deleteRecording(r: RecordingEntity) = viewModelScope.launch {
     // Delete the cache file from whichever volume the recording lived on.
     // If the volume is currently unmounted the cache file stays on disk but
     // becomes orphaned — acceptable, as the recording itself is also gone.
-    waveformCacheFor(r.storageVolumeUuid)?.delete(r.id)
+    waveformCacheFor(r.storageVolumeUuid)?.delete(r.id, r.createdAt)
 }
 
 fun MainViewModel.moveRecording(id: Long, topicId: Long?) = viewModelScope.launch {

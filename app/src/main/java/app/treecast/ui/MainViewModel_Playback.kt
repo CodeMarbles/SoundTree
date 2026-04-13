@@ -122,7 +122,7 @@ fun MainViewModel.play(recording: RecordingEntity) {
     _selectedMarkId.value          = null
     _playbackMarkNudgeLocked.value = true
 
-    loadWaveform(recording.id, recording.filePath, recording.storageVolumeUuid)
+    loadWaveform(recording.id, recording.filePath, recording.storageVolumeUuid, recording.createdAt)
 }
 
 fun MainViewModel.togglePlayPause() {

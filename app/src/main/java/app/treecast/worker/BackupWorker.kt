@@ -696,26 +696,24 @@ class BackupWorker(context: Context, params: WorkerParameters) :
     /**
      * Copies `.wfm` waveform cache files from every mounted volume's
      * `appdata/waveforms/` directory into `appdata/waveforms/` on the backup
-     * destination.
+     * destination, preserving the `YYYY/MM/` subdirectory hierarchy.
      *
      * Failures are non-fatal — waveforms are re-computable by [WaveformWorker]
      * and must not degrade the run status from SUCCESS to PARTIAL.
      * [waveformsFailed] is therefore excluded from the [filesFailed] aggregate
      * in [stepFlushStats].
      *
-     * **Bug fix — multi-volume scanning**: the previous implementation resolved
-     * only `StorageVolumeHelper.getDefaultVolume()` and scanned a single
-     * `appdata/waveforms/` directory. [WaveformCache] stores `.wfm` files
-     * per-volume (co-located with the source recordings), so any recordings on a
-     * secondary volume (e.g. SD card) had their waveforms silently skipped.
-     * This step now iterates all mounted volumes via `getExternalFilesDirs(null)`,
-     * matching the same multi-volume logic used by [recordingSourceDirs].
+     * **Multi-volume scanning**: iterates all mounted volumes via
+     * `getExternalFilesDirs(null)`, matching the same multi-volume logic used by
+     * [recordingSourceDirs], so recordings on secondary volumes (e.g. SD card)
+     * are not silently skipped.
      *
-     * **On flat storage**: waveform filenames are `{recordingId}.wfm` — the
-     * recording ID is opaque and encodes no date. Date-nested storage would
-     * require a per-file DB lookup and additional complexity for an inherently
-     * re-computable artifact. Flat storage is intentional. Revisit only if the
-     * directory entry count becomes a practical problem.
+     * **Directory structure**: cache files are stored under `YYYY/MM/` subdirs
+     * derived from the recording's creation timestamp, mirroring the recordings/
+     * layout and bounding per-directory entry counts for heavy users. During the
+     * transition from the old flat layout, flat files may coexist with YYYY/MM
+     * files; both are collected and backed up, preserving their relative paths so
+     * the restore step can reconstruct whichever structure is present.
      */
     private suspend fun stepSyncWaveforms(run: BackupRun) {
         val waveformDestDir = run.destRoot
@@ -738,30 +736,69 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             .map { File(it, "appdata/waveforms") }
             .filter { it.exists() && it.isDirectory }
 
-        // Merge files from all volumes. Deduplicate by name as a safety guard
-        // (the same recording ID should not appear on two volumes, but protect
-        // against it rather than silently writing one arbitrarily over the other).
-        val wfmFiles = waveformSourceDirs
+        // Walk each source volume's waveform dir, collecting .wfm files together
+        // with their relative directory path ("YYYY/MM" or "" for flat legacy files).
+        // Flat files produced by older builds before the YYYY/MM migration coexist
+        // with structured files during the transition; both are backed up so the
+        // restore step can reconstruct whichever layout is present.
+        val wfmFiles: List<Pair<File, String>> = waveformSourceDirs
             .flatMap { dir ->
-                dir.listFiles()
-                    ?.filter { it.isFile && it.name.endsWith(".wfm") }
-                    .orEmpty()
+                dir.walkTopDown()
+                    .filter { it.isFile && it.name.endsWith(".wfm") }
+                    .map { file ->
+                        val mm   = file.parentFile?.name
+                        val yyyy = file.parentFile?.parentFile?.name
+                        val relDir = if (
+                            yyyy != null && mm != null &&
+                            yyyy.matches(Regex("\\d{4}")) && mm.matches(Regex("\\d{2}"))
+                        ) "$yyyy/$mm" else ""
+                        file to relDir
+                    }
+                    .toList()
             }
-            .distinctBy { it.name }
+            // Recording IDs are unique per device, so the same filename cannot
+            // legitimately appear on two volumes. Deduplicate as a safety guard.
+            .distinctBy { it.first.name }
 
         run.info(
             "Waveform sync: ${wfmFiles.size} cache file(s) found across " +
                     "${waveformSourceDirs.size} volume(s)"
         )
 
-        // signal phase start here, immediately after wfmFiles is
-        // known so totalFiles is available to the first progress write.
+        // Signal phase start here, immediately after wfmFiles is known so
+        // totalFiles is available to the first progress write.
         run.logDao.updatePhase(run.logId, "WAVEFORMS")
 
-        for (wfmFile in wfmFiles) {
+        // Per-subdirectory cache so we issue at most one findOrCreateDir() pair
+        // per YYYY/MM combination rather than one per file.
+        val wfmDirCache = mutableMapOf<String, DocumentFile>()
+
+        for ((wfmFile, relDir) in wfmFiles) {
+
+            // Resolve the destination subdirectory, creating it if necessary.
+            val targetDir: DocumentFile? = if (relDir.isNotEmpty()) {
+                val (yyyy, mm) = relDir.split("/")
+                wfmDirCache[relDir]
+                    ?: waveformDestDir.findOrCreateDir(yyyy)
+                        ?.findOrCreateDir(mm)
+                        ?.also { wfmDirCache[relDir] = it }
+            } else {
+                // Flat legacy file — copy directly into appdata/waveforms/ root.
+                waveformDestDir
+            }
+
+            if (targetDir == null) {
+                run.waveformsFailed++
+                run.warning(
+                    message = "Could not create waveform destination dir '$relDir' — skipping ${wfmFile.name}",
+                    path    = wfmFile.absolutePath,
+                )
+                continue
+            }
+
             // Skip if destination already has an identically-sized copy.
             // This is the normal steady-state outcome on most runs.
-            val existingOnDest = waveformDestDir.findFile(wfmFile.name)
+            val existingOnDest = targetDir.findFile(wfmFile.name)
             if (existingOnDest != null && existingOnDest.length() == wfmFile.length()) {
                 run.waveformsSkipped++
                 if (run.verbose) {
@@ -769,10 +806,11 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 }
                 continue
             }
+
             // copyFileToDocumentDir deletes any stale destination copy before
-            // writing, so size-mismatch is handled cleanly.
+            // writing, so a size-mismatch is handled cleanly.
             try {
-                copyFileToDocumentDir(wfmFile, waveformDestDir, wfmFile.name)
+                copyFileToDocumentDir(wfmFile, targetDir, wfmFile.name)
                 run.waveformsCopied++
                 if (run.verbose) {
                     run.info("Copied waveform ${wfmFile.name}", path = wfmFile.absolutePath)

@@ -188,9 +188,9 @@ class WaveformLineView @JvmOverloads constructor(
     // ── Geometry constants ────────────────────────────────────────────────────
 
     private val density        = resources.displayMetrics.density
-    private val barWidthPx     = 3f  * density
-    private val barGapPx       = 2f  * density
-    private val cornerPx       = 1.5f * density
+    private val barWidthPx     = 2.0f  * density //3f  * density
+    private val barGapPx       = 1.0f  * density //2f  * density
+    private val cornerPx       = 0.75f * density //1.5f * density
     private val stride         get() = barWidthPx + barGapPx
     private val rulerHeightPx  = (RULER_HEIGHT_DP * density).roundToInt()
     private val tickHeightPx   = 6f * density

@@ -227,6 +227,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
                 recordingId       = recordingId,
                 filePath          = item.file.absolutePath,
                 storageVolumeUuid = volumeUuid,
+                createdAt         = recordedAtFromFile(item.file)
             )
             removeItem(index)
         }
