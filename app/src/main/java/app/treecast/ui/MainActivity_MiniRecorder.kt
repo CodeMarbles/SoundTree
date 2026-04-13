@@ -125,7 +125,7 @@ internal fun MainActivity.setupMiniRecorder() {
         when (viewModel.recordingState.value) {
             RecordingService.State.IDLE ->
                 // triggerQuickRecord() handles mic permission + service-binding race.
-                recordFragment.triggerQuickRecord()
+                recordFragment?.triggerQuickRecord()
             RecordingService.State.RECORDING,
             RecordingService.State.PAUSED ->
                 viewModel.requestToggleRecordingPause()
@@ -173,7 +173,7 @@ internal fun MainActivity.setupMiniRecorder() {
     // ── Save button ───────────────────────────────────────────────────────
     recorderBinding.btnMiniRecSave.setOnClickListener {
         navigateTo(PAGE_RECORD)
-        binding.root.postDelayed({ recordFragment.triggerSaveFromExternal() }, 80L)
+        binding.root.postDelayed({ recordFragment?.triggerSaveFromExternal() }, 80L)
     }
 
     // ── Timeline: elapsed + marks + selected index ────────────────────────

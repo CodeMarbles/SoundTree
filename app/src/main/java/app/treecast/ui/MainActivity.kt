@@ -57,13 +57,12 @@ class MainActivity : AppCompatActivity() {
     internal val navHistory = ArrayDeque<Int>()
     internal var isNavigatingBack = false
 
-    // Direct reference to the Library fragment so we can ask it to
-    // handle sub-page back presses (Uncategorized → Tree View) before
-    // we pop our own back stack.
-    internal lateinit var libraryFragment: LibraryFragment
-
-    // Direct reference to the Record fragment so we can
-    internal lateinit var recordFragment: RecordFragment
+    internal val libraryFragment: LibraryFragment?
+        get() = supportFragmentManager
+            .findFragmentByTag("f${PAGE_LIBRARY.toLong()}") as? LibraryFragment
+    internal val recordFragment: RecordFragment?
+        get() = supportFragmentManager
+            .findFragmentByTag("f${PAGE_RECORD.toLong()}") as? RecordFragment
 
     // Track whether we're restoring from a config change
     internal var isRestoredFromState = false
@@ -195,19 +194,19 @@ class MainActivity : AppCompatActivity() {
      */
     fun navigateToLibraryForRecording(topicId: Long?) {
         navigateTo(PAGE_LIBRARY)
-        libraryFragment.jumpToSubPageForRecording(topicId)
+        libraryFragment?.jumpToSubPageForRecording(topicId)
     }
 
     fun navigateToTopicDetails(topicId: Long) {
         navigateTo(PAGE_LIBRARY)
-        libraryFragment.enteredFromExternalTab = true
-        libraryFragment.openTopicDetails(topicId)
+        libraryFragment?.enteredFromExternalTab = true
+        libraryFragment?.openTopicDetails(topicId)
     }
 
     fun navigateToLibraryUnsorted() {
         navigateTo(PAGE_LIBRARY)
-        libraryFragment.enteredFromExternalTab = true
-        libraryFragment.navigateToUnsorted()
+        libraryFragment?.enteredFromExternalTab = true
+        libraryFragment?.navigateToUnsorted()
     }
 
     fun setTopTitle(title: String) {

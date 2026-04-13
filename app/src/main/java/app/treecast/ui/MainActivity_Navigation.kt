@@ -42,13 +42,11 @@ import app.treecast.ui.MainActivity.Companion.PAGE_WORKSPACE
 // ── ViewPager ─────────────────────────────────────────────────────────────────
 
 internal fun MainActivity.setupViewPager() {
-    libraryFragment = LibraryFragment()
-    recordFragment  = RecordFragment()
 
     val adapter = MainPagerAdapter(this).apply {
         addFragment(SettingsFragment(),  getString(R.string.tab_settings))
-        addFragment(recordFragment,      getString(R.string.tab_record))
-        addFragment(libraryFragment,     getString(R.string.tab_library))
+        addFragment(RecordFragment(),    getString(R.string.tab_record))
+        addFragment(LibraryFragment(),   getString(R.string.tab_library))
         addFragment(ListenFragment(),    getString(R.string.tab_listen))
         addFragment(WorkspaceFragment(), getString(R.string.tab_workspace))
     }
@@ -69,7 +67,7 @@ internal fun MainActivity.setupViewPager() {
             } else {
                 // LibraryFragment drives the title, but its inner page-change
                 // callback won't fire on a swipe-in from another tab — nudge it.
-                libraryFragment.refreshTopTitle()
+                libraryFragment?.refreshTopTitle()
             }
 
             // ── History recording ──────────────────────────────────────────
@@ -193,7 +191,7 @@ internal fun MainActivity.setupBackNavigation() {
             // Give the Library fragment first crack at consuming the press
             // so it can pop its own sub-page stack (e.g. Details → Topics).
             if (binding.viewPager.currentItem == PAGE_LIBRARY &&
-                libraryFragment.handleBackPress()) return
+                libraryFragment?.handleBackPress() == true ) return
 
             if (navHistory.size > 1) {
                 navHistory.removeLast()
