@@ -25,6 +25,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import app.treecast.R
@@ -93,6 +94,9 @@ class RecordFragment : Fragment() {
     private var recordingService: RecordingService? = null
     private var isBound = false
     private var pendingQuickRecord = false
+
+    // ── Marks ─────────────────────────────────────────────────────────
+    private var markChipAdapter: RecordMarkChipAdapter? = null
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -182,7 +186,7 @@ class RecordFragment : Fragment() {
         // Drop mark button — shows extended mark controls after dropping.
         binding.btnDropMark.setOnClickListener {
             recordingService?.dropMark()
-            showMarkControls(recordingService?.elapsedMs?.value ?: 0L)
+            showMarkControls()
         }
 
         // Cancel requires a double-tap to prevent accidental presses.
@@ -223,6 +227,25 @@ class RecordFragment : Fragment() {
 
         // ── Recording name zone ───────────────────────────────────────
         binding.recordingNameZone.setOnClickListener { showRenameDialog() }
+
+        // ── Mark strip RecyclerView ───────────────────────────────────────
+        markChipAdapter = RecordMarkChipAdapter(requireContext()) { index ->
+            viewModel.selectRecordingMark(index)
+        }
+        binding.rvMarkStrip.apply {
+            adapter       = markChipAdapter
+            layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            itemAnimator  = null  // prevents flicker during rapid nudges
+        }
+
+        // ── Nudge label — observe secs independently of service binding ───
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.markNudgeSecs.collect { secs ->
+                    binding.tvMarkNudgeLabel.text = formatNudgeSecs(secs)
+                }
+            }
+        }
     }
 
     private fun showInputSourceDialog() {
@@ -305,7 +328,7 @@ class RecordFragment : Fragment() {
             val idx   = marks.indexOf(markId)
             if (idx >= 0) {
                 viewModel.selectRecordingMark(idx)
-                showMarkControls(marks[idx])
+                showMarkControls()
             }
         }
 
@@ -439,20 +462,29 @@ class RecordFragment : Fragment() {
                     }
                 }
 
-                // ── Keep mark controls timestamp live after nudges ─────
-                // Whenever the selected mark's position changes (i.e. after a
-                // nudge), update the timestamp chip in the panel to reflect
-                // its new location.
+                // ── Keep mark strip live after nudges ─────────────────
+                // Drive the RecyclerView adapter whenever the mark list or
+                // selection changes, and auto-scroll to the selected chip.
                 launch {
                     combine(
                         viewModel.recordingMarks,
                         viewModel.selectedRecordingMarkIndex
-                    ) { marks, idx ->
-                        if (idx >= 0 && idx < marks.size) marks[idx] else null
-                    }.collect { stampMs ->
-                        if (stampMs != null &&
-                            binding.markExtendedControls.visibility == View.VISIBLE) {
-                            binding.tvMarkTimestamp.text = formatDuration(stampMs)
+                    ) { marks, idx -> marks to idx }.collect { (marks, idx) ->
+                        // Sort chronologically for display — nudging can push a mark
+                        // past its neighbour, and the service preserves insertion order.
+                        val sorted = marks.sorted()
+                        val selectedTs = marks.getOrNull(idx)
+                        val sortedIdx = if (selectedTs != null) sorted.indexOf(selectedTs) else -1
+
+                        markChipAdapter?.update(sorted, sortedIdx)
+
+                        if (sorted.isNotEmpty()) {
+                            val scrollTo = if (sortedIdx >= 0) sortedIdx else sorted.lastIndex
+                            // post() ensures the scroll runs after any pending layout pass,
+                            // including the GONE→VISIBLE transition on first mark drop.
+                            binding.rvMarkStrip.post {
+                                binding.rvMarkStrip.scrollToPosition(scrollTo)
+                            }
                         }
                     }
                 }
@@ -690,9 +722,10 @@ class RecordFragment : Fragment() {
     }
 
     // ── Mark extended controls ────────────────────────────────────────
-    private fun showMarkControls(stampMs: Long) {
-        binding.tvMarkTimestamp.text = formatDuration(stampMs)
+    private fun showMarkControls() {
         binding.markExtendedControls.visibility = View.VISIBLE
+        // Scrolling is handled by the combine collector in observeServiceState,
+        // which also runs after the layout pass via post().
     }
 
     private fun hideMarkControls() {
@@ -864,4 +897,7 @@ class RecordFragment : Fragment() {
         val s = ms / 1000
         return "%d:%02d".format(s / 60, s % 60)
     }
+
+    private fun formatNudgeSecs(secs: Float) =
+        if (secs == secs.toLong().toFloat()) "${secs.toInt()}s" else "${secs}s"
 }

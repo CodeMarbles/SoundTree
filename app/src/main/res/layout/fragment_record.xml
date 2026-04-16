@@ -354,32 +354,27 @@
                 android:gravity="center_vertical"
                 android:paddingHorizontal="10dp">
 
-                <!-- Timestamp of selected mark -->
-                <TextView
-                    android:id="@+id/tvMarkTimestamp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0:00"
-                    android:textColor="?attr/colorMarkSelected"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:background="@drawable/bg_pill_teal_stroke"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="3dp" />
-
-                <!-- Flexible spacer -->
-                <Space
+                <!-- Scrollable mark strip — replaces single timestamp chip.
+                                     Chips are created and selected-state-styled by RecordMarkChipAdapter.
+                                     RecordFragment scrolls to the selected chip after adapter updates. -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvMarkStrip"
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:scrollbars="none"
+                    android:overScrollMode="never"
+                    android:clipToPadding="false"
+                    android:paddingHorizontal="4dp"
+                    android:layout_marginTop="6dp"/>
 
                 <!-- Nudge earlier -->
                 <ImageView
                     android:id="@+id/btnMarkNudgeBack"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="2dp"
-                    android:padding="5dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="1dp"
+                    android:paddingStart="5dp"
                     android:src="@drawable/ic_mark_nudge_back"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
@@ -387,13 +382,26 @@
                     app:tint="?attr/colorMarkSelected"
                     android:contentDescription="@string/mark_cd_nudge_back" />
 
+                <!-- Nudge amount label — updated dynamically from markNudgeSecs -->
+                <TextView
+                    android:id="@+id/tvMarkNudgeLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="40dp"
+                    android:gravity="center"
+                    android:text="5s"
+                    android:textColor="?attr/colorMarkSelected"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    />
+
                 <!-- Nudge later -->
                 <ImageView
                     android:id="@+id/btnMarkNudgeForward"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_marginEnd="2dp"
-                    android:padding="5dp"
+                    android:paddingEnd="5dp"
                     android:src="@drawable/ic_mark_nudge_forward"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
@@ -404,9 +412,9 @@
                 <!-- Delete mark -->
                 <ImageView
                     android:id="@+id/btnMarkDelete"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
                     android:padding="5dp"
                     android:src="@drawable/ic_delete"
                     android:background="?attr/selectableItemBackgroundBorderless"
@@ -514,7 +522,8 @@
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"
                         android:textStyle="bold"
-                        android:letterSpacing="0.06" />
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.08" />
 
                 </LinearLayout>
 

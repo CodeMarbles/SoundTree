@@ -10,8 +10,8 @@
         exact key in AndroidManifest.xml (android:label="@string/app_name")
         and changing it requires a matching manifest edit.
     -->
-    <string name="app_name">TreeCast</string>
-    <string name="app_name_extended">TreeCast Recorder</string>
+    <string name="app_name">SoundTree</string>
+    <string name="app_name_extended">SoundTree Recorder</string>
     <string name="app_emoji">🪾</string>
     <!-- Format: "%1$s  %2$s" where %1$s = app_name, %2$s = app_emoji -->
     <string name="app_label_identity">%1$s  %2$s</string>

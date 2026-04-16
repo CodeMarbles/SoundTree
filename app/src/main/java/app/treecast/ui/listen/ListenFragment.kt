@@ -59,9 +59,7 @@ import app.treecast.ui.waveform.WaveformTapType
 import app.treecast.util.Icons
 import app.treecast.util.UiConstants
 import app.treecast.util.themeColor
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -588,7 +586,7 @@ class ListenFragment : Fragment() {
                         val tealColor    = requireContext().themeColor(R.attr.colorMarkSelected)
                         val greyColor    = requireContext().themeColor(R.attr.colorTextSecondary)
 
-                        // ── Zone 7 row: nudge buttons ────────────────────
+                        // ── Zone 7 row: nudge buttons and label ────────────────────
                         listOf(
                             binding.btnMarkNudgeBack,
                             binding.btnMarkNudgeForward
@@ -599,6 +597,7 @@ class ListenFragment : Fragment() {
                             )
                             v.jumpDrawablesToCurrentState()
                         }
+                        binding.tvMarkNudgeLabel.setTextColor(if (canNudge) tealColor else greyColor)
 
                         // Zone 7: delete (selection required, nudge lock irrelevant)
                         binding.btnMarkDelete.isEnabled = hasSelection
@@ -647,6 +646,15 @@ class ListenFragment : Fragment() {
                             val nextColor = requireContext().themeColor(if (hasAhead) R.attr.colorMarkDefault else R.attr.colorTextPrimary)
                             binding.btnJumpNext.imageTintList = ColorStateList.valueOf(nextColor)
                         }
+                }
+
+                // ── Nudge amount label ────────────────────────────────
+                launch {
+                    viewModel.markNudgeSecs.collect { secs ->
+                        val label = if (secs == secs.toLong().toFloat())
+                            "${secs.toInt()}s" else "${secs}s"
+                        binding.tvMarkNudgeLabel.text = label
+                    }
                 }
             }
         }

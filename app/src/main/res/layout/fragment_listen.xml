@@ -500,22 +500,36 @@
 
                 <ImageView
                     android:id="@+id/btnMarkNudgeBack"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="5dp"
                     android:src="@drawable/ic_mark_nudge_back"
-                    android:padding="6dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
                     android:contentDescription="@string/mark_cd_nudge_back"
                     app:tint="?attr/colorTextSecondary" />
 
+                <!-- Nudge amount label — updated dynamically from markNudgeSecs -->
+                <TextView
+                    android:id="@+id/tvMarkNudgeLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="20dp"
+                    android:gravity="center"
+                    android:text="5s"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginHorizontal="2dp" />
+
                 <ImageView
                     android:id="@+id/btnMarkNudgeForward"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="5dp"
+                    android:layout_marginEnd="5dp"
                     android:src="@drawable/ic_mark_nudge_forward"
-                    android:padding="6dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
@@ -526,6 +540,7 @@
                     android:id="@+id/btnMarkDelete"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
+                    android:layout_marginEnd="6dp"
                     android:padding="5dp"
                     android:src="@drawable/ic_delete"
                     android:background="?attr/selectableItemBackgroundBorderless"
@@ -536,13 +551,13 @@
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/btnMarkConfirm"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_marginStart="2dp"
                     android:clickable="true"
                     android:focusable="true"
                     app:cardBackgroundColor="?attr/colorTextSecondary"
-                    app:cardCornerRadius="7dp"
+                    app:cardCornerRadius="4dp"
                     app:cardElevation="0dp"
                     android:contentDescription="@string/mark_cd_confirm" >
 
