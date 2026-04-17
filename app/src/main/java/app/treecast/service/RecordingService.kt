@@ -21,6 +21,8 @@ import app.treecast.service.RecordingService.StopResult
 import app.treecast.storage.StorageVolumeHelper
 import app.treecast.ui.MainActivity
 import app.treecast.util.RecordingTitleHelper
+import app.treecast.util.buildTopicArtwork
+import app.treecast.util.parseColorSafe
 import app.treecast.worker.WaveformWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -147,7 +149,9 @@ class RecordingService : Service() {
     // Kept in sync with RecordFragment's selectedTopicId via startRecording()
     // and ACTION_SET_TOPIC. Used when saving from the notification so the
     // recording lands in the correct topic even if the UI is not alive.
-    private var pendingTopicId: Long? = null
+    private var pendingTopicId: Long?    = null
+    private var pendingTopicColor: String? = null
+    private var pendingTopicIcon: String?  = null
 
     // ── Display name tracking ──────────────────────────────────────────
     // Mirrors pendingTopicId. RecordFragment pushes the user's chosen name
@@ -488,11 +492,21 @@ class RecordingService : Service() {
 
     /**
      * Updates the topic that will be used if the user saves from the
-     * notification. Called from [RecordFragment] via Binder whenever the
-     * topic picker selection changes during an active recording.
+     * notification, and refreshes the notification artwork/color to match
+     * the newly selected topic. Called from [RecordFragment] via Binder
+     * whenever the topic picker selection changes during an active recording.
      */
-    fun setTopic(topicId: Long?) {
-        pendingTopicId = topicId
+    fun setTopic(topicId: Long?, color: String? = null, icon: String? = null) {
+        pendingTopicId    = topicId
+        pendingTopicColor = color
+        pendingTopicIcon  = icon
+        if (_state.value != State.IDLE) {
+            val statusText = if (_state.value == State.PAUSED)
+                getString(R.string.notif_record_status_paused)
+            else
+                getString(R.string.notif_record_status_recording)
+            updateNotification(statusText)
+        }
     }
 
     /**
@@ -776,6 +790,15 @@ class RecordingService : Service() {
         else
             statusText
 
+        // ── Topic artwork ─────────────────────────────────────────────
+        // Mirror the playback notification: render the topic emoji onto a
+        // color-filled square and use it as the large icon. setColorized
+        // bleeds that same color across the notification background on
+        // API 26+; falls back gracefully (no crash) on older devices.
+        val color   = pendingTopicColor
+        val icon    = pendingTopicIcon
+        val artwork = if (color != null && icon != null) buildTopicArtwork(color, icon) else null
+
         return NotificationCompat.Builder(this, AppNotifications.CHANNEL_RECORDING)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(markCountText)
@@ -783,6 +806,13 @@ class RecordingService : Service() {
             .setContentIntent(openAppPi)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .apply {
+                if (artwork != null) {
+                    setLargeIcon(artwork)
+                    setColor(parseColorSafe(color!!))
+                    setColorized(true)
+                }
+            }
             .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                 .setMediaSession(mediaSessionCompat!!.sessionToken)
                 .setShowActionsInCompactView(0, 1, 2))

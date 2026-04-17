@@ -23,6 +23,7 @@ import app.treecast.util.bitmapToPngByteArray
 import app.treecast.util.buildTopicArtwork
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
@@ -308,6 +309,60 @@ internal fun MainViewModel.startObservingMarks(recordingId: Long) {
     marksJob?.cancel()
     marksJob = viewModelScope.launch {
         repo.getMarksForRecording(recordingId).collect { _marks.value = it }
+    }
+}
+
+/**
+ * Watches [allTopics] and [_nowPlaying] together. When the icon or color of
+ * the currently playing recording's topic changes, updates the MediaItem
+ * metadata on the controller so Media3 refreshes the notification artwork and
+ * lock screen card without interrupting playback.
+ *
+ * replaceMediaItem() is safe here: Media3 detects that the URI is unchanged
+ * and only propagates the metadata diff — no source reload, no seek reset.
+ *
+ * Launched once from MainViewModel.init after the MediaController connects,
+ * so it persists for the ViewModel's lifetime and covers topic changes that
+ * happen while the app is backgrounded.
+ */
+internal fun MainViewModel.startObservingTopicsForNotification() {
+    viewModelScope.launch {
+        // Track the last (recordingId, color, icon) triple pushed to the
+        // notification so we don't call replaceMediaItem on every unrelated
+        // allTopics emission (e.g. the user creating a new topic while listening).
+        var lastPushed: Triple<Long, String?, String?>? = null
+
+        combine(allTopics, _nowPlaying) { topics, nowPlaying ->
+            val rec   = nowPlaying?.recording ?: return@combine null
+            val topic = topics.firstOrNull { it.id == rec.topicId }
+            Triple(rec.id, topic?.color, topic?.icon)
+        }.collect { current ->
+            if (current == null || current == lastPushed) return@collect
+            lastPushed = current
+
+            val recording = _nowPlaying.value?.recording ?: return@collect
+            val controller = mediaController ?: return@collect
+            val currentItem = controller.currentMediaItem ?: return@collect
+
+            val topic = allTopics.value.firstOrNull { it.id == recording.topicId }
+            val artwork      = topic?.let { buildTopicArtwork(it.color, it.icon) }
+            val artworkBytes = artwork?.let { bitmapToPngByteArray(it) }
+            val topicName    = topic?.name
+                ?: getApplication<android.app.Application>().getString(R.string.topic_label_unsorted)
+
+            val updatedMetadata = MediaMetadata.Builder()
+                .setTitle(recording.title)
+                .setArtist(topicName)
+                .apply {
+                    artworkBytes?.let { setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+                }
+                .build()
+
+            controller.replaceMediaItem(
+                0,
+                currentItem.buildUpon().setMediaMetadata(updatedMetadata).build()
+            )
+        }
     }
 }
 

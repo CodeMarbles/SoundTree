@@ -377,7 +377,7 @@ class RecordFragment : Fragment() {
             )
             val svc = recordingService
             if (svc != null && svc.state.value != RecordingService.State.IDLE) {
-                svc.setTopic(topicId)
+                svc.setTopic(topicId, topic?.color, topic?.icon)
             }
         }
 
@@ -386,11 +386,11 @@ class RecordFragment : Fragment() {
                 launch {
                     viewModel.recordingTopicId.collect { topicId ->
                         selectedTopicId = topicId
+                        val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         val svc = recordingService
                         if (svc != null && svc.state.value != RecordingService.State.IDLE) {
-                            svc.setTopic(topicId)
+                            svc.setTopic(topicId, topic?.color, topic?.icon)
                         }
-                        val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
                         updateRecordTopicHeader(
                             topic?.name ?: getString(R.string.topic_label_unsorted),
                             topic?.icon ?: Icons.UNSORTED
@@ -399,13 +399,24 @@ class RecordFragment : Fragment() {
                 }
                 launch {
                     viewModel.allTopics.collect { topics ->
-                        if (selectedTopicId != null && topics.none { it.id == selectedTopicId }) {
-                            selectedTopicId = null
-                            updateRecordTopicHeader(
-                                getString(R.string.topic_label_unsorted),
-                                Icons.UNSORTED
-                            )
-                            recordingService?.setTopic(null)
+                        val currentTopic = selectedTopicId?.let { id -> topics.firstOrNull { it.id == id } }
+                        when {
+                            selectedTopicId != null && currentTopic == null -> {
+                                // Topic was deleted — fall back to unsorted
+                                selectedTopicId = null
+                                updateRecordTopicHeader(getString(R.string.topic_label_unsorted), Icons.UNSORTED)
+                                recordingService?.setTopic(null, null, null)
+                            }
+                            selectedTopicId != null && currentTopic != null -> {
+                                // Topic may have had its icon/color changed mid-recording.
+                                // Also updates the in-fragment header if the icon changed.
+                                updateRecordTopicHeader(currentTopic.name, currentTopic.icon)
+                                val svc = recordingService
+                                if (svc != null && svc.state.value != RecordingService.State.IDLE) {
+                                    svc.setTopic(selectedTopicId, currentTopic.color, currentTopic.icon)
+                                }
+                            }
+                            // selectedTopicId == null → unsorted, header already correct, nothing to do
                         }
                     }
                 }
