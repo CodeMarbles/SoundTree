@@ -41,6 +41,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.util.concurrent.TimeUnit
 
 data class NowPlayingState(
     val recording:  RecordingEntity,
@@ -975,6 +976,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Backup progress state ──────────────────────────────────────────────────
 
+
+    // Record when this ViewModel was created so we can distinguish
+    // "just completed before I opened the app" from "finished yesterday."
+    private val vmCreatedAtMs = System.currentTimeMillis()
+    private val RECENT_COMPLETION_WINDOW_MS = TimeUnit.MINUTES.toMillis(5)
     // Tracks jobs completed in this process lifetime so the strip can show outcomes.
     private val backupRecentlyCompleted       = mutableListOf<BackupLogEntity>()
     private val backupKnownCompletedIds       = mutableSetOf<Long>()
@@ -1015,10 +1021,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      *
      * Emits null until the first DB result arrives, allowing [backupUiState]
      * to distinguish "not yet loaded" from a genuinely empty history.
+     *
+     * Uses [SharingStarted.WhileSubscribed] with a 5-second grace period rather
+     * than [SharingStarted.Lazily]. The practical difference is small — because
+     * [backupUiState] is Eagerly started and always holds a subscription, the
+     * upstream Room query stays alive for the ViewModel's lifetime under normal
+     * conditions. The difference only matters on Android 10 (and similarly
+     * aggressive Android versions), where Room's InvalidationTracker can fail to
+     * deliver a change notification to a long-running observer after a WorkManager
+     * worker writes to the database while the app has been in the background for
+     * an extended period. WhileSubscribed causes the upstream to restart from
+     * scratch when the app returns to the foreground (after the 5 s grace expires),
+     * which forces a fresh DB read and recovers from any missed notification.
      */
     val backupLogs: StateFlow<List<BackupLogEntity>?> =
         repo.getBackupLogs()
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val backupUiState: StateFlow<BackupUiState> = combine(
         activeBackupInfoFlow,
@@ -1031,9 +1049,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         if (!backupStateInitialized) {
+            val recentCutoff = vmCreatedAtMs - RECENT_COMPLETION_WINDOW_MS
             // First real DB emission — snapshot all existing completed IDs so the
             // strip never re-shows backups the user already dismissed in a prior session.
-            allLogs.filter { it.status != null }.forEach { backupKnownCompletedIds.add(it.id) }
+            allLogs.filter { it.status != null }.forEach { log ->
+                backupKnownCompletedIds.add(log.id)
+                // If this backup completed recently (within the window before the
+                // ViewModel was created), surface it in the strip rather than
+                // silently treating it as a stale prior-session result. This covers
+                // the USB-connect-while-app-dead scenario on Android 10 where the
+                // backup finishes before the first Room emission arrives.
+                val completedAt = log.endedAt ?: 0L
+                if (completedAt >= recentCutoff) {
+                    backupRecentlyCompleted.add(log)
+                }
+            }
             backupStateInitialized = true
         } else {
             // Detect newly-completed jobs (status flipped from null → non-null).
