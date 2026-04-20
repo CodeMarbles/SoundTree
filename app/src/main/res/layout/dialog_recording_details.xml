@@ -12,7 +12,7 @@
     6. Waveform     — condensed, read-only MultiLineWaveformView overview
     7. [Future]     — clips section placeholder
 
-  Theme: Theme.TreeCast.FullscreenDialog (see themes.xml addition)
+  Theme: Theme.SoundTree.FullscreenDialog (see themes.xml addition)
   Fragment class: RecordingDetailsDialogFragment
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
@@ -333,7 +333,7 @@
          the fragment will not push them. Leave as a future option.
          ══════════════════════════════════════════════════════════════ -->
 
-    <app.treecast.ui.waveform.MultiLineWaveformView
+    <app.soundtree.ui.waveform.MultiLineWaveformView
         android:id="@+id/multiLineWaveform"
         android:layout_width="0dp"
         android:layout_height="180dp"

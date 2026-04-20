@@ -29,19 +29,19 @@
     <attribution android:tag="microphone" android:label="@string/app_name" />
 
     <application
-        android:name=".TreeCastApp"
+        android:name=".SoundTreeApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_n8tree_mark"
         android:label="@string/app_name_extended"
         android:roundIcon="@mipmap/ic_launcher_n8tree_mark"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TreeCast">
+        android:theme="@style/Theme.SoundTree">
 
         <!-- Splash / Entry Activity -->
         <activity
             android:name=".ui.SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.TreeCast.Splash">
+            android:theme="@style/Theme.SoundTree.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

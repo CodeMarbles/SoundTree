@@ -2,7 +2,7 @@
 <resources>
 
     <!-- ══════════════════════════════════════════════════════════════
-         TreeCast raw color palette.
+         SoundTree raw color palette.
 
          These are value-only definitions — no UI meaning is encoded
          in these names. All semantic roles are assigned in themes.xml

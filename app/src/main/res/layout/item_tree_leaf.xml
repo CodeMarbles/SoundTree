@@ -145,7 +145,7 @@
 
         </LinearLayout>
 
-        <app.treecast.ui.common.TopicPickerView
+        <app.soundtree.ui.common.TopicPickerView
             android:id="@+id/inlineTopicPicker"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

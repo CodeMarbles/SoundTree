@@ -467,7 +467,7 @@
     <!-- Storage: default location row -->
     <string name="settings_label_default_storage">Default recording storage</string>
     <string name="settings_label_default_storage_desc">New recordings will be saved here</string>
-    <string name="settings_label_total_used">Total used by TreeCast</string>
+    <string name="settings_label_total_used">Total used by SoundTree</string>
 
     <!-- Backup: card section titles -->
     <string name="settings_backup_title">Automatic Backup Devices</string>
@@ -516,10 +516,10 @@
 
     <!-- Restore from backup (Storage tab) -->
     <string name="settings_section_restore">Restore</string>
-    <string name="settings_restore_description">Restore your database from a TreeCast backup directory. Choose the root backup folder — the one that contains a db/ subfolder. The app will restart automatically on success.</string>
+    <string name="settings_restore_description">Restore your database from a SoundTree backup directory. Choose the root backup folder — the one that contains a db/ subfolder. The app will restart automatically on success.</string>
     <string name="settings_restore_btn_choose">Choose backup directory…</string>
     <string name="settings_restore_no_db_title">No backup found</string>
-    <string name="settings_restore_no_db_message">The selected folder doesn\'t contain a TreeCast database backup. Make sure you\'re selecting the root backup folder (the one that contains a db/ subfolder).</string>
+    <string name="settings_restore_no_db_message">The selected folder doesn\'t contain a SoundTree database backup. Make sure you\'re selecting the root backup folder (the one that contains a db/ subfolder).</string>
     <string name="settings_restore_confirm_title">Restore database?</string>
     <string name="settings_restore_confirm_message">This will replace your current database with the one in the selected backup. All recordings, topics, and marks created since that backup was made will be lost. The app will restart automatically.\n\nThis cannot be undone.</string>
     <string name="settings_restore_confirm_action">Restore</string>
@@ -704,7 +704,7 @@
 
     <!-- Notification channel metadata -->
     <string name="notif_channel_record_name">Recording</string>
-    <string name="notif_channel_record_desc">TreeCast recording status</string>
+    <string name="notif_channel_record_desc">SoundTree recording status</string>
 
     <!-- Notification action buttons (Pause/Resume are symmetric with Save above) -->
     <string name="notif_record_action_pause">Pause</string>
@@ -781,7 +781,7 @@
     <!-- Step 1: Library summary -->
     <string name="restore_step1_your_library">Your current library</string>
     <string name="restore_step1_loading">Loading…</string>
-    <string name="restore_step1_safety_notice">Before restoring, TreeCast will save a copy of your current database and export a JSON file for every recording — including all marks. This safety snapshot is stored in internal storage and can be used to recover mark data if anything goes wrong.</string>
+    <string name="restore_step1_safety_notice">Before restoring, SoundTree will save a copy of your current database and export a JSON file for every recording — including all marks. This safety snapshot is stored in internal storage and can be used to recover mark data if anything goes wrong.</string>
 
     <!-- Step 1 plurals: recording / mark / topic counts -->
     <plurals name="restore_summary_recordings">
@@ -805,6 +805,6 @@
     <!-- Step 3: Progress -->
     <string name="restore_progress_starting">Starting restore…</string>
     <string name="restore_progress_failed">Restore failed</string>
-    <string name="restore_progress_post_swap_note">The database has already been replaced. Your original data is preserved in the safety snapshot at Files → Android → data → app.treecast → files → restore-safety.</string>
+    <string name="restore_progress_post_swap_note">The database has already been replaced. Your original data is preserved in the safety snapshot at Files → Android → data → app.soundtree → files → restore-safety.</string>
 
 </resources>

@@ -23,7 +23,7 @@
         xmlns:app="http://schemas.android.com/apk/res-auto">
 
         <!-- RainbowView fills the card; the arc is drawn in the upper portion -->
-        <app.treecast.ui.workspace.RainbowView
+        <app.soundtree.ui.workspace.RainbowView
             android:id="@+id/rainbowView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

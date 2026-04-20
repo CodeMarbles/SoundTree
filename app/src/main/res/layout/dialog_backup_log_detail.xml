@@ -88,7 +88,7 @@
 
         <!-- ── 3. Volume backup path ──────────────────────────────────────────── -->
         <!--
-            Root-relative SAF path (e.g. "/TreeCast/backups"). Gone by default;
+            Root-relative SAF path (e.g. "/SoundTree/backups"). Gone by default;
             set to VISIBLE in bindHeader() when backupDirUri is non-empty and
             can be parsed. Matches the path line in BackupTargetConfigDialog.
         -->
@@ -101,7 +101,7 @@
             android:textColor="?attr/colorTextSecondary"
             android:textSize="12sp"
             android:visibility="gone"
-            tools:text="/TreeCast/backups"
+            tools:text="/SoundTree/backups"
             tools:visibility="visible" />
 
         <!-- ── 4. Date subtitle ───────────────────────────────────────────────── -->

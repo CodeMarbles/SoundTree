@@ -2,7 +2,7 @@
 <resources>
 
     <!-- ══════════════════════════════════════════════════════════════
-         TreeCast theme — dark (default).
+         SoundTree theme — dark (default).
 
          Resolves all custom attrs.xml attributes to their dark-mode
          raw color values from colors.xml.
@@ -12,7 +12,7 @@
          of system setting.
          ══════════════════════════════════════════════════════════════ -->
 
-    <style name="Theme.TreeCast" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.SoundTree" parent="Theme.MaterialComponents.DayNight.NoActionBar">
 
         <!-- Material required slots (drive Material components) -->
         <item name="colorPrimary">@color/purple_500</item>
@@ -106,32 +106,32 @@
 
     </style>
 
-    <style name="Theme.TreeCast.Splash" parent="Theme.TreeCast">
+    <style name="Theme.SoundTree.Splash" parent="Theme.SoundTree">
         <item name="android:windowBackground">@color/grey_950</item>
         <item name="android:windowFullscreen">false</item>
     </style>
 
-    <style name="Theme.TreeCast.BottomSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
+    <style name="Theme.SoundTree.BottomSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorSurface">@color/grey_900</item>
         <item name="colorOnSurface">#EEEEFF</item>
         <item name="android:windowBackground">@color/transparent</item>
-        <item name="bottomSheetStyle">@style/Widget.TreeCast.BottomSheet</item>
+        <item name="bottomSheetStyle">@style/Widget.SoundTree.BottomSheet</item>
     </style>
 
-    <style name="Widget.TreeCast.BottomSheet" parent="Widget.MaterialComponents.BottomSheet">
+    <style name="Widget.SoundTree.BottomSheet" parent="Widget.MaterialComponents.BottomSheet">
         <item name="backgroundTint">@color/grey_900</item>
     </style>
 
-    <style name="Animation.TreeCast.SlideUpDown" parent="android:Animation">
+    <style name="Animation.SoundTree.SlideUpDown" parent="android:Animation">
         <item name="android:windowEnterAnimation">@anim/slide_in_up</item>
         <item name="android:windowExitAnimation">@anim/slide_out_down</item>
     </style>
 
-    <style name="Theme.TreeCast.FullscreenDialog" parent="Theme.TreeCast">
+    <style name="Theme.SoundTree.FullscreenDialog" parent="Theme.SoundTree">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">?attr/colorBackground</item>
-        <item name="android:windowAnimationStyle">@style/Animation.TreeCast.SlideUpDown</item>
+        <item name="android:windowAnimationStyle">@style/Animation.SoundTree.SlideUpDown</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

@@ -297,7 +297,7 @@
                                         android:layout_height="1dp"
                                         android:layout_weight="1" />
 
-                                    <app.treecast.ui.settings.LayoutReorderWidget
+                                    <app.soundtree.ui.settings.LayoutReorderWidget
                                         android:id="@+id/layoutReorderWidget"
                                         android:layout_width="170dp"
                                         android:layout_height="wrap_content" />

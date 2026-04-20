@@ -131,7 +131,7 @@
                 android:contentDescription="@string/mini_recorder_cd_save" />
 
             <!-- Growing timeline — fills the rest of Row 1 -->
-            <app.treecast.ui.widget.MiniRecorderTimelineView
+            <app.soundtree.ui.widget.MiniRecorderTimelineView
                 android:id="@+id/miniRecTimeline"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"

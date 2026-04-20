@@ -1,4 +1,4 @@
-# TreeCast
+# SoundTree
 
 A personal podcast recorder and organiser for Android. Record audio, sort it into a hierarchical topic tree, and play it back — all on-device with no cloud dependency.
 
@@ -11,8 +11,8 @@ A personal podcast recorder and organiser for Android. Record audio, sort it int
 - JDK 11+
 
 ```bash
-git clone https://github.com/you/treecast
-cd treecast
+git clone https://github.com/CodeMarbles/SoundTree
+cd SoundTree
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -35,4 +35,4 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## License
 
-TreeCast is licensed under the [GNU General Public License v3.0](LICENSE).
+SoundTree is licensed under the [GNU General Public License v3.0](LICENSE).

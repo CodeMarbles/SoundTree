@@ -2,7 +2,7 @@
 <resources>
 
     <!-- ══════════════════════════════════════════════════════════════
-         TreeCast custom theme attributes.
+         SoundTree custom theme attributes.
 
          All UI color references in layouts, drawables, and Kotlin code
          should point to these attributes (via ?attr/...) rather than

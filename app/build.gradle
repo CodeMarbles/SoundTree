@@ -15,11 +15,11 @@ room {
 }
 
 android {
-    namespace 'app.treecast'
+    namespace 'app.soundtree'
     compileSdk 34
 
     defaultConfig {
-        applicationId "app.treecast"
+        applicationId "app.soundtree"
         minSdk 28
         targetSdk 34
         versionCode major * 1_000_000 + minor * 1_000 + patch

@@ -1,4 +1,4 @@
--keep class app.treecast.data.entities.** { *; }
+-keep class app.soundtree.data.entities.** { *; }
 -keepclassmembers class * {
     @androidx.room.* *;
 }
