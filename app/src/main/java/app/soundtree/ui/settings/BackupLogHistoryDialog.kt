@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
  */
 class BackupLogHistoryDialog : BottomSheetDialogFragment() {
 
-    override fun getTheme(): Int = R.style.Theme.SoundTree_BottomSheet
+    override fun getTheme(): Int = R.style.Theme_SoundTree_BottomSheet
 
     companion object {
         const val TAG = "backup_log_history"

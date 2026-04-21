@@ -3,11 +3,13 @@ package app.soundtree.service
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
@@ -87,6 +89,7 @@ class PlaybackService : MediaSessionService() {
      * SEEK_TO_PREVIOUS: always available (fallback = position 0).
      * SEEK_TO_NEXT: available only when a mark exists ahead of current position.
      */
+    @UnstableApi
     private inner class MarkAwarePlayer(player: Player) : ForwardingPlayer(player) {
 
         override fun getAvailableCommands(): Player.Commands {
@@ -180,6 +183,7 @@ class PlaybackService : MediaSessionService() {
 
     private inner class SessionCallback : MediaSession.Callback {
 
+        @OptIn(UnstableApi::class)
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
@@ -213,6 +217,7 @@ class PlaybackService : MediaSessionService() {
 
     // ── Service lifecycle ─────────────────────────────────────────────
 
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
 

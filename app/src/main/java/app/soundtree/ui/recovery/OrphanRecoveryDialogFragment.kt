@@ -46,7 +46,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
     // Use the full app theme so MaterialButton styles and custom colour
     // attrs resolve correctly.
-    override fun getTheme(): Int = R.style.Theme.SoundTree_BottomSheet
+    override fun getTheme(): Int = R.style.Theme_SoundTree_BottomSheet
 
     // ── Construction ──────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
             )
-            setWindowAnimations(R.style.Animation.SoundTree_SlideUpDown)
+            setWindowAnimations(R.style.Animation_SoundTree_SlideUpDown)
         }
     }
 

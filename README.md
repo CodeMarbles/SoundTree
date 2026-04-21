@@ -21,15 +21,14 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## Dependencies
 
-| Library | Purpose |
-|---------|---------|
-| Room 2.6 | Local SQLite database with KSP codegen |
-| ViewPager2 | Tab and sub-page navigation |
-| MediaRecorder | Audio capture (M4A/AAC) |
-| MediaPlayer | Playback with resume position |
-| Material Components | Buttons, BottomSheets, dialogs |
-| Kotlin Coroutines + Flow | Reactive data pipeline from DB to UI |
-| MPAndroidChart | Available for future waveform/stats charts |
+| Library                  | Purpose                                    |
+|--------------------------|--------------------------------------------|
+| Room 2.6                 | Local SQLite database with KSP codegen     |
+| ViewPager2               | Tab and sub-page navigation                |
+| MediaRecorder            | Audio capture (M4A/AAC)                    |
+| MediaPlayer              | Playback with resume position              |
+| Material Components      | Buttons, BottomSheets, dialogs             |
+| Kotlin Coroutines + Flow | Reactive data pipeline from DB to UI       |
 
 ---
 

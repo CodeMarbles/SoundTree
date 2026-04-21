@@ -72,7 +72,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
             }
     }
 
-    override fun getTheme(): Int = R.style.Theme.SoundTree_FullscreenDialog
+    override fun getTheme(): Int = R.style.Theme_SoundTree_FullscreenDialog
 
     // ── Step identifiers ──────────────────────────────────────────────────────
 

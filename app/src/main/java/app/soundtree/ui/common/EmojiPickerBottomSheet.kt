@@ -35,7 +35,7 @@ class EmojiPickerBottomSheet(
 
     // Apply our dark BottomSheet theme so colorOnSurface = text_primary,
     // which the EmojiPickerView uses for its category icon tint.
-    override fun getTheme(): Int = R.style.Theme.SoundTree_BottomSheet
+    override fun getTheme(): Int = R.style.Theme_SoundTree
 
     override fun onCreateView(
         inflater: LayoutInflater,
