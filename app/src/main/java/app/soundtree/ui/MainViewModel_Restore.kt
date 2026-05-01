@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import app.soundtree.ui.restore.FileCategory
 import app.soundtree.ui.restore.FileCounters
 import app.soundtree.ui.restore.FileLogEntry
+import app.soundtree.util.BackupManifest
 import app.soundtree.util.DatabaseRestoreManager
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.Dispatchers
@@ -327,6 +328,16 @@ fun MainViewModel.restoreFromBackup(
         }
     }
 }
+
+/**
+ * Reads the backup manifest from the root of [backupDirUri].
+ * Returns null if the manifest is absent or malformed — callers treat
+ * this as "older backup, no preview available" rather than an error.
+ */
+suspend fun MainViewModel.readBackupManifest(
+    backupDirUri: String,
+): BackupManifest? =
+    DatabaseRestoreManager.readManifest(getApplication(), backupDirUri)
 
 /** Increments the counter corresponding to [type]. */
 private fun FileCounters.increment(type: DatabaseRestoreManager.FileEventType) = when (type) {

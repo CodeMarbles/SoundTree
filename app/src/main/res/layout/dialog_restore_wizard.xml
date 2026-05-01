@@ -74,6 +74,16 @@
                 android:textColor="#B3261E"
                 android:visibility="gone" />
 
+            <!-- Manifest summary — visible only when soundtree-backup.json is present -->
+            <TextView
+                android:id="@+id/tvManifestSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textColor="?android:attr/textColorSecondary"
+                android:visibility="gone" />
+
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

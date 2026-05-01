@@ -31,24 +31,34 @@ import app.soundtree.ui.MilestoneState
 import app.soundtree.ui.RestorePhase
 import app.soundtree.ui.getLibrarySummary
 import app.soundtree.ui.listDbSnapshots
+import app.soundtree.ui.readBackupManifest
 import app.soundtree.ui.resetRestorePhase
 import app.soundtree.ui.resolveRecordingVolume
 import app.soundtree.ui.restoreFromBackup
 import app.soundtree.ui.restorePhase
+import app.soundtree.util.BackupManifest
 import app.soundtree.util.DatabaseRestoreManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * A four-step "wizard" dialog that guides the user through a database restore.
  *
  * ## Step 0 — Snapshot selection
  * Scans the chosen backup root for available `.db` snapshots and presents
- * them as a radio list. The user picks one and taps Next.
+ * them as a radio list. If the backup contains a `soundtree-backup.json`
+ * manifest, a summary line (recording count + last backup date) is shown
+ * above the list to confirm the user has selected the right folder.
+ * The user picks a snapshot and taps Next.
  *
  * ## Step 1 — Library summary
  * Displays the current live library's recording / mark / topic counts and
@@ -106,6 +116,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private var snapshots: List<DatabaseRestoreManager.DbSnapshot> = emptyList()
     private var selectedSnapshotIndex: Int = 0
     private var librarySummary: LibrarySummary? = null
+    private var backupManifest: BackupManifest? = null
 
     // Volume selection state
     private var availableVolumes: List<AppVolume> = emptyList()
@@ -118,12 +129,13 @@ class RestoreWizardDialogFragment : DialogFragment() {
 
     private lateinit var flipper: ViewFlipper
 
-    // Step 0 — snapshot
+    // Step 0 — snapshot selection
+    private lateinit var tvManifestSummary: TextView
     private lateinit var rgSnapshots: RadioGroup
     private lateinit var tvNoSnapshots: TextView
     private lateinit var tvSnapshotLoading: TextView
 
-    // Step 1 — summary
+    // Step 1 — library summary
     private lateinit var tvSummaryRecordings: TextView
     private lateinit var tvSummaryMarks: TextView
     private lateinit var tvSummaryTopics: TextView
@@ -141,20 +153,20 @@ class RestoreWizardDialogFragment : DialogFragment() {
     // Step 3 — confirm
     // (no dynamic views beyond the static layout)
 
-    // Step 4 — progress
+    // Step 3 — progress
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgressLabel: TextView
     private lateinit var tvProgressSub: TextView
     private lateinit var tvProgressError: TextView
 
-    // Step 4 — milestone board
+    // Step 3 — milestone board
     // Each milestone row is an included layout; we bind its child views by ID.
     private lateinit var milestoneViews: List<View>  // indexed by Milestone.ordinal
 
-    // Step 4 — filter chips
+    // Step 3 — filter chips
     private lateinit var chipGroupFilter: ChipGroup
 
-    // Step 4 — file log
+    // Step 3 — file log
     private lateinit var recyclerProgressLog: RecyclerView
     private lateinit var progressAdapter: RestoreProgressAdapter
 
@@ -183,13 +195,17 @@ class RestoreWizardDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Bind views
-        flipper          = view.findViewById(R.id.wizardFlipper)
+        // ── Bind views ────────────────────────────────────────────────────────
 
-        rgSnapshots      = view.findViewById(R.id.rgSnapshots)
-        tvNoSnapshots    = view.findViewById(R.id.tvNoSnapshots)
+        flipper = view.findViewById(R.id.wizardFlipper)
+
+        // Step 0
+        tvManifestSummary = view.findViewById(R.id.tvManifestSummary)
+        rgSnapshots       = view.findViewById(R.id.rgSnapshots)
+        tvNoSnapshots     = view.findViewById(R.id.tvNoSnapshots)
         tvSnapshotLoading = view.findViewById(R.id.tvSnapshotLoading)
 
+        // Step 1
         tvSummaryRecordings = view.findViewById(R.id.tvSummaryRecordings)
         tvSummaryMarks      = view.findViewById(R.id.tvSummaryMarks)
         tvSummaryTopics     = view.findViewById(R.id.tvSummaryTopics)
@@ -208,7 +224,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
         tvProgressSub   = view.findViewById(R.id.tvProgressSub)
         tvProgressError = view.findViewById(R.id.tvProgressError)
 
-        // Milestone board — collect included views in ordinal order.
+        // Step 3 — milestone board: collect included views in ordinal order.
         milestoneViews = listOf(
             view.findViewById(R.id.milestoneSafety),
             view.findViewById(R.id.milestoneMetadata),
@@ -221,7 +237,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
             rowView.findViewById<TextView>(R.id.tvMilestoneLabel).text = milestoneLabels[i]
         }
 
-        // Filter chips
+        // Step 3 — filter chips
         chipGroupFilter = view.findViewById(R.id.chipGroupFilter)
         chipGroupFilter.setOnCheckedStateChangeListener { _, checkedIds ->
             val filter = when (checkedIds.firstOrNull()) {
@@ -233,7 +249,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
             resubmitLogItems()  // rebuild list with new filter
         }
 
-        // RecyclerView
+        // Step 3 — file log RecyclerView
         progressAdapter = RestoreProgressAdapter()
         progressAdapter.onHeaderTapped = { _ -> resubmitLogItems() }
 
@@ -256,17 +272,17 @@ class RestoreWizardDialogFragment : DialogFragment() {
             }
         })
 
+        // Nav buttons
         btnBack = view.findViewById(R.id.btnWizardBack)
         btnNext = view.findViewById(R.id.btnWizardNext)
-
         btnBack.setOnClickListener { onBackClicked() }
         btnNext.setOnClickListener { onNextClicked() }
 
-        // Show step 0 and kick off snapshot scan
+        // Show step 0 and kick off snapshot scan + manifest read in parallel.
         showStep(Step.SNAPSHOT_SELECT)
         loadSnapshots()
 
-        // Observe restore progress for step 3
+        // Observe restore progress for step 3.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.restorePhase.collect { phase -> onRestorePhaseChanged(phase) }
@@ -368,16 +384,31 @@ class RestoreWizardDialogFragment : DialogFragment() {
 
     // ── Data loading ──────────────────────────────────────────────────────────
 
+    /**
+     * Loads available snapshots and the backup manifest in parallel, then
+     * populates the Step 0 UI. The manifest read is best-effort — a missing
+     * or malformed manifest simply leaves [tvManifestSummary] hidden.
+     */
     private fun loadSnapshots() {
         tvSnapshotLoading.isVisible = true
+        tvManifestSummary.isVisible = false
         rgSnapshots.isVisible       = false
         tvNoSnapshots.isVisible     = false
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = viewModel.listDbSnapshots(backupRootUri)
-            snapshots = result
+            // Run both IO calls concurrently — manifest read is cheap but no
+            // reason to block the snapshot list on it.
+            val (result, manifest) = coroutineScope {
+                val snapshotsDeferred = async { viewModel.listDbSnapshots(backupRootUri) }
+                val manifestDeferred  = async { viewModel.readBackupManifest(backupRootUri) }
+                snapshotsDeferred.await() to manifestDeferred.await()
+            }
+
+            snapshots      = result
+            backupManifest = manifest
 
             tvSnapshotLoading.isVisible = false
+            bindManifestHeader()
 
             if (result.isEmpty()) {
                 tvNoSnapshots.isVisible = true
@@ -385,7 +416,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
                 return@launch
             }
 
-            rgSnapshots.isVisible   = true
+            rgSnapshots.isVisible = true
             rgSnapshots.removeAllViews()
 
             result.forEachIndexed { index, snapshot ->
@@ -407,6 +438,28 @@ class RestoreWizardDialogFragment : DialogFragment() {
 
             btnNext.isEnabled = true
         }
+    }
+
+    /**
+     * Populates [tvManifestSummary] from [backupManifest] if present.
+     * Shows nothing if the backup pre-dates manifest support — no regression
+     * for older backups.
+     */
+    private fun bindManifestHeader() {
+        val m = backupManifest
+        tvManifestSummary.isVisible = m != null
+        if (m == null) return
+
+        val displayDate = runCatching {
+            val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val displayFmt = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            displayFmt.format(isoFmt.parse(m.lastBackupAt)!!)
+        }.getOrElse { m.lastBackupAt }
+
+        tvManifestSummary.text =
+            "${m.recordingCount} recordings · ${m.topicCount} topics · Last backed up $displayDate"
     }
 
     private fun loadLibrarySummary() {
@@ -546,7 +599,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
             is RestorePhase.Running -> {
                 lastRunningPhase = phase
 
-                // ── Progress bar ──────────────────────────────────────────────────
+                // ── Progress bar ──────────────────────────────────────────────
                 tvProgressError.isVisible = false
                 tvProgressLabel.text      = phase.label
                 if (phase.total > 0) {
@@ -560,14 +613,14 @@ class RestoreWizardDialogFragment : DialogFragment() {
                     tvProgressSub.isVisible     = false
                 }
 
-                // ── Milestone board ───────────────────────────────────────────────
+                // ── Milestone board ───────────────────────────────────────────
                 phase.milestones.forEachIndexed { i, entry ->
                     bindMilestoneRow(milestoneViews[i], entry)
                 }
 
-                // ── Auto-collapse clean sections ──────────────────────────────────
+                // ── Auto-collapse clean sections ──────────────────────────────
                 // When a section transitions to complete with no failures, collapse
-                // it automatically so failures in the other section are prominent.
+                // it so failures in the other section are more prominent.
                 if (phase.recordingsComplete) {
                     progressAdapter.autoCollapseIfClean(
                         FileCategory.RECORDINGS, phase.recordingCounts
@@ -579,7 +632,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
                     )
                 }
 
-                // ── File log ──────────────────────────────────────────────────────
+                // ── File log ──────────────────────────────────────────────────
                 val hasFileActivity = phase.recordingCounts.hasActivity
                         || phase.waveformCounts.hasActivity
                         || phase.recordingsRunning
@@ -661,9 +714,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
             tvStamp.isVisible = false
         }
 
-        // Detail line beneath label (e.g. "47 recordings exported")
-        // Append to label text if present. Keep it subtle with secondary colour on
-        // a second TextView if you prefer — this is the minimal approach.
+        // Detail line beneath the label (e.g. "47 recordings exported").
         tvLabel.text = if (entry.detail != null && entry.state != MilestoneState.PENDING) {
             "${entry.label}\n${entry.detail}"
         } else {

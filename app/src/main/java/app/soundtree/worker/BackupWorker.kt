@@ -16,6 +16,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import app.soundtree.BuildConfig
 import app.soundtree.R
 import app.soundtree.data.dao.BackupTargetDao
 import app.soundtree.data.db.AppDatabase
@@ -29,7 +30,9 @@ import app.soundtree.export.RecordingExporter
 import app.soundtree.service.AppNotifications
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
+import app.soundtree.util.BackupManifest
 import app.soundtree.util.BackupProgressCalc
+import app.soundtree.util.DatabaseRestoreManager
 import app.soundtree.util.RecordingFileHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,6 +43,7 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 class BackupWorker(context: Context, params: WorkerParameters) :
@@ -305,6 +309,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             stepCopyRecordings(run)
             if (run.target.exportMetadataEnabled) stepExportMetadata(run)
             stepSyncWaveforms(run)
+            stepWriteManifest(run)
             stepFlushStats(run)
         } catch (e: Exception) {
             run.error("Unexpected error during backup: ${e.message}")
@@ -878,6 +883,62 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             "Waveforms pass complete — ${run.waveformsCopied} copied, " +
                     "${run.waveformsSkipped} skipped, ${run.waveformsFailed} failed"
         )
+    }
+
+    /**
+     * Writes `soundtree-backup.json` to the backup root.
+     *
+     * Queries the live database for current counts so the manifest reflects
+     * the state of the backup just completed. Also counts .db snapshot files
+     * currently in the destination's db/ directory.
+     *
+     * Non-fatal: a write failure is logged as a warning and does not affect
+     * the run's success/partial/failed status.
+     */
+    private suspend fun stepWriteManifest(run: BackupRun) {
+        val db = AppDatabase.getInstance(applicationContext)
+
+        val recordingCount = runCatching { db.recordingDao().countAll() }.getOrElse { -1 }
+        val topicCount     = runCatching { db.topicDao().countAll()     }.getOrElse { -1 }
+        val markCount      = runCatching { db.markDao().countAll()      }.getOrElse { -1 }
+
+        val snapshotCount = runCatching {
+            run.destRoot.findFile("db")
+                ?.takeIf { it.isDirectory }
+                ?.listFiles()
+                ?.count { it.isFile && it.name?.endsWith(".db") == true }
+                ?: 0
+        }.getOrElse { 0 }
+
+        val manifest = BackupManifest(
+            appVersion = BuildConfig.VERSION_NAME,
+            lastBackupAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+                .also { it.timeZone = TimeZone.getTimeZone("UTC") }
+                .format(Date()),
+            recordingCount = recordingCount,
+            topicCount = topicCount,
+            markCount = markCount,
+            snapshotCount = snapshotCount,
+        )
+
+        runCatching {
+            val existing = run.destRoot.findFile(BackupManifest.FILENAME)
+            val file = existing
+                ?: run.destRoot.createFile("application/json", BackupManifest.FILENAME)
+
+            if (file == null) {
+                run.warning("Could not create ${BackupManifest.FILENAME} — manifest not written")
+                return
+            }
+
+            applicationContext.contentResolver.openOutputStream(file.uri, "wt")
+                ?.bufferedWriter()
+                ?.use { it.write(BackupManifest.toJson(manifest)) }
+
+            run.info("Manifest written: $recordingCount recordings, $topicCount topics, $snapshotCount snapshots")
+        }.onFailure { e ->
+            run.warning("Failed to write manifest: ${e.message}")
+        }
     }
 
     // ── Step 6: Flush final statistics ───────────────────────────────────────

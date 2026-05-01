@@ -126,6 +126,31 @@ object DatabaseRestoreManager {
         PATH_REMAP,        // file_path + storage_volume_uuid updated in restored DB
     }
 
+    // ── Backup manifest ───────────────────────────────────────────────────────
+
+    /**
+     * Reads `soundtree-backup.json` from the root of the backup directory.
+     * Returns null if the file is absent or malformed — callers should treat
+     * a missing manifest as "older backup, no preview available" rather than
+     * an error.
+     */
+    suspend fun readManifest(
+        context: Context,
+        backupDirUri: String,
+    ): BackupManifest? = withContext(Dispatchers.IO) {
+        val root = DocumentFile.fromTreeUri(context, Uri.parse(backupDirUri))
+            ?: return@withContext null
+        val file = root.findFile(BackupManifest.FILENAME)
+            ?.takeIf { it.isFile }
+            ?: return@withContext null
+        runCatching {
+            context.contentResolver.openInputStream(file.uri)
+                ?.bufferedReader()
+                ?.use { it.readText() }
+                ?.let { BackupManifest.fromJson(it) }
+        }.getOrNull()
+    }
+
     // ── Library summary ───────────────────────────────────────────────────────
 
     /**
