@@ -165,7 +165,9 @@ suspend fun MainViewModel.getLibrarySummary(): LibrarySummary =
  *  - A safety snapshot of the live database.
  *  - A metadata JSON export of all current recordings (marks safety net).
  *  - A destructive database swap.
- *  - An audio file copy from [backupRootDir]'s `recordings/` subtree.
+ *  - An audio file copy from [backupRootDir]'s `recordings/` subtree into
+ *    [targetVolumeUuid] (falls back to primary storage if the UUID is null
+ *    or the volume is not currently mounted).
  *  - A `file_path` remap pass in the restored database.
  *  - A waveform cache restore from `appdata/waveforms/` if present.
  *
@@ -176,7 +178,9 @@ suspend fun MainViewModel.getLibrarySummary(): LibrarySummary =
  * ## Sequence
  * 1. Cancels all [BackupWorker] jobs.
  * 2. Delegates to [DatabaseRestoreManager.restore] for the full sequence.
- * 3. On success: calls [DatabaseRestoreManager.scheduleRestartAndExit] on
+ * 3. On success: persists [targetVolumeUuid] as [PREF_DEFAULT_STORAGE_UUID]
+ *    so future recordings land on the same volume the user chose during
+ *    restore, then calls [DatabaseRestoreManager.scheduleRestartAndExit] on
  *    the main thread. **Does not return.**
  * 4. On failure: sets [restorePhase] to [RestorePhase.Error] on the main
  *    thread. The wizard surfaces the error message.
@@ -185,10 +189,16 @@ suspend fun MainViewModel.getLibrarySummary(): LibrarySummary =
  *                          (the folder containing `db/`, `recordings/`, etc.).
  * @param backupFile        The exact snapshot [DocumentFile] chosen by the user,
  *                          as returned by [listDbSnapshots].
+ * @param targetVolumeUuid  UUID of the storage volume to restore audio files into,
+ *                          as chosen in the wizard's volume-selection step. Null
+ *                          falls back to the device's primary external storage.
+ *                          Also persisted as the new default recording volume on
+ *                          success.
  */
 fun MainViewModel.restoreFromBackup(
     backupRootDirUri: String,
     backupFile: DocumentFile,
+    targetVolumeUuid: String? = null,
 ) {
     val phaseFlow  = restorePhaseFlow()
     val timeFmt    = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -221,9 +231,10 @@ fun MainViewModel.restoreFromBackup(
         }
 
         val result = DatabaseRestoreManager.restore(
-            context       = getApplication(),
-            backupFile    = backupFile,
-            backupRootDir = backupRootDir,
+            context          = getApplication(),
+            backupFile       = backupFile,
+            backupRootDir    = backupRootDir,
+            targetVolumeUuid = targetVolumeUuid,
 
             onProgress = { label, current, total ->
                 emit {
@@ -290,6 +301,9 @@ fun MainViewModel.restoreFromBackup(
         when (result) {
             is DatabaseRestoreManager.Result.Success -> {
                 withContext(Dispatchers.Main) {
+                    // Persist the volume chosen during restore as the new default
+                    // so that post-restart recordings go to the same place.
+                    if (targetVolumeUuid != null) setDefaultStorageUuid(targetVolumeUuid)
                     DatabaseRestoreManager.scheduleRestartAndExit(getApplication())
                 }
             }

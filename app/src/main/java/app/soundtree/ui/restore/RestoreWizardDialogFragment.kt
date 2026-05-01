@@ -1,5 +1,6 @@
 package app.soundtree.ui.restore
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,6 +13,7 @@ import android.widget.TextView
 import android.widget.ViewFlipper
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -20,6 +22,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.soundtree.R
+import app.soundtree.storage.AppVolume
+import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.LibrarySummary
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.MilestoneEntry
@@ -28,12 +32,16 @@ import app.soundtree.ui.RestorePhase
 import app.soundtree.ui.getLibrarySummary
 import app.soundtree.ui.listDbSnapshots
 import app.soundtree.ui.resetRestorePhase
+import app.soundtree.ui.resolveRecordingVolume
 import app.soundtree.ui.restoreFromBackup
 import app.soundtree.ui.restorePhase
 import app.soundtree.util.DatabaseRestoreManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.ChipGroup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * A four-step "wizard" dialog that guides the user through a database restore.
@@ -85,8 +93,9 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private enum class Step(val index: Int) {
         SNAPSHOT_SELECT(0),
         SUMMARY(1),
-        CONFIRM(2),
-        PROGRESS(3),
+        VOLUME_SELECT(2),
+        CONFIRM(3),
+        PROGRESS(4),
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -97,6 +106,13 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private var snapshots: List<DatabaseRestoreManager.DbSnapshot> = emptyList()
     private var selectedSnapshotIndex: Int = 0
     private var librarySummary: LibrarySummary? = null
+
+    // Volume selection state
+    private var availableVolumes: List<AppVolume> = emptyList()
+    private var selectedVolumeUuid: String? = null
+    private var backupAudioBytes: Long? = null          // null = scan in progress
+    private var audioSizeScanJob: Job? = null
+    private var volumeStepLoaded = false
 
     // ── Views ─────────────────────────────────────────────────────────────────
 
@@ -113,23 +129,32 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private lateinit var tvSummaryTopics: TextView
     private lateinit var tvSummaryLoading: TextView
 
-    // Step 2 — confirm
+    // Step 2 — volume selection
+    private lateinit var tvVolumeLoading: TextView
+    private lateinit var layoutSingleVolume: View
+    private lateinit var tvSingleVolumeInfo: TextView
+    private lateinit var scrollVolumeRadio: View
+    private lateinit var rgVolumes: RadioGroup
+    private lateinit var layoutSpaceWarning: View
+    private lateinit var tvSpaceWarning: TextView
+
+    // Step 3 — confirm
     // (no dynamic views beyond the static layout)
 
-    // Step 3 — progress
+    // Step 4 — progress
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgressLabel: TextView
     private lateinit var tvProgressSub: TextView
     private lateinit var tvProgressError: TextView
 
-    // Step 3 — milestone board
+    // Step 4 — milestone board
     // Each milestone row is an included layout; we bind its child views by ID.
     private lateinit var milestoneViews: List<View>  // indexed by Milestone.ordinal
 
-    // Step 3 — filter chips
+    // Step 4 — filter chips
     private lateinit var chipGroupFilter: ChipGroup
 
-    // Step 3 — file log
+    // Step 4 — file log
     private lateinit var recyclerProgressLog: RecyclerView
     private lateinit var progressAdapter: RestoreProgressAdapter
 
@@ -169,6 +194,14 @@ class RestoreWizardDialogFragment : DialogFragment() {
         tvSummaryMarks      = view.findViewById(R.id.tvSummaryMarks)
         tvSummaryTopics     = view.findViewById(R.id.tvSummaryTopics)
         tvSummaryLoading    = view.findViewById(R.id.tvSummaryLoading)
+
+        tvVolumeLoading    = view.findViewById(R.id.tvVolumeLoading)
+        layoutSingleVolume = view.findViewById(R.id.layoutSingleVolume)
+        tvSingleVolumeInfo = view.findViewById(R.id.tvSingleVolumeInfo)
+        scrollVolumeRadio  = view.findViewById(R.id.scrollVolumeRadio)
+        rgVolumes          = view.findViewById(R.id.rgVolumes)
+        layoutSpaceWarning = view.findViewById(R.id.layoutSpaceWarning)
+        tvSpaceWarning     = view.findViewById(R.id.tvSpaceWarning)
 
         progressBar     = view.findViewById(R.id.restoreProgressBar)
         tvProgressLabel = view.findViewById(R.id.tvProgressLabel)
@@ -257,6 +290,11 @@ class RestoreWizardDialogFragment : DialogFragment() {
 
     private fun showStep(step: Step) {
         flipper.displayedChild = step.index
+        if (step == Step.VOLUME_SELECT && !volumeStepLoaded) {
+            volumeStepLoaded = true
+            loadVolumes()
+            startAudioSizeScan()
+        }
         updateNavButtons(step)
         isCancelable = step != Step.PROGRESS
     }
@@ -274,6 +312,12 @@ class RestoreWizardDialogFragment : DialogFragment() {
                 btnNext.text      = getString(R.string.wizard_btn_next)
                 btnNext.isEnabled = librarySummary != null
             }
+            Step.VOLUME_SELECT -> {
+                btnBack.isVisible = true
+                btnBack.text      = getString(R.string.wizard_btn_back)
+                btnNext.text      = getString(R.string.wizard_btn_next)
+                btnNext.isEnabled = selectedVolumeUuid != null
+            }
             Step.CONFIRM -> {
                 btnBack.isVisible = true
                 btnBack.text      = getString(R.string.wizard_btn_back)
@@ -290,11 +334,13 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private fun onNextClicked() {
         when (currentStep()) {
             Step.SNAPSHOT_SELECT -> {
-                // Move to summary; load counts if not yet loaded
                 showStep(Step.SUMMARY)
                 if (librarySummary == null) loadLibrarySummary()
             }
             Step.SUMMARY -> {
+                showStep(Step.VOLUME_SELECT)
+            }
+            Step.VOLUME_SELECT -> {
                 showStep(Step.CONFIRM)
             }
             Step.CONFIRM -> {
@@ -304,6 +350,7 @@ class RestoreWizardDialogFragment : DialogFragment() {
                 viewModel.restoreFromBackup(
                     backupRootDirUri = backupRootUri,
                     backupFile       = chosen.file,
+                    targetVolumeUuid = selectedVolumeUuid,
                 )
             }
             Step.PROGRESS -> { /* unreachable — buttons hidden */ }
@@ -312,9 +359,10 @@ class RestoreWizardDialogFragment : DialogFragment() {
 
     private fun onBackClicked() {
         when (currentStep()) {
-            Step.SUMMARY  -> showStep(Step.SNAPSHOT_SELECT)
-            Step.CONFIRM  -> showStep(Step.SUMMARY)
-            else          -> { /* no-op */ }
+            Step.SUMMARY       -> showStep(Step.SNAPSHOT_SELECT)
+            Step.VOLUME_SELECT -> showStep(Step.SUMMARY)
+            Step.CONFIRM       -> showStep(Step.VOLUME_SELECT)
+            else               -> { /* no-op */ }
         }
     }
 
@@ -388,6 +436,102 @@ class RestoreWizardDialogFragment : DialogFragment() {
             )
 
             btnNext.isEnabled = true
+        }
+    }
+
+    // ── Volume step ───────────────────────────────────────────────────────────
+
+    /** Populates [availableVolumes], pre-selects the current default, and renders the step. */
+    private fun loadVolumes() {
+        availableVolumes = StorageVolumeHelper.getVolumes(requireContext())
+        // Pre-select the volume that's currently preferred for recording.
+        val currentDefault = viewModel.resolveRecordingVolume().uuid
+        selectedVolumeUuid = availableVolumes.firstOrNull { it.uuid == currentDefault }?.uuid
+            ?: availableVolumes.firstOrNull()?.uuid
+        populateVolumeStep()
+    }
+
+    private fun populateVolumeStep() {
+        tvVolumeLoading.isVisible = false
+
+        if (availableVolumes.size == 1) {
+            val vol = availableVolumes[0]
+            layoutSingleVolume.isVisible = true
+            scrollVolumeRadio.isVisible  = false
+            tvSingleVolumeInfo.text = getString(
+                R.string.restore_step_volume_single,
+                vol.label,
+                AppVolume.formatBytes(vol.freeBytes),
+            )
+        } else {
+            layoutSingleVolume.isVisible = false
+            scrollVolumeRadio.isVisible  = true
+            rgVolumes.removeAllViews()
+            availableVolumes.forEach { vol ->
+                val rb = RadioButton(requireContext()).apply {
+                    id        = View.generateViewId()
+                    text      = "${vol.label}\n${AppVolume.formatBytes(vol.freeBytes)} free"
+                    isChecked = vol.uuid == selectedVolumeUuid
+                    setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) {
+                            selectedVolumeUuid = vol.uuid
+                            updateNavButtons(currentStep())
+                            updateSpaceWarning()
+                        }
+                    }
+                }
+                rgVolumes.addView(rb)
+            }
+        }
+        updateSpaceWarning()
+    }
+
+    /**
+     * Shows or hides the space warning based on [backupAudioBytes] vs the
+     * selected volume's free space. No-op if the scan hasn't finished yet.
+     */
+    private fun updateSpaceWarning() {
+        val bytes = backupAudioBytes ?: return         // scan still running
+        val vol   = availableVolumes.firstOrNull { it.uuid == selectedVolumeUuid }
+            ?: availableVolumes.firstOrNull()
+            ?: return
+        if (bytes > 0L && bytes > vol.freeBytes) {
+            tvSpaceWarning.text = getString(
+                R.string.restore_step_volume_space_warning,
+                AppVolume.formatBytes(bytes),
+            )
+            layoutSpaceWarning.isVisible = true
+        } else {
+            layoutSpaceWarning.isVisible = false
+        }
+    }
+
+    /**
+     * Walks the backup's `recordings/` tree on IO and sums `.m4a` sizes.
+     * Updates [backupAudioBytes] and refreshes the warning if the user is
+     * still on the volume step when the scan completes.
+     */
+    private fun startAudioSizeScan() {
+        audioSizeScanJob?.cancel()
+        audioSizeScanJob = viewLifecycleOwner.lifecycleScope.launch {
+            backupAudioBytes = withContext(Dispatchers.IO) {
+                val root = DocumentFile.fromTreeUri(
+                    requireContext(), Uri.parse(backupRootUri)
+                ) ?: return@withContext 0L
+                val recordingsDir = root.findFile("recordings")
+                    ?.takeIf { it.isDirectory }
+                    ?: return@withContext 0L
+                var total = 0L
+                fun walkDir(dir: DocumentFile) {
+                    dir.listFiles().forEach { f ->
+                        if (f.isDirectory) walkDir(f)
+                        else if (f.name?.endsWith(".m4a") == true) total += f.length()
+                    }
+                }
+                walkDir(recordingsDir)
+                total
+            }
+            if (currentStep() == Step.VOLUME_SELECT) updateSpaceWarning()
         }
     }
 

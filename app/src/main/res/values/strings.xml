@@ -773,6 +773,15 @@
     <string name="wizard_btn_next">Next</string>
     <string name="wizard_btn_restore">Restore</string>
 
+    <!-- Step 2: Volume selection (inserted between summary and confirm) -->
+    <string name="restore_step_volume_heading">Where to store recordings</string>
+    <string name="restore_step_volume_desc">Choose which storage volume your audio files should be restored to. This will also become your default recording volume.</string>
+    <string name="restore_step_volume_loading">Checking storage…</string>
+    <!-- %1$s = volume label, %2$s = free space e.g. "12.4 GB free" -->
+    <string name="restore_step_volume_single">Files will be restored to %1$s\n%2$s free</string>
+    <!-- %s = backup audio size e.g. "4.2 GB" -->
+    <string name="restore_step_volume_space_warning">⚠ The backup contains up to %s of audio. Files already present on this device won\'t be duplicated, but you may want to free up space before continuing.</string>
+
     <!-- Step 0: Snapshot selection -->
     <string name="restore_step0_desc">Choose a database snapshot to restore from.</string>
     <string name="restore_step0_scanning">Scanning backup…</string>

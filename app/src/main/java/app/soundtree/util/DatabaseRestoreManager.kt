@@ -327,6 +327,7 @@ object DatabaseRestoreManager {
                 appContext  = appContext,
                 backupFile  = backupFile,
                 backupRootDir = backupRootDir,
+                targetVolumeUuid = targetVolumeUuid,
                 onProgress  = onProgress,
                 onFileEvent = onFileEvent,
                 onMilestone = onMilestone,
