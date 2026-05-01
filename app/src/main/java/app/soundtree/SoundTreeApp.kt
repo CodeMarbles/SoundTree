@@ -27,6 +27,7 @@ class SoundTreeApp : Application() {
         fixLegacyFilePathNamespace()
         enqueuePendingWaveformJobs()
         reconcileScheduledBackups()
+        reconcileStaleBackupLogs()
     }
 
     /**
@@ -140,6 +141,20 @@ class SoundTreeApp : Application() {
         }
     }
 
+    /**
+     * At startup, marks any backup log rows that are still status=NULL but
+     * have no corresponding RUNNING or ENQUEUED WorkManager job as INTERRUPTED.
+     * These are runs that were killed mid-flight without getting to finalise().
+     */
+    private fun reconcileStaleBackupLogs() {
+        appScope.launch {
+            runCatching {
+                repository.reconcileStaleBackupLogs()
+            }.onFailure { e ->
+                android.util.Log.e("BackupReconcile", "Uncaught exception in reconcileStaleBackupLogs", e)
+            }
+        }
+    }
 
     companion object {
         /** SharedPreferences flag: set to true once the file_path namespace fixup has run. */

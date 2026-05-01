@@ -282,7 +282,10 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
             else R.string.backup_log_detail_db_not_backed_up
         )
 
-        if (log.status == BackupLogEntity.BackupStatus.FAILED && !log.errorMessage.isNullOrBlank()) {
+        // Show the error message row for FAILED and INTERRUPTED runs.
+        if (log.status in setOf(BackupLogEntity.BackupStatus.FAILED, BackupLogEntity.BackupStatus.INTERRUPTED)
+            && !log.errorMessage.isNullOrBlank()
+        ) {
             binding.rowDetailErrorMessage.visibility = View.VISIBLE
             binding.tvDetailErrorMessage.text = log.errorMessage
         } else {

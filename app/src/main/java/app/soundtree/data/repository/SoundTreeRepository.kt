@@ -1,7 +1,11 @@
 package app.soundtree.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.room.withTransaction
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.await
 import app.soundtree.data.dao.VolumeUsage
 import app.soundtree.data.db.AppDatabase
 import app.soundtree.data.entities.BackupLogEntity
@@ -432,6 +436,97 @@ class SoundTreeRepository(context: Context) {
     ): RecordingStructureMigrator.Result =
         RecordingStructureMigrator.migrate(recordingDao, onProgress)
 
+    /**
+     * Marks any dangling in-progress log rows for [volumeUuid] as INTERRUPTED.
+     * Called by [BackupWorker] at the very start of a new run, before inserting
+     * its own log row. Since WorkManager won't schedule a second unique job while
+     * the first is genuinely running, the presence of a new job is proof that any
+     * existing status=NULL row for this volume is stale.
+     */
+    suspend fun markStaleBackupLogInterrupted(volumeUuid: String) {
+        backupLogDao.markInterruptedForVolume(
+            volumeUuid = volumeUuid,
+            endedAt    = System.currentTimeMillis(),
+            message    = "Backup was interrupted — the worker process was terminated before the run could complete.",
+        )
+    }
+
+    /**
+     * Cross-references in-progress DB rows against WorkManager's live job state
+     * and marks any rows with no corresponding RUNNING/ENQUEUED job as INTERRUPTED.
+     *
+     * Called once at app startup from [SoundTreeApp]. Handles the population of
+     * dangling rows left from prior crashes or force-stops where no subsequent
+     * backup for that volume has been triggered to self-heal via [markStaleBackupLogInterrupted].
+     */
+    suspend fun reconcileStaleBackupLogs() {
+        val tag = "BackupReconcile"
+        Log.i(tag, "▶ reconcileStaleBackupLogs() started")
+
+        // ── 1. Check DB for in-progress rows ──────────────────────────────────
+        val staleLogs = backupLogDao.getInProgressOnce()
+        if (staleLogs.isEmpty()) {
+            Log.i(tag, "✔ No in-progress log rows found — nothing to reconcile")
+            return
+        }
+        Log.i(tag, "⚠ Found ${staleLogs.size} in-progress log row(s):")
+        staleLogs.forEach { log ->
+            val ageMs  = System.currentTimeMillis() - log.startedAt
+            val ageSec = ageMs / 1000
+            Log.i(tag, "    • logId=${log.id}  volume=${log.volumeUuid}  " +
+                    "startedAt=${log.startedAt}  age=${ageSec}s")
+        }
+
+        // ── 2. Query WorkManager for all BackupWorker jobs ────────────────────
+        Log.i(tag, "Querying WorkManager for tag \"${BackupWorker.TAG}\"…")
+        val workInfos = try {
+            WorkManager.getInstance(appContext)
+                .getWorkInfosByTag(BackupWorker.TAG)
+                .await()
+        } catch (e: Exception) {
+            Log.e(tag, "✘ WorkManager query failed — aborting reconcile: ${e.message}", e)
+            return
+        }
+
+        if (workInfos.isEmpty()) {
+            Log.i(tag, "WorkManager returned 0 jobs for tag \"${BackupWorker.TAG}\"")
+        } else {
+            Log.i(tag, "WorkManager returned ${workInfos.size} job(s):")
+            workInfos.forEach { wi ->
+                val volumeTag = wi.tags.firstOrNull { it.startsWith(BackupWorker.TAG_VOLUME_PREFIX) }
+                Log.i(tag, "    • id=${wi.id}  state=${wi.state}  volumeTag=$volumeTag")
+            }
+        }
+
+        // ── 3. Build the set of volumes that are genuinely active ─────────────
+        val activeVolumeUuids = workInfos
+            .filter { it.state == WorkInfo.State.RUNNING }
+            .flatMap { it.tags }
+            .filter { it.startsWith(BackupWorker.TAG_VOLUME_PREFIX) }
+            .mapTo(mutableSetOf()) { it.removePrefix(BackupWorker.TAG_VOLUME_PREFIX) }
+
+        Log.i(tag, "Active volume UUIDs (RUNNING or ENQUEUED): " +
+                if (activeVolumeUuids.isEmpty()) "(none)" else activeVolumeUuids.joinToString())
+
+        // ── 4. Mark stale rows as INTERRUPTED ────────────────────────────────
+        val now = System.currentTimeMillis()
+        var markedCount = 0
+        staleLogs.forEach { log ->
+            if (log.volumeUuid in activeVolumeUuids) {
+                Log.i(tag, "    SKIP  logId=${log.id}  volume=${log.volumeUuid} — job is genuinely running")
+            } else {
+                Log.w(tag, "    MARK  logId=${log.id}  volume=${log.volumeUuid} — no active job found, marking INTERRUPTED")
+                backupLogDao.markInterruptedForVolume(
+                    volumeUuid = log.volumeUuid,
+                    endedAt    = now,
+                    message    = "Backup was interrupted — the app or worker process was terminated before the run could complete.",
+                )
+                markedCount++
+            }
+        }
+
+        Log.i(tag, "✔ reconcileStaleBackupLogs() complete — marked $markedCount row(s) as INTERRUPTED")
+    }
 
     // ── Singleton ─────────────────────────────────────────────────────────────
 

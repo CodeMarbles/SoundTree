@@ -11,6 +11,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -32,7 +33,6 @@ import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
 import app.soundtree.util.BackupManifest
 import app.soundtree.util.BackupProgressCalc
-import app.soundtree.util.DatabaseRestoreManager
 import app.soundtree.util.RecordingFileHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -258,7 +258,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             ?: return@withContext Result.failure()
 
         val dirUriString = target.backupDirUri
-            ?: return@withContext Result.failure()   // no directory chosen yet
+            ?: return@withContext Result.failure()
 
         val destRoot = DocumentFile.fromTreeUri(applicationContext, Uri.parse(dirUriString))
             ?: return@withContext Result.failure()
@@ -267,11 +267,20 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             return@withContext Result.failure()
         }
 
-        // Denormalised into the log row so the history UI can display it even
-        // when the volume is disconnected.
         val volumeLabel = StorageVolumeHelper
             .getVolumeByUuid(applicationContext, volumeUuid)
             ?.label ?: volumeUuid
+
+        // ── 1b. Reconcile any dangling in-progress rows for this volume ────────
+        // If a previous run for this volume was killed before it could call
+        // finalise(), its log row is stuck with status=NULL. Since WorkManager
+        // won't start a new unique job while the previous one is genuinely
+        // running, the fact that we're here proves any such row is stale.
+        db.backupLogDao().markInterruptedForVolume(
+            volumeUuid = volumeUuid,
+            endedAt    = System.currentTimeMillis(),
+            message    = "Backup was interrupted — the worker process was terminated before the run could complete.",
+        )
 
         // ── 2. Open log row + initial notification ────────────────────────────
         val logId = db.backupLogDao().insert(
@@ -289,6 +298,11 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             volumeLabel = volumeLabel,
             text        = "Backup in progress\u2026",
         )
+
+        // Promote to foreground service so the notification is guaranteed
+        // visible and the OS won't kill this worker mid-run.
+        setForeground(getForegroundInfo())
+
         // run is null → progress bar will be indeterminate, which is correct
         // since no phase has been signalled yet.
 
@@ -1094,18 +1108,13 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
     // ── Notification ──────────────────────────────────────────────────────────
 
-    private fun postNotification(
-        run     : BackupRun? = null,
-        text    : String,
-        ongoing : Boolean = true,
-        // For the terminal (non-ongoing) notification, run is null and these
-        // carry the display strings.  When run is non-null they are ignored.
-        volumeUuid  : String = run?.volumeUuid  ?: "",
-        volumeLabel : String = run?.volumeLabel ?: "",
-    ) {
-        val context = applicationContext
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
+    /**
+     * Ensures the backup notification channel exists. Safe to call repeatedly —
+     * [NotificationManager.createNotificationChannel] is idempotent.
+     */
+    private fun ensureNotificationChannel() {
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+                as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(
                 AppNotifications.CHANNEL_BACKUP,
@@ -1113,11 +1122,32 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 NotificationManager.IMPORTANCE_LOW,
             ).apply { description = "SoundTree automatic backup progress" }
         )
+    }
 
-        val resolvedUuid  = run?.volumeUuid  ?: volumeUuid
-        val resolvedLabel = run?.volumeLabel ?: volumeLabel
+    /**
+     * Builds (but does not post) the backup notification.
+     *
+     * Extracted so both [postNotification] and [getForegroundInfo] can share
+     * identical construction logic without duplication.
+     *
+     * @param volumeUuid  Stable volume identifier, used to derive the notification ID.
+     * @param volumeLabel Human-readable drive name shown in the title.
+     * @param text        Body text (phase description or completion summary).
+     * @param ongoing     True while the backup is running; false for the terminal notification.
+     * @param run         Live [BackupRun] state used to attach a progress bar. Null when
+     *                    called from [getForegroundInfo] (before the run object exists) or
+     *                    for the terminal notification — both produce an indeterminate bar
+     *                    or no bar respectively.
+     */
+    private fun buildBackupNotification(
+        volumeUuid  : String,
+        volumeLabel : String,
+        text        : String,
+        ongoing     : Boolean,
+        run         : BackupRun?,
+    ): android.app.Notification {
+        val context = applicationContext
 
-        // Deep-link PendingIntent: opens MainActivity and navigates to Settings → Storage tab.
         val deepLinkIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_NAVIGATE_TO_SETTINGS, true)
@@ -1125,20 +1155,19 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notifIdForVolume(resolvedUuid),
+            notifIdForVolume(volumeUuid),
             deepLinkIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val builder = NotificationCompat.Builder(context, AppNotifications.CHANNEL_BACKUP)
-            .setContentTitle(if (ongoing) "Backing up to $resolvedLabel" else "SoundTree Backup")
+            .setContentTitle(if (ongoing) "Backing up to $volumeLabel" else "SoundTree Backup")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_save_check_wave)
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
             .setContentIntent(pendingIntent)
 
-        // Attach progress bar when running.
         if (ongoing) {
             val fraction = run?.let {
                 BackupProgressCalc.fraction(
@@ -1158,10 +1187,62 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     false,
                 )
             } else {
-                builder.setProgress(0, 0, true)
+                builder.setProgress(0, 0, true) // indeterminate until phase data arrives
             }
         }
 
-        nm.notify(notifIdForVolume(resolvedUuid), builder.build())
+        return builder.build()
+    }
+
+    /**
+     * Builds the notification and posts it via [NotificationManager].
+     *
+     * [run] carries the live display strings when called mid-backup. For the
+     * terminal (non-ongoing) notification, [run] is null and [volumeUuid] /
+     * [volumeLabel] carry the display strings explicitly.
+     */
+    private fun postNotification(
+        run         : BackupRun? = null,
+        text        : String,
+        ongoing     : Boolean = true,
+        volumeUuid  : String = run?.volumeUuid  ?: "",
+        volumeLabel : String = run?.volumeLabel ?: "",
+    ) {
+        val resolvedUuid  = run?.volumeUuid  ?: volumeUuid
+        val resolvedLabel = run?.volumeLabel ?: volumeLabel
+
+        ensureNotificationChannel()
+
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+                as NotificationManager
+        nm.notify(
+            notifIdForVolume(resolvedUuid),
+            buildBackupNotification(resolvedUuid, resolvedLabel, text, ongoing, run),
+        )
+    }
+
+    /**
+     * Called by WorkManager before [doWork] to promote this worker to a
+     * foreground service on Android 12+. Uses [buildBackupNotification] so
+     * the foreground notification is visually identical to the one posted
+     * during the run — the volume label may be blank at this moment if the
+     * volume is briefly unmounted, but that resolves within the first seconds
+     * of [doWork].
+     */
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val volumeUuid  = inputData.getString(KEY_VOLUME_UUID) ?: ""
+        val volumeLabel = StorageVolumeHelper
+            .getVolumeByUuid(applicationContext, volumeUuid)?.label ?: volumeUuid
+        ensureNotificationChannel()
+        return ForegroundInfo(
+            notifIdForVolume(volumeUuid),
+            buildBackupNotification(
+                volumeUuid  = volumeUuid,
+                volumeLabel = volumeLabel,
+                text        = "Backup in progress\u2026",
+                ongoing     = true,
+                run         = null, // run object doesn't exist yet; progress bar is indeterminate
+            )
+        )
     }
 }

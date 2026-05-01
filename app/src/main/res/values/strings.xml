@@ -549,6 +549,7 @@
     <string name="backup_log_status_partial">Partial</string>
     <string name="backup_log_status_failed">Failed</string>
     <string name="backup_log_status_running">Running</string>
+    <string name="backup_log_status_interrupted">Interrupted</string>
     <!-- Used in tvStats while a run is still in progress -->
     <string name="backup_log_status_running_ellipsis">…</string>
     <string name="backup_log_trigger_on_connect">On Connect</string>

@@ -275,5 +275,12 @@ data class BackupLogEntity(
         const val PARTIAL = "PARTIAL"
         /** Run aborted by a fatal error — see [errorMessage]. */
         const val FAILED  = "FAILED"
+        /**
+         * The worker process was terminated before the run could finalise.
+         * Set retroactively by [reconcileStaleBackupLogs] at app startup or
+         * by [BackupWorker] when it detects a dangling in-progress row for
+         * the same volume at the start of a new run.
+         */
+        const val INTERRUPTED = "INTERRUPTED"
     }
 }

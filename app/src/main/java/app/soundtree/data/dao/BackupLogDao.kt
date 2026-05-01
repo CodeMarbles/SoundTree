@@ -308,4 +308,33 @@ interface BackupLogDao {
         ORDER BY occurred_at ASC
     """)
     suspend fun getProblemsForLogOnce(logId: Long): List<BackupLogEventEntity>
+
+    /**
+     * One-shot read of all in-progress log entries (status IS NULL).
+     * Used by [SoundTreeRepository.reconcileStaleBackupLogs] at startup to
+     * identify dangling runs without holding a Flow subscription.
+     */
+    @Query("SELECT * FROM backup_logs WHERE status IS NULL ORDER BY started_at DESC")
+    suspend fun getInProgressOnce(): List<BackupLogEntity>
+
+    /**
+     * Marks all in-progress rows for [volumeUuid] as INTERRUPTED.
+     * Called by [BackupWorker] at the start of a new run (prong 1) and by
+     * [SoundTreeRepository.reconcileStaleBackupLogs] at app startup (prong 2).
+     *
+     * Only touches rows where status IS NULL — harmless if none exist.
+     */
+    @Query("""
+        UPDATE backup_logs
+        SET status        = 'INTERRUPTED',
+            ended_at      = :endedAt,
+            error_message = :message
+        WHERE status IS NULL
+          AND volume_uuid = :volumeUuid
+    """)
+    suspend fun markInterruptedForVolume(
+        volumeUuid : String,
+        endedAt    : Long,
+        message    : String,
+    )
 }

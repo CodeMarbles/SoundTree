@@ -57,14 +57,16 @@ fun ItemBackupLogRowBinding.bindLog(
  * Exposed at package level so [BackupLogDetailDialog] can reuse the same mapping.
  */
 fun BackupLogEntity.statusChipParams(context: Context): Pair<String, Int> = when (status) {
-    BackupLogEntity.BackupStatus.SUCCESS ->
-        context.getString(R.string.backup_log_status_success) to Color.parseColor("#2A7A3B")
-    BackupLogEntity.BackupStatus.PARTIAL ->
-        context.getString(R.string.backup_log_status_partial) to Color.parseColor("#8A5A00")
-    BackupLogEntity.BackupStatus.FAILED  ->
-        context.getString(R.string.backup_log_status_failed)  to context.themeColor(R.attr.colorError)
+    BackupLogEntity.BackupStatus.SUCCESS     ->
+        context.getString(R.string.backup_log_status_success)     to Color.parseColor("#2A7A3B")
+    BackupLogEntity.BackupStatus.PARTIAL     ->
+        context.getString(R.string.backup_log_status_partial)     to Color.parseColor("#8A5A00")
+    BackupLogEntity.BackupStatus.FAILED      ->
+        context.getString(R.string.backup_log_status_failed)      to context.themeColor(R.attr.colorError)
+    BackupLogEntity.BackupStatus.INTERRUPTED ->
+        context.getString(R.string.backup_log_status_interrupted) to Color.parseColor("#A06800")
     else ->
-        context.getString(R.string.backup_log_status_running) to context.themeColor(R.attr.colorTextSecondary)
+        context.getString(R.string.backup_log_status_running)     to context.themeColor(R.attr.colorTextSecondary)
 }
 
 /**
