@@ -147,6 +147,8 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
         updateSubtitle(view)
         setupTopicPickerResult()
+
+        disableFastScrollerAutoHide(view.findViewById(R.id.recyclerOrphans))
     }
 
     override fun onDismiss(dialog: DialogInterface) {
@@ -381,6 +383,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             val btnPlay    = itemView.findViewById<ImageView>(R.id.btnPlay)
             val tvDuration = itemView.findViewById<TextView>(R.id.tvDuration)
             val tvFileSize = itemView.findViewById<TextView>(R.id.tvFileSize)
+            val tvPath     = itemView.findViewById<TextView>(R.id.tvFilePath)
             val etTitle    = itemView.findViewById<android.widget.EditText>(R.id.etTitle)
             val btnTopic   = itemView.findViewById<MaterialButton>(R.id.btnPickTopic)
             val btnDelete  = itemView.findViewById<MaterialButton>(R.id.btnDelete)
@@ -388,6 +391,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
             tvDuration.text = formatDuration(item.durationMs)
             tvFileSize.text = AppVolume.formatBytes(item.file.length())
+            tvPath.text = item.file.absolutePath
             etTitle.setText(item.editedTitle)
             etTitle.setOnFocusChangeListener { _, _ -> item.editedTitle = etTitle.text.toString() }
 
@@ -427,6 +431,23 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             itemView.findViewById<MaterialButton>(
                 R.id.btnDelete
             ).setOnClickListener { onDelete(index) }
+            itemView.findViewById<TextView>(R.id.tvFilePath).text = item.file.absolutePath
+        }
+    }
+
+    private fun disableFastScrollerAutoHide(recyclerView: RecyclerView) {
+        try {
+            val fastScrollerField = RecyclerView::class.java
+                .getDeclaredField("mFastScroller")
+                .also { it.isAccessible = true }
+            val fastScroller = fastScrollerField.get(recyclerView) ?: return
+
+            fastScroller.javaClass
+                .getDeclaredField("mHideRunnable")
+                .also { it.isAccessible = true }
+                .set(fastScroller, Runnable { /* no-op: prevent auto-hide */ })
+        } catch (_: Exception) {
+            // Reflection broke — scrollbar will auto-hide again, nothing worse
         }
     }
 }

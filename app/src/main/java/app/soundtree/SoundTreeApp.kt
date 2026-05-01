@@ -3,12 +3,14 @@ package app.soundtree
 import android.app.Application
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
+import app.soundtree.data.db.AppDatabase
 import app.soundtree.data.repository.SoundTreeRepository
 import app.soundtree.worker.WaveformWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.File
 
 class SoundTreeApp : Application() {
 
@@ -20,9 +22,32 @@ class SoundTreeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        migrateDatabaseFileIfNeeded()
         applyThemeFromPrefs()
+        fixLegacyFilePathNamespace()
         enqueuePendingWaveformJobs()
         reconcileScheduledBackups()
+    }
+
+    /**
+     * One-time file rename: moves `treecast.db` (and its WAL sidecars) to
+     * `soundtree.db` so Room finds the existing database under its new name.
+     *
+     * Runs synchronously on the main thread before Room is opened for the
+     * first time. Safe to call on every launch — if `soundtree.db` already
+     * exists (or `treecast.db` is absent) this is a no-op.
+     */
+    private fun migrateDatabaseFileIfNeeded() {
+        val oldDb = getDatabasePath("treecast.db")
+        val newDb = getDatabasePath("soundtree.db")
+        if (newDb.exists() || !oldDb.exists()) return   // nothing to do
+
+        // Rename the main file and any WAL sidecars.
+        oldDb.renameTo(newDb)
+        File("${oldDb.path}-wal").takeIf { it.exists() }
+            ?.renameTo(File("${newDb.path}-wal"))
+        File("${oldDb.path}-shm").takeIf { it.exists() }
+            ?.renameTo(File("${newDb.path}-shm"))
     }
 
     private fun applyThemeFromPrefs() {
@@ -35,6 +60,45 @@ class SoundTreeApp : Application() {
                 else    -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             }
         )
+    }
+
+    /**
+     * One-time migration: rewrites legacy package-name prefixes in every
+     * `recordings.file_path` DB row so that paths resolve correctly after
+     * the TreeCast → SoundTree rename.
+     *
+     * Generation chain handled:
+     *   com.treecast.app  →  app.treecast  →  app.soundtree
+     *
+     * Gated by the SharedPreferences flag [PREF_FILE_PATH_NS_FIXED] so it
+     * runs exactly once per install, then never again.  Non-fatal: any
+     * exception is swallowed so the app always starts.
+     */
+    private fun fixLegacyFilePathNamespace() {
+        val prefs = getSharedPreferences("soundtree_settings", Context.MODE_PRIVATE)
+        if (prefs.getBoolean(PREF_FILE_PATH_NS_FIXED, false)) return
+
+        appScope.launch {
+            runCatching {
+                val db  = AppDatabase.getInstance(this@SoundTreeApp)
+                val raw = db.openHelper.writableDatabase
+
+                // Step 1: oldest generation  com.treecast.app → app.treecast
+                raw.execSQL(
+                    "UPDATE recordings SET file_path = REPLACE(file_path, " +
+                            "'com.treecast.app', 'app.treecast')"
+                )
+                // Step 2: previous generation  app.treecast → app.soundtree
+                raw.execSQL(
+                    "UPDATE recordings SET file_path = REPLACE(file_path, " +
+                            "'app.treecast', 'app.soundtree')"
+                )
+            }
+            // Mark done whether or not the SQL succeeded. If the DB already has
+            // correct paths the UPDATEs are no-ops; if it fails we don't want an
+            // infinite retry loop on every launch.
+            prefs.edit().putBoolean(PREF_FILE_PATH_NS_FIXED, true).apply()
+        }
     }
 
     /**
@@ -74,5 +138,11 @@ class SoundTreeApp : Application() {
                 repository.reconcileScheduledBackups()
             }
         }
+    }
+
+
+    companion object {
+        /** SharedPreferences flag: set to true once the file_path namespace fixup has run. */
+        const val PREF_FILE_PATH_NS_FIXED = "file_path_ns_fix_done"
     }
 }

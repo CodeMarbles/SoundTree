@@ -390,5 +390,5 @@ class TopicItemAdapter(
     }
 
     private fun formatDate(ms: Long): String =
-        SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(ms))
+        SimpleDateFormat("MMM d, yyyy · h:mm:ss a", Locale.getDefault()).format(Date(ms))
 }

@@ -10,6 +10,9 @@ package app.soundtree.ui
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import app.soundtree.ui.restore.FileCategory
+import app.soundtree.ui.restore.FileCounters
+import app.soundtree.ui.restore.FileLogEntry
 import app.soundtree.util.DatabaseRestoreManager
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +20,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // ── Restore progress state ────────────────────────────────────────────────────
+
+enum class MilestoneState { PENDING, RUNNING, SUCCESS, FAILURE }
+
+/**
+ * UI representation of a single milestone row.
+ *
+ * [state]     — drives the icon and dimming in the milestone board.
+ * [timestamp] — formatted "HH:mm:ss", empty until the milestone resolves.
+ * [detail]    — optional extra text shown beneath the label (e.g. file count).
+ */
+data class MilestoneEntry(
+    val label: String,
+    val state: MilestoneState = MilestoneState.PENDING,
+    val timestamp: String = "",
+    val detail: String? = null,
+)
 
 /**
  * Models the current state of a restore operation for the wizard's progress step.
@@ -38,10 +60,44 @@ sealed class RestorePhase {
     object Idle : RestorePhase()
 
     data class Running(
+        // ── Progress bar ───────────────────────────────────────────────────────
         val label: String,
         val current: Int = 0,
         val total: Int = 0,
-    ) : RestorePhase()
+
+        // ── Milestone board — always 4 entries, ordered by sequence ───────────
+        // Starts as all-PENDING; updated as each milestone fires.
+        val milestones: List<MilestoneEntry> = INITIAL_MILESTONES,
+
+        // ── Per-category file events (unbounded, append-only) ─────────────────
+        val recordingEvents: List<FileLogEntry> = emptyList(),
+        val waveformEvents: List<FileLogEntry> = emptyList(),
+
+        // ── Per-category outcome counters ─────────────────────────────────────
+        val recordingCounts: FileCounters = FileCounters(),
+        val waveformCounts: FileCounters = FileCounters(),
+
+        // ── Section lifecycle flags ───────────────────────────────────────────
+        // Used by the fragment to drive section header spinner / chevron state
+        // and to trigger auto-collapse on clean completion.
+        val recordingsRunning: Boolean = false,
+        val recordingsComplete: Boolean = false,
+        val waveformsRunning: Boolean = false,
+        val waveformsComplete: Boolean = false,
+    ) : RestorePhase() {
+        companion object {
+            // Ordered to match DatabaseRestoreManager.Milestone ordinal sequence.
+            val INITIAL_MILESTONES = listOf(
+                MilestoneEntry("Safety snapshot"),
+                MilestoneEntry("Metadata export"),
+                MilestoneEntry("Database restored"),
+                MilestoneEntry("Recording paths updated"),
+            )
+
+            // Maps Milestone enum to index in the milestones list above.
+            fun milestoneIndex(m: DatabaseRestoreManager.Milestone) = m.ordinal
+        }
+    }
 
     data class Error(
         val message: String,
@@ -134,10 +190,10 @@ fun MainViewModel.restoreFromBackup(
     backupRootDirUri: String,
     backupFile: DocumentFile,
 ) {
-    val phaseFlow = restorePhaseFlow()
+    val phaseFlow  = restorePhaseFlow()
+    val timeFmt    = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     viewModelScope.launch {
-        // Cancel every backup job — we're about to close the database.
         WorkManager.getInstance(getApplication())
             .cancelAllWorkByTag(BackupWorker.TAG)
 
@@ -147,20 +203,89 @@ fun MainViewModel.restoreFromBackup(
 
         if (backupRootDir == null) {
             phaseFlow.value = RestorePhase.Error(
-                "Could not open the backup directory. " +
-                        "The permission may have been revoked."
+                "Could not open the backup directory. The permission may have been revoked."
             )
             return@launch
+        }
+
+        // ── Mutable local state — mutated on IO thread, snapshotted into
+        // RestorePhase.Running on every onProgress or onMilestone call.
+        // Single-threaded access guaranteed: restore runs on one IO coroutine.
+
+        var currentRunning = RestorePhase.Running(label = "Starting restore…")
+
+        // Convenience: emit a new Running snapshot with updated fields.
+        fun emit(update: RestorePhase.Running.() -> RestorePhase.Running) {
+            currentRunning = currentRunning.update()
+            phaseFlow.value = currentRunning
         }
 
         val result = DatabaseRestoreManager.restore(
             context       = getApplication(),
             backupFile    = backupFile,
             backupRootDir = backupRootDir,
-            onProgress    = { label, current, total ->
-                phaseFlow.value = RestorePhase.Running(label, current, total)
+
+            onProgress = { label, current, total ->
+                emit {
+                    copy(
+                        label   = label,
+                        current = current,
+                        total   = total,
+                        // Mark which section is actively running based on label.
+                        // This is intentionally label-driven rather than a separate
+                        // callback — the label already encodes the current phase.
+                        recordingsRunning = label.startsWith("Copying recordings"),
+                        waveformsRunning  = label.startsWith("Restoring waveforms"),
+                    )
+                }
+            },
+
+            onMilestone = { milestone, success, detail ->
+                val idx       = RestorePhase.Running.milestoneIndex(milestone)
+                val timestamp = timeFmt.format(Date())
+                val state     = if (success) MilestoneState.SUCCESS else MilestoneState.FAILURE
+
+                emit {
+                    val updated = milestones.toMutableList().also { list ->
+                        list[idx] = list[idx].copy(
+                            state     = state,
+                            timestamp = timestamp,
+                            detail    = detail,
+                        )
+                    }
+
+                    // When PATH_REMAP resolves, the recordings section is complete.
+                    val recComplete = milestone == DatabaseRestoreManager.Milestone.PATH_REMAP
+                            || recordingsComplete
+
+                    copy(
+                        milestones         = updated,
+                        recordingsComplete = recComplete,
+                        recordingsRunning  = if (recComplete) false else recordingsRunning,
+                    )
+                }
+            },
+
+            onFileEvent = { category, type, filename ->
+                // Append to the appropriate event list and increment counters.
+                // The next onProgress call will snapshot this into the StateFlow,
+                // so we don't emit here — avoids one StateFlow update per file.
+                val entry = FileLogEntry(category, type, filename)
+                currentRunning = when (category) {
+                    FileCategory.RECORDINGS -> currentRunning.copy(
+                        recordingEvents = currentRunning.recordingEvents + entry,
+                        recordingCounts = currentRunning.recordingCounts.increment(type),
+                    )
+                    FileCategory.WAVEFORMS -> currentRunning.copy(
+                        waveformEvents = currentRunning.waveformEvents + entry,
+                        waveformCounts = currentRunning.waveformCounts.increment(type),
+                    )
+                }
             },
         )
+
+        // Mark waveform section complete once restore() returns (success or not).
+        emit { copy(waveformsRunning = false, waveformsComplete = true) }
 
         when (result) {
             is DatabaseRestoreManager.Result.Success -> {
@@ -168,35 +293,32 @@ fun MainViewModel.restoreFromBackup(
                     DatabaseRestoreManager.scheduleRestartAndExit(getApplication())
                 }
             }
-
             is DatabaseRestoreManager.Result.NoDbFound -> {
                 withContext(Dispatchers.Main) {
                     phaseFlow.value = RestorePhase.Error(
-                        "No database file was found in the snapshot. " +
-                                "The file may have been deleted."
+                        "No database file was found in the snapshot."
                     )
                 }
             }
-
             is DatabaseRestoreManager.Result.FailedPreFlight -> {
                 withContext(Dispatchers.Main) {
-                    phaseFlow.value = RestorePhase.Error(
-                        message    = result.reason,
-                        isPostSwap = false,
-                    )
+                    phaseFlow.value = RestorePhase.Error(result.reason, isPostSwap = false)
                 }
             }
-
             is DatabaseRestoreManager.Result.FailedPostSwap -> {
                 withContext(Dispatchers.Main) {
-                    phaseFlow.value = RestorePhase.Error(
-                        message    = result.reason,
-                        isPostSwap = true,
-                    )
+                    phaseFlow.value = RestorePhase.Error(result.reason, isPostSwap = true)
                 }
             }
         }
     }
+}
+
+/** Increments the counter corresponding to [type]. */
+private fun FileCounters.increment(type: DatabaseRestoreManager.FileEventType) = when (type) {
+    DatabaseRestoreManager.FileEventType.COPIED  -> copy(copied  = copied  + 1)
+    DatabaseRestoreManager.FileEventType.SKIPPED -> copy(skipped = skipped + 1)
+    DatabaseRestoreManager.FileEventType.FAILED  -> copy(failed  = failed  + 1)
 }
 
 /**

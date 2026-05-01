@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="10dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Section name, e.g. "Recordings" -->
+    <TextView
+        android:id="@+id/tvSectionCategory"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary" />
+
+    <!-- Running counts, e.g. "12 copied · 5 skipped · 0 failed" -->
+    <TextView
+        android:id="@+id/tvSectionCounts"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:textColor="?android:attr/textColorSecondary" />
+
+    <!-- Spinner: visible while the section's copy pass is still running -->
+    <ProgressBar
+        android:id="@+id/sectionSpinner"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="4dp"
+        android:visibility="gone" />
+
+    <!-- Collapse/expand chevron: visible once the section is complete -->
+    <ImageView
+        android:id="@+id/ivSectionChevron"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_chevron_down"
+        android:contentDescription="@null"
+        android:visibility="gone" />
+
+</LinearLayout>

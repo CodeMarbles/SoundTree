@@ -14,7 +14,7 @@ import java.io.File
  * in Settings → Tools so it can be quietly removed once no longer needed.
  *
  * ── Safe move sequence (per file) ────────────────────────────────────────────
- *   1. Derive target YYYY/MM directory from the TC_ filename timestamp.
+ *   1. Derive target YYYY/MM directory from the ST_/TC_ filename timestamp.
  *   2. Copy file to the new location.
  *   3. Verify copied file size matches source.
  *   4. Update the DB file_path (point of no return).
@@ -67,7 +67,7 @@ object RecordingStructureMigrator {
 
             val targetDir = targetDirFor(file)
             if (targetDir == null) {
-                // Filename doesn't match TC_yyyyMMdd_HHmmss — leave alone.
+                // Filename doesn't match ST_/TC_yyyyMMdd_HHmmss — leave alone.
                 failed++
                 continue
             }
@@ -138,7 +138,7 @@ object RecordingStructureMigrator {
 
     /**
      * Derives the correct `recordings/YYYY/MM/` target directory from a
-     * `TC_yyyyMMdd_HHmmss.m4a` filename.
+     * `ST_yyyyMMdd_HHmmss.m4a` (or `TC_yyyyMMdd_HHmmss.m4a`) filename.
      *
      * Returns null if the filename does not match the expected pattern, which
      * means we cannot determine the correct placement without extra metadata.
@@ -148,7 +148,7 @@ object RecordingStructureMigrator {
      * directly beneath it.
      */
     private fun targetDirFor(file: File): File? {
-        val stem  = file.nameWithoutExtension.removePrefix("TC_")
+        val stem = RecordingFileHelper.stemWithoutPrefix(file.nameWithoutExtension)
         if (stem.length < 8) return null
         val year  = stem.substring(0, 4)
         val month = stem.substring(4, 6)

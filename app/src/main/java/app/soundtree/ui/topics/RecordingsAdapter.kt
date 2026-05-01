@@ -161,7 +161,7 @@ class RecordingsAdapter(
 
         fun bind(rec: RecordingEntity) {
             tvTitle.text = rec.title
-            tvMeta.text  = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
+            tvMeta.text = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
 
             // ── Topic icon (All Recordings context only) ──────────────
             if (showTopicIcon) {
@@ -458,6 +458,6 @@ class RecordingsAdapter(
         else "%d:%02d".format(s / 60, s % 60)
     }
 
-    private fun formatDate(epochMs: Long): String =
-        SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(epochMs))
+    private fun formatDate(ms: Long): String =
+        SimpleDateFormat("MMM d, yyyy · h:mm:ss a", Locale.getDefault()).format(Date(ms))
 }

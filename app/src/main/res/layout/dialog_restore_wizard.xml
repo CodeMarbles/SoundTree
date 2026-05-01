@@ -20,7 +20,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -37,7 +37,8 @@
     <ViewFlipper
         android:id="@+id/wizardFlipper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:animateFirstView="false">
 
         <!-- ─────────────────────────────────────────────────────────────────
@@ -73,11 +74,18 @@
                 android:textColor="#B3261E"
                 android:visibility="gone" />
 
-            <RadioGroup
-                android:id="@+id/rgSnapshots"
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:visibility="gone" />
+                android:maxHeight="260dp">
+
+                <RadioGroup
+                    android:id="@+id/rgSnapshots"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
+            </androidx.core.widget.NestedScrollView>
 
         </LinearLayout>
 
@@ -187,22 +195,25 @@
 
         </LinearLayout>
 
-        <!-- ─────────────────────────────────────────────────────────────────
+        <!-- ─────────────────────────────────────────────────────────────────────
              Step 3 — Progress
-             ───────────────────────────────────────────────────────────────── -->
+             Uses match_parent + layout_weight="1" (set on wizardFlipper) so that
+             the RecyclerView fills all available height and the nav buttons stay
+             pinned at the bottom of the screen.
+             ─────────────────────────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:minHeight="120dp">
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
+            <!-- Phase label + progress bar ───────────────────────────────────────── -->
             <TextView
                 android:id="@+id/tvProgressLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/restore_progress_starting"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="8dp" />
 
             <ProgressBar
                 android:id="@+id/restoreProgressBar"
@@ -215,16 +226,93 @@
                 android:id="@+id/tvProgressSub"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:textAppearance="?android:attr/textAppearanceSmall"
                 android:textColor="?android:attr/textColorSecondary"
                 android:visibility="gone" />
 
+            <!-- Milestone board ───────────────────────────────────────────────────
+                 Four static rows, one per major restore phase. Each row starts
+                 PENDING (greyed dot) and resolves to ✓ / ✗ as the restore runs.
+                 ─────────────────────────────────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/milestoneCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:background="?attr/colorSurfaceBase">
+
+                <include android:id="@+id/milestoneSafety"
+                    layout="@layout/item_restore_milestone" />
+                <include android:id="@+id/milestoneMetadata"
+                    layout="@layout/item_restore_milestone" />
+                <include android:id="@+id/milestoneDbSwap"
+                    layout="@layout/item_restore_milestone" />
+                <include android:id="@+id/milestonePathRemap"
+                    layout="@layout/item_restore_milestone" />
+
+            </LinearLayout>
+
+            <!-- Filter chips ──────────────────────────────────────────────────────
+                 Hidden until the first file section appears.
+                 ─────────────────────────────────────────────────────────────────── -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupFilter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                android:visibility="gone">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFilterAll"
+                    style="@style/Widget.MaterialComponents.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="All"
+                    android:checked="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFilterWrites"
+                    style="@style/Widget.MaterialComponents.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Writes + failures" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFilterFails"
+                    style="@style/Widget.MaterialComponents.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Failures only" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+            <!-- File event log ────────────────────────────────────────────────────
+                 layout_weight="1": expands to fill all remaining space so the
+                 nav buttons are never pushed off screen by a long log.
+                 ─────────────────────────────────────────────────────────────────── -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerProgressLog"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:visibility="gone" />
+
+            <!-- Error detail ──────────────────────────────────────────────────────
+                 Shown only on RestorePhase.Error; sits below the log so the
+                 milestone board and whatever ran before the failure remain visible.
+                 ─────────────────────────────────────────────────────────────────── -->
             <TextView
                 android:id="@+id/tvProgressError"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:textColor="#B3261E"
                 android:lineSpacingMultiplier="1.3"

@@ -30,6 +30,7 @@ import app.soundtree.service.AppNotifications
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
 import app.soundtree.util.BackupProgressCalc
+import app.soundtree.util.RecordingFileHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -333,7 +334,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
             if (run.verbose) run.info("WAL checkpoint complete")
 
-            val dbSourceFile = applicationContext.getDatabasePath("treecast.db")
+            val dbSourceFile = applicationContext.getDatabasePath("soundtree.db")
             val dbDestDir    = run.destRoot.findOrCreateDir("db")
 
             if (dbDestDir == null) {
@@ -344,7 +345,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             if (run.verbose) run.info("db/ directory resolved on backup destination")
 
             val stamp    = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val destName = "treecast_${stamp}.db"
+            val destName = "soundtree_${stamp}.db"
             copyFileToDocumentDir(dbSourceFile, dbDestDir, destName)
             run.dbBackedUp = true
             run.info("Database snapshot written: $destName")
@@ -455,7 +456,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         val sourceDirs = recordingSourceDirs()
 
         run.totalOnSource = sourceDirs.sumOf { dir ->
-            dir.listFiles { f -> f.name.startsWith("TC_") && f.extension == "m4a" }?.size ?: 0
+            dir.listFiles { f -> RecordingFileHelper.isRecordingFile(f.name) }?.size ?: 0
         }
 
         val walkFailures = mutableListOf<Pair<String, String>>()
@@ -464,7 +465,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 .onFail { file, ex ->
                     walkFailures += file.absolutePath to (ex.message ?: "Unreadable")
                 }
-                .filter { it.isFile && it.name.startsWith("TC_") }
+                .filter { it.isFile && RecordingFileHelper.isRecordingFile(it.name) }
                 .toList()
         }
         walkFailures.forEach { (path, message) ->
@@ -492,7 +493,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
                 // Derive YYYY/MM from the TC_ filename stem.
                 // TC_ filenames are TC_yyyyMMdd_HHmmss.m4a — year is chars 0–3, month 4–5.
-                val stem    = file.nameWithoutExtension.removePrefix("TC_")
+                val stem    = RecordingFileHelper.stemWithoutPrefix(file.nameWithoutExtension)
                 val yyyy    = stem.take(4)
                 val mm      = stem.drop(4).take(2)
                 val validYM = yyyy.matches(Regex("\\d{4}")) && mm.matches(Regex("\\d{2}"))
@@ -605,7 +606,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     val monthName = monthDir.name.orEmpty()
                     if (monthDir.isDirectory && monthName.matches(Regex("\\d{2}"))) {
                         monthDir.listFiles().forEach { f ->
-                            if (f.isFile && f.name.orEmpty().startsWith("TC_")) {
+                            if (f.isFile && RecordingFileHelper.isRecordingFile(f.name.orEmpty())) {
                                 run.totalOnDest++
                                 run.totalBytesOnDest += f.length()
                             }

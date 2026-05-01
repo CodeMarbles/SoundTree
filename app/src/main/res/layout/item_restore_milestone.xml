@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single milestone row: [icon]  [label]  [timestamp] -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="6dp">
+
+    <!-- Status glyph OR indeterminate spinner, same footprint -->
+    <FrameLayout
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="10dp">
+
+        <!-- Spinner: visible while this milestone is the current active phase -->
+        <ProgressBar
+            android:id="@+id/milestoneSpinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <!-- Resolved icon: ✓ or ✗ -->
+        <TextView
+            android:id="@+id/tvMilestoneIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Pending dot: shown before the milestone starts -->
+        <View
+            android:id="@+id/milestonePendingDot"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:layout_gravity="center"
+            android:background="@drawable/circle_dot"
+            android:backgroundTint="?android:attr/textColorSecondary" />
+
+    </FrameLayout>
+
+    <!-- Label -->
+    <TextView
+        android:id="@+id/tvMilestoneLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorPrimary" />
+
+    <!-- Timestamp, right-aligned, secondary colour -->
+    <TextView
+        android:id="@+id/tvMilestoneTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:textColor="?android:attr/textColorSecondary"
+        android:visibility="gone" />
+
+</LinearLayout>

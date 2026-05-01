@@ -87,6 +87,11 @@
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:fastScrollEnabled="true"
+        app:fastScrollVerticalThumbDrawable="@drawable/scrollbar_thumb"
+        app:fastScrollVerticalTrackDrawable="@drawable/scrollbar_track"
+        app:fastScrollHorizontalThumbDrawable="@drawable/scrollbar_thumb"
+        app:fastScrollHorizontalTrackDrawable="@drawable/scrollbar_track" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

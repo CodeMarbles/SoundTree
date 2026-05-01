@@ -58,7 +58,7 @@ object OrphanRecordingScanner {
         recordingDirs(context)
             .flatMap { dir ->
                 dir.walkTopDown()
-                    .filter { it.isFile && it.name.startsWith("TC_") && it.extension == "m4a" }
+                    .filter { it.isFile && RecordingFileHelper.isRecordingFile(it.name) }
                     .toList()
             }
             .filter { file -> file.absolutePath !in knownPaths }
@@ -104,7 +104,7 @@ object OrphanRecordingScanner {
      * Example: TC_20240610_143200.m4a → "Recording – Jun 10, 14:32"
      */
     private fun suggestedTitleFrom(file: File): String {
-        val stamp = file.nameWithoutExtension.removePrefix("TC_")
+        val stamp = RecordingFileHelper.stemWithoutPrefix(file.nameWithoutExtension)
         return runCatching {
             val date = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).parse(stamp)!!
             "Recording – " + SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(date)
@@ -125,9 +125,9 @@ object OrphanRecordingScanner {
      *
      *   1. Use a native library (e.g. mp4recover, untrunc-ng) or a bundled
      *      ffmpeg binary to reconstruct the MOOV atom from the raw MDAT data.
-     *      The reference track for untrunc-ng would be any healthy TC_*.m4a.
+     *      The reference track for untrunc-ng would be any healthy ST_/TC_*.m4a.
      *
-     *   2. Write the repaired output to a sibling file (e.g. TC_*_recovered.m4a)
+     *   2. Write the repaired output to a sibling file (e.g. ST_*_recovered.m4a)
      *      so the original is preserved during the attempt.
      *
      *   3. Re-run probePlayable() on the repaired file. If it now returns a

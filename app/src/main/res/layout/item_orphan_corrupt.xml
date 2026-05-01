@@ -42,6 +42,15 @@
                 android:textColor="?attr/colorDestructive"
                 android:textSize="12sp" />
 
+            <TextView
+                android:id="@+id/tvFilePath"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:maxLines="5" />
+
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton

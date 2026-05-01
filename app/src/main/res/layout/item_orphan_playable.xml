@@ -49,6 +49,16 @@
 
     </LinearLayout>
 
+    <!-- File path (debug / triage aid) -->
+    <TextView
+        android:id="@+id/tvFilePath"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:maxLines="5" />
+
     <!-- Editable title -->
     <EditText
         android:id="@+id/etTitle"

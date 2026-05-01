@@ -110,4 +110,9 @@
     <color name="statusFailedBgDark">#3D1A1A</color>
     <color name="statusFailedFgDark">#F5C2C5</color>
 
+    <!-- TODO: night variant -->
+    <color name="restore_log_copied">#4CAF50</color>   <!-- green -->
+    <color name="restore_log_skipped">#9E9E9E</color>  <!-- grey -->
+    <color name="restore_log_failed">#F44336</color>   <!-- red -->
+
 </resources>

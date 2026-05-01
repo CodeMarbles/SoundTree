@@ -20,6 +20,7 @@ import app.soundtree.R
 import app.soundtree.service.RecordingService.StopResult
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
+import app.soundtree.util.RecordingFileHelper
 import app.soundtree.util.RecordingTitleHelper
 import app.soundtree.util.buildTopicArtwork
 import app.soundtree.util.parseColorSafe
@@ -706,12 +707,12 @@ class RecordingService : Service() {
     private fun createOutputFile(): File {
         val base = outputDir
             ?: File(getExternalFilesDir(null), "recordings")
-        val now = Date()
+        val now   = Date()
         val year  = SimpleDateFormat("yyyy", Locale.US).format(now)
         val month = SimpleDateFormat("MM",   Locale.US).format(now)
         val dir   = File(base, "$year/$month").also { it.mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
-        return File(dir, "TC_$stamp.m4a")
+        return File(dir, "${RecordingFileHelper.CURRENT_PREFIX}$stamp.m4a")
     }
 
     // ── Notification ──────────────────────────────────────────────────

@@ -10,15 +10,20 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.ViewFlipper
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import app.soundtree.R
 import app.soundtree.ui.LibrarySummary
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.MilestoneEntry
+import app.soundtree.ui.MilestoneState
 import app.soundtree.ui.RestorePhase
 import app.soundtree.ui.getLibrarySummary
 import app.soundtree.ui.listDbSnapshots
@@ -27,6 +32,7 @@ import app.soundtree.ui.restoreFromBackup
 import app.soundtree.ui.restorePhase
 import app.soundtree.util.DatabaseRestoreManager
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.launch
 
 /**
@@ -116,6 +122,20 @@ class RestoreWizardDialogFragment : DialogFragment() {
     private lateinit var tvProgressSub: TextView
     private lateinit var tvProgressError: TextView
 
+    // Step 3 — milestone board
+    // Each milestone row is an included layout; we bind its child views by ID.
+    private lateinit var milestoneViews: List<View>  // indexed by Milestone.ordinal
+
+    // Step 3 — filter chips
+    private lateinit var chipGroupFilter: ChipGroup
+
+    // Step 3 — file log
+    private lateinit var recyclerProgressLog: RecyclerView
+    private lateinit var progressAdapter: RestoreProgressAdapter
+
+    // Auto-scroll: pause auto-scroll while user is reading; resume at bottom.
+    private var userScrolledUp = false
+
     // Navigation buttons (shared across all steps)
     private lateinit var btnBack: MaterialButton
     private lateinit var btnNext: MaterialButton
@@ -150,10 +170,58 @@ class RestoreWizardDialogFragment : DialogFragment() {
         tvSummaryTopics     = view.findViewById(R.id.tvSummaryTopics)
         tvSummaryLoading    = view.findViewById(R.id.tvSummaryLoading)
 
-        progressBar       = view.findViewById(R.id.restoreProgressBar)
-        tvProgressLabel   = view.findViewById(R.id.tvProgressLabel)
-        tvProgressSub     = view.findViewById(R.id.tvProgressSub)
-        tvProgressError   = view.findViewById(R.id.tvProgressError)
+        progressBar     = view.findViewById(R.id.restoreProgressBar)
+        tvProgressLabel = view.findViewById(R.id.tvProgressLabel)
+        tvProgressSub   = view.findViewById(R.id.tvProgressSub)
+        tvProgressError = view.findViewById(R.id.tvProgressError)
+
+        // Milestone board — collect included views in ordinal order.
+        milestoneViews = listOf(
+            view.findViewById(R.id.milestoneSafety),
+            view.findViewById(R.id.milestoneMetadata),
+            view.findViewById(R.id.milestoneDbSwap),
+            view.findViewById(R.id.milestonePathRemap),
+        )
+        // Set the static label text on each milestone row immediately.
+        val milestoneLabels = RestorePhase.Running.INITIAL_MILESTONES.map { it.label }
+        milestoneViews.forEachIndexed { i, rowView ->
+            rowView.findViewById<TextView>(R.id.tvMilestoneLabel).text = milestoneLabels[i]
+        }
+
+        // Filter chips
+        chipGroupFilter = view.findViewById(R.id.chipGroupFilter)
+        chipGroupFilter.setOnCheckedStateChangeListener { _, checkedIds ->
+            val filter = when (checkedIds.firstOrNull()) {
+                R.id.chipFilterWrites -> RestoreLogFilter.WRITES_AND_FAILS
+                R.id.chipFilterFails  -> RestoreLogFilter.FAILURES_ONLY
+                else                  -> RestoreLogFilter.ALL
+            }
+            progressAdapter.setFilter(filter)
+            resubmitLogItems()  // rebuild list with new filter
+        }
+
+        // RecyclerView
+        progressAdapter = RestoreProgressAdapter()
+        progressAdapter.onHeaderTapped = { _ -> resubmitLogItems() }
+
+        recyclerProgressLog = view.findViewById(R.id.recyclerProgressLog)
+        recyclerProgressLog.layoutManager = LinearLayoutManager(requireContext())
+        recyclerProgressLog.adapter       = progressAdapter
+
+        // Pause auto-scroll when the user scrolls up; resume when they reach bottom.
+        recyclerProgressLog.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    userScrolledUp = true
+                }
+            }
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                if (!rv.canScrollVertically(1)) {
+                    // User has scrolled back to the bottom — resume auto-scroll.
+                    userScrolledUp = false
+                }
+            }
+        })
 
         btnBack = view.findViewById(R.id.btnWizardBack)
         btnNext = view.findViewById(R.id.btnWizardNext)
@@ -326,16 +394,17 @@ class RestoreWizardDialogFragment : DialogFragment() {
     // ── Progress observation ──────────────────────────────────────────────────
 
     private fun onRestorePhaseChanged(phase: RestorePhase) {
-        // Only act on progress updates while we're on the progress step.
         if (currentStep() != Step.PROGRESS && phase !is RestorePhase.Error) return
 
         when (phase) {
             is RestorePhase.Idle -> { /* nothing */ }
 
             is RestorePhase.Running -> {
+                lastRunningPhase = phase
+
+                // ── Progress bar ──────────────────────────────────────────────────
                 tvProgressError.isVisible = false
                 tvProgressLabel.text      = phase.label
-
                 if (phase.total > 0) {
                     progressBar.isIndeterminate = false
                     progressBar.max             = phase.total
@@ -346,27 +415,144 @@ class RestoreWizardDialogFragment : DialogFragment() {
                     progressBar.isIndeterminate = true
                     tvProgressSub.isVisible     = false
                 }
+
+                // ── Milestone board ───────────────────────────────────────────────
+                phase.milestones.forEachIndexed { i, entry ->
+                    bindMilestoneRow(milestoneViews[i], entry)
+                }
+
+                // ── Auto-collapse clean sections ──────────────────────────────────
+                // When a section transitions to complete with no failures, collapse
+                // it automatically so failures in the other section are prominent.
+                if (phase.recordingsComplete) {
+                    progressAdapter.autoCollapseIfClean(
+                        FileCategory.RECORDINGS, phase.recordingCounts
+                    )
+                }
+                if (phase.waveformsComplete) {
+                    progressAdapter.autoCollapseIfClean(
+                        FileCategory.WAVEFORMS, phase.waveformCounts
+                    )
+                }
+
+                // ── File log ──────────────────────────────────────────────────────
+                val hasFileActivity = phase.recordingCounts.hasActivity
+                        || phase.waveformCounts.hasActivity
+                        || phase.recordingsRunning
+                        || phase.waveformsRunning
+                if (hasFileActivity) {
+                    chipGroupFilter.isVisible      = true
+                    recyclerProgressLog.isVisible  = true
+                }
+                resubmitLogItems()
             }
 
             is RestorePhase.Error -> {
-                // Surface the error and allow dismissal.
-                progressBar.isIndeterminate   = false
-                progressBar.progress          = 0
-                tvProgressLabel.text          = getString(R.string.restore_progress_failed)
-                tvProgressError.isVisible     = true
-                tvProgressError.text          = phase.message
-
+                // Keep the milestone board and log visible so the user can see how
+                // far the restore got before the failure. Just add the error text below.
+                progressBar.isIndeterminate = false
+                progressBar.progress        = 0
+                tvProgressLabel.text        = getString(R.string.restore_progress_failed)
+                tvProgressError.isVisible   = true
+                tvProgressError.text        = phase.message
                 if (phase.isPostSwap) {
                     tvProgressError.append(
                         "\n\n" + getString(R.string.restore_progress_post_swap_note)
                     )
                 }
 
-                // Re-enable dismissal and show a close button.
-                isCancelable    = true
+                isCancelable      = true
                 btnNext.isVisible = true
-                btnNext.text    = getString(android.R.string.ok)
+                btnNext.text      = getString(android.R.string.ok)
                 btnNext.setOnClickListener { dismiss() }
+            }
+        }
+    }
+
+    /**
+     * Binds a single milestone row view to a [MilestoneEntry].
+     *
+     * The row has three mutually exclusive icon states:
+     *  - PENDING  → grey dot
+     *  - RUNNING  → small indeterminate spinner
+     *  - SUCCESS  → green ✓ glyph
+     *  - FAILURE  → red ✗ glyph
+     */
+    private fun bindMilestoneRow(rowView: View, entry: MilestoneEntry) {
+        val spinner   = rowView.findViewById<ProgressBar>(R.id.milestoneSpinner)
+        val tvIcon    = rowView.findViewById<TextView>(R.id.tvMilestoneIcon)
+        val dot       = rowView.findViewById<View>(R.id.milestonePendingDot)
+        val tvLabel   = rowView.findViewById<TextView>(R.id.tvMilestoneLabel)
+        val tvStamp   = rowView.findViewById<TextView>(R.id.tvMilestoneTimestamp)
+
+        spinner.isVisible = entry.state == MilestoneState.RUNNING
+        dot.isVisible     = entry.state == MilestoneState.PENDING
+        tvIcon.isVisible  = entry.state == MilestoneState.SUCCESS
+                || entry.state == MilestoneState.FAILURE
+
+        when (entry.state) {
+            MilestoneState.SUCCESS -> {
+                tvIcon.text = "✓"
+                tvIcon.setTextColor(ContextCompat.getColor(requireContext(), R.color.restore_log_copied))
+                tvLabel.alpha = 1f
+            }
+            MilestoneState.FAILURE -> {
+                tvIcon.text = "✗"
+                tvIcon.setTextColor(ContextCompat.getColor(requireContext(), R.color.restore_log_failed))
+                tvLabel.alpha = 1f
+            }
+            MilestoneState.PENDING -> {
+                tvLabel.alpha = 0.45f  // dim pending rows
+            }
+            MilestoneState.RUNNING -> {
+                tvLabel.alpha = 1f
+            }
+        }
+
+        // Timestamp + optional detail
+        if (entry.timestamp.isNotEmpty()) {
+            tvStamp.isVisible = true
+            tvStamp.text      = entry.timestamp
+        } else {
+            tvStamp.isVisible = false
+        }
+
+        // Detail line beneath label (e.g. "47 recordings exported")
+        // Append to label text if present. Keep it subtle with secondary colour on
+        // a second TextView if you prefer — this is the minimal approach.
+        tvLabel.text = if (entry.detail != null && entry.state != MilestoneState.PENDING) {
+            "${entry.label}\n${entry.detail}"
+        } else {
+            entry.label
+        }
+    }
+
+    /**
+     * Rebuilds the adapter's item list from the last emitted [RestorePhase.Running]
+     * state and the adapter's current filter + collapse flags, then submits it.
+     *
+     * Called on every [onRestorePhaseChanged] update and whenever the filter or
+     * a section header is tapped.
+     */
+    private var lastRunningPhase: RestorePhase.Running? = null
+
+    private fun resubmitLogItems() {
+        val phase = lastRunningPhase ?: return
+        val items = progressAdapter.buildItems(
+            recordingEvents   = phase.recordingEvents,
+            recordingCounts   = phase.recordingCounts,
+            recordingsRunning = phase.recordingsRunning,
+            recordingsComplete = phase.recordingsComplete,
+            waveformEvents    = phase.waveformEvents,
+            waveformCounts    = phase.waveformCounts,
+            waveformsRunning  = phase.waveformsRunning,
+            waveformsComplete = phase.waveformsComplete,
+        )
+        progressAdapter.submitList(items) {
+            // After DiffUtil dispatch completes, scroll to bottom unless the user
+            // has manually scrolled up to review earlier entries.
+            if (!userScrolledUp && items.isNotEmpty()) {
+                recyclerProgressLog.scrollToPosition(items.lastIndex)
             }
         }
     }

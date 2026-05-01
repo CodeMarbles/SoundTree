@@ -7,9 +7,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import app.soundtree.data.db.AppDatabase
+import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.export.RecordingExporter
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
+import app.soundtree.ui.restore.FileCategory
 import app.soundtree.util.DatabaseRestoreManager.restore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,13 +27,15 @@ import kotlin.system.exitProcess
  * ## Snapshot layout (inside the user-chosen backup root)
  *
  *   db/
- *     treecast_YYYYMMDD_HHmmss.db   ← versioned snapshots (new format)
+ *     soundtree_YYYYMMDD_HHmmss.db  ← versioned snapshots (new format)
+ *     treecast_YYYYMMDD_HHmmss.db   ← versioned snapshots (new format, legacy name)
  *     treecast.db                   ← legacy flat copy (old format, preserved forever)
  *
  *   recordings/
  *     YYYY/
  *       MM/
- *         TC_*.m4a
+ *         TC_*.m4a ← (legacy names)
+ *         ST_*.m4a
  *
  *   appdata/
  *     waveforms/
@@ -58,19 +62,19 @@ import kotlin.system.exitProcess
  * 7. Copy the chosen snapshot file over the live DB path.
  *
  * ### Post-swap file work (restored DB open)
- * 8. Reopen Room; run the `file_path` namespace fixup
- *    (`com.treecast.app` → `app.treecast`).
- * 9. Reset all `waveform_status` rows to PENDING so WaveformWorker
+ * 8. Reopen Room; run the `file_path` namespace fixup (three-generation
+ *    chain: `com.treecast.app` → `app.treecast` → `app.soundtree`);
+ *    reset all `waveform_status` rows to PENDING so WaveformWorker
  *    re-validates the cache against the newly-copied audio files.
- * 10. Copy `.m4a` files from the backup's `recordings/` tree into
+ * 9. Copy `.m4a` files from the backup's `recordings/` tree into
  *     the restoring device's default storage volume, preserving the
  *     `YYYY/MM/` hierarchy.
- * 11. Remap each `recordings` row's `file_path` (and `storage_volume_uuid`)
+ * 10. Remap each `recordings` row's `file_path` (and `storage_volume_uuid`)
  *     to the newly-copied file locations.
- * 12. Copy `.wfm` waveform cache files from `appdata/waveforms/` in the
+ * 11. Copy `.wfm` waveform cache files from `appdata/waveforms/` in the
  *     backup, if that directory is present. No-op if absent (waveforms
  *     will be re-derived by WaveformWorker on next launch).
- * 13. Close Room, schedule restart, kill process. Does not return.
+ * 12. Close Room, schedule restart, kill process. Does not return.
  *
  * ## Thread safety
  * [restore] must not be called concurrently. Callers should cancel any
@@ -93,6 +97,33 @@ object DatabaseRestoreManager {
         /** An error occurred after or during the destructive swap. DB may be in a
          *  partially-restored state — Room will still open, but files may be incomplete. */
         data class FailedPostSwap(val reason: String) : Result()
+    }
+
+    /**
+     * Classifies the outcome of a single file operation during restore.
+     * Delivered via [restore]'s [onFileEvent] callback.
+     *
+     * COPIED  — file was read from backup and written to device storage.
+     * SKIPPED — identical file (same name + size) already existed at the
+     *            destination; no I/O was performed. In a recovery-over-existing-
+     *            install scenario SKIPPED is reassuring — it means the file is
+     *            still intact on the device.
+     * FAILED  — an exception was thrown; destination may be absent or truncated.
+     *            Non-fatal — restore continues, but the row will remain unmapped.
+     */
+    enum class FileEventType { COPIED, SKIPPED, FAILED }
+
+    /**
+     * Identifies each milestone in the restore sequence.
+     * Emitted via [restore]'s [onMilestone] callback so the caller can update
+     * persistent UI and logs without coupling to internal step numbering.
+     */
+
+    enum class Milestone {
+        SAFETY_SNAPSHOT,   // pre_restore_*.db written to filesDir/restore-safety/
+        METADATA_EXPORT,   // per-recording JSON exported (marks safety net)
+        DATABASE_RESTORED, // backup snapshot copied over live treecast.db
+        PATH_REMAP,        // file_path + storage_volume_uuid updated in restored DB
     }
 
     // ── Library summary ───────────────────────────────────────────────────────
@@ -161,11 +192,14 @@ object DatabaseRestoreManager {
             if (!file.isFile) return@forEach
             val name = file.name ?: return@forEach
             when {
-                name == "treecast.db" -> {
+                name == "treecast.db" || name == "soundtree.db" -> {
                     legacy = DbSnapshot(file, "Legacy backup", isLegacy = true)
                 }
-                name.startsWith("treecast_") && name.endsWith(".db") -> {
-                    val stamp = name.removePrefix("treecast_").removeSuffix(".db")
+                (name.startsWith("treecast_") || name.startsWith("soundtree_")) && name.endsWith(".db") -> {
+                    val stamp = name
+                        .removePrefix("soundtree_")
+                        .removePrefix("treecast_")
+                        .removeSuffix(".db")
                     val date = runCatching { fmt.parse(stamp) }.getOrNull()
                     val label = if (date != null) displayFmt.format(date) else stamp
                     versioned.add(DbSnapshot(file, label, isLegacy = false))
@@ -179,6 +213,71 @@ object DatabaseRestoreManager {
     }
 
     // ── Core restore ──────────────────────────────────────────────────────────
+
+    /**
+     * Writes a structured plain-text log of the restore operation to disk.
+     *
+     * Each line is: `YYYY-MM-DDTHH:mm:ss  CATEGORY  OUTCOME  detail`
+     *
+     * The writer is opened at the start of [restore] and must be closed by the
+     * caller when the restore completes or fails. Lines are flushed on every write
+     * so that partial logs survive process death mid-restore.
+     *
+     * Log location: `filesDir/restore-logs/restore_YYYYMMDD_HHmmss.log`
+     */
+    private class RestoreLogger(context: Context) {
+        private val logDir = File(context.filesDir, "restore-logs").also { it.mkdirs() }
+        private val stamp  = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        private val timeFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+
+        val logFile: File = File(logDir, "restore_$stamp.log")
+
+        private val writer = logFile.bufferedWriter().also { w ->
+            // Header line so the log is self-identifying even if read in isolation.
+            w.write("# SoundTree restore log — $stamp\n")
+            w.flush()
+        }
+
+        /** Appends a milestone outcome line. */
+        fun milestone(milestone: Milestone, success: Boolean, detail: String? = null) {
+            val outcome = if (success) "PASS" else "FAIL"
+            val line    = detail?.let { "$outcome  $it" } ?: outcome
+            append("MILESTONE", milestone.name, line)
+        }
+
+        /** Appends a file-event line. */
+        fun fileEvent(category: String, type: FileEventType, filename: String) {
+            append(category, type.name, filename)
+        }
+
+        /** Appends a free-form info line (phase start, summary counts, etc.). */
+        fun info(message: String) {
+            append("INFO", "", message)
+        }
+
+        /** Appends a free-form warning line (phase start, summary counts, etc.). */
+        fun warning(message: String) {
+            append("WARNING", "", message)
+        }
+
+        /** Appends a free-form error line (phase start, summary counts, etc.). */
+        fun error(message: String) {
+            append("ERROR", "", message)
+        }
+
+
+        fun close() {
+            runCatching { writer.close() }
+        }
+
+        private fun append(category: String, outcome: String, detail: String) {
+            val ts = timeFmt.format(Date())
+            // Pad fields for easy column-aligned reading.
+            val line = "$ts  %-12s  %-8s  $detail\n".format(category, outcome)
+            writer.write(line)
+            writer.flush()  // flush every line — partial logs must survive process death
+        }
+    }
 
     /**
      * Executes the full restore sequence.
@@ -199,26 +298,69 @@ object DatabaseRestoreManager {
      * @param backupRootDir  The root DocumentFile of the backup directory (the
      *                       folder containing `db/`, `recordings/`, `appdata/`).
      * @param onProgress     Progress callback: (label, current, total).
+     * @param onFileEvent   Optional per-file callback: (category, type, filename).
+     *                      Fired immediately before the matching [onProgress] call
+     *                      so counters accumulated here are current when the next
+     *                      progress update fires. Invoked on [Dispatchers.IO].
+     * @param onMilestone   Optional milestone callback: (milestone, success, detail).
+     *                      Fired once per major phase boundary with a pass/fail
+     *                      outcome and an optional human-readable detail string.
+     *                      Invoked on [Dispatchers.IO].
      */
     suspend fun restore(
         context: Context,
         backupFile: DocumentFile,
         backupRootDir: DocumentFile,
+        targetVolumeUuid: String? = null,
         onProgress: (label: String, current: Int, total: Int) -> Unit = { _, _, _ -> },
+        onFileEvent: ((category: FileCategory, type: FileEventType, filename: String) -> Unit)? = null,
+        onMilestone: ((milestone: Milestone, success: Boolean, detail: String?) -> Unit)? = null,
     ): Result = withContext(Dispatchers.IO) {
 
         val appContext = context.applicationContext
+        val logger     = RestoreLogger(appContext)
+
+        // Wrap the entire body in try/finally so the log file is always closed,
+        // even if an unexpected exception escapes through a return@withContext.
+        try {
+            restoreInternal(
+                appContext  = appContext,
+                backupFile  = backupFile,
+                backupRootDir = backupRootDir,
+                onProgress  = onProgress,
+                onFileEvent = onFileEvent,
+                onMilestone = onMilestone,
+                logger      = logger,
+            )
+        } finally {
+            logger.close()
+        }
+    }
+
+    private suspend fun restoreInternal(
+        appContext: Context,
+        backupFile: DocumentFile,
+        backupRootDir: DocumentFile,
+        targetVolumeUuid: String? = null,
+        onProgress: (label: String, current: Int, total: Int) -> Unit = { _, _, _ -> },
+        onFileEvent: ((category: FileCategory, type: FileEventType, filename: String) -> Unit)? = null,
+        onMilestone: ((milestone: Milestone, success: Boolean, detail: String?) -> Unit)? = null,
+        logger: RestoreLogger,
+    ): Result = withContext(Dispatchers.IO) {
 
         // ── 1. Validate the chosen snapshot file ──────────────────────────────
         if (!backupFile.isFile || backupFile.length() == 0L) {
+            logger.warning("Snapshot file is missing or empty: ${backupFile.uri}")
             return@withContext Result.NoDbFound
         }
+        logger.info("Snapshot validated: ${backupFile.name} (${backupFile.length()} bytes)")
 
         // ── 2. Safety snapshot of the live database ───────────────────────────
         onProgress("Creating safety snapshot…", 0, 0)
+        logger.info("Creating safety snapshot of the live database")
 
-        val safetyDir = File(appContext.filesDir, "restore-safety").also { it.mkdirs() }
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val safetyDir    = File(appContext.filesDir, "restore-safety").also { it.mkdirs() }
+        val stamp        = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val safetyDbFile = File(safetyDir, "pre_restore_$stamp.db")
 
         try {
@@ -227,16 +369,18 @@ object DatabaseRestoreManager {
                 .query("PRAGMA wal_checkpoint(FULL)")
                 .close()
 
-            // Copy the live DB file into the safety directory.
-            val liveDbPath = appContext.getDatabasePath("treecast.db")
+            val liveDbPath = appContext.getDatabasePath("soundtree.db")
             liveDbPath.inputStream().use { inp ->
                 safetyDbFile.outputStream().use { out -> inp.copyTo(out) }
             }
         } catch (e: Exception) {
-            return@withContext Result.FailedPreFlight(
-                "Could not create safety snapshot: ${e.message}"
-            )
+            logger.milestone(Milestone.SAFETY_SNAPSHOT, success = false, detail = e.message)
+            onMilestone?.invoke(Milestone.SAFETY_SNAPSHOT, false, e.message)
+            return@withContext Result.FailedPreFlight("Could not create safety snapshot: ${e.message}")
         }
+        logger.milestone(Milestone.SAFETY_SNAPSHOT, success = true,
+            detail = "pre_restore_$stamp.db")
+        onMilestone?.invoke(Milestone.SAFETY_SNAPSHOT, true, "pre_restore_$stamp.db")
 
         // ── 3. Safety metadata export (marks safety net) ──────────────────────
         //
@@ -245,14 +389,16 @@ object DatabaseRestoreManager {
         // anything goes wrong downstream, the user's mark data is preserved in
         // human-readable form at filesDir/restore-safety/{stamp}/.
         onProgress("Exporting safety metadata…", 0, 0)
+        logger.info("Exporting safety metadata to restore-safety/$stamp/")
 
         val metadataSafetyDir = File(safetyDir, stamp).also { it.mkdirs() }
 
+        var recordings: List<RecordingEntity> = emptyList()
         try {
-            val db          = AppDatabase.getInstance(appContext)
-            val recordings  = db.recordingDao().getAllOnce()
-            val allTopics   = db.topicDao().getAllTopicsOnce()
-            val total       = recordings.size
+            val db        = AppDatabase.getInstance(appContext)
+            recordings    = db.recordingDao().getAllOnce()
+            val allTopics = db.topicDao().getAllTopicsOnce()
+            val total     = recordings.size
 
             recordings.forEachIndexed { index, recording ->
                 onProgress("Exporting safety metadata…", index + 1, total)
@@ -262,93 +408,138 @@ object DatabaseRestoreManager {
                 } catch (_: Exception) {
                     // Per-recording export failure is non-fatal — we log it by
                     // leaving its JSON absent, but press on for the rest.
+                    logger.error("Safety metadata export failed for ${recording.filePath}")
                 }
             }
         } catch (e: Exception) {
-            // If we can't even open the DB to export, abort before touching anything.
-            return@withContext Result.FailedPreFlight(
-                "Could not export safety metadata: ${e.message}"
-            )
+            logger.milestone(Milestone.METADATA_EXPORT, success = false, detail = e.message)
+            onMilestone?.invoke(Milestone.METADATA_EXPORT, false, e.message)
+            return@withContext Result.FailedPreFlight("Could not export safety metadata: ${e.message}")
         }
+        logger.milestone(Milestone.METADATA_EXPORT, success = true,
+            detail = "${recordings.size} recordings exported")
+        onMilestone?.invoke(Milestone.METADATA_EXPORT, true,
+            "${recordings.size} recordings exported")
 
         // ── 4. Checkpoint the live WAL (best-effort) ──────────────────────────
         onProgress("Preparing database…", 0, 0)
+        logger.info("Checkpointing live WAL before swap")
 
         try {
             val db = AppDatabase.getInstance(appContext)
             db.openHelper.writableDatabase
                 .query("PRAGMA wal_checkpoint(FULL)")
                 .close()
-        } catch (_: Exception) {
+            logger.info("WAL checkpoint complete")
+        } catch (e: Exception) {
             // If the DB is already broken we press on regardless.
+            logger.warning("WAL checkpoint failed (non-fatal): ${e.message}")
         }
 
         // ── 5. Close and null the Room singleton ──────────────────────────────
+        logger.info("Closing Room singleton before destructive swap")
         AppDatabase.closeAndReset()
 
         // ── 6. Delete stale WAL / SHM sidecars ───────────────────────────────
-        val liveDbFile = appContext.getDatabasePath("treecast.db")
-        File(liveDbFile.path + "-wal").delete()
-        File(liveDbFile.path + "-shm").delete()
+        val liveDbFile = appContext.getDatabasePath("soundtree.db")
+        val walDeleted = File(liveDbFile.path + "-wal").delete()
+        val shmDeleted = File(liveDbFile.path + "-shm").delete()
+        logger.info("WAL sidecar deleted: $walDeleted  SHM sidecar deleted: $shmDeleted")
         liveDbFile.parentFile?.mkdirs()
 
         // ── 7. Copy chosen snapshot over the live DB path ─────────────────────
         onProgress("Restoring database…", 0, 0)
+        logger.info("Beginning destructive DB swap — copying ${backupFile.name} → ${liveDbFile.name}")
 
         try {
             appContext.contentResolver.openInputStream(backupFile.uri)?.use { input ->
                 liveDbFile.outputStream().use { output -> input.copyTo(output) }
-            } ?: return@withContext Result.FailedPostSwap(
-                "Could not open backup database for reading."
-            )
+            } ?: run {
+                val msg = "Could not open backup database for reading."
+                logger.milestone(Milestone.DATABASE_RESTORED, success = false, detail = msg)
+                onMilestone?.invoke(Milestone.DATABASE_RESTORED, false, msg)
+                return@withContext Result.FailedPostSwap(msg)
+            }
         } catch (e: Exception) {
-            return@withContext Result.FailedPostSwap("Database copy failed: ${e.message}")
+            val msg = "Database copy failed: ${e.message}"
+            logger.milestone(Milestone.DATABASE_RESTORED, success = false, detail = e.message)
+            onMilestone?.invoke(Milestone.DATABASE_RESTORED, false, e.message)
+            return@withContext Result.FailedPostSwap(msg)
         }
+        logger.milestone(Milestone.DATABASE_RESTORED, success = true,
+            detail = "${liveDbFile.length()} bytes written")
+        onMilestone?.invoke(Milestone.DATABASE_RESTORED, true,
+            "${liveDbFile.length()} bytes written")
 
         // ── 8. Reopen Room, run namespace fixup, reset waveform statuses ──────
+        logger.info("Reopening Room and running namespace fixup on restored DB")
         try {
-            val db = AppDatabase.getInstance(appContext)
+            val db  = AppDatabase.getInstance(appContext)
             val raw = db.openHelper.writableDatabase
 
-            // Rewrite old package name paths (pre-rename backups).
+            // Rewrite legacy package-name prefixes in restored file_path values.
+            // Generation 1 (oldest):  com.treecast.app
+            // Generation 2:           app.treecast
+            // Generation 3 (current): app.soundtree  ← no rewrite needed
+            // Two passes cover the full chain; each REPLACE is a no-op when the
+            // pattern is absent, so order matters only for correctness not safety.
             raw.execSQL(
                 "UPDATE recordings SET file_path = REPLACE(file_path, " +
                         "'com.treecast.app', 'app.treecast')"
             )
+            raw.execSQL(
+                "UPDATE recordings SET file_path = REPLACE(file_path, " +
+                        "'app.treecast', 'app.soundtree')"
+            )
+            logger.info("Namespace fixup applied (gen1→gen2→gen3 path rewrite)")
 
             // Reset all waveform statuses to PENDING so WaveformWorker re-validates
             // cache files against the newly-copied audio after restart.
             raw.execSQL("UPDATE recordings SET waveform_status = 0")
+            logger.info("Waveform statuses reset to PENDING")
 
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Fixup failures are non-fatal — Room will still open.
+            logger.warning("Namespace fixup or waveform reset failed (non-fatal): ${e.message}")
         }
 
-        // ── 9. Copy audio files from backup into default storage ───────────────
-        val defaultVolume = StorageVolumeHelper.getDefaultVolume(appContext)
+        // ── 9. Copy audio files into the user's preferred storage volume ───────────
+        // Use the explicitly requested volume UUID if provided; fall back to
+        // getDefaultVolume() (primary external) only if the UUID isn't found.
+        // This matters when the user has set SD card as their default — getDefaultVolume()
+        // always returns primary emulated storage and would silently write to the wrong place.
+        val defaultVolume = if (targetVolumeUuid != null) {
+            StorageVolumeHelper.getVolumeByUuid(appContext, targetVolumeUuid)
+                ?: StorageVolumeHelper.getDefaultVolume(appContext).also {
+                    logger.warning("Preferred volume UUID $targetVolumeUuid not mounted — " +
+                            "falling back to primary storage")
+                }
+        } else {
+            StorageVolumeHelper.getDefaultVolume(appContext)
+        }
+        logger.info("Target storage volume: ${defaultVolume.label} (${defaultVolume.uuid})")
         val destRecordingsRoot = defaultVolume.rootDir   // …/recordings/
         destRecordingsRoot.mkdirs()
 
         // Map of filename (TC_*.m4a) → newly copied File, built during copy pass.
-        val copiedFileMap = mutableMapOf<String, File>()
+        val copiedFileMap       = mutableMapOf<String, File>()
         val backupRecordingsDir = backupRootDir.findFile("recordings")
 
         if (backupRecordingsDir != null && backupRecordingsDir.isDirectory) {
             onProgress("Copying recordings…", 0, 0)
 
-            // Collect all .m4a files from the backup's recordings/ tree.
             val backupAudioFiles = mutableListOf<DocumentFile>()
             collectM4aFiles(backupRecordingsDir, backupAudioFiles)
 
             val totalFiles = backupAudioFiles.size
             var copiedCount = 0
+            logger.info("Recordings copy pass: $totalFiles files found in backup")
 
             for (sourceFile in backupAudioFiles) {
                 val filename = sourceFile.name ?: continue
                 if (!filename.endsWith(".m4a")) continue
 
-                // Derive YYYY/MM from TC_ filename stem.
-                val stem = filename.removeSuffix(".m4a").removePrefix("TC_")
+                val stem = RecordingFileHelper.stemWithoutPrefix(filename.removeSuffix(".m4a"))
                 val yyyy = stem.take(4)
                 val mm   = stem.drop(4).take(2)
 
@@ -366,6 +557,8 @@ object DatabaseRestoreManager {
                 if (destFile.exists() && destFile.length() == sourceFile.length()) {
                     copiedFileMap[filename] = destFile
                     copiedCount++
+                    logger.fileEvent("RECORDINGS", FileEventType.SKIPPED, filename)
+                    onFileEvent?.invoke(FileCategory.RECORDINGS, FileEventType.SKIPPED, filename)
                     onProgress("Copying recordings…", copiedCount, totalFiles)
                     continue
                 }
@@ -376,22 +569,33 @@ object DatabaseRestoreManager {
                     }
                     copiedFileMap[filename] = destFile
                     copiedCount++
+                    logger.fileEvent("RECORDINGS", FileEventType.COPIED, filename)
+                    onFileEvent?.invoke(FileCategory.RECORDINGS, FileEventType.COPIED, filename)
                     onProgress("Copying recordings…", copiedCount, totalFiles)
                 } catch (_: Exception) {
                     // Per-file failure: leave the DB row pointing at the old path.
+                    // Orphan recovery will surface unmatched rows after restart.
+                    logger.fileEvent("RECORDINGS", FileEventType.FAILED, filename)
+                    onFileEvent?.invoke(FileCategory.RECORDINGS, FileEventType.FAILED, filename)
                 }
             }
+            logger.info("Recordings copy pass complete — ${copiedFileMap.size} mapped, " +
+                    "${totalFiles - copiedFileMap.size} failed")
+        } else {
+            logger.info("No recordings/ directory found in backup — skipping audio copy")
         }
         // If no recordings/ dir in backup, copiedFileMap stays empty and the
         // path-remap step below is a no-op. Perfectly safe.
 
         // ── 10. Remap file_path and storage_volume_uuid in restored DB ─────────
+        var remappedCount = 0
         if (copiedFileMap.isNotEmpty()) {
             onProgress("Updating recording paths…", 0, 0)
+            logger.info("Remapping file_path and storage_volume_uuid for ${copiedFileMap.size} recordings")
             try {
-                val db = AppDatabase.getInstance(appContext)
-                val recordings = db.recordingDao().getAllOnce()
-                for (recording in recordings) {
+                val db         = AppDatabase.getInstance(appContext)
+                val dbRecordings = db.recordingDao().getAllOnce()
+                for (recording in dbRecordings) {
                     val filename = File(recording.filePath).name
                     val newFile  = copiedFileMap[filename] ?: continue
                     db.recordingDao().updateFilePathAndVolume(
@@ -399,12 +603,17 @@ object DatabaseRestoreManager {
                         newPath    = newFile.absolutePath,
                         volumeUuid = defaultVolume.uuid,
                     )
+                    remappedCount++
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Non-fatal: the DB is still valid, files are on disk;
                 // orphan recovery will surface any unmatched rows.
+                logger.warning("Path remap encountered an error (non-fatal): ${e.message}")
             }
         }
+        logger.milestone(Milestone.PATH_REMAP, success = true,
+            detail = "$remappedCount recordings remapped")
+        onMilestone?.invoke(Milestone.PATH_REMAP, true, "$remappedCount recordings remapped")
 
         // ── 11. Restore waveform cache files if present in backup ──────────────
         val backupWaveformDir = backupRootDir
@@ -421,15 +630,12 @@ object DatabaseRestoreManager {
                 "appdata/waveforms"
             ).also { it.mkdirs() }
 
-            // Collect all .wfm files recursively, tracking each file's path
-            // relative to backupWaveformDir so the local structure is mirrored
-            // exactly — whether the backup uses the new YYYY/MM layout or the
-            // legacy flat layout from older builds.
             val waveformEntries = mutableListOf<Pair<DocumentFile, String>>()
             collectWfmFiles(backupWaveformDir, waveformEntries, relativeDir = "")
 
             val totalWfm = waveformEntries.size
             var copiedWfm = 0
+            logger.info("Waveform restore pass: $totalWfm files found in backup")
 
             for ((wfmFile, relDir) in waveformEntries) {
                 val name = wfmFile.name ?: continue
@@ -449,17 +655,26 @@ object DatabaseRestoreManager {
                         destFile.outputStream().use { out -> inp.copyTo(out) }
                     }
                     copiedWfm++
+                    logger.fileEvent("WAVEFORMS", FileEventType.COPIED, name)
+                    onFileEvent?.invoke(FileCategory.WAVEFORMS, FileEventType.COPIED, name)
                     onProgress("Restoring waveforms…", copiedWfm, totalWfm)
                 } catch (_: Exception) {
                     // Per-file failure is non-fatal — WaveformWorker will re-derive.
+                    logger.fileEvent("WAVEFORMS", FileEventType.FAILED, name)
+                    onFileEvent?.invoke(FileCategory.WAVEFORMS, FileEventType.FAILED, name)
                 }
             }
+            logger.info("Waveform restore pass complete — $copiedWfm / $totalWfm copied")
+        } else {
+            logger.info("No appdata/waveforms/ directory found in backup — skipping waveform restore")
         }
 
         // ── 12. Close Room before restart ─────────────────────────────────────
+        logger.info("Closing Room before scheduled restart")
         try { AppDatabase.closeAndReset() } catch (_: Exception) {}
 
         onProgress("Finishing…", 0, 0)
+        logger.info("Restore sequence complete — scheduling restart")
         Result.Success
     }
 

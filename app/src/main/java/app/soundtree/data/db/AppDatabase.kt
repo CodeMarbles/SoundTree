@@ -272,7 +272,7 @@ abstract class AppDatabase : RoomDatabase() {
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "treecast.db"
+                    "soundtree.db"
                 )
                     .addMigrations(
                         MIGRATION_3_4,
