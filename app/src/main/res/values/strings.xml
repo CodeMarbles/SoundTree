@@ -791,7 +791,7 @@
     <!-- Step 1: Library summary -->
     <string name="restore_step1_your_library">Your current library</string>
     <string name="restore_step1_loading">Loading…</string>
-    <string name="restore_step1_safety_notice">Before restoring, SoundTree will save a copy of your current database and export a JSON file for every recording — including all marks. This safety snapshot is stored in internal storage and can be used to recover mark data if anything goes wrong.</string>
+    <string name="restore_step1_safety_notice">Before restoring, SoundTree will save a copy of your current database and export a JSON file for every recording — including all marks. This safety snapshot is saved to your device storage and can be accessed in the Files app if anything goes wrong.</string>
 
     <!-- Step 1 plurals: recording / mark / topic counts -->
     <plurals name="restore_summary_recordings">
@@ -810,7 +810,7 @@
     <!-- Step 2: Confirmation -->
     <string name="restore_step2_heading">This will overwrite your current library</string>
     <string name="restore_step2_body">All recordings, topics, and marks created since this backup was made will be replaced by the backup\'s data. Any audio files on your device that exist in the backup will be re-copied to your default storage.\n\nThe app will restart automatically when the restore is complete.</string>
-    <string name="restore_step2_safety_note">A safety snapshot of your current database and a full metadata export (with marks) will be saved to internal storage before anything is changed.</string>
+    <string name="restore_step2_safety_note">A safety snapshot of your current database and a full metadata export (with marks) will be saved to your device storage before anything is changed.</string>
 
     <!-- Step 3: Progress -->
     <string name="restore_progress_starting">Starting restore…</string>

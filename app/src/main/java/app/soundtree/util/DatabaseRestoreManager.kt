@@ -49,9 +49,9 @@ import kotlin.system.exitProcess
  * ### Pre-flight (live DB still open)
  * 1. Validate the chosen snapshot file.
  * 2. Write a timestamped copy of the live database to
- *    `filesDir/restore-safety/pre_restore_YYYYMMDD_HHmmss.db`.
- * 3. Export a metadata JSON for every current recording (marks, topics,
- *    title, tags, etc.) into `filesDir/restore-safety/{timestamp}/`.
+ *    `externalFilesDir/restore-safety/pre_restore_YYYYMMDD_HHmmss.db`.
+ * 3. Export a metadata JSON for every current recording ... into
+ *    `externalFilesDir/restore-safety/{timestamp}/`.
  *    This is the marks safety net — even if the restore goes wrong,
  *    every mark is serialised to human-readable JSON first.
  *
@@ -120,7 +120,7 @@ object DatabaseRestoreManager {
      */
 
     enum class Milestone {
-        SAFETY_SNAPSHOT,   // pre_restore_*.db written to filesDir/restore-safety/
+        SAFETY_SNAPSHOT,   // pre_restore_*.db written to externalFilesDir/restore-safety/
         METADATA_EXPORT,   // per-recording JSON exported (marks safety net)
         DATABASE_RESTORED, // backup snapshot copied over live treecast.db
         PATH_REMAP,        // file_path + storage_volume_uuid updated in restored DB
@@ -251,7 +251,9 @@ object DatabaseRestoreManager {
      * Log location: `filesDir/restore-logs/restore_YYYYMMDD_HHmmss.log`
      */
     private class RestoreLogger(context: Context) {
-        private val logDir = File(context.filesDir, "restore-logs").also { it.mkdirs() }
+        private val logDir = (context.getExternalFilesDir(null) ?: context.filesDir)
+            .let { File(it, "restore-logs") }
+            .also { it.mkdirs() }
         private val stamp  = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         private val timeFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
 
@@ -385,8 +387,9 @@ object DatabaseRestoreManager {
         onProgress("Creating safety snapshot…", 0, 0)
         logger.info("Creating safety snapshot of the live database")
 
-        val safetyDir    = File(appContext.filesDir, "restore-safety").also { it.mkdirs() }
-        val stamp        = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val safetyDir = File(appContext.getExternalFilesDir(null) ?: appContext.filesDir, "restore-safety")
+            .also { it.mkdirs() }
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val safetyDbFile = File(safetyDir, "pre_restore_$stamp.db")
 
         try {
@@ -413,7 +416,8 @@ object DatabaseRestoreManager {
         // Serialises every recording's metadata (including marks) to JSON in a
         // timestamped subdirectory before we touch the live database. If
         // anything goes wrong downstream, the user's mark data is preserved in
-        // human-readable form at filesDir/restore-safety/{stamp}/.
+        // human-readable form at
+        // externalFilesDir/restore-safety/{stamp}/.
         onProgress("Exporting safety metadata…", 0, 0)
         logger.info("Exporting safety metadata to restore-safety/$stamp/")
 
