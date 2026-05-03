@@ -26,6 +26,7 @@ import app.soundtree.worker.WaveformWorker
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.io.File
 
 // ── Stored recording CRUD ─────────────────────────────────────────────────────
 
@@ -86,6 +87,11 @@ fun MainViewModel.deleteRecording(r: RecordingEntity) = viewModelScope.launch {
     // If the volume is currently unmounted the cache file stays on disk but
     // becomes orphaned — acceptable, as the recording itself is also gone.
     waveformCacheFor(r.storageVolumeUuid)?.delete(r.id, r.createdAt)
+    // Delete the actual audio file from disk.
+    // Mirrors the waveform logic: if the volume is unmounted the file
+    // stays on disk, but the DB row is already gone so orphan recovery
+    // will surface it — acceptable, same as the waveform case.
+    File(r.filePath).delete()
 }
 
 fun MainViewModel.moveRecording(id: Long, topicId: Long?) = viewModelScope.launch {
