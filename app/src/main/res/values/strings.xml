@@ -83,6 +83,7 @@
     <!-- Topic picker bottom sheet titles -->
     <string name="topic_picker_title_select">Select Topic</string>
     <string name="topic_picker_title_move">Move to…</string>
+    <string name="topic_picker_btn_add_topic">Add topic</string>
     <!-- The "top level" row label shown when reparenting a topic -->
     <string name="topic_picker_label_top_level">Top level</string>
 

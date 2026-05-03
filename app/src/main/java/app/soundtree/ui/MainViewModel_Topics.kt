@@ -21,6 +21,17 @@ fun MainViewModel.createTopic(
     color: String = "#6C63FF",
 ) = viewModelScope.launch { repo.createTopic(name, parentId, icon, color) }
 
+/**
+ * Suspend variant of [createTopic] that returns the new topic's database ID.
+ * Used by [TopicPickerBottomSheet] to auto-select the created topic immediately.
+ */
+suspend fun MainViewModel.createTopicReturningId(
+    name: String,
+    parentId: Long? = null,
+    icon: String = Icons.DEFAULT_TOPIC,
+    color: String = "#6C63FF",
+): Long = repo.createTopic(name, parentId, icon, color)
+
 fun MainViewModel.updateTopic(t: TopicEntity) =
     viewModelScope.launch { repo.updateTopic(t) }
 

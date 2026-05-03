@@ -4,8 +4,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -13,6 +15,9 @@ import app.soundtree.R
 import app.soundtree.data.repository.TreeBuilder
 import app.soundtree.data.repository.TreeNode
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.createTopicReturningId
+import app.soundtree.ui.topics.NewTopicDialog
+import kotlinx.coroutines.launch
 
 /**
  * A [BottomSheetDialogFragment] that presents the full topic tree for selection.
@@ -110,6 +115,21 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
         view.findViewById<View>(R.id.rowUnsorted).setOnClickListener {
             deliverResult(null)
+        }
+
+        view.findViewById<ImageButton>(R.id.btnAddTopic).apply {
+            // Hidden in REPARENT mode — the user is reorganising an existing
+            // topic, not assigning a recording; adding a topic here would be
+            // confusing. Show it only in PICK mode (recording assignment).
+            visibility = if (mode == Mode.REPARENT) View.GONE else View.VISIBLE
+            setOnClickListener {
+                NewTopicDialog(parentId = null) { name, icon, color ->
+                    lifecycleScope.launch {
+                        val newId = viewModel.createTopicReturningId(name, null, icon, color)
+                        deliverResult(newId)
+                    }
+                }.show(childFragmentManager, "picker_add_topic")
+            }
         }
 
         // ── Mode-specific presentation ────────────────────────────────
