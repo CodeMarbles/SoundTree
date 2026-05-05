@@ -417,7 +417,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             var m4a = 0; var json = 0
             dir.listFiles().forEach { child ->
                 val name = child.name.orEmpty()
-                if (child.isFile && name.startsWith("TC_")) {
+                if (child.isFile && RecordingFileHelper.hasRecordingPrefix(name)) {
                     when {
                         name.endsWith(".m4a")  -> {
                             destIndex[name] = DestEntry(
@@ -504,30 +504,32 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         for (sourceDir in sourceDirs) {
             val sourceFiles = sourceDir
                 .walkTopDown()
-                .filter { it.isFile && it.name.startsWith("TC_") && it.extension == "m4a" }
+                .filter { it.isFile && RecordingFileHelper.isRecordingFile(it.name) }
                 .toList()
 
             for (file in sourceFiles) {
                 run.filesExamined++
 
-                // Derive YYYY/MM from the TC_ filename stem.
-                // TC_ filenames are TC_yyyyMMdd_HHmmss.m4a — year is chars 0–3, month 4–5.
-                val stem    = RecordingFileHelper.stemWithoutPrefix(file.nameWithoutExtension)
-                val yyyy    = stem.take(4)
-                val mm      = stem.drop(4).take(2)
-                val validYM = yyyy.matches(Regex("\\d{4}")) && mm.matches(Regex("\\d{2}"))
+                val yearMonth = RecordingFileHelper.yearMonthFromStem(file.nameWithoutExtension)
+                if (yearMonth == null) {
+                    run.recordingsFailed++
+                    run.error(
+                        message = "Unrecognised filename format, cannot determine destination directory: ${file.name}",
+                        path    = file.absolutePath,
+                    )
+                    continue
+                }
 
-                val targetDir: DocumentFile? = if (validYM) {
-                    run.dirCache["$yyyy/$mm"]
-                        ?: recordingDestDir.findOrCreateDir(yyyy)
-                            ?.findOrCreateDir(mm)
-                            ?.also { run.dirCache["$yyyy/$mm"] = it }
-                } else null
+                val (yyyy, mm) = yearMonth
+                val targetDir = run.dirCache["$yyyy/$mm"]
+                    ?: recordingDestDir.findOrCreateDir(yyyy)
+                        ?.findOrCreateDir(mm)
+                        ?.also { run.dirCache["$yyyy/$mm"] = it }
 
                 if (targetDir == null) {
                     run.recordingsFailed++
                     run.error(
-                        message = "Could not resolve destination directory for ${file.name}",
+                        message = "Could not create destination directory $yyyy/$mm for ${file.name}",
                         path    = file.absolutePath,
                     )
                     continue
@@ -681,12 +683,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         for (recording in allRecordings) {
             val audioFile = File(recording.filePath)
-            val stem      = audioFile.nameWithoutExtension   // e.g. "TC_20240115_143022"
+            val stem      = audioFile.nameWithoutExtension   // e.g. "TC_20240115_143022" or "ST_20240115_143022"
 
-            val rawStem = stem.removePrefix("TC_")
-            val yyyy    = rawStem.take(4)
-            val mm      = rawStem.drop(4).take(2)
-            if (!yyyy.matches(Regex("\\d{4}")) || !mm.matches(Regex("\\d{2}"))) continue
+            val (yyyy, mm) = RecordingFileHelper.yearMonthFromStem(stem) ?: continue
 
             val topic = recording.topicId?.let { id -> allTopics.find { it.id == id } }
             val freshnessThreshold = maxOf(

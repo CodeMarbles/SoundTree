@@ -6,8 +6,6 @@ import app.soundtree.storage.StorageVolumeHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 /**
  * Represents a recording file found on disk that has no matching row in the
@@ -22,7 +20,7 @@ import java.util.Locale
  */
 data class OrphanRecording(
     val file: File,
-    /** Human-readable title derived from the TC_ timestamp in the filename. */
+    /** Human-readable title derived from the ST_/TC_ timestamp in the filename. */
     val suggestedTitle: String,
     /** Duration in milliseconds. Zero = corrupt / unplayable. */
     val durationMs: Long,
@@ -31,9 +29,9 @@ data class OrphanRecording(
 }
 
 /**
- * Scans all known recording directories for TC_*.m4a files that have no
- * matching row in the Room database, and classifies each as playable or
- * corrupt using [MediaMetadataRetriever].
+ * Scans all known recording directories for ST_*.m4a and TC_*.m4a files that
+ * have no matching row in the Room database, and classifies each as playable
+ * or corrupt using [MediaMetadataRetriever].
  *
  * Intended to be called once at startup from [app.soundtree.ui.SplashActivity]
  * so that [app.soundtree.ui.MainActivity] can show a recovery prompt if
@@ -65,13 +63,13 @@ object OrphanRecordingScanner {
             .map { file ->
                 OrphanRecording(
                     file           = file,
-                    suggestedTitle = suggestedTitleFrom(file),
+                    suggestedTitle = RecordingFileHelper.suggestedTitle(file),
                     durationMs     = probePlayable(file),
                 )
             }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────────────────────
 
     /**
      * All directories that could contain recording files.
@@ -95,20 +93,6 @@ object OrphanRecordingScanner {
         }
 
         return dirs.filter { it.exists() }
-    }
-
-    /**
-     * Derives a human-readable title from a TC_yyyyMMdd_HHmmss filename.
-     * Falls back to the bare filename without extension if parsing fails.
-     *
-     * Example: TC_20240610_143200.m4a → "Recording – Jun 10, 14:32"
-     */
-    private fun suggestedTitleFrom(file: File): String {
-        val stamp = RecordingFileHelper.stemWithoutPrefix(file.nameWithoutExtension)
-        return runCatching {
-            val date = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).parse(stamp)!!
-            "Recording – " + SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(date)
-        }.getOrElse { file.nameWithoutExtension }
     }
 
     /**
@@ -150,7 +134,6 @@ object OrphanRecordingScanner {
                 ?.takeIf { it > 0L }
                 ?: 0L
         } catch (_: Exception) {
-            // File could not be opened at all — treat as corrupt.
             0L
         } finally {
             runCatching { mmr.release() }

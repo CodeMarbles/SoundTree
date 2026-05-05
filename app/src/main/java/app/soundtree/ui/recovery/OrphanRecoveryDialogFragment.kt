@@ -23,6 +23,7 @@ import app.soundtree.util.OrphanRecording
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.worker.WaveformWorker
 import app.soundtree.R
+import app.soundtree.util.RecordingFileHelper
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -172,7 +173,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
         playablePaths.forEachIndexed { i, path ->
             val file  = File(path)
-            val title = suggestedTitleFrom(file)
+            val title = RecordingFileHelper.suggestedTitle(file)
             items += Item.Playable(
                 file           = file,
                 suggestedTitle = title,
@@ -182,7 +183,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
         }
         corruptPaths.forEach { path ->
             val file = File(path)
-            items += Item.Corrupt(file = file, suggestedTitle = suggestedTitleFrom(file))
+            items += Item.Corrupt(file = file, suggestedTitle = RecordingFileHelper.suggestedTitle(file))
         }
     }
 
@@ -211,6 +212,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
         val title      = item.editedTitle.trim().ifEmpty { item.suggestedTitle }
         val volumeUuid = volumeUuidForFile(item.file)
+        val createdAt  = RecordingFileHelper.createdAtFromFile(item.file)
 
         viewLifecycleOwner.lifecycleScope.launch {
             val recordingId = viewModel.saveRecordingWithMarks(
@@ -221,7 +223,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
                 topicId           = item.selectedTopicId,
                 markTimestamps    = emptyList(),
                 storageVolumeUuid = volumeUuid,
-                createdAt         = recordedAtFromFile(item.file),
+                createdAt         = createdAt,
             ).await()
 
             WaveformWorker.enqueue(
@@ -229,7 +231,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
                 recordingId       = recordingId,
                 filePath          = item.file.absolutePath,
                 storageVolumeUuid = volumeUuid,
-                createdAt         = recordedAtFromFile(item.file)
+                createdAt         = createdAt,
             )
             removeItem(index)
         }
@@ -298,14 +300,6 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             )
         }
         root.findViewById<TextView>(R.id.tvSubtitle).text = parts.joinToString(" · ")
-    }
-
-    private fun suggestedTitleFrom(file: File): String {
-        val stamp = file.nameWithoutExtension.removePrefix("TC_")
-        return runCatching {
-            val date = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).parse(stamp)!!
-            "Recording – " + java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.getDefault()).format(date)
-        }.getOrElse { file.nameWithoutExtension }
     }
 
     private fun volumeUuidForFile(file: File): String =
