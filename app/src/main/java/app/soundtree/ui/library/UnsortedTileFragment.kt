@@ -13,12 +13,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.soundtree.databinding.FragmentInboxTileBinding
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
-import app.soundtree.ui.common.RecordingListController
+import app.soundtree.ui.recording.RecordingListController
 import app.soundtree.ui.deleteRecording
 import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.renameRecording
 import app.soundtree.ui.selectRecording
-import app.soundtree.ui.topics.RecordingsAdapter
+import app.soundtree.ui.recording.RecordingsAdapter
 import kotlinx.coroutines.launch
 
 class UnsortedTileFragment : Fragment() {
@@ -96,7 +96,7 @@ class UnsortedTileFragment : Fragment() {
                 // Fragment-specific: data source + empty-state UI
                 launch {
                     viewModel.unsortedRecordings.collect { recs ->
-                        adapter.submitList(recs) {
+                        adapter.submitList(recordingListController.buildGroupedList(recs)) {
                             val selectedId = viewModel.selectedRecordingId.value
                             if (selectedId != -1L) {
                                 val pos = recs.indexOfFirst { it.id == selectedId }

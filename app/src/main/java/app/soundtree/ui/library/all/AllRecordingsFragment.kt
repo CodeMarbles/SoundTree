@@ -15,13 +15,13 @@ import app.soundtree.databinding.FragmentAllRecordingsBinding
 import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
-import app.soundtree.ui.common.RecordingListController
+import app.soundtree.ui.recording.RecordingListController
 import app.soundtree.ui.deleteRecording
 import app.soundtree.ui.recording.RecordingDetailsDialogFragment
 import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.renameRecording
 import app.soundtree.ui.selectRecording
-import app.soundtree.ui.topics.RecordingsAdapter
+import app.soundtree.ui.recording.RecordingsAdapter
 import kotlinx.coroutines.launch
 
 /**
@@ -132,7 +132,7 @@ class AllRecordingsFragment : Fragment() {
     private fun submitSorted(recordings: List<RecordingEntity>) {
         val sorted = if (newestFirst) recordings.sortedByDescending { it.createdAt }
         else             recordings.sortedBy { it.createdAt }
-        adapter.submitList(sorted)
+        adapter.submitList(recordingListController.buildGroupedList(sorted))
     }
 
     // ── Observers ─────────────────────────────────────────────────────────────

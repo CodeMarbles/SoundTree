@@ -1,17 +1,21 @@
-package app.soundtree.ui.common
+package app.soundtree.ui.recording
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.icu.text.SimpleDateFormat
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.LifecycleOwner
 import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.common.TopicPickerBottomSheet
 import app.soundtree.ui.moveRecording
 import app.soundtree.ui.play
 import app.soundtree.ui.togglePlayPause
-import app.soundtree.ui.topics.RecordingsAdapter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.util.Date
+import java.util.Locale
 
 /**
  * Centralises the recording-list wiring that is identical across
@@ -70,6 +74,18 @@ class RecordingListController(
     // Lateinit so fragments can create the controller before they build the adapter.
     private lateinit var adapter: RecordingsAdapter
 
+    private lateinit var prefs: SharedPreferences
+
+    companion object {
+        /**
+         * SharedPreferences key controlling date section headers in all
+         * recording lists. Default: true.
+         * Expose via a Settings toggle when UI is ready.
+         */
+        const val PREF_SHOW_DATE_HEADERS = "show_date_headers"
+    }
+
+
     // ── Initialisation ────────────────────────────────────────────────────────
 
     /**
@@ -78,13 +94,43 @@ class RecordingListController(
      */
     fun setup(adapter: RecordingsAdapter) {
         this.adapter = adapter
-        adapter.prefs = context.getSharedPreferences("soundtree_settings", Context.MODE_PRIVATE)
+        this.prefs = context.getSharedPreferences("soundtree_settings", Context.MODE_PRIVATE)
+        adapter.prefs = prefs   // unchanged — adapter still gets its own ref
 
         fragmentManager.setFragmentResultListener(moveRequestKey, lifecycleOwner) { _, bundle ->
             val topicId = TopicPickerBottomSheet.topicIdFromBundle(bundle)
             val recId   = pendingMoveRecordingId.takeIf { it != -1L } ?: return@setFragmentResultListener
             viewModel.moveRecording(recId, topicId)
             pendingMoveRecordingId = -1L
+        }
+    }
+
+    /**
+     * Converts a pre-sorted [RecordingEntity] list into a [RecordingListItem]
+     * list, injecting [RecordingListItem.Header] rows between month boundaries
+     * when [PREF_SHOW_DATE_HEADERS] is enabled.
+     *
+     * Callers are responsible for sort order before passing the list in —
+     * this function preserves the order it receives and groups accordingly,
+     * so headers reflect whatever direction the list is already sorted in.
+     */
+    fun buildGroupedList(recordings: List<RecordingEntity>): List<RecordingListItem> {
+        val showHeaders = prefs.getBoolean(PREF_SHOW_DATE_HEADERS, true)
+        if (!showHeaders || recordings.isEmpty()) {
+            return recordings.map { RecordingListItem.Recording(it) }
+        }
+
+        val fmt = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        return buildList {
+            var lastLabel: String? = null
+            for (rec in recordings) {
+                val label = fmt.format(Date(rec.createdAt))
+                if (label != lastLabel) {
+                    add(RecordingListItem.Header(label))
+                    lastLabel = label
+                }
+                add(RecordingListItem.Recording(rec))
+            }
         }
     }
 
@@ -98,7 +144,7 @@ class RecordingListController(
         pendingMoveRecordingId = recordingId
         TopicPickerBottomSheet.newInstance(
             selectedTopicId = currentTopicId,
-            requestKey      = moveRequestKey,
+            requestKey = moveRequestKey,
         ).show(fragmentManager, movePickerTag)
     }
 

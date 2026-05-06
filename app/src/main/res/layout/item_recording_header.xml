@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Date section header row in the recordings list.
+     Matches the subtle surface style used by the sort toolbar. -->
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvSectionLabel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="6dp"
+    android:textColor="?attr/colorAccent"
+    android:textSize="16sp"
+    android:letterSpacing="0.08"
+    android:textAllCaps="true"
+    android:fontFamily="sans-serif-medium"
+    android:background="?attr/colorBackground"
+    android:gravity="center"/>

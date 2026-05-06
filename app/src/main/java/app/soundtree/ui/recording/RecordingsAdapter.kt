@@ -1,4 +1,4 @@
-package app.soundtree.ui.topics
+package app.soundtree.ui.recording
 
 import android.app.AlertDialog
 import android.content.SharedPreferences
@@ -33,13 +33,19 @@ import java.util.Locale
  *   - Inbox / Unsorted tab (showTopicIcon = false)
  *   - Topic Details tab    (showTopicIcon = false)
  *
+ * ── Item types ────────────────────────────────────────────────────────────────
+ *
+ * The adapter accepts [RecordingListItem], a sealed type with two variants:
+ *   - [RecordingListItem.Header]    — a date section label (e.g. "May 2026")
+ *   - [RecordingListItem.Recording] — a standard recording row
+ *
+ * Callers build the flat list (with or without headers) before calling
+ * [submitList]. The recommended helper is [RecordingListController.buildGroupedList],
+ * which respects the [RecordingListController.PREF_SHOW_DATE_HEADERS] setting.
+ *
  * ── Interactions ──────────────────────────────────────────────────────────────
  *
- * Single tap  → selection highlight + onSelect callback. Navigation TBD;
- *               this is intentionally a no-op at the Fragment level for now
- *               so the selection highlight acknowledges the tap immediately
- *               (no ~300ms GestureDetector delay).
- *
+ * Single tap  → selection highlight + onSelect callback.
  * Long press  → PopupMenu with Rename / Move to topic… / Delete
  * ⋮ button    → same PopupMenu (discoverability + accessibility fallback)
  * Play button → onPlayPause
@@ -54,10 +60,10 @@ import java.util.Locale
  *
  * ── Accessibility ─────────────────────────────────────────────────────────────
  *
- * Each row registers named AccessibilityActions (Rename / Move to topic /
- * Delete) so TalkBack users can trigger them via swipe-gesture without needing
- * to discover long-press. The ⋮ button's contentDescription handles the
- * simpler double-tap path.
+ * Each recording row registers named AccessibilityActions (Rename / Move to
+ * topic / Delete) so TalkBack users can trigger them via swipe-gesture without
+ * needing to discover long-press. The ⋮ button's contentDescription handles
+ * the simpler double-tap path.
  *
  * ── Migration note ────────────────────────────────────────────────────────────
  *
@@ -65,26 +71,45 @@ import java.util.Locale
  * AllRecordingsAdapter.kt and item_recording_all.xml can be deleted.
  */
 class RecordingsAdapter(
-    private val showTopicIcon:    Boolean = false,
-    private val showTopicDetails: Boolean = false,
-    private val onPlayPause:      (RecordingEntity) -> Unit,
-    private val onRename:         (id: Long, newTitle: String) -> Unit,
-    private val onMoveRequested:  (recordingId: Long, currentTopicId: Long?) -> Unit,
-    private val onDelete:         (RecordingEntity) -> Unit,
+    private val showTopicIcon:           Boolean = false,
+    private val showTopicDetails:        Boolean = false,
+    private val onPlayPause:             (RecordingEntity) -> Unit,
+    private val onRename:                (id: Long, newTitle: String) -> Unit,
+    private val onMoveRequested:         (recordingId: Long, currentTopicId: Long?) -> Unit,
+    private val onDelete:                (RecordingEntity) -> Unit,
     private val onTopicDetailsRequested: (topicId: Long?) -> Unit = {},
-    private val onSelect:         (Long) -> Unit = {},
-) : ListAdapter<RecordingEntity, RecordingsAdapter.VH>(DIFF) {
+    private val onSelect:                (Long) -> Unit = {},
+) : ListAdapter<RecordingListItem, RecyclerView.ViewHolder>(DIFF) {
 
     companion object {
-        val DIFF = object : DiffUtil.ItemCallback<RecordingEntity>() {
-            override fun areItemsTheSame(a: RecordingEntity, b: RecordingEntity) = a.id == b.id
-            override fun areContentsTheSame(a: RecordingEntity, b: RecordingEntity) = a == b
+        private const val TYPE_HEADER    = 0
+        private const val TYPE_RECORDING = 1
+
+        val DIFF = object : DiffUtil.ItemCallback<RecordingListItem>() {
+            override fun areItemsTheSame(
+                a: RecordingListItem,
+                b: RecordingListItem,
+            ) = when {
+                a is RecordingListItem.Header    && b is RecordingListItem.Header    ->
+                    a.label == b.label
+                a is RecordingListItem.Recording && b is RecordingListItem.Recording ->
+                    a.entity.id == b.entity.id
+                else -> false
+            }
+
+            override fun areContentsTheSame(
+                a: RecordingListItem,
+                b: RecordingListItem,
+            ) = a == b
         }
+
         private const val NEW_THRESHOLD_MS = 30 * 60 * 1_000L
 
         /** Payload object used to request a progress-only partial bind. */
         val PAYLOAD_PROGRESS = Any()
     }
+
+    // ── State properties ──────────────────────────────────────────────────────
 
     var topics: List<TopicEntity> = emptyList()
         set(value) { field = value; notifyDataSetChanged() }
@@ -113,55 +138,95 @@ class RecordingsAdapter(
     /**
      * SharedPreferences injected by the host fragment so the adapter can call
      * PlaybackPositionHelper without needing a Context on every bind.
-     * Set once in setupAdapter(): adapter.prefs = requireContext().getSharedPreferences(...)
+     * Set once via RecordingListController.setup().
      */
     var prefs: SharedPreferences? = null
+
+    // ── Progress update ───────────────────────────────────────────────────────
 
     /**
      * Updates the live playback position and issues a targeted partial rebind
      * (PAYLOAD_PROGRESS) for only the now-playing row, so the split background
      * moves in real time without triggering a full rebind of every item.
+     *
+     * Skips header items when searching for the now-playing position.
      */
     fun updateNowPlayingProgress(positionMs: Long) {
         if (nowPlayingPositionMs == positionMs) return
         nowPlayingPositionMs = positionMs
-        val idx = currentList.indexOfFirst { it.id == nowPlayingId }
+        val idx = currentList.indexOfFirst {
+            it is RecordingListItem.Recording && it.entity.id == nowPlayingId
+        }
         if (idx >= 0) notifyItemChanged(idx, PAYLOAD_PROGRESS)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-        VH(LayoutInflater.from(parent.context).inflate(R.layout.item_recording, parent, false))
+    // ── View type dispatch ────────────────────────────────────────────────────
 
-    override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
+    override fun getItemViewType(position: Int) = when (getItem(position)) {
+        is RecordingListItem.Header    -> TYPE_HEADER
+        is RecordingListItem.Recording -> TYPE_RECORDING
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            TYPE_HEADER    -> HeaderVH(inflater.inflate(R.layout.item_recording_header, parent, false))
+            TYPE_RECORDING -> RecordingVH(inflater.inflate(R.layout.item_recording, parent, false))
+            else           -> error("Unknown viewType $viewType")
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val item = getItem(position)) {
+            is RecordingListItem.Header    -> (holder as HeaderVH).bind(item.label)
+            is RecordingListItem.Recording -> (holder as RecordingVH).bind(item.entity)
+        }
+    }
 
     /**
-     * This intercepts PAYLOAD_PROGRESS partial binds and only updates the split
-     * background, falling through to a full bind for all other payloads.
+     * Intercepts PAYLOAD_PROGRESS partial binds for recording rows and updates
+     * only the split background. Falls through to a full bind for all other
+     * payloads or if the holder is a HeaderVH (which has no progress).
      */
-    override fun onBindViewHolder(holder: VH, position: Int, payloads: List<Any>) {
-        if (payloads.isNotEmpty() && payloads.all { it === PAYLOAD_PROGRESS }) {
-            holder.updateProgress(getItem(position))
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: List<Any>,
+    ) {
+        if (payloads.isNotEmpty()
+            && payloads.all { it === PAYLOAD_PROGRESS }
+            && holder is RecordingVH
+        ) {
+            val item = getItem(position) as? RecordingListItem.Recording ?: return
+            holder.updateProgress(item.entity)
         } else {
             super.onBindViewHolder(holder, position, payloads)
         }
     }
 
+    // ── Header ViewHolder ─────────────────────────────────────────────────────
 
-    // ── ViewHolder ────────────────────────────────────────────────────────────
+    inner class HeaderVH(v: View) : RecyclerView.ViewHolder(v) {
+        private val tvLabel: TextView = v.findViewById(R.id.tvSectionLabel)
+        fun bind(label: String) { tvLabel.text = label }
+    }
 
-    inner class VH(v: View) : RecyclerView.ViewHolder(v) {
+    // ── Recording ViewHolder ──────────────────────────────────────────────────
+
+    inner class RecordingVH(v: View) : RecyclerView.ViewHolder(v) {
         private val btnInlinePlay: ImageView = v.findViewById(R.id.btnInlinePlay)
         private val tvTopicIcon:   TextView  = v.findViewById(R.id.tvTopicIcon)
         private val tvNewBadge:    TextView  = v.findViewById(R.id.tvNewBadge)
         private val tvTitle:       TextView  = v.findViewById(R.id.tvTitle)
         private val tvMeta:        TextView  = v.findViewById(R.id.tvMeta)
         private val ivOverflow:    ImageView = v.findViewById(R.id.ivOverflow)
+
         /** Retained across partial binds so updateProgress can move the split cheaply. */
-        private var splitBg:       SplitBackgroundDrawable? = null
+        private var splitBg: SplitBackgroundDrawable? = null
 
         fun bind(rec: RecordingEntity) {
             tvTitle.text = rec.title
-            tvMeta.text = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
+            tvMeta.text  = "${formatDuration(rec.durationMs)} · ${formatDate(rec.createdAt)}"
 
             // ── Topic icon (All Recordings context only) ──────────────
             if (showTopicIcon) {
@@ -194,7 +259,7 @@ class RecordingsAdapter(
                     Snackbar.make(
                         itemView,
                         R.string.recording_msg_storage_not_connected,
-                        Snackbar.LENGTH_SHORT
+                        Snackbar.LENGTH_SHORT,
                     ).show()
                 }
                 tvNewBadge.visibility = View.GONE
@@ -214,10 +279,8 @@ class RecordingsAdapter(
             }
 
             // ── Single tap → selection highlight ─────────────────────
-            // Intentionally no navigation here yet. The instant click response
-            // (vs the old ~300ms GestureDetector delay) lets the selection
-            // highlight acknowledge the tap immediately. Navigation to a
-            // detail view will be wired here in a future pass.
+            // The instant click response (vs the old ~300ms GestureDetector delay)
+            // lets the selection highlight acknowledge the tap immediately.
             itemView.setOnClickListener {
                 onSelect(rec.id)
             }
@@ -235,9 +298,9 @@ class RecordingsAdapter(
 
             // ── Accessibility actions ─────────────────────────────────
             // Registers named swipe-gesture actions for TalkBack users.
-            // Calling addAccessibilityAction with the same label on a
-            // recycled ViewHolder replaces the previous lambda, so there
-            // is no risk of stale closures or duplicate actions.
+            // Calling addAccessibilityAction with the same label on a recycled
+            // ViewHolder replaces the previous lambda, so there is no risk of
+            // stale closures or duplicate actions.
             setupAccessibilityActions(rec, isOrphan)
         }
 
@@ -249,14 +312,14 @@ class RecordingsAdapter(
                 menuInflater.inflate(R.menu.menu_recording_options, menu)
                 // Move is unavailable while storage is offline; the recording
                 // can't be reassigned to a topic it may not be able to access.
-                menu.findItem(R.id.action_move)?.isVisible         = !isOrphan
-                menu.findItem(R.id.action_topic_details)?.isVisible = showTopicDetails
+                menu.findItem(R.id.action_move)?.isVisible          = !isOrphan
+                menu.findItem(R.id.action_topic_details)?.isVisible  = showTopicDetails
                 setOnMenuItemClickListener { item ->
                     when (item.itemId) {
                         R.id.action_rename        -> { showRenameDialog(rec); true }
                         R.id.action_move          -> { onMoveRequested(rec.id, rec.topicId); true }
                         R.id.action_delete        -> { showDeleteDialog(rec); true }
-                        R.id.action_topic_details -> { onTopicDetailsRequested(rec.topicId); true }  // ← new
+                        R.id.action_topic_details -> { onTopicDetailsRequested(rec.topicId); true }
                         else                      -> false
                     }
                 }
@@ -326,17 +389,18 @@ class RecordingsAdapter(
         private fun showDeleteDialog(rec: RecordingEntity) {
             AlertDialog.Builder(itemView.context)
                 .setTitle(R.string.recording_dialog_delete_title)
-                .setMessage(itemView.context.getString(R.string.recording_dialog_delete_message, rec.title))
+                .setMessage(
+                    itemView.context.getString(R.string.recording_dialog_delete_message, rec.title))
                 .setPositiveButton(R.string.common_btn_delete) { _, _ -> onDelete(rec) }
                 .setNegativeButton(R.string.common_btn_cancel, null)
                 .show()
         }
 
-        // ── Playback Position Background Helpers ──────────────────────
+        // ── Playback position background ──────────────────────────────
 
         /**
          * Fast-path update for PAYLOAD_PROGRESS. Moves the split fraction without
-         * touching any other views.  Falls back to a full bind if no drawable exists yet.
+         * touching any other views. Falls back to a full bind if no drawable exists yet.
          */
         fun updateProgress(rec: RecordingEntity) {
             val bg = splitBg ?: run { bind(rec); return }
@@ -372,12 +436,12 @@ class RecordingsAdapter(
 
             // Vis on: SplitBackgroundDrawable handles everything, including the
             // selection border via its stroke fields.
-            val context       = itemView.context
-            val fraction      = computeFraction(rec)
+            val context            = itemView.context
+            val fraction           = computeFraction(rec)
             val (played, unplayed) = buildColors(context)
-            val strokeColor   = if (isSelected) context.themeColor(R.attr.colorAccent)
+            val strokeColor        = if (isSelected) context.themeColor(R.attr.colorAccent)
             else Color.TRANSPARENT
-            val strokeWidthPx = if (isSelected) 2f * context.resources.displayMetrics.density
+            val strokeWidthPx      = if (isSelected) 2f * context.resources.displayMetrics.density
             else 0f
 
             val existing = splitBg
@@ -416,8 +480,8 @@ class RecordingsAdapter(
             if (rec.durationMs <= 0L) return 0f
             return if (rec.id == nowPlayingId) {
                 // nowPlayingPositionMs is always primed to the correct start position
-                // before nowPlayingId triggers a rebind (see collector ordering above),
-                // so no floor is needed and backward seeks reflect immediately.
+                // before nowPlayingId triggers a rebind, so no floor is needed and
+                // backward seeks reflect immediately.
                 (nowPlayingPositionMs.toFloat() / rec.durationMs).coerceIn(0f, 1f)
             } else {
                 prefs?.let { PlaybackPositionHelper.displayFraction(rec, it) } ?: 0f
@@ -429,23 +493,14 @@ class RecordingsAdapter(
          *
          * The played region is colorAccent at alpha = intensity * 255, so the
          * intensity slider gives direct visual control without a second colour pref.
-         * The unplayed region is always the natural item surface colour (transparent),
-         * so the card/row background shows through unchanged.
-         *
-         * NOTE: tune these colours once you see them on device. You may find a
-         * slightly tinted surface colour for the "unplayed" side looks better than
-         * full transparency, especially in dark mode.
+         * The unplayed region is always transparent, so the row background shows
+         * through unchanged.
          */
         private fun buildColors(context: android.content.Context): Pair<Int, Int> {
-            val accentRaw = context.themeColor(R.attr.colorAccent)
-
-            // Apply intensity as alpha, leaving RGB unchanged.
-            val alpha      = (playheadVisIntensity * 255f).toInt().coerceIn(0, 255)
-            val playedColor = (accentRaw and 0x00FFFFFF) or (alpha shl 24)
-
-            // Unplayed = fully transparent so the card surface colour shows through.
-            val unplayedColor = android.graphics.Color.TRANSPARENT
-
+            val accentRaw    = context.themeColor(R.attr.colorAccent)
+            val alpha        = (playheadVisIntensity * 255f).toInt().coerceIn(0, 255)
+            val playedColor  = (accentRaw and 0x00FFFFFF) or (alpha shl 24)
+            val unplayedColor = Color.TRANSPARENT
             return Pair(playedColor, unplayedColor)
         }
     }

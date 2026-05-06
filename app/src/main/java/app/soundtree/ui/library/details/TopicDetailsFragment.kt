@@ -24,7 +24,7 @@ import app.soundtree.databinding.FragmentTopicDetailsBinding
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.common.EmojiPickerBottomSheet
-import app.soundtree.ui.common.RecordingListController
+import app.soundtree.ui.recording.RecordingListController
 import app.soundtree.ui.common.TopicPickerBottomSheet
 import app.soundtree.ui.createTopic
 import app.soundtree.ui.deleteRecording
@@ -35,7 +35,7 @@ import app.soundtree.ui.recording.RecordingDetailsDialogFragment
 import app.soundtree.ui.renameRecording
 import app.soundtree.ui.reparentTopic
 import app.soundtree.ui.topics.NewTopicDialog
-import app.soundtree.ui.topics.RecordingsAdapter
+import app.soundtree.ui.recording.RecordingsAdapter
 import app.soundtree.ui.updateTopic
 import app.soundtree.storage.AppVolume
 import app.soundtree.ui.refreshStorageVolumes
@@ -417,7 +417,7 @@ class TopicDetailsFragment : Fragment() {
     private fun submitSortedRecordings(recordings: List<RecordingEntity>) {
         val sorted = if (newestFirst) recordings.sortedByDescending { it.createdAt }
         else             recordings.sortedBy { it.createdAt }
-        recordingsAdapter.submitList(sorted)
+        recordingsAdapter.submitList(recordingListController.buildGroupedList(sorted))
     }
 
     // ── Hierarchy map ──────────────────────────────────────────────────
