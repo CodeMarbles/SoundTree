@@ -820,15 +820,35 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     "${waveformSourceDirs.size} volume(s)"
         )
 
-        // Signal phase start here, immediately after wfmFiles is known so
-        // totalFiles is available to the first progress write.
         run.totalWaveformFiles = wfmFiles.size
         run.currentPhase = "WAVEFORMS"
         run.logDao.updatePhase(run.logId, "WAVEFORMS")
         postNotification(run = run, text = "Syncing waveforms\u2026")
 
-        // Per-subdirectory cache so we issue at most one findOrCreateDir() pair
-        // per YYYY/MM combination rather than one per file.
+        // Build destination waveform index
+        //
+        // Scans the entire waveforms/ destination tree ONCE and maps
+        // filename → size so the per-file skip check below is an O(1) map
+        // lookup instead of a SAF listFiles() scan (which would make the
+        // loop O(n²) for files sharing the same YYYY/MM directory).
+        val wfmDestIndex = mutableMapOf<String, Long>() // filename → byte size
+
+        fun indexWfmDir(dir: DocumentFile) {
+            dir.listFiles().forEach { child ->
+                val name = child.name ?: return@forEach
+                if (child.isFile && name.endsWith(".wfm")) {
+                    wfmDestIndex[name] = child.length()
+                } else if (child.isDirectory) {
+                    indexWfmDir(child)
+                }
+            }
+        }
+        indexWfmDir(waveformDestDir)
+
+        if (run.verbose) {
+            run.info("Waveform destination index: ${wfmDestIndex.size} file(s) found")
+        }
+
         val wfmDirCache = mutableMapOf<String, DocumentFile>()
 
         for ((wfmFile, relDir) in wfmFiles) {
@@ -854,10 +874,8 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                 continue
             }
 
-            // Skip if destination already has an identically-sized copy.
-            // This is the normal steady-state outcome on most runs.
-            val existingOnDest = targetDir.findFile(wfmFile.name)
-            if (existingOnDest != null && existingOnDest.length() == wfmFile.length()) {
+            val destSize = wfmDestIndex[wfmFile.name]
+            if (destSize != null && destSize == wfmFile.length()) {
                 run.waveformsSkipped++
                 if (run.verbose) {
                     run.info("Skipped waveform ${wfmFile.name} — already up to date", path = wfmFile.absolutePath)
@@ -891,7 +909,6 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             postNotification(run = run, text = "Syncing waveforms\u2026")
         }
 
-        // Always log the waveform pass summary.
         run.info(
             "Waveforms pass complete — ${run.waveformsCopied} copied, " +
                     "${run.waveformsSkipped} skipped, ${run.waveformsFailed} failed"
