@@ -428,7 +428,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Playback preferences ──────────────────────────────────────────
     internal val _autoNavigateToListen =
-        MutableStateFlow(prefs.getBoolean(PREF_AUTO_NAVIGATE, false))
+        MutableStateFlow(prefs.getBoolean(PREF_AUTO_NAVIGATE, true))
     val autoNavigateToListen: StateFlow<Boolean> = _autoNavigateToListen
 
     internal val _scrubBackSecs =
@@ -538,7 +538,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val layoutOrder: StateFlow<List<LayoutElement>> = _layoutOrder
 
     internal val _showTitleBar = MutableStateFlow(
-        prefs.getBoolean(PREF_SHOW_TITLE_BAR, true)
+        prefs.getBoolean(PREF_SHOW_TITLE_BAR, false)
     )
     val showTitleBar: StateFlow<Boolean> = _showTitleBar
 
@@ -554,14 +554,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ── Hide Recorder widget while on Record tab ──────────────────────────────
 
     internal val _hideRecorderOnRecordTab = MutableStateFlow(
-        prefs.getBoolean(PREF_HIDE_RECORDER_ON_RECORD_TAB, false)
+        prefs.getBoolean(PREF_HIDE_RECORDER_ON_RECORD_TAB, true)
     )
     val hideRecorderOnRecordTab: StateFlow<Boolean> = _hideRecorderOnRecordTab
 
     // ── Hide Listen widget while on Listen tab ────────────────────────────────
 
     internal val _hidePlayerOnListenTab = MutableStateFlow(
-        prefs.getBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, false)
+        prefs.getBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, true)
     )
     val hidePlayerOnListenTab: StateFlow<Boolean> = _hidePlayerOnListenTab
 

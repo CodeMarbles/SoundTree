@@ -24,7 +24,7 @@ enum class LayoutElement(@StringRes val displayNameRes: Int) {
 
     companion object {
         val DEFAULT_ORDER: List<LayoutElement> =
-            listOf(TITLE_BAR, CONTENT, MINI_PLAYER, MINI_RECORDER, NAV)
+            listOf(MINI_PLAYER, CONTENT, MINI_RECORDER, TITLE_BAR, NAV)
 
         /**
          * Parses a comma-separated string of element names back into an ordered list.
