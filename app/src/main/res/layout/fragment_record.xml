@@ -122,18 +122,37 @@
             </LinearLayout>
 
             <!-- Input source picker button (always visible) -->
-            <ImageButton
-                android:id="@+id/btnInputSource"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:gravity="end"
-                android:padding="7dp"
-                android:src="@drawable/ic_audio_source"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:contentDescription="@string/record_btn_input_source_cd"
-                app:tint="?attr/colorTextSecondary" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageButton
+                    android:id="@+id/btnInputSource"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_audio_source"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/record_btn_input_source_cd"
+                    app:tint="?attr/colorTextSecondary" />
+
+                <TextView
+                    android:id="@+id/tvInputSourceLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/record_input_source_default"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="8sp"
+                    android:letterSpacing="0.03"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:maxWidth="64dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

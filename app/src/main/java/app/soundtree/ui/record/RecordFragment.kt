@@ -16,7 +16,11 @@ import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.CheckedTextView
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -203,6 +207,7 @@ class RecordFragment : Fragment() {
         binding.btnLockScreen.setOnClickListener { viewModel.setLocked(true) }
 
         binding.btnInputSource.setOnClickListener { showInputSourceDialog() }
+        updateInputSourceUi()
     }
 
     // ── New controls (mark extended, recording name) ──────
@@ -278,26 +283,59 @@ class RecordFragment : Fragment() {
         val currentIndex = entries.indexOf(preferredInputDevice).takeIf { it >= 0 } ?: 0
 
         val builder = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.record_dialog_input_source_title)
 
         if (isRecording) {
-            // Read-only mode: show explanatory note, selections are no-ops.
-            builder.setMessage(R.string.record_input_source_recording_note)
-            builder.setSingleChoiceItems(
-                labels.toTypedArray(),
-                currentIndex
-            ) { _, _ ->
-                // No-op: source cannot be changed mid-recording.
+            // setMessage() and setSingleChoiceItems() compete for the same content
+            // slot in MaterialAlertDialogBuilder — the message wins and the list
+            // disappears. Use a custom title view so the note sits in the title
+            // area while the list owns the content area uncontested.
+            val dp = resources.displayMetrics.density
+            val customTitle = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding((24 * dp).toInt(), (20 * dp).toInt(), (24 * dp).toInt(), (4 * dp).toInt())
+                addView(TextView(requireContext()).apply {
+                    text = getString(R.string.record_dialog_input_source_title)
+                    setTextColor(context.themeColor(R.attr.colorTextPrimary))
+                    textSize = 20f
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                })
+                addView(TextView(requireContext()).apply {
+                    text = getString(R.string.record_input_source_recording_note)
+                    setTextColor(context.themeColor(R.attr.colorTextSecondary))
+                    textSize = 14f
+                    setPadding(0, (6 * dp).toInt(), 0, 0)
+                })
             }
+            builder.setCustomTitle(customTitle)
+
+            val disabledAdapter = object : ArrayAdapter<String>(
+                requireContext(),
+                android.R.layout.simple_list_item_single_choice,
+                labels
+            ) {
+                override fun isEnabled(position: Int) = false
+
+                // override radio button colors to set them to a disabled tint
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    val view = super.getView(position, convertView, parent) as CheckedTextView
+                    val disabledColor = context.themeColor(R.attr.colorTextSecondary)
+                    view.setTextColor(disabledColor)
+                    view.checkMarkDrawable?.setTint(disabledColor)
+                    return view
+                }
+            }
+            builder.setSingleChoiceItems(disabledAdapter, currentIndex, null)
+
             builder.setPositiveButton(R.string.common_btn_close, null)
         } else {
+            builder.setTitle(R.string.record_dialog_input_source_title)
             // Interactive mode: selection updates preferredInputDevice immediately.
             builder.setSingleChoiceItems(
                 labels.toTypedArray(),
                 currentIndex
             ) { dialog, which ->
                 preferredInputDevice = entries[which]
-                updateInputSourceButtonTint()
+                updateInputSourceUi()
                 dialog.dismiss()
             }
         }
@@ -305,12 +343,18 @@ class RecordFragment : Fragment() {
         builder.show()
     }
 
-    private fun updateInputSourceButtonTint() {
-        val color = if (preferredInputDevice != null)
+    private fun updateInputSourceUi() {
+        val isNonDefault = preferredInputDevice != null
+        val color = if (isNonDefault)
             context?.themeColor(R.attr.colorAccent)
         else
             context?.themeColor(R.attr.colorTextSecondary)
-        binding.btnInputSource.imageTintList = ColorStateList.valueOf(color!!)
+        val tint = ColorStateList.valueOf(color!!)
+
+        binding.btnInputSource.imageTintList = tint
+        binding.tvInputSourceLabel.setTextColor(color)
+        binding.tvInputSourceLabel.text = preferredInputDevice?.productName?.toString()
+            ?: getString(R.string.record_input_source_default)
     }
 
 
