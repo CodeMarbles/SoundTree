@@ -24,14 +24,32 @@
         android:paddingTop="24dp"
         android:paddingBottom="10dp">
 
-        <TextView
-            android:id="@+id/tvAppIdentity"
+        <!-- Icon + app name on the same row -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="?attr/colorTextPrimary"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="2dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:id="@+id/tvAppIdentity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/ivAppIcon"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp"
+                android:src="@mipmap/ic_launcher_n8tree_mark"
+                android:contentDescription="@null" />
+
+        </LinearLayout>
+
 
         <TextView
             android:layout_width="wrap_content"

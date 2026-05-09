@@ -259,7 +259,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupHeader() {
-        binding.tvAppIdentity.text = getString(R.string.app_label_identity, getString(R.string.app_name), getString(R.string.app_emoji))
+        binding.tvAppIdentity.text = getString(R.string.app_name)
     }
 
     private fun setupRecordingRecoverySection() {
