@@ -42,7 +42,14 @@ import kotlinx.coroutines.launch
  */
 class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
-    enum class Mode { PICK, REPARENT }
+    /**
+     * PICK        — recording assignment. Null row = "📥 Unsorted". "+" visible.
+     * REPARENT    — move an existing topic. Null row = "🌳 Top level". "+" hidden.
+     * PICK_PARENT — choose a parent for a *new* topic (from NewTopicDialog).
+     *               Null row = "🌳 Top level". "+" hidden.
+     *               Same presentation as REPARENT but distinct semantics and title.
+     */
+    enum class Mode { PICK, REPARENT, PICK_PARENT }
 
     companion object {
         const val REQUEST_KEY      = "TopicPickerBottomSheet"
@@ -121,23 +128,34 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             // Hidden in REPARENT mode — the user is reorganising an existing
             // topic, not assigning a recording; adding a topic here would be
             // confusing. Show it only in PICK mode (recording assignment).
-            visibility = if (mode == Mode.REPARENT) View.GONE else View.VISIBLE
+            visibility = if (mode == Mode.PICK) View.VISIBLE else View.GONE
             setOnClickListener {
-                NewTopicDialog(parentId = null) { name, icon, color ->
-                    lifecycleScope.launch {
-                        val newId = viewModel.createTopicReturningId(name, null, icon, color)
-                        deliverResult(newId)
-                    }
-                }.show(childFragmentManager, "picker_add_topic")
+               NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
+                   lifecycleScope.launch {
+                       val newId = viewModel.createTopicReturningId(name, parentId, icon, color)
+                       deliverResult(newId)
+                   }
+               }.show(childFragmentManager, "picker_add_topic")
             }
         }
 
         // ── Mode-specific presentation ────────────────────────────────
-        if (mode == Mode.REPARENT) {
-            view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.topic_picker_title_move)
-            view.findViewById<TextView>(R.id.tvNullRowIcon).text = "🌳"
-            view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.topic_picker_label_top_level)
+        when (mode) {
+            Mode.PICK -> {
+                // Title and null-row already correct from the layout defaults.
+            }
+            Mode.REPARENT -> {
+                view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.topic_picker_title_move)
+                view.findViewById<TextView>(R.id.tvNullRowIcon).text = "🌳"
+                view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.topic_picker_label_top_level)
+            }
+            Mode.PICK_PARENT -> {
+                view.findViewById<TextView>(R.id.tvPickerTitle).setText(R.string.topic_picker_title_pick_parent)
+                view.findViewById<TextView>(R.id.tvNullRowIcon).text = "🌳"
+                view.findViewById<TextView>(R.id.tvNullRowLabel).setText(R.string.topic_picker_label_top_level)
+            }
         }
+
 
         refreshList()
     }

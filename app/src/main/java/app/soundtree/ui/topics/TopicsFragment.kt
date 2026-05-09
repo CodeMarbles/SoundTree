@@ -86,9 +86,9 @@ class TopicsFragment : Fragment() {
         }
 
         binding.fabAddTopic.setOnClickListener {
-            NewTopicDialog(parentId = null) { name, icon, color ->
-                viewModel.createTopic(name, null, icon, color)
-            }.show(childFragmentManager, "new_topic")
+           NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
+               viewModel.createTopic(name, parentId, icon, color)
+           }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {

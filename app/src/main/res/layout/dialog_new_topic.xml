@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Layout for NewTopicDialog.
+
+  Sections (top → bottom):
+    1. Icon picker  — large emoji in a circular card, tap opens EmojiPickerBottomSheet
+    2. Name field   — TextInputLayout with built-in clear-text end icon
+    3. Parent topic — full-width outlined button; text reflects selection state
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <!-- ── 1. Icon picker ──────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingBottom="24dp">
+
+        <!--
+          MaterialCardView gives us an easy circle (cornerRadius = half width)
+          with a tinted surface background. The inner TextView carries the
+          ripple so the touch feedback is visually contained inside the circle.
+        -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            app:cardCornerRadius="36dp"
+            app:cardBackgroundColor="?attr/colorSurfaceElevated"
+            app:cardElevation="0dp"
+            android:clickable="false"
+            android:focusable="false">
+
+            <TextView
+                android:id="@+id/tvTopicIcon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="36sp"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/topic_new_cd_icon_btn" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/topic_new_hint_icon"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+    <!-- ── 2. Name field ──────────────────────────────────────────── -->
+    <!--
+      endIconMode="clear_text" gives the built-in ✕ button for free —
+      no custom code needed.
+    -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilTopicName"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/topic_hint_name"
+        app:endIconMode="clear_text"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etTopicName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textCapSentences"
+            android:imeOptions="actionDone"
+            android:singleLine="true" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- ── 3. Parent topic selector ──────────────────────────────── -->
+    <!--
+      Text is set programmatically:
+        • Unset → "Parent topic (optional)"  in colorTextSecondary
+        • Set   → "{icon}  {name}"           in colorTextPrimary
+      Tapping always opens the PICK_PARENT picker; "Top level" in that
+      picker is the clear action (sets parent to null).
+    -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnParentTopic"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textAllCaps="false"
+        android:textSize="14sp"
+        app:strokeColor="?attr/colorSurfaceElevated"
+        app:cornerRadius="8dp" />
+
+</LinearLayout>

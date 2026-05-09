@@ -334,10 +334,11 @@ class TopicDetailsFragment : Fragment() {
     }
 
     private fun showHierarchyNewSubtopicDialog(parentId: Long) {
-        NewTopicDialog(parentId = parentId) { name, icon, color ->
-            viewModel.createTopic(name, parentId, icon, color)
+        NewTopicDialog(initialParentId = parentId) { name, newParentId, icon, color ->
+            viewModel.createTopic(name, newParentId, icon, color)
         }.show(childFragmentManager, "hierarchy_new_subtopic")
     }
+
 
     private fun showHierarchyMovePicker(topicId: Long) {
         pendingHierarchyReparentTopicId = topicId

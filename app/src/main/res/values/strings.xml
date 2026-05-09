@@ -87,6 +87,9 @@
     <!-- The "top level" row label shown when reparenting a topic -->
     <string name="topic_picker_label_top_level">Top level</string>
 
+    <!-- TopicPickerBottomSheet — PICK_PARENT mode title -->
+    <string name="topic_picker_title_pick_parent">Select Parent Topic</string>
+
     <!-- Inline topic tree item actions -->
     <string name="topic_btn_icon">Icon</string>
     <string name="topic_btn_details">Details</string>
@@ -95,12 +98,16 @@
     <string name="topic_action_new_subtopic">New Subtopic</string>
 
     <!-- Topic dialogs -->
-    <string name="topic_dialog_new_root_title">New Root Topic</string>
-    <string name="topic_dialog_new_subtopic_title">New Sub-topic</string>
     <string name="topic_hint_name">Topic name</string>
     <string name="topic_dialog_rename_title">Rename Topic</string>
     <string name="topic_dialog_delete_title">Delete "%1$s"?</string>
     <string name="topic_dialog_delete_message">This topic will be permanently deleted.</string>
+
+    <!-- New Topic dialog -->
+    <string name="topic_dialog_new_title">New Topic</string>
+    <string name="topic_new_hint_icon">Tap to change icon</string>
+    <string name="topic_new_btn_parent_unset">Parent topic (optional)</string>
+    <string name="topic_new_cd_icon_btn">Change topic icon</string>
 
     <!-- Content descriptions and TalkBack action labels for topic management.
          Used across the Topics tab, Details tab, and hierarchy rows —

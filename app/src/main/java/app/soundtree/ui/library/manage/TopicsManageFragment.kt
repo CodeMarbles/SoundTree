@@ -92,10 +92,11 @@ class TopicsManageFragment : Fragment() {
                 (requireParentFragment() as? LibraryFragment)?.openTopicDetails(topicId)
             },
             onNewSubtopic = { parentId ->
-                NewTopicDialog(parentId = parentId) { name, icon, color ->
-                    viewModel.createTopic(name, parentId, icon, color)
+                NewTopicDialog(initialParentId = parentId) { name, newParentId, icon, color ->
+                    viewModel.createTopic(name, newParentId, icon, color)
                 }.show(childFragmentManager, "new_subtopic")
             },
+
             onMoveClick = { topicId ->
                 pendingReparentTopicId = topicId
                 val excluded = viewModel.getTopicWithDescendantIds(topicId)
@@ -136,10 +137,11 @@ class TopicsManageFragment : Fragment() {
 
         // ── FAB: + TOPIC ──────────────────────────────────────────────
         binding.fabAddTopic.setOnClickListener {
-            NewTopicDialog(parentId = null) { name, icon, color ->
-                viewModel.createTopic(name, null, icon, color)
+            NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
+                viewModel.createTopic(name, parentId, icon, color)
             }.show(childFragmentManager, "new_topic")
         }
+
 
         // ── Observe tree items + unsorted count ───────────────────────
         viewLifecycleOwner.lifecycleScope.launch {
