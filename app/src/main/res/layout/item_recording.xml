@@ -42,6 +42,20 @@
             android:focusable="true"
             app:tint="?attr/colorAccent" />
 
+        <!-- Restart button — only visible while this row's recording is actively playing -->
+        <ImageView
+            android:id="@+id/btnInlineRestart"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_jump_prev"
+            android:padding="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            android:contentDescription="@string/recording_cd_restart"
+            app:tint="?attr/colorTextPrimary" />
+
         <!-- Topic icon — shown only when showTopicIcon=true (All Recordings context).
              Set by adapter; hidden by default to keep non-All rows clean. -->
         <TextView

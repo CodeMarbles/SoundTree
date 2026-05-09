@@ -76,7 +76,7 @@ class TopicsManageAdapter(
     private val onTopicClick:     (topicId: Long) -> Unit,
     private val onNewSubtopic:    (parentId: Long) -> Unit,
     private val onMoveClick:      (topicId: Long) -> Unit,
-    private val onRenameClick:    (topicId: Long, currentName: String) -> Unit,
+    private val onRenameClick:    (topicId: Long) -> Unit,
     private val onIconClick:      (topicId: Long) -> Unit,
     private val onDeleteClick:    (topicId: Long) -> Unit,
 ) : ListAdapter<TreeItem.Node, TopicsManageAdapter.VH>(DIFF) {
@@ -134,7 +134,7 @@ class TopicsManageAdapter(
             ivOverflow.visibility = View.VISIBLE
             ivOverflow.contentDescription =
                 itemView.context.getString(R.string.topic_cd_overflow, topic.name)
-            ivOverflow.setOnClickListener { showOptionsMenu(topic.id, topic.name, isEmpty) }
+            ivOverflow.setOnClickListener { showOptionsMenu(topic.id, isEmpty) }
 
             // ── Chevron ───────────────────────────────────────────────
             if (item.treeNode.children.isNotEmpty()) {
@@ -156,17 +156,17 @@ class TopicsManageAdapter(
 
             // ── Long press → same menu as overflow ────────────────────
             itemView.setOnLongClickListener {
-                showOptionsMenu(topic.id, topic.name, isEmpty)
+                showOptionsMenu(topic.id, isEmpty)
                 true
             }
 
             // ── Accessibility actions ─────────────────────────────────
-            setupAccessibilityActions(topic.id, topic.name, isEmpty)
+            setupAccessibilityActions(topic.id, isEmpty)
         }
 
         // ── Popup menu ────────────────────────────────────────────────
 
-        private fun showOptionsMenu(topicId: Long, topicName: String, isEmpty: Boolean) {
+        private fun showOptionsMenu(topicId: Long, isEmpty: Boolean) {
             PopupMenu(ivOverflow.context, ivOverflow).apply {
                 menuInflater.inflate(R.menu.menu_topic_options, menu)
                 menu.findItem(R.id.action_delete)?.isVisible = isEmpty
@@ -174,7 +174,7 @@ class TopicsManageAdapter(
                     when (item.itemId) {
                         R.id.action_new_subtopic -> { onNewSubtopic(topicId); true }
                         R.id.action_move         -> { onMoveClick(topicId); true }
-                        R.id.action_rename       -> { onRenameClick(topicId, topicName); true }
+                        R.id.action_rename       -> { onRenameClick(topicId); true }
                         R.id.action_icon         -> { onIconClick(topicId); true }
                         R.id.action_delete       -> { onDeleteClick(topicId); true }
                         else                     -> false
@@ -188,7 +188,6 @@ class TopicsManageAdapter(
 
         private fun setupAccessibilityActions(
             topicId: Long,
-            topicName: String,
             isEmpty: Boolean
         ) {
             val ctx = itemView.context
@@ -200,7 +199,7 @@ class TopicsManageAdapter(
             ) { _, _ -> onMoveClick(topicId); true }
             ViewCompat.addAccessibilityAction(
                 itemView, ctx.getString(R.string.topic_cd_rename)
-            ) { _, _ -> onRenameClick(topicId, topicName); true }
+            ) { _, _ -> onRenameClick(topicId); true }
             ViewCompat.addAccessibilityAction(
                 itemView, ctx.getString(R.string.topic_cd_change_icon)
             ) { _, _ -> onIconClick(topicId); true }

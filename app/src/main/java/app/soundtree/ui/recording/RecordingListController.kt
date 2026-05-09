@@ -10,6 +10,7 @@ import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.common.TopicPickerBottomSheet
 import app.soundtree.ui.moveRecording
 import app.soundtree.ui.play
+import app.soundtree.ui.seekTo
 import app.soundtree.ui.togglePlayPause
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
@@ -170,6 +171,16 @@ class RecordingListController(
             viewModel.play(rec)
             if (viewModel.autoNavigateToListen.value) navigateToListen()
         }
+    }
+
+    /**
+     * Returns the lambda passed to [RecordingsAdapter.onRestart].
+     * Seeks the active player back to position 0 — the recording is guaranteed
+     * to be now-playing at the call site since the button is only visible when
+     * isThisPlaying is true.
+     */
+    fun buildOnRestart(): (RecordingEntity) -> Unit = {
+        viewModel.seekTo(0L)
     }
 
     // ── Shared observers ──────────────────────────────────────────────────────

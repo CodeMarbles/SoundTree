@@ -71,6 +71,7 @@ class UnsortedTileFragment : Fragment() {
             onPlayPause             = recordingListController.buildOnPlayPause {
                 (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_LISTEN)
             },
+            onRestart               = recordingListController.buildOnRestart(),
             onRename                = { id, title -> viewModel.renameRecording(id, title) },
             onMoveRequested         = { recId, topicId -> recordingListController.requestMove(recId, topicId) },
             onDelete                = { rec -> viewModel.deleteRecording(rec) },

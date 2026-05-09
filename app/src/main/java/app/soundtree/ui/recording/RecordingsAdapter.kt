@@ -74,6 +74,7 @@ class RecordingsAdapter(
     private val showTopicIcon:           Boolean = false,
     private val showTopicDetails:        Boolean = false,
     private val onPlayPause:             (RecordingEntity) -> Unit,
+    private val onRestart:               (RecordingEntity) -> Unit = {},
     private val onRename:                (id: Long, newTitle: String) -> Unit,
     private val onMoveRequested:         (recordingId: Long, currentTopicId: Long?) -> Unit,
     private val onDelete:                (RecordingEntity) -> Unit,
@@ -215,6 +216,7 @@ class RecordingsAdapter(
 
     inner class RecordingVH(v: View) : RecyclerView.ViewHolder(v) {
         private val btnInlinePlay: ImageView = v.findViewById(R.id.btnInlinePlay)
+        private val btnInlineRestart: ImageView = v.findViewById(R.id.btnInlineRestart)
         private val tvTopicIcon:   TextView  = v.findViewById(R.id.tvTopicIcon)
         private val tvNewBadge:    TextView  = v.findViewById(R.id.tvNewBadge)
         private val tvTitle:       TextView  = v.findViewById(R.id.tvTitle)
@@ -262,9 +264,12 @@ class RecordingsAdapter(
                         Snackbar.LENGTH_SHORT,
                     ).show()
                 }
+                btnInlineRestart.visibility = View.GONE
                 tvNewBadge.visibility = View.GONE
             } else {
                 val isThisPlaying = rec.id == nowPlayingId && isPlaying
+                val isActiveTrack  = rec.id == nowPlayingId
+
                 btnInlinePlay.setImageResource(
                     if (isThisPlaying) R.drawable.ic_pause else R.drawable.ic_play)
                 btnInlinePlay.contentDescription = itemView.context.getString(
@@ -273,6 +278,9 @@ class RecordingsAdapter(
                     itemView.context.themeColor(R.attr.colorAccent))
                 itemView.alpha = 1f
                 btnInlinePlay.setOnClickListener { onPlayPause(rec) }
+
+                btnInlineRestart.visibility = if (isActiveTrack) View.VISIBLE else View.GONE
+                btnInlineRestart.setOnClickListener { onRestart(rec) }
 
                 val isNew = System.currentTimeMillis() - rec.dbInsertedAt < NEW_THRESHOLD_MS
                 tvNewBadge.visibility = if (isNew) View.VISIBLE else View.GONE

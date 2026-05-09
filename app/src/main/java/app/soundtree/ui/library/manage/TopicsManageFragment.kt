@@ -110,7 +110,7 @@ class TopicsManageFragment : Fragment() {
                     mode            = TopicPickerBottomSheet.Mode.REPARENT
                 ).show(childFragmentManager, "reparent_picker")
             },
-            onRenameClick = { topicId, currentName ->
+            onRenameClick = { topicId ->
                 showRenameDialog(topicId)
             },
             onIconClick = { topicId ->
