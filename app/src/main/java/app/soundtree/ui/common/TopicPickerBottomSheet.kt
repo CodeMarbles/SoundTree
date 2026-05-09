@@ -130,12 +130,12 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             // confusing. Show it only in PICK mode (recording assignment).
             visibility = if (mode == Mode.PICK) View.VISIBLE else View.GONE
             setOnClickListener {
-               NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
-                   lifecycleScope.launch {
-                       val newId = viewModel.createTopicReturningId(name, parentId, icon, color)
-                       deliverResult(newId)
-                   }
-               }.show(childFragmentManager, "picker_add_topic")
+                NewTopicDialog(mode = NewTopicDialog.Mode.CREATE) { name, parentId, icon, color ->
+                    lifecycleScope.launch {
+                        val newId = viewModel.createTopicReturningId(name, parentId, icon, color)
+                        deliverResult(newId)
+                    }
+                }.show(childFragmentManager, "picker_add_topic")
             }
         }
 

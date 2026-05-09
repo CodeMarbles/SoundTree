@@ -86,7 +86,7 @@ class TopicsFragment : Fragment() {
         }
 
         binding.fabAddTopic.setOnClickListener {
-           NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
+           NewTopicDialog(mode = NewTopicDialog.Mode.CREATE) { name, parentId, icon, color ->
                viewModel.createTopic(name, parentId, icon, color)
            }
         }

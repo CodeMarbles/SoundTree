@@ -212,28 +212,13 @@ class TopicDetailsFragment : Fragment() {
 
     private fun showRenameTopicDialog() {
         val topic = currentTopic ?: return
-        val editText = EditText(requireContext()).apply {
-            setText(topic.name)
-            selectAll()
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setSingleLine()
-        }
-        val padding = (20 * resources.displayMetrics.density).toInt()
-        val container = FrameLayout(requireContext()).apply {
-            setPadding(padding, 0, padding, 0)
-            addView(editText)
-        }
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.topic_dialog_rename_title)
-            .setView(container)
-            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
-                val newName = editText.text.toString().trim()
-                if (newName.isNotEmpty() && newName != topic.name) {
-                    viewModel.updateTopic(topic.copy(name = newName))
-                }
-            }
-            .setNegativeButton(R.string.common_btn_cancel, null)
-            .show()
+        NewTopicDialog(
+            mode        = NewTopicDialog.Mode.RENAME,
+            initialName = topic.name,
+            initialIcon = topic.icon,
+        ) { name, _, icon, color ->
+            viewModel.updateTopic(topic.copy(name = name, icon = icon, color = color))
+        }.show(childFragmentManager, "rename_topic")
     }
 
     // ── Rendering ─────────────────────────────────────────────────────
@@ -323,7 +308,7 @@ class TopicDetailsFragment : Fragment() {
                 when (item.itemId) {
                     R.id.action_new_subtopic -> { showHierarchyNewSubtopicDialog(topicId); true }
                     R.id.action_move         -> { showHierarchyMovePicker(topicId); true }
-                    R.id.action_rename       -> { showHierarchyRenameDialog(topicId, topicName); true }
+                    R.id.action_rename       -> { showHierarchyRenameDialog(topicId); true }
                     R.id.action_icon         -> { showHierarchyIconPicker(topicId); true }
                     R.id.action_delete       -> { showHierarchyDeleteDialog(topicId, topicName); true }
                     else                     -> false
@@ -334,7 +319,10 @@ class TopicDetailsFragment : Fragment() {
     }
 
     private fun showHierarchyNewSubtopicDialog(parentId: Long) {
-        NewTopicDialog(initialParentId = parentId) { name, newParentId, icon, color ->
+        NewTopicDialog(
+            mode            = NewTopicDialog.Mode.CREATE,
+            initialParentId = parentId,
+        ) { name, newParentId, icon, color ->
             viewModel.createTopic(name, newParentId, icon, color)
         }.show(childFragmentManager, "hierarchy_new_subtopic")
     }
@@ -351,26 +339,15 @@ class TopicDetailsFragment : Fragment() {
         ).show(childFragmentManager, "hierarchy_reparent_picker")
     }
 
-    private fun showHierarchyRenameDialog(topicId: Long, currentName: String) {
-        val ctx = requireContext()
-        val input = EditText(ctx).apply {
-            setText(currentName)
-            selectAll()
-            setPadding(48, 24, 48, 8)
-        }
-        AlertDialog.Builder(ctx)
-            .setTitle(R.string.topic_dialog_rename_title)
-            .setView(input)
-            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
-                val newName = input.text.toString().trim()
-                val topic = viewModel.allTopics.value.find { it.id == topicId }
-                    ?: return@setPositiveButton
-                if (newName.isNotEmpty() && newName != topic.name) {
-                    viewModel.updateTopic(topic.copy(name = newName))
-                }
-            }
-            .setNegativeButton(R.string.common_btn_cancel, null)
-            .show()
+    private fun showHierarchyRenameDialog(topicId: Long) {
+        val topic = viewModel.allTopics.value.find { it.id == topicId } ?: return
+        NewTopicDialog(
+            mode        = NewTopicDialog.Mode.RENAME,
+            initialName = topic.name,
+            initialIcon = topic.icon,
+        ) { name, _, icon, color ->
+            viewModel.updateTopic(topic.copy(name = name, icon = icon, color = color))
+        }.show(childFragmentManager, "hierarchy_rename_topic")
     }
 
     private fun showHierarchyIconPicker(topicId: Long) {
@@ -607,7 +584,7 @@ class TopicDetailsFragment : Fragment() {
                     showHierarchyMovePicker(topicId); true
                 }
                 ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_rename)) { _, _ ->
-                    showHierarchyRenameDialog(topicId, name); true
+                    showHierarchyRenameDialog(topicId); true
                 }
                 ViewCompat.addAccessibilityAction(row, getString(R.string.topic_cd_change_icon)) { _, _ ->
                     showHierarchyIconPicker(topicId); true

@@ -92,7 +92,10 @@ class TopicsManageFragment : Fragment() {
                 (requireParentFragment() as? LibraryFragment)?.openTopicDetails(topicId)
             },
             onNewSubtopic = { parentId ->
-                NewTopicDialog(initialParentId = parentId) { name, newParentId, icon, color ->
+                NewTopicDialog(
+                    mode            = NewTopicDialog.Mode.CREATE,
+                    initialParentId = parentId,
+                ) { name, newParentId, icon, color ->
                     viewModel.createTopic(name, newParentId, icon, color)
                 }.show(childFragmentManager, "new_subtopic")
             },
@@ -108,7 +111,7 @@ class TopicsManageFragment : Fragment() {
                 ).show(childFragmentManager, "reparent_picker")
             },
             onRenameClick = { topicId, currentName ->
-                showRenameDialog(topicId, currentName)
+                showRenameDialog(topicId)
             },
             onIconClick = { topicId ->
                 EmojiPickerBottomSheet { emoji ->
@@ -137,10 +140,11 @@ class TopicsManageFragment : Fragment() {
 
         // ── FAB: + TOPIC ──────────────────────────────────────────────
         binding.fabAddTopic.setOnClickListener {
-            NewTopicDialog(initialParentId = null) { name, parentId, icon, color ->
+            NewTopicDialog(mode = NewTopicDialog.Mode.CREATE) { name, parentId, icon, color ->
                 viewModel.createTopic(name, parentId, icon, color)
             }.show(childFragmentManager, "new_topic")
         }
+
 
 
         // ── Observe tree items + unsorted count ───────────────────────
@@ -165,31 +169,15 @@ class TopicsManageFragment : Fragment() {
 
     // ── Rename dialog ──────────────────────────────────────────────────
 
-    private fun showRenameDialog(topicId: Long, currentName: String) {
-        val editText = EditText(requireContext()).apply {
-            setText(currentName)
-            selectAll()
-            setSingleLine()
-        }
-        val padding = (20 * resources.displayMetrics.density).toInt()
-        val container = FrameLayout(requireContext()).apply {
-            setPadding(padding, 0, padding, 0)
-            addView(editText)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.topic_dialog_rename_title)
-            .setView(container)
-            .setPositiveButton(R.string.common_btn_ok) { _, _ ->
-                val newName = editText.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
-                        ?: return@setPositiveButton
-                    viewModel.updateTopic(topic.copy(name = newName))
-                }
-            }
-            .setNegativeButton(R.string.common_btn_cancel, null)
-            .show()
+    private fun showRenameDialog(topicId: Long) {
+        val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId } ?: return
+        NewTopicDialog(
+            mode        = NewTopicDialog.Mode.RENAME,
+            initialName = topic.name,
+            initialIcon = topic.icon,
+        ) { name, _, icon, color ->
+            viewModel.updateTopic(topic.copy(name = name, icon = icon, color = color))
+        }.show(childFragmentManager, "rename_topic")
     }
 
     override fun onDestroyView() {
