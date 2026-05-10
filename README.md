@@ -1,6 +1,7 @@
 # SoundTree
 
-**A personal podcast recorder and organiser for Android.**  
+**A personal audio recorder and organiser for Android.**
+
 Record audio, sort it into a hierarchical topic tree, mark moments, and play it back — entirely on-device, with no accounts, no cloud, and no tracking.
 
 > Licensed under [GPL-3.0](LICENSE)
