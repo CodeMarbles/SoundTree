@@ -1,4 +1,4 @@
-SoundTree is a personal podcast recorder and audio organiser for Android. Everything stays on your device — no accounts, no cloud, no tracking, and no network permission at all.
+SoundTree is a personal audio recorder and organiser. Everything stays on your device — no accounts, no cloud, no tracking, and no network permission at all.
 
 RECORDING
 

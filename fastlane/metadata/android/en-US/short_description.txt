@@ -1,1 +1,1 @@
-On-device podcast recorder with topic organisation, marks, and waveforms.
+Audio recorder with topic organisation, marks, and waveforms.

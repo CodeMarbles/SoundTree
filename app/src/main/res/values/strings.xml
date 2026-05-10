@@ -295,7 +295,7 @@
          ══════════════════════════════════════════════════════════════ -->
 
     <!-- Header (always-visible, above tab bar) -->
-    <string name="settings_label_tagline">Personal podcast · voice journal</string>
+    <string name="settings_label_tagline">Audio recorder · voice journal</string>
 
     <!-- Tab bar -->
     <string name="settings_tab_display">Display</string>
