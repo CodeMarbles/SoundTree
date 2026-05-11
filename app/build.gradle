@@ -6,9 +6,11 @@ plugins {
     id 'androidx.room'
 }
 
+// these values used to be used to compute the version name and code, but release to F-Droid requires that those values be set instead of computed
+// these guide values are kept for consistency and should be updated with every newly released version to be consistent with version code and name below
 def major = 0
 def minor = 9
-def patch = 18
+def patch = 19
 
 room {
     schemaDirectory "$projectDir/schemas"
@@ -21,8 +23,13 @@ android {
     defaultConfig {
         applicationId "app.soundtree"
         minSdk 28
-        versionCode major * 1_000_000 + minor * 1_000 + patch
-        versionName "${major}.${minor}.${patch}"
+
+        // version code = major * 1_000_000 + minor * 1_000 + patch
+        // This used to be computed but F-Droid's version parser works off the text of this file
+        versionCode 9019
+
+        // version name also used to be computed but now needs to be explicit: "${major}.${minor}.${patch}"
+        versionName "0.9.19"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
