@@ -24,6 +24,7 @@ import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.worker.WaveformWorker
 import app.soundtree.R
 import app.soundtree.util.RecordingFileHelper
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -198,9 +199,23 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             pendingPickerIndex = -1
             val item = items[idx] as? Item.Playable ?: return@setFragmentResultListener
             item.selectedTopicId = topicId
-            val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
-            val label = if (topic != null) "${topic.icon}  ${topic.name}" else "📥  Unsorted"
-            adapter.notifyItemChanged(idx, label)
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                // If topicId is null (Unsorted), we don't need to wait for anything.
+                val label = if (topicId == null) {
+                    "📥  Unsorted"
+                } else {
+                    // Wait until allTopics contains the new topic — it may not be
+                    // in the StateFlow yet if this result arrived before Room's
+                    // insert propagated (e.g. when the user created a new topic
+                    // from the picker's + button).
+                    val topic = viewModel.allTopics
+                        .first { topics -> topics.any { it.id == topicId } }
+                        .first { it.id == topicId }
+                    "${topic.icon}  ${topic.name}"
+                }
+                adapter.notifyItemChanged(idx, label)
+            }
         }
     }
 
