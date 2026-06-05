@@ -10,7 +10,7 @@ plugins {
 // these guide values are kept for consistency and should be updated with every newly released version to be consistent with version code and name below
 def major = 0
 def minor = 9
-def patch = 22
+def patch = 23
 
 room {
     schemaDirectory "$projectDir/schemas"
@@ -26,10 +26,10 @@ android {
 
         // version code = major * 1_000_000 + minor * 1_000 + patch
         // This used to be computed but F-Droid's version parser works off the text of this file
-        versionCode 9022
+        versionCode 9023
 
         // version name also used to be computed but now needs to be explicit: "${major}.${minor}.${patch}"
-        versionName "0.9.22"
+        versionName "0.9.23"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
