@@ -121,6 +121,39 @@
 
             </LinearLayout>
 
+            <!-- Passthrough monitor button -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageButton
+                    android:id="@+id/btnPassthrough"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="5dp"
+                    android:src="@drawable/ic_headphones"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/record_btn_passthrough_cd" />
+
+                <TextView
+                    android:id="@+id/tvPassthroughLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/record_passthrough_off"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="8sp"
+                    android:letterSpacing="0.03"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:maxWidth="64dp" />
+
+            </LinearLayout>
+
+
             <!-- Input source picker button (always visible) -->
             <LinearLayout
                 android:layout_width="wrap_content"

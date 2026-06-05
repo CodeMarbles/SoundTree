@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_passthrough_device.xml
+  One row in the PassthroughDialogFragment device list.
+
+  Layout (horizontal, gravity center_vertical):
+    [checkbox]  [device name + subtitle]  [auto-enable mini-toggle area]
+
+  The auto-enable row (tvAutoEnable + switchAutoEnable) is always visible so
+  the user can configure it for disconnected devices too. The checkbox is
+  disabled (not clickable) when the device is disconnected, but the auto-enable
+  toggle remains active.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="10dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Selected checkbox -->
+    <androidx.appcompat.widget.AppCompatCheckBox
+        android:id="@+id/checkSelected"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:clickable="false"
+        android:focusable="false" />
+
+    <!-- Device name + subtitle + auto-enable row -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvDeviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvDeviceSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:layout_marginTop="1dp" />
+
+        <!-- Auto-enable row: label + switch, always visible -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchAutoEnable"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tvAutoEnable"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/passthrough_dialog_auto_enable"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

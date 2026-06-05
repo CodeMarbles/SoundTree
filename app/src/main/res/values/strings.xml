@@ -157,6 +157,24 @@
     <!-- Content description for the always-visible mic source button -->
     <string name="record_btn_input_source_cd">Microphone input source</string>
 
+    <!-- Audio passthrough -->
+    <string name="record_btn_passthrough_cd">Audio passthrough</string>
+    <string name="record_passthrough_off">Off</string>
+    <string name="record_passthrough_armed">Armed</string>
+    <string name="record_passthrough_no_output">No output</string>
+    <string name="record_passthrough_n_devices">%d devices</string>
+
+    <!-- Audio passthrough dialog -->
+    <string name="passthrough_dialog_title">Audio passthrough</string>
+    <string name="passthrough_dialog_section_output">Output devices</string>
+    <string name="passthrough_dialog_auto_enable">Enable automatically when connected</string>
+    <string name="passthrough_dialog_callout">Disconnected devices can\'t receive audio. Auto-enable will activate passthrough when they reconnect.</string>
+    <string name="passthrough_device_type_wired">Wired</string>
+    <string name="passthrough_device_type_bluetooth">Bluetooth</string>
+    <string name="passthrough_device_type_usb">USB</string>
+    <string name="passthrough_device_not_connected">not connected</string>
+    <string name="passthrough_dialog_enabled_label">Enabled</string>
+
     <!-- Dialog title -->
     <string name="record_dialog_input_source_title">Input Source</string>
 

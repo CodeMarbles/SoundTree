@@ -1,7 +1,11 @@
 package app.soundtree.service
 
 import android.annotation.SuppressLint
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,23 +21,29 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import app.soundtree.R
-import app.soundtree.service.RecordingService.StopResult
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainActivity
+import app.soundtree.util.PassthroughPreferences
 import app.soundtree.util.RecordingFileHelper
 import app.soundtree.util.RecordingTitleHelper
 import app.soundtree.util.buildTopicArtwork
 import app.soundtree.util.parseColorSafe
 import app.soundtree.worker.WaveformWorker
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 /**
  * Foreground service that manages audio recording via MediaRecorder.
@@ -142,6 +152,17 @@ class RecordingService : Service() {
     // so stale BT device handles from a previous session can't leak forward.
     private var preferredInputDevice: AudioDeviceInfo? = null
 
+    // Manages real-time audio passthrough (AudioRecord → AudioTrack loop).
+    // Lazy so audioManager is guaranteed initialised before first use.
+    val passthroughManager: PassthroughManager by lazy {
+        PassthroughManager(
+            audioManager  = audioManager,
+            prefs         = PassthroughPreferences(this),
+            serviceScope  = serviceScope,
+        )
+    }
+
+
     private var currentFilePath: String? = null
     private var startTimeMs: Long = 0L
     private var accumulatedMs: Long = 0L
@@ -177,6 +198,28 @@ class RecordingService : Service() {
     fun setPreferredInputDevice(device: AudioDeviceInfo?) {
         preferredInputDevice = device
     }
+
+    fun getPreferredInputDevice(): AudioDeviceInfo? = preferredInputDevice
+
+    // ── Audio Passthrough ──────────────────────────────────────────────
+
+    /**
+     * Toggles passthrough armed state (maps to the long-press gesture on the
+     * header button).  Delegates to [PassthroughManager] which owns the state
+     * machine and persists the new value.
+     */
+    fun togglePassthrough() {
+        passthroughManager.toggleArmed(preferredInputDevice)
+    }
+
+    /**
+     * Updates persisted output device selection from the passthrough dialog.
+     * Safe to call while recording or idle.
+     */
+    fun setPassthroughDevicePrefs(key: String, selected: Boolean, autoEnable: Boolean) {
+        passthroughManager.setDevicePrefs(key, selected, autoEnable, preferredInputDevice)
+    }
+
 
     // ── Storage ───────────────────────────────────────────────────────
     /**
@@ -233,6 +276,7 @@ class RecordingService : Service() {
         mediaSessionCompat = MediaSessionCompat(this, "SoundTreeRecording").also {
             it.isActive = true
         }
+        passthroughManager.onCreate()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -262,6 +306,7 @@ class RecordingService : Service() {
     override fun onDestroy() {
 //        Log.w("TC_DEBUG", "RecordingService.onDestroy() called — state was ${_state.value}")
         stopRecording()
+        passthroughManager.onDestroy()
         serviceScope.cancel()
 
         mediaSessionCompat?.release()
@@ -406,6 +451,8 @@ class RecordingService : Service() {
         _state.value  = State.RECORDING
         updateNotification(getString(R.string.notif_record_status_recording))
         mainHandler.post(amplitudeRunnable)
+
+        passthroughManager.onRecordingStarted(preferredInputDevice)
     }
 
 
@@ -431,6 +478,7 @@ class RecordingService : Service() {
         // Cancel any pending SCO timeout and clean up SCO resources.
         mainHandler.removeCallbacks(scoTimeoutRunnable)
         unregisterScoReceiver()
+        passthroughManager.onRecordingStopped()
         if (scoActive) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 audioManager.clearCommunicationDevice()

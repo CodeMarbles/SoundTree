@@ -75,6 +75,10 @@
     <color name="amber_960">#342200</color>
     <color name="amber_980">#261A00</color>
 
+    <!-- todo move this appropriately -->
+    <color name="passthrough_active">#00BFA5</color>
+    <color name="passthrough_warning">#FFB300</color>
+
     <!-- Status greens / oranges -->
     <color name="orange_600">#FFA726</color>
     <color name="green_100">#C8E6C9</color>   <!-- light: soft mint pill background -->

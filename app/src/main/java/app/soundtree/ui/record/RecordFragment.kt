@@ -34,6 +34,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import app.soundtree.R
 import app.soundtree.databinding.FragmentRecordBinding
+import app.soundtree.service.PassthroughManager
 import app.soundtree.service.RecordingService
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
@@ -95,7 +96,7 @@ class RecordFragment : Fragment() {
     private var preferredInputDevice: AudioDeviceInfo? = null
 
     // ── Recording service ─────────────────────────────────────────────
-    private var recordingService: RecordingService? = null
+    internal var recordingService: RecordingService? = null
     private var isBound = false
     private var pendingQuickRecord = false
 
@@ -208,6 +209,16 @@ class RecordFragment : Fragment() {
 
         binding.btnInputSource.setOnClickListener { showInputSourceDialog() }
         updateInputSourceUi()
+
+        binding.btnPassthrough.setOnClickListener {
+            PassthroughDialogFragment().show(childFragmentManager, PassthroughDialogFragment.TAG)
+        }
+
+        binding.btnPassthrough.setOnLongClickListener {
+            recordingService?.togglePassthrough()
+            true
+        }
+
     }
 
     // ── New controls (mark extended, recording name) ──────
@@ -658,6 +669,13 @@ class RecordFragment : Fragment() {
                         binding.waveformView.pushAmplitude(amp)
                     }
                 }
+
+                launch {
+                    svc.passthroughManager.state.collect { state ->
+                        updatePassthroughButton(state)
+                    }
+                }
+
             }
         }
     }
@@ -695,6 +713,7 @@ class RecordFragment : Fragment() {
     private fun toDp(pixels: Float): Int {
         return (pixels * resources.displayMetrics.density).toInt()
     }
+
     private fun updateUiForState(state: RecordingService.State) {
         when (state) {
             RecordingService.State.IDLE -> {
@@ -775,6 +794,36 @@ class RecordFragment : Fragment() {
             }
         }
     }
+
+    private fun updatePassthroughButton(state: PassthroughManager.State) {
+        val context = context ?: return
+        val (color, label) = when (state) {
+            is PassthroughManager.State.Idle -> {
+                context.themeColor(R.attr.colorTextSecondary) to
+                        getString(R.string.record_passthrough_off)
+            }
+            is PassthroughManager.State.Armed -> {
+                context.themeColor(R.attr.colorAccent) to
+                        getString(R.string.record_passthrough_armed)
+            }
+            is PassthroughManager.State.Active -> {
+                context.getColor(R.color.teal_a700) to
+                        when (state.activeDeviceNames.size) {
+                            1    -> state.activeDeviceNames.first()
+                            else -> getString(R.string.record_passthrough_n_devices, state.activeDeviceNames.size)
+                        }
+            }
+            is PassthroughManager.State.NoOutput -> {
+                context.getColor(R.color.orange_600) to
+                        getString(R.string.record_passthrough_no_output)
+            }
+        }
+        val tint = ColorStateList.valueOf(color)
+        binding.btnPassthrough.imageTintList = tint
+        binding.tvPassthroughLabel.setTextColor(color)
+        binding.tvPassthroughLabel.text = label
+    }
+
 
     // ── Mark extended controls ────────────────────────────────────────
     private fun showMarkControls() {
