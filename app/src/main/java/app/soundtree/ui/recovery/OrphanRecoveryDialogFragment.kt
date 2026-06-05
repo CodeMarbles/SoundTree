@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
@@ -24,7 +25,10 @@ import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.worker.WaveformWorker
 import app.soundtree.R
 import app.soundtree.util.RecordingFileHelper
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -109,6 +113,8 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
     /** Absolute path of the file currently loaded into [mediaPlayer], or null. */
     private var currentlyPlayingPath: String? = null
+
+    private var scrubTickerJob: Job? = null
 
     // ── Dialog window setup ───────────────────────────────────────────
 
@@ -289,9 +295,26 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
         }
         currentlyPlayingPath = path
         onStarted()
+        startScrubTicker(path)
+    }
+
+    private fun startScrubTicker(path: String) {
+        scrubTickerJob?.cancel()
+        scrubTickerJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                val player = mediaPlayer ?: break
+                if (currentlyPlayingPath != path) break
+                adapter.updateScrubPosition(path, player.currentPosition.toLong())
+                delay(200L)
+            }
+        }
     }
 
     private fun stopPreview() {
+        scrubTickerJob?.cancel()
+        scrubTickerJob = null
+        // Reset scrub on whatever was playing before clearing the path
+        currentlyPlayingPath?.let { adapter.updateScrubPosition(it, -1L) }
         mediaPlayer?.runCatching { stop(); release() }
         mediaPlayer = null
         currentlyPlayingPath = null
@@ -348,6 +371,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
         private val TYPE_PLAYABLE = 0
         private val TYPE_CORRUPT  = 1
+        private val PAYLOAD_SCRUB = "scrub"
 
         override fun getItemCount(): Int = items.size
         override fun getItemViewType(position: Int): Int =
@@ -368,18 +392,31 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
             }
         }
 
+        /** posMs == -1 signals "stop and hide the scrub bar". */
+        fun updateScrubPosition(path: String, posMs: Long) {
+            val idx = items.indexOfFirst { it is Item.Playable && it.file.absolutePath == path }
+            if (idx >= 0) notifyItemChanged(idx, PAYLOAD_SCRUB to posMs)
+        }
+
         override fun onBindViewHolder(
             holder: RecyclerView.ViewHolder,
             position: Int,
             payloads: List<Any>,
         ) {
             if (payloads.isNotEmpty() && holder is PlayableVH) {
-                (payloads.first() as? String)?.let { label ->
-                    holder.itemView.findViewById<MaterialButton>(
-                        R.id.btnPickTopic
-                    )?.text = label
+                val first = payloads.first()
+                // Existing topic-label payload
+                if (first is String) {
+                    holder.itemView.findViewById<MaterialButton>(R.id.btnPickTopic)?.text = first
+                    return
                 }
-                return
+                // New scrub-position payload
+                @Suppress("UNCHECKED_CAST")
+                (first as? Pair<String, Long>)?.let { (_, posMs) ->
+                    val item = items[position] as? Item.Playable ?: return
+                    holder.updateScrub(item.durationMs, posMs)
+                    return
+                }
             }
             super.onBindViewHolder(holder, position, payloads)
         }
@@ -388,6 +425,8 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
     // ── ViewHolders ────────────────────────────────────────────────────
 
     private inner class PlayableVH(view: View) : RecyclerView.ViewHolder(view) {
+        private val scrubBar = itemView.findViewById<SeekBar>(R.id.scrubBar)
+
         fun bind(item: Item.Playable, index: Int) {
             val btnPlay    = itemView.findViewById<ImageView>(R.id.btnPlay)
             val tvDuration = itemView.findViewById<TextView>(R.id.tvDuration)
@@ -431,6 +470,31 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
             btnDelete.setOnClickListener  { onDelete(index) }
             btnRecover.setOnClickListener { item.editedTitle = etTitle.text.toString(); onRecover(index) }
+
+            // ── Scrub bar initial state ────────────────────────────────
+            updateScrub(item.durationMs, if (isPlaying) mediaPlayer?.currentPosition?.toLong() ?: 0L else -1L)
+
+            scrubBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                    if (fromUser) mediaPlayer?.seekTo(progress)
+                }
+                override fun onStartTrackingTouch(bar: SeekBar) {}
+                override fun onStopTrackingTouch(bar: SeekBar) {}
+            })
+        }
+
+        /** posMs == -1 → hide the bar and reset. */
+        fun updateScrub(durationMs: Long, posMs: Long) {
+            if (posMs < 0L || durationMs <= 0L) {
+                scrubBar.visibility = View.GONE
+                scrubBar.progress = 0
+                itemView.findViewById<ImageView>(R.id.btnPlay)
+                    .setImageResource(R.drawable.ic_play)
+                return
+            }
+            scrubBar.visibility = View.VISIBLE
+            scrubBar.max = durationMs.toInt()
+            scrubBar.progress = posMs.toInt().coerceIn(0, durationMs.toInt())
         }
     }
 

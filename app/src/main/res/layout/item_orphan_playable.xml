@@ -49,6 +49,17 @@
 
     </LinearLayout>
 
+    <!-- Scrub bar — visible only while this item is playing -->
+    <SeekBar
+        android:id="@+id/scrubBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-4dp"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone"
+        android:progressTint="?attr/colorAccent"
+        android:progressBackgroundTint="?attr/colorSurfaceElevated" />
+
     <!-- File path (debug / triage aid) -->
     <TextView
         android:id="@+id/tvFilePath"
