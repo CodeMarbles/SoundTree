@@ -1,25 +1,13 @@
-SoundTree is a personal audio recorder and organiser. Everything stays on your device — no accounts, no cloud, no tracking, and no network permission at all.
+SoundTree is a personal audio recorder and organizer with an emphasis on bookmarks.
 
-RECORDING
+Everything stays on your device - no accounts, no cloud, no tracking, and
+no network permission at all.
 
-Record high-quality M4A audio with a live scrolling waveform so you always know the microphone is active. Pause and resume without starting a new file. Save from the notification while your screen is locked. Choose your input source (built-in mic, wired headset, or Bluetooth) at any time.
+Record high-quality M4A audio with a live scrolling waveform, pause and
+resume without starting a new file, and save from the notification while
+your screen is locked. Drop marks during recording or playback to flag
+moments worth revisiting. Sort recordings into a hierarchical topic tree,
+nested as deeply as you like. Back up automatically to an external drive
+or USB device.
 
-MARKS
-
-Drop a mark into a recording with one tap — during recording or playback — to flag a moment worth revisiting. Nudge marks backward or forward to fine-tune their position, and jump between them instantly with previous/next buttons.
-
-ORGANISATION
-
-Sort recordings into a hierarchical topic tree — nested as deeply as you like. The inbox catches anything unsorted so nothing gets lost. Each topic has an emoji icon, collapsible branches, and a details page showing its recording count, total duration, and full ancestor hierarchy.
-
-WAVEFORMS
-
-Every recording gets a multi-line waveform showing the shape of the whole audio at a glance. Three visual styles are available: Standard, Sky, and SkyLights. Waveform data is cached on disk and loads instantly on every open.
-
-PLAYBACK
-
-Variable speed from 0.25× to 4× with one-tap presets and a fine-tune slider. Configurable skip-back and skip-forward durations. SoundTree remembers where you stopped, with a smart near-end reset so you never tap play and hear two seconds before it stops.
-
-BACKUPS
-
-Automatically back up to an external drive or USB device — on connect, on a schedule, or both. The backup log tracks exactly how many audio files, metadata files, and waveforms were copied, skipped, or failed on each run. Restore support is coming in a future release.
+Also supports audio-passthrough to earphones for monitoring audio inputs.

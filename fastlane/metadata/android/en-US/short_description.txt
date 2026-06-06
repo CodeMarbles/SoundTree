@@ -1,1 +1,1 @@
-Audio recorder with topic organisation, marks, and waveforms.
+Audio recorder with topic organization, marks, and page-like waveforms.
