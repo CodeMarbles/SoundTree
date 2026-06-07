@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -24,6 +25,13 @@
         firing until the user opens the app again.
     -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Claude hypothesizes that the app inherits network access permissions from
+         Media3 as that component supports streaming from network sources.  The app
+         itself doesn't require or desire that permission so remove it explicitly. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <!-- Declares microphone usage context for AppOps attribution (API 31+) -->
     <attribution android:tag="microphone" android:label="@string/app_name" />
