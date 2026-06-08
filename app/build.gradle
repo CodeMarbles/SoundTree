@@ -1,6 +1,7 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
     id 'kotlin-parcelize'
     id 'androidx.room'
@@ -9,8 +10,8 @@ plugins {
 // these values used to be used to compute the version name and code, but release to F-Droid requires that those values be set instead of computed
 // these guide values are kept for consistency and should be updated with every newly released version to be consistent with version code and name below
 def major = 0
-def minor = 9
-def patch = 25
+def minor = 10
+def patch = 0
 
 room {
     schemaDirectory "$projectDir/schemas"
@@ -26,10 +27,10 @@ android {
 
         // version code = major * 1_000_000 + minor * 1_000 + patch
         // This used to be computed but F-Droid's version parser works off the text of this file
-        versionCode 9025
+        versionCode 10000
 
         // version name also used to be computed but now needs to be explicit: "${major}.${minor}.${patch}"
-        versionName "0.9.25"
+        versionName "0.10.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,15 +48,23 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_17
+        }
     }
     buildFeatures {
         viewBinding true
         buildConfig true
+    }
+    // Strip timestamps from the APK zip entries for reproducibility
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 
