@@ -133,10 +133,6 @@ class LibraryFragment : Fragment() {
 
     // ── Public API ────────────────────────────────────────────────────
 
-    fun navigateToTopics() {
-        binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
-    }
-
     /**
      * Called by TopicsManageFragment when the user taps DETAILS on a topic row.
      * Sets the selected topic in the ViewModel, enables the Details tab,
@@ -159,8 +155,16 @@ class LibraryFragment : Fragment() {
         // Stay on PAGE_DETAILS; TopicDetailsFragment observes the ID and re-renders.
     }
 
+    fun navigateToAll() {
+        binding.tilePager.setCurrentItem(PAGE_ALL, true)
+    }
+
     fun navigateToUnsorted() {
         binding.tilePager.setCurrentItem(PAGE_UNSORTED, true)
+    }
+
+    fun navigateToTopics() {
+        binding.tilePager.setCurrentItem(PAGE_TOPICS, true)
     }
 
     /**

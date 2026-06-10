@@ -214,10 +214,22 @@ class MainActivity : AppCompatActivity() {
         libraryFragment?.openTopicDetails(topicId)
     }
 
+    fun navigateToLibraryAll() {
+        navigateTo(PAGE_LIBRARY)
+        libraryFragment?.enteredFromExternalTab = true
+        libraryFragment?.navigateToAll()
+    }
+
     fun navigateToLibraryUnsorted() {
         navigateTo(PAGE_LIBRARY)
         libraryFragment?.enteredFromExternalTab = true
         libraryFragment?.navigateToUnsorted()
+    }
+
+    fun navigateToLibraryTopics() {
+        navigateTo(PAGE_LIBRARY)
+        libraryFragment?.enteredFromExternalTab = true
+        libraryFragment?.navigateToTopics()
     }
 
     fun setTopTitle(title: String) {

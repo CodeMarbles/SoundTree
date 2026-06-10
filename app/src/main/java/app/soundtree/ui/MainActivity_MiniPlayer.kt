@@ -257,19 +257,22 @@ internal fun MainActivity.setupMiniPlayerMinimize() {
     )
 
     // ── Pill tap ──────────────────────────────────────────────────────────
-    //  • NEVER mode  → navigate to Listen tab (pill acts as a shortcut)
-    //  • Other modes → restore widget; set override so it survives tab suppression
     pill.pillPlayer.setOnClickListener {
         when {
-            // NEVER mode — pill is always a shortcut to the tab
+            // NEVER mode — pill is a shortcut; route by selection state
             viewModel.playerWidgetVisibility.value == PlayerWidgetVisibility.NEVER -> {
-                navigateTo(PAGE_LISTEN)
+                navigatePlayerPillTarget()
             }
-            // Widget is currently visible → navigate to tab
+            // Nothing selected — an empty player widget is useless, so navigate
+            // to the browse destination so the user can pick something to play.
+            viewModel.nowPlaying.value == null -> {
+                navigatePlayerPillTarget()
+            }
+            // Widget currently visible → navigate to the full Listen view
             isPlayerWidgetVisible() -> {
                 navigateTo(PAGE_LISTEN)
             }
-            // Widget is hidden (minimized, suppressed, or no content yet) → show it
+            // Widget hidden but a recording IS loaded → expand it
             else -> {
                 viewModel.setPlayerHideOverriddenThisVisit(true)
                 viewModel.setPlayerPillMinimized(false)
@@ -367,6 +370,20 @@ internal fun MainActivity.setupMiniPlayerMinimize() {
         }.collect { visible ->
             p.root.visibility = if (visible) View.VISIBLE else View.GONE
         }
+    }
+}
+
+/**
+ * Player pill navigation target when navigating rather than expanding.
+ * Loaded recording → full Listen view; nothing loaded → the chosen browse
+ * destination so the user can pick something to play.
+ */
+private fun MainActivity.navigatePlayerPillTarget() {
+    if (viewModel.nowPlaying.value != null) {
+        navigateTo(PAGE_LISTEN)
+    } else when (viewModel.playerBrowseDestination.value) {
+        PlayerBrowseDestination.ALL_RECORDINGS -> navigateToLibraryAll()
+        PlayerBrowseDestination.TOPICS         -> navigateToLibraryTopics()
     }
 }
 

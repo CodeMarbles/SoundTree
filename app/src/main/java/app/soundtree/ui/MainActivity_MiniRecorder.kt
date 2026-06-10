@@ -327,19 +327,14 @@ internal fun MainActivity.setupMiniRecorderMinimize() {
             viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.NEVER -> {
                 navigateTo(PAGE_RECORD)
             }
-            // WHILE_RECORDING mode but not currently recording — nothing to show,
-            // so navigate to the tab so the user can start a recording.
-            viewModel.recorderWidgetVisibility.value == RecorderWidgetVisibility.WHILE_RECORDING &&
-                    viewModel.recordingState.value == RecordingService.State.IDLE -> {
-                viewModel.setRecorderHideOverriddenThisVisit(true)
-                viewModel.setRecorderPillMinimized(false)
-            }
-            // Widget is already visible → navigate to tab
+            // Widget already visible → navigate to tab
             isRecorderWidgetVisible() -> {
                 navigateTo(PAGE_RECORD)
             }
-            // Widget is hidden (suppressed by tab or minimized) → restore it,
-            // overriding the tab-suppress if needed.
+            // Widget hidden (suppressed, minimized, or idle in WHILE_RECORDING)
+            // → expand it. The override defeats BOTH tab-suppression and the
+            // WHILE_RECORDING content gate (see widget-visibility flow), so an
+            // idle recorder widget can be summoned to start a recording.
             else -> {
                 viewModel.setRecorderHideOverriddenThisVisit(true)
                 viewModel.setRecorderPillMinimized(false)
@@ -349,26 +344,27 @@ internal fun MainActivity.setupMiniRecorderMinimize() {
 
     // ── Pill visibility ───────────────────────────────────────────────────
     lifecycleScope.launch {
-        val innerFlow = combine(
+        // hasContent honors `overridden` so the restore handle survives an
+        // expand-then-re-minimize within a visit (WHILE_RECORDING + idle).
+        val hasContentFlow = combine(
             viewModel.recordingState,
-            viewModel.recorderPillMinimized,
             viewModel.recorderWidgetVisibility,
-            viewModel.hideRecorderOnRecordTab
-        ) { state, minimized, visibility, hideOnRecordTab ->
-            // hasContent uses the reactive visibility param, not a stale .value read
-            val hasContent = when (visibility) {
+            viewModel.recorderHideOverriddenThisVisit
+        ) { state, visibility, overridden ->
+            when (visibility) {
                 RecorderWidgetVisibility.NEVER           -> false  // alwaysShow overrides below
-                RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
+                RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE || overridden
                 RecorderWidgetVisibility.ALWAYS          -> true
             }
-            Triple(minimized, hideOnRecordTab, hasContent)
         }
 
         combine(
-            innerFlow,
+            hasContentFlow,
+            viewModel.recorderPillMinimized,
+            viewModel.hideRecorderOnRecordTab,
             viewModel.currentPage,
             viewModel.alwaysShowRecorderPill
-        ) { (minimized, hideOnRecordTab, hasContent), page, alwaysShow ->
+        ) { hasContent, minimized, hideOnRecordTab, page, alwaysShow ->
             val onRecordTab = page == PAGE_RECORD
             val tabVisible  = hasContent && minimized && !(hideOnRecordTab && onRecordTab)
             alwaysShow || tabVisible
@@ -460,7 +456,7 @@ internal fun MainActivity.setupMiniRecorderMinimize() {
         ) { (state, visibility, overridden), hideOnRecordTab, page, minimized ->
             val wantShow = when (visibility) {
                 RecorderWidgetVisibility.NEVER           -> false
-                RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE
+                RecorderWidgetVisibility.WHILE_RECORDING -> state != RecordingService.State.IDLE || overridden
                 RecorderWidgetVisibility.ALWAYS          -> true
             }
             val onRecordTab = page == PAGE_RECORD

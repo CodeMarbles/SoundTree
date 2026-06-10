@@ -382,6 +382,16 @@
     -->
     <string name="settings_widget_always_show_shortcut_desc">Keep pill visible in title bar at all times</string>
 
+    <!-- Widgets: Start collapsed (shared label) -->
+    <string name="settings_widget_start_collapsed">Start collapsed</string>
+    <string name="settings_widget_start_collapsed_desc">Show only the pill at launch; tap it to expand the widget</string>
+
+    <!-- Widgets: Player browse destination -->
+    <string name="settings_player_browse_destination">When nothing is selected, open</string>
+    <string name="settings_player_browse_dest_all">All Recordings</string>
+    <string name="settings_player_browse_dest_topics">Topics</string>
+    <string name="settings_player_browse_destination_desc">Where to go when the player pill is tapped with nothing loaded</string>
+
     <!-- Widgets: Recording Widget -->
     <string name="settings_label_widget_recorder">Recording Widget</string>
     <string name="settings_widget_vis_recording">Recording</string>

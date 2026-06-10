@@ -19,16 +19,14 @@ import app.soundtree.data.entities.BackupTargetEntity
 import app.soundtree.data.entities.MarkEntity
 import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.data.entities.TopicEntity
-import app.soundtree.data.repository.TreeBuilder
 import app.soundtree.data.repository.SoundTreeRepository
+import app.soundtree.data.repository.TreeBuilder
 import app.soundtree.data.repository.TreeItem
 import app.soundtree.service.PlaybackService
 import app.soundtree.service.RecordingService
 import app.soundtree.storage.AppVolume
 import app.soundtree.storage.StorageVolumeHelper
-import app.soundtree.ui.MainViewModel.MigrationState.Done
 import app.soundtree.ui.MainViewModel.MigrationState.Idle
-import app.soundtree.ui.MainViewModel.MigrationState.Running
 import app.soundtree.ui.waveform.WaveformDisplayConfig
 import app.soundtree.ui.waveform.WaveformStyle
 import app.soundtree.util.MarkJumpLogic
@@ -39,8 +37,25 @@ import app.soundtree.worker.BackupWorker
 import app.soundtree.worker.WaveformWorker
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 data class NowPlayingState(
@@ -191,6 +206,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_ALWAYS_SHOW_RECORDER_PILL  = "always_show_recorder_pill"
         internal const val PREF_HIDE_RECORDER_ON_RECORD_TAB = "hide_recorder_on_record_tab"
         internal const val PREF_HIDE_PLAYER_ON_LISTEN_TAB   = "hide_player_on_listen_tab"
+        internal const val PREF_RECORDER_START_COLLAPSED   = "recorder_start_collapsed"
+        internal const val PREF_PLAYER_START_COLLAPSED     = "player_start_collapsed"
+        internal const val PREF_PLAYER_BROWSE_DESTINATION  = "player_browse_destination"
         internal const val PREF_MARK_NUDGE_SECS            = "mark_nudge_secs"
         internal const val PREF_COLLAPSED_TOPIC_IDS = "collapsed_topic_ids"
         internal const val PREF_FUTURE_MODE = "future_mode"
@@ -589,6 +607,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     )
     val alwaysShowRecorderPill: StateFlow<Boolean> = _alwaysShowRecorderPill
 
+    // ── Start collapsed (persisted seed for the minimized flags) ──────────────
+    //
+    // When true, the widget begins as just the pill at launch even when its
+    // visibility mode would auto-show it; tapping the pill expands it. This is a
+    // launch-time DEFAULT only — flipping it mid-session does nothing to the live
+    // widget (it only seeds _*PillMinimized at construction, below).
+    internal val _recorderStartCollapsed = MutableStateFlow(
+        prefs.getBoolean(PREF_RECORDER_START_COLLAPSED, false)
+    )
+    val recorderStartCollapsed: StateFlow<Boolean> = _recorderStartCollapsed
+
+    internal val _playerStartCollapsed = MutableStateFlow(
+        prefs.getBoolean(PREF_PLAYER_START_COLLAPSED, false)
+    )
+    val playerStartCollapsed: StateFlow<Boolean> = _playerStartCollapsed
+
+    // ── Player pill browse destination (used when nothing is selected) ────────
+    internal val _playerBrowseDestination = MutableStateFlow(
+        PlayerBrowseDestination.fromString(prefs.getString(PREF_PLAYER_BROWSE_DESTINATION, null))
+    )
+    val playerBrowseDestination: StateFlow<PlayerBrowseDestination> = _playerBrowseDestination
+
     // ── Tab-suppress override (session-only, not persisted) ──────────────────
     //
     // Set to true when the user manually expands a widget while on the tab
@@ -606,15 +646,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Mini widget minimized state (session-only, not persisted) ────────────
     //
-    // When true the full widget is hidden and a compact pill appears in
-    // the title bar overlay instead.  Intentionally NOT written to
-    // SharedPreferences — restoring to full widgets on every app launch
-    // is the desired default behaviour.
+    // The *runtime* value is still never written back to SharedPreferences, but
+    // its INITIAL value is seeded from the persisted PREF_*_START_COLLAPSED pref,
+    // so the user chooses whether widgets start expanded or collapsed-to-pill on
+    // launch. (v2 hook: re-seed these on resume past a long-background threshold.)
 
-    internal val _playerPillMinimized  = MutableStateFlow(false)
+    internal val _playerPillMinimized  = MutableStateFlow(
+        prefs.getBoolean(PREF_PLAYER_START_COLLAPSED, false)
+    )
     val playerPillMinimized: StateFlow<Boolean> = _playerPillMinimized
 
-    internal val _recorderPillMinimized = MutableStateFlow(false)
+    internal val _recorderPillMinimized = MutableStateFlow(
+        prefs.getBoolean(PREF_RECORDER_START_COLLAPSED, false)
+    )
     val recorderPillMinimized: StateFlow<Boolean> = _recorderPillMinimized
 
     // ── Future Mode (Dev Options) ─────────────────────────────────────

@@ -25,9 +25,12 @@ import app.soundtree.ui.MainViewModel.Companion.PREF_LAST_SESSION_OPENED_AT
 import app.soundtree.ui.MainViewModel.Companion.PREF_LAYOUT_ORDER
 import app.soundtree.ui.MainViewModel.Companion.PREF_MARK_NUDGE_SECS
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYBACK_SPEED
+import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYER_BROWSE_DESTINATION
+import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYER_START_COLLAPSED
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYER_WIDGET_VISIBILITY
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_ENABLED
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_INTENSITY
+import app.soundtree.ui.MainViewModel.Companion.PREF_RECORDER_START_COLLAPSED
 import app.soundtree.ui.MainViewModel.Companion.PREF_RECORDER_WIDGET_VISIBILITY
 import app.soundtree.ui.MainViewModel.Companion.PREF_SCRUB_BACK_SECS
 import app.soundtree.ui.MainViewModel.Companion.PREF_SCRUB_FORWARD_SECS
@@ -164,6 +167,22 @@ fun MainViewModel.setHideRecorderOnRecordTab(hide: Boolean) {
 fun MainViewModel.setHidePlayerOnListenTab(hide: Boolean) {
     _hidePlayerOnListenTab.value = hide
     prefs.edit().putBoolean(PREF_HIDE_PLAYER_ON_LISTEN_TAB, hide).apply()
+}
+
+fun MainViewModel.setRecorderStartCollapsed(collapsed: Boolean) {
+    _recorderStartCollapsed.value = collapsed
+    prefs.edit().putBoolean(PREF_RECORDER_START_COLLAPSED, collapsed).apply()
+    // Intentionally does NOT touch _recorderPillMinimized — launch default only.
+}
+
+fun MainViewModel.setPlayerStartCollapsed(collapsed: Boolean) {
+    _playerStartCollapsed.value = collapsed
+    prefs.edit().putBoolean(PREF_PLAYER_START_COLLAPSED, collapsed).apply()
+}
+
+fun MainViewModel.setPlayerBrowseDestination(dest: PlayerBrowseDestination) {
+    _playerBrowseDestination.value = dest
+    prefs.edit().putString(PREF_PLAYER_BROWSE_DESTINATION, dest.name).apply()
 }
 
 // ── Ephemeral UI state ────────────────────────────────────────────────────────

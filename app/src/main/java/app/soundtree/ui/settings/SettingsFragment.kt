@@ -35,6 +35,7 @@ import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.BackupTargetUiState
 import app.soundtree.ui.BackupUiState
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.PlayerBrowseDestination
 import app.soundtree.ui.PlayerWidgetVisibility
 import app.soundtree.ui.ProcessingStatus
 import app.soundtree.ui.RecorderWidgetVisibility
@@ -73,15 +74,17 @@ import app.soundtree.ui.setHideRecorderOnRecordTab
 import app.soundtree.ui.setInvertWaveformTheme
 import app.soundtree.ui.setJumpToLibraryOnSave
 import app.soundtree.ui.setLayoutOrder
-import app.soundtree.ui.setMarkNudgeSecs
 import app.soundtree.ui.setMarkRewindThresholdSecs
 import app.soundtree.ui.setNearEndDurationThresholdSecs
 import app.soundtree.ui.setNearEndEnabled
 import app.soundtree.ui.setNearEndLongPct
 import app.soundtree.ui.setNearEndShortSecs
+import app.soundtree.ui.setPlayerBrowseDestination
+import app.soundtree.ui.setPlayerStartCollapsed
 import app.soundtree.ui.setPlayerWidgetVisibility
 import app.soundtree.ui.setPlayheadVisEnabled
 import app.soundtree.ui.setPlayheadVisIntensity
+import app.soundtree.ui.setRecorderStartCollapsed
 import app.soundtree.ui.setRecorderWidgetVisibility
 import app.soundtree.ui.setRememberLongThresholdSecs
 import app.soundtree.ui.setRememberPositionMode
@@ -182,6 +185,7 @@ class SettingsFragment : Fragment() {
         setupPlaybackMemory()
         setupLayoutSection()
         setupRecordingWidgetSection()
+        setupPlaybackWidgetSection()
         setupPlaybackSettings()
         setupStorageSection()
         setupBackupProgressCard()
@@ -1087,11 +1091,8 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRecordingWidgetSection() {
-
-        // ── Recorder Widget visibility toggle group ───────────────────────
         val toggleGroup = binding.toggleRecorderVisibility
 
-        // Map each button id → enum value (and back)
         val btnToMode = mapOf(
             R.id.btnRecorderVisNever          to RecorderWidgetVisibility.NEVER,
             R.id.btnRecorderVisWhileRecording to RecorderWidgetVisibility.WHILE_RECORDING,
@@ -1100,19 +1101,18 @@ class SettingsFragment : Fragment() {
         val modeToBtn = btnToMode.entries.associate { (k, v) -> v to k }
 
         fun applyMode(mode: RecorderWidgetVisibility) {
-            // Check the right button
             toggleGroup.check(modeToBtn[mode] ?: R.id.btnRecorderVisWhileRecording)
-            // Dependent row: enabled only when not NEVER
             val dependentEnabled = mode != RecorderWidgetVisibility.NEVER
             binding.rowHideRecorderOnRecordTab.alpha = if (dependentEnabled) 1f else 0.4f
             binding.switchHideRecorderOnRecordTab.isEnabled = dependentEnabled
+            binding.rowRecorderStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.switchRecorderStartCollapsed.isEnabled = dependentEnabled
         }
 
-        // Initialise from ViewModel
         applyMode(viewModel.recorderWidgetVisibility.value)
         binding.switchHideRecorderOnRecordTab.isChecked = viewModel.hideRecorderOnRecordTab.value
+        binding.switchRecorderStartCollapsed.isChecked = viewModel.recorderStartCollapsed.value
 
-        // User taps a button
         toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             val mode = btnToMode[checkedId] ?: return@addOnButtonCheckedListener
@@ -1120,52 +1120,103 @@ class SettingsFragment : Fragment() {
             applyMode(mode)
         }
 
-        // Dependent toggle
         binding.switchHideRecorderOnRecordTab.setOnCheckedChangeListener { _, checked ->
             viewModel.setHideRecorderOnRecordTab(checked)
         }
 
-        // ── Always show recorder shortcut ────────────────────────────────────
         binding.switchAlwaysShowRecorderPill.isChecked = viewModel.alwaysShowRecorderPill.value
         binding.switchAlwaysShowRecorderPill.setOnCheckedChangeListener { _, checked ->
             viewModel.setAlwaysShowRecorderPill(checked)
         }
 
-        // ── Mark nudge seconds ────────────────────────────────────────────
-        fun Float.toNudgeDisplay() =
-            if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
-
-        binding.tvMarkNudgeSecs.text = viewModel.markNudgeSecs.value.toNudgeDisplay()
-
-        binding.btnMarkNudgeMinus.setOnClickListener {
-            val newVal = (viewModel.markNudgeSecs.value - 1f).coerceAtLeast(1f)
-            viewModel.setMarkNudgeSecs(newVal)
-            binding.tvMarkNudgeSecs.text = newVal.toNudgeDisplay()
+        binding.switchRecorderStartCollapsed.setOnCheckedChangeListener { _, checked ->
+            viewModel.setRecorderStartCollapsed(checked)
         }
-        binding.btnMarkNudgePlus.setOnClickListener {
-            val newVal = (viewModel.markNudgeSecs.value + 1f).coerceAtMost(30f)
-            viewModel.setMarkNudgeSecs(newVal)
-            binding.tvMarkNudgeSecs.text = newVal.toNudgeDisplay()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.recorderWidgetVisibility.collect { applyMode(it) } }
+                launch { viewModel.hideRecorderOnRecordTab.collect { binding.switchHideRecorderOnRecordTab.isChecked = it } }
+                launch { viewModel.alwaysShowRecorderPill.collect { binding.switchAlwaysShowRecorderPill.isChecked = it } }
+            }
+        }
+    }
+
+    private fun setupPlaybackWidgetSection() {
+        val playerToggleGroup = binding.togglePlayerVisibility
+
+        val playerBtnToMode = mapOf(
+            R.id.btnPlayerVisNever        to PlayerWidgetVisibility.NEVER,
+            R.id.btnPlayerVisWhilePlaying to PlayerWidgetVisibility.WHILE_PLAYING,
+            R.id.btnPlayerVisAlways       to PlayerWidgetVisibility.ALWAYS
+        )
+        val playerModeToBtn = playerBtnToMode.entries.associate { (k, v) -> v to k }
+
+        fun applyPlayerMode(mode: PlayerWidgetVisibility) {
+            playerToggleGroup.check(playerModeToBtn[mode] ?: R.id.btnPlayerVisWhilePlaying)
+            val dependentEnabled = mode != PlayerWidgetVisibility.NEVER
+            binding.rowHidePlayerOnListenTab.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.switchHidePlayerOnListenTab.isEnabled = dependentEnabled
+            binding.rowPlayerStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.switchPlayerStartCollapsed.isEnabled = dependentEnabled
+        }
+
+        applyPlayerMode(viewModel.playerWidgetVisibility.value)
+        binding.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
+        binding.switchPlayerStartCollapsed.isChecked = viewModel.playerStartCollapsed.value
+
+        playerToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val mode = playerBtnToMode[checkedId] ?: return@addOnButtonCheckedListener
+            viewModel.setPlayerWidgetVisibility(mode)
+            applyPlayerMode(mode)
+        }
+
+        binding.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
+            viewModel.setHidePlayerOnListenTab(checked)
+        }
+
+        binding.switchAlwaysShowPlayerPill.isChecked = viewModel.alwaysShowPlayerPill.value
+        binding.switchAlwaysShowPlayerPill.setOnCheckedChangeListener { _, checked ->
+            viewModel.setAlwaysShowPlayerPill(checked)
+        }
+
+        binding.switchPlayerStartCollapsed.setOnCheckedChangeListener { _, checked ->
+            viewModel.setPlayerStartCollapsed(checked)
+        }
+
+        // ── Browse destination (used when nothing is selected) ─────────────
+        val destBtnToMode = mapOf(
+            R.id.btnPlayerBrowseAll    to PlayerBrowseDestination.ALL_RECORDINGS,
+            R.id.btnPlayerBrowseTopics to PlayerBrowseDestination.TOPICS
+        )
+        val destModeToBtn = destBtnToMode.entries.associate { (k, v) -> v to k }
+        binding.togglePlayerBrowseDest.check(
+            destModeToBtn[viewModel.playerBrowseDestination.value] ?: R.id.btnPlayerBrowseAll
+        )
+        binding.togglePlayerBrowseDest.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            destBtnToMode[checkedId]?.let { viewModel.setPlayerBrowseDestination(it) }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.recorderWidgetVisibility.collect { mode -> applyMode(mode) }
+                    viewModel.playerWidgetVisibility.collect { mode -> applyPlayerMode(mode) }
                 }
                 launch {
-                    viewModel.hideRecorderOnRecordTab.collect { hide ->
-                        binding.switchHideRecorderOnRecordTab.isChecked = hide
+                    viewModel.hidePlayerOnListenTab.collect { hide ->
+                        binding.switchHidePlayerOnListenTab.isChecked = hide
                     }
                 }
                 launch {
-                    viewModel.alwaysShowRecorderPill.collect { show ->
-                        binding.switchAlwaysShowRecorderPill.isChecked = show
+                    viewModel.alwaysShowPlayerPill.collect { show ->
+                        binding.switchAlwaysShowPlayerPill.isChecked = show
                     }
                 }
             }
         }
-    }
+    }  // end of setupPlaybackWidgetSection
 
     private fun setupTheme() {
         fun updateToggleVisuals(selected: String) {
@@ -1331,8 +1382,6 @@ class SettingsFragment : Fragment() {
         }
     }
 
-// ── In setupBehavior() — wire the new Playback Memory card ───────────────────
-
     private fun setupPlaybackMemory() {
         // Mode picker
         val btnAlways   = binding.btnRememberAlways
@@ -1487,44 +1536,6 @@ class SettingsFragment : Fragment() {
             viewModel.setJumpToLibraryOnSave(isChecked)
         }
 
-        // ── Player widget visibility (3-state) ───────────────────────────────
-        val playerToggleGroup = binding.togglePlayerVisibility
-
-        val playerBtnToMode = mapOf(
-            R.id.btnPlayerVisNever       to PlayerWidgetVisibility.NEVER,
-            R.id.btnPlayerVisWhilePlaying to PlayerWidgetVisibility.WHILE_PLAYING,
-            R.id.btnPlayerVisAlways      to PlayerWidgetVisibility.ALWAYS
-        )
-        val playerModeToBtn = playerBtnToMode.entries.associate { (k, v) -> v to k }
-
-        fun applyPlayerMode(mode: PlayerWidgetVisibility) {
-            playerToggleGroup.check(playerModeToBtn[mode] ?: R.id.btnPlayerVisWhilePlaying)
-            // "Hide on Listen Tab" only makes sense when the widget can appear,
-            // i.e. not when NEVER is selected.
-            val dependentEnabled = mode != PlayerWidgetVisibility.NEVER
-            binding.rowHidePlayerOnListenTab.alpha = if (dependentEnabled) 1f else 0.4f
-            binding.switchHidePlayerOnListenTab.isEnabled = dependentEnabled
-        }
-
-        applyPlayerMode(viewModel.playerWidgetVisibility.value)
-        binding.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
-
-        playerToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            val mode = playerBtnToMode[checkedId] ?: return@addOnButtonCheckedListener
-            viewModel.setPlayerWidgetVisibility(mode)
-            applyPlayerMode(mode)
-        }
-
-        binding.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
-            viewModel.setHidePlayerOnListenTab(checked)
-        }
-
-        binding.switchAlwaysShowPlayerPill.isChecked = viewModel.alwaysShowPlayerPill.value
-        binding.switchAlwaysShowPlayerPill.setOnCheckedChangeListener { _, checked ->
-            viewModel.setAlwaysShowPlayerPill(checked)
-        }
-
         // ── Scrub Back ────────────────────────────────────────────────────────
         binding.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
         binding.btnScrubBackMinus.setOnClickListener {
@@ -1565,25 +1576,6 @@ class SettingsFragment : Fragment() {
             val newVal = (viewModel.markRewindThresholdSecs.value + 0.5f).coerceAtMost(5.0f)
             viewModel.setMarkRewindThresholdSecs(newVal)
             binding.tvMarkRewindSecs.text = newVal.toDisplayString()
-        }
-
-        // ── Keep controls in sync with external pref changes ─────────────────
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.playerWidgetVisibility.collect { mode -> applyPlayerMode(mode) }
-                }
-                launch {
-                    viewModel.hidePlayerOnListenTab.collect { hide ->
-                        binding.switchHidePlayerOnListenTab.isChecked = hide
-                    }
-                }
-                launch {
-                    viewModel.alwaysShowPlayerPill.collect { show ->
-                        binding.switchAlwaysShowPlayerPill.isChecked = show
-                    }
-                }
-            }
         }
     }
 
