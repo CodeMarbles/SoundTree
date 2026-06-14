@@ -1035,9 +1035,9 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupLayoutSection() {
-        val widget   = binding.layoutReorderWidget
-        val btnEdit  = binding.btnEditLayout
-        val toggle   = binding.switchShowTitleBar
+        val widget   = binding.groupAppearance.layoutReorderWidget
+        val btnEdit  = binding.groupAppearance.btnEditLayout
+        val toggle   = binding.groupAppearance.switchShowTitleBar
 
         // ── Initialise widget from current ViewModel state ────────────
         widget.setOrder(viewModel.layoutOrder.value)
@@ -1224,9 +1224,9 @@ class SettingsFragment : Fragment() {
             val activeBg   = requireContext().themeColor(R.attr.colorSurfaceElevated)
             val inactiveText = requireContext().themeColor(R.attr.colorTextSecondary)
             listOf(
-                binding.btnThemeSystem to "system",
-                binding.btnThemeLight  to "light",
-                binding.btnThemeDark   to "dark"
+                binding.groupAppearance.btnThemeSystem to "system",
+                binding.groupAppearance.btnThemeLight  to "light",
+                binding.groupAppearance.btnThemeDark   to "dark"
             ).forEach { (btn, mode) ->
                 val isActive = mode == selected
                 btn.setTextColor(if (isActive) activeText else inactiveText)
@@ -1250,9 +1250,9 @@ class SettingsFragment : Fragment() {
             // Activity recreates automatically — no manual call needed.
         }
 
-        binding.btnThemeSystem.setOnClickListener { select("system") }
-        binding.btnThemeLight.setOnClickListener  { select("light")  }
-        binding.btnThemeDark.setOnClickListener   { select("dark")   }
+        binding.groupAppearance.btnThemeSystem.setOnClickListener { select("system") }
+        binding.groupAppearance.btnThemeLight.setOnClickListener  { select("light")  }
+        binding.groupAppearance.btnThemeDark.setOnClickListener   { select("dark")   }
     }
 
     private fun setupWaveformStyleSettings() {
