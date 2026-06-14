@@ -1384,11 +1384,11 @@ class SettingsFragment : Fragment() {
 
     private fun setupPlaybackMemory() {
         // Mode picker
-        val btnAlways   = binding.btnRememberAlways
-        val btnLongOnly = binding.btnRememberLongOnly
-        val btnNever    = binding.btnRememberNever
-        val rowThreshold = binding.rowRememberLongThreshold
-        val tvThreshold  = binding.tvRememberThresholdValue
+        val btnAlways   = binding.groupPlaybackMemory.btnRememberAlways
+        val btnLongOnly = binding.groupPlaybackMemory.btnRememberLongOnly
+        val btnNever    = binding.groupPlaybackMemory.btnRememberNever
+        val rowThreshold = binding.groupPlaybackMemory.rowRememberLongThreshold
+        val tvThreshold  = binding.groupPlaybackMemory.tvRememberThresholdValue
 
         fun highlightMode(mode: String) {
             listOf(
@@ -1427,12 +1427,12 @@ class SettingsFragment : Fragment() {
             tvThreshold.text = if (secs % 60 == 0) "${secs / 60} min" else "${secs}s"
         }
         renderThreshold()
-        binding.btnRememberThresholdDown.setOnClickListener {
+        binding.groupPlaybackMemory.btnRememberThresholdDown.setOnClickListener {
             val current = viewModel.getRememberLongThresholdSecs()
             viewModel.setRememberLongThresholdSecs((current - 60).coerceAtLeast(60))
             renderThreshold()
         }
-        binding.btnRememberThresholdUp.setOnClickListener {
+        binding.groupPlaybackMemory.btnRememberThresholdUp.setOnClickListener {
             val current = viewModel.getRememberLongThresholdSecs()
             viewModel.setRememberLongThresholdSecs(current + 60)
             renderThreshold()
@@ -1440,13 +1440,13 @@ class SettingsFragment : Fragment() {
 
         // ── Near-End Reset ────────────────────────────────────────────────────────────
 
-        val switchNearEnd       = binding.switchNearEndEnabled
-        val rowShort            = binding.rowNearEndShort
-        val rowLong             = binding.rowNearEndLong
-        val rowNearEndThreshold = binding.rowNearEndThreshold
-        val tvShort             = binding.tvNearEndShortValue
-        val tvShortDesc         = binding.tvNearEndShortDesc
-        val tvLong              = binding.tvNearEndLongValue
+        val switchNearEnd       = binding.groupPlaybackMemory.switchNearEndEnabled
+        val rowShort            = binding.groupPlaybackMemory.rowNearEndShort
+        val rowLong             = binding.groupPlaybackMemory.rowNearEndLong
+        val rowNearEndThreshold = binding.groupPlaybackMemory.rowNearEndThreshold
+        val tvShort             = binding.groupPlaybackMemory.tvNearEndShortValue
+        val tvShortDesc         = binding.groupPlaybackMemory.tvNearEndShortDesc
+        val tvLong              = binding.groupPlaybackMemory.tvNearEndLongValue
 
         /** Alpha applied to the stepper rows when the master toggle is off. */
         val DISABLED_ALPHA = 0.38f
@@ -1485,37 +1485,37 @@ class SettingsFragment : Fragment() {
         renderNearEndShort()
         renderNearEndLong()
 
-        binding.btnNearEndShortDown.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndShortDown.setOnClickListener {
             viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() - 5)
             renderNearEndShort()
         }
-        binding.btnNearEndShortUp.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndShortUp.setOnClickListener {
             viewModel.setNearEndShortSecs(viewModel.getNearEndShortSecs() + 5)
             renderNearEndShort()
         }
-        binding.btnNearEndLongDown.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndLongDown.setOnClickListener {
             viewModel.setNearEndLongPct(viewModel.getNearEndLongPct() - 1)
             renderNearEndLong()
         }
-        binding.btnNearEndLongUp.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndLongUp.setOnClickListener {
             viewModel.setNearEndLongPct(viewModel.getNearEndLongPct() + 1)
             renderNearEndLong()
         }
 
         // Duration threshold stepper
-        val tvDurThresh = binding.tvNearEndThresholdValue
+        val tvDurThresh = binding.groupPlaybackMemory.tvNearEndThresholdValue
         fun renderDurThreshold() {
             val mins = viewModel.getNearEndDurationThresholdSecs() / 60
             tvDurThresh.text = "${mins} min"
         }
         renderDurThreshold()
-        binding.btnNearEndThresholdDown.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndThresholdDown.setOnClickListener {
             val current = viewModel.getNearEndDurationThresholdSecs()
             viewModel.setNearEndDurationThresholdSecs((current - 60).coerceAtLeast(60))
             renderDurThreshold()
             renderNearEndShort()  // description references this value
         }
-        binding.btnNearEndThresholdUp.setOnClickListener {
+        binding.groupPlaybackMemory.btnNearEndThresholdUp.setOnClickListener {
             val current = viewModel.getNearEndDurationThresholdSecs()
             viewModel.setNearEndDurationThresholdSecs(current + 60)
             renderDurThreshold()
