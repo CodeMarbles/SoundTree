@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  settings_group_backups.xml
+  Included by fragment_settings.xml into scrollStorage.
+  Contains: Backups section header + card (progress card slot, recent backups
+            mini-log, automatic backup volumes, verbose logging toggle,
+            DB pruning toggle + count stepper, available-to-add section).
+
+  IDs surfaced to FragmentSettingsBinding via <include android:id="@+id/groupBackups">:
+    containerBackupProgressCard,
+    btnViewAllHistory,
+    containerBackupLog,
+    containerBackupTargets,
+    switchVerboseBackupLogging,
+    switchDbPrune,
+    rowDbPruneCount, tvDbPruneCount, btnDbPruneMinus, btnDbPrunePlus,
+    cardBackupAvailable, containerBackupAvailable
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- ── BACKUPS section header ─────────────────────────────────── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_section_backups"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="8dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        app:cardCornerRadius="@dimen/settings_card_corner_radius"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!--
+                containerBackupProgressCard
+                Shown while any backup job is running. SettingsFragment inflates
+                view_backup_progress_card.xml into this slot and fades it in/out.
+                Visibility starts GONE so no space is reserved when idle.
+            -->
+            <FrameLayout
+                android:id="@+id/containerBackupProgressCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <!-- ── Recent Backups sub-section ─────────────────────────────── -->
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:layout_marginHorizontal="16dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/backup_log_section_recent"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnViewAllHistory"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/backup_log_btn_view_all"
+                    android:textSize="12sp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+            </LinearLayout>
+
+            <!--
+                Dynamically populated by SettingsFragment.renderBackupMiniLog().
+                Shows the last 3 completed backup runs (any volume) using
+                item_backup_log_row.xml with showVolumeLabel=true.
+                Each row is tappable to open BackupLogDetailDialog.
+            -->
+            <LinearLayout
+                android:id="@+id/containerBackupLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="8dp" />
+
+            <!-- ── Automatic Backup Volumes subsection ─────────────────────── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_backup_title"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:layout_marginHorizontal="16dp" />
+
+            <!--
+                Dynamically populated by SettingsFragment.renderBackupTargets().
+                Shows one row per configured backup target, or a "none configured"
+                placeholder when empty.
+            -->
+            <LinearLayout
+                android:id="@+id/containerBackupTargets"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="8dp" />
+
+            <!-- Verbose backup logging toggle -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_backup_verbose_logging_label"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_backup_verbose_logging_desc"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchVerboseBackupLogging"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp" />
+
+            </LinearLayout>
+
+            <!-- DB snapshot pruning toggle -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_backup_prune_label"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_backup_prune_desc"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchDbPrune"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp" />
+
+            </LinearLayout>
+
+            <!-- DB snapshot count (enabled/disabled by toggle above) -->
+            <LinearLayout
+                android:id="@+id/rowDbPruneCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_backup_prune_count_label"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="15sp" />
+
+                <!-- Stepper: minus / value / plus -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:orientation="horizontal"
+                    android:background="?attr/colorSurfaceBase">
+
+                    <TextView
+                        android:id="@+id/btnDbPruneMinus"
+                        android:layout_width="32dp"
+                        android:layout_height="match_parent"
+                        android:text="−"
+                        android:textSize="18sp"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/tvDbPruneCount"
+                        android:layout_width="36dp"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="15sp"
+                        android:textColor="?attr/colorTextPrimary" />
+
+                    <TextView
+                        android:id="@+id/btnDbPrunePlus"
+                        android:layout_width="32dp"
+                        android:layout_height="match_parent"
+                        android:text="+"
+                        android:textSize="18sp"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ── Available to Add ──────────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/cardBackupAvailable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Card header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_backup_available_title"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="8dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!--
+                    Dynamically populated by SettingsFragment.renderBackupAvailable().
+                    Shows one item_backup_available_volume card per mounted removable
+                    volume not yet designated as a target, or a placeholder when empty.
+                -->
+                <LinearLayout
+                    android:id="@+id/containerBackupAvailable"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

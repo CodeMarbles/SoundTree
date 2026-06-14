@@ -322,7 +322,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.btnViewAllHistory.setOnClickListener {
+        binding.groupBackups.btnViewAllHistory.setOnClickListener {
             BackupLogHistoryDialog()
                 .show(childFragmentManager, BackupLogHistoryDialog.TAG)
         }
@@ -340,7 +340,7 @@ class SettingsFragment : Fragment() {
      * that opens [BackupTargetConfigDialog].
      */
     private fun renderBackupTargets(targets: List<BackupTargetUiState>) {
-        val container = binding.containerBackupTargets
+        val container = binding.groupBackups.containerBackupTargets
         container.removeAllViews()
 
         if (targets.isEmpty()) {
@@ -424,7 +424,7 @@ class SettingsFragment : Fragment() {
      */
     private fun renderBackupAvailable(available: List<AppVolume>) {
         // Section is always visible — no visibility toggle.
-        val container = binding.containerBackupAvailable
+        val container = binding.groupBackups.containerBackupAvailable
         container.removeAllViews()
 
         if (available.isEmpty()) {
@@ -461,7 +461,7 @@ class SettingsFragment : Fragment() {
      * [BackupLogDetailDialog] on tap.
      */
     private fun renderBackupMiniLog(logs: List<BackupLogEntity>) {
-        val container = binding.containerBackupLog
+        val container = binding.groupBackups.containerBackupLog
         container.removeAllViews()
 
         val recent = logs.take(3)
@@ -558,7 +558,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun renderBackupProgressCard(state: BackupUiState) {
-        val container = binding.containerBackupProgressCard
+        val container = binding.groupBackups.containerBackupProgressCard
         val primaryJob = state.primaryActive
 
         if (primaryJob == null) {
@@ -1600,19 +1600,19 @@ class SettingsFragment : Fragment() {
         // ── Verbose backup logging ────────────────────────────────────────────
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.verboseBackupLogging.collect { enabled ->
-                binding.switchVerboseBackupLogging.isChecked = enabled
+                binding.groupBackups.switchVerboseBackupLogging.isChecked = enabled
             }
         }
-        binding.switchVerboseBackupLogging.setOnCheckedChangeListener { _, checked ->
+        binding.groupBackups.switchVerboseBackupLogging.setOnCheckedChangeListener { _, checked ->
             viewModel.setVerboseBackupLogging(checked)
         }
 
         // ── DB snapshot pruning ───────────────────────────────────────────────────────
-        val switchDbPrune  = binding.switchDbPrune
-        val rowDbPruneCount = binding.rowDbPruneCount
-        val tvDbPruneCount  = binding.tvDbPruneCount
-        val btnMinus        = binding.btnDbPruneMinus
-        val btnPlus         = binding.btnDbPrunePlus
+        val switchDbPrune  = binding.groupBackups.switchDbPrune
+        val rowDbPruneCount = binding.groupBackups.rowDbPruneCount
+        val tvDbPruneCount  = binding.groupBackups.tvDbPruneCount
+        val btnMinus        = binding.groupBackups.btnDbPruneMinus
+        val btnPlus         = binding.groupBackups.btnDbPrunePlus
 
         fun refreshPruneCount() {
             tvDbPruneCount.text = viewModel.getDbPruneCount().toString()
