@@ -1650,7 +1650,7 @@ class SettingsFragment : Fragment() {
         usageMap: Map<String, Long>,
         selectedUuid: String
     ) {
-        val container = binding.storageVolumeContainer
+        val container = binding.groupStorageVolumes.storageVolumeContainer
         container.removeAllViews()
 
         if (volumes.isEmpty()) {
@@ -1742,7 +1742,7 @@ class SettingsFragment : Fragment() {
 
     private fun renderTotalUsed(usageMap: Map<String, Long>) {
         val totalBytes = usageMap.values.sum()
-        binding.tvTotalUsed.text =
+        binding.groupStorageVolumes.tvTotalUsed.text =
             if (totalBytes == 0L) getString(R.string.common_placeholder_empty)
             else AppVolume.formatBytes(totalBytes)
     }
