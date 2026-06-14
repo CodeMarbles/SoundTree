@@ -1091,7 +1091,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRecordingWidgetSection() {
-        val toggleGroup = binding.toggleRecorderVisibility
+        val toggleGroup = binding.groupWidgets.toggleRecorderVisibility
 
         val btnToMode = mapOf(
             R.id.btnRecorderVisNever          to RecorderWidgetVisibility.NEVER,
@@ -1103,15 +1103,15 @@ class SettingsFragment : Fragment() {
         fun applyMode(mode: RecorderWidgetVisibility) {
             toggleGroup.check(modeToBtn[mode] ?: R.id.btnRecorderVisWhileRecording)
             val dependentEnabled = mode != RecorderWidgetVisibility.NEVER
-            binding.rowHideRecorderOnRecordTab.alpha = if (dependentEnabled) 1f else 0.4f
-            binding.switchHideRecorderOnRecordTab.isEnabled = dependentEnabled
-            binding.rowRecorderStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
-            binding.switchRecorderStartCollapsed.isEnabled = dependentEnabled
+            binding.groupWidgets.rowHideRecorderOnRecordTab.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.groupWidgets.switchHideRecorderOnRecordTab.isEnabled = dependentEnabled
+            binding.groupWidgets.rowRecorderStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.groupWidgets.switchRecorderStartCollapsed.isEnabled = dependentEnabled
         }
 
         applyMode(viewModel.recorderWidgetVisibility.value)
-        binding.switchHideRecorderOnRecordTab.isChecked = viewModel.hideRecorderOnRecordTab.value
-        binding.switchRecorderStartCollapsed.isChecked = viewModel.recorderStartCollapsed.value
+        binding.groupWidgets.switchHideRecorderOnRecordTab.isChecked = viewModel.hideRecorderOnRecordTab.value
+        binding.groupWidgets.switchRecorderStartCollapsed.isChecked = viewModel.recorderStartCollapsed.value
 
         toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -1120,30 +1120,30 @@ class SettingsFragment : Fragment() {
             applyMode(mode)
         }
 
-        binding.switchHideRecorderOnRecordTab.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchHideRecorderOnRecordTab.setOnCheckedChangeListener { _, checked ->
             viewModel.setHideRecorderOnRecordTab(checked)
         }
 
-        binding.switchAlwaysShowRecorderPill.isChecked = viewModel.alwaysShowRecorderPill.value
-        binding.switchAlwaysShowRecorderPill.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchAlwaysShowRecorderPill.isChecked = viewModel.alwaysShowRecorderPill.value
+        binding.groupWidgets.switchAlwaysShowRecorderPill.setOnCheckedChangeListener { _, checked ->
             viewModel.setAlwaysShowRecorderPill(checked)
         }
 
-        binding.switchRecorderStartCollapsed.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchRecorderStartCollapsed.setOnCheckedChangeListener { _, checked ->
             viewModel.setRecorderStartCollapsed(checked)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.recorderWidgetVisibility.collect { applyMode(it) } }
-                launch { viewModel.hideRecorderOnRecordTab.collect { binding.switchHideRecorderOnRecordTab.isChecked = it } }
-                launch { viewModel.alwaysShowRecorderPill.collect { binding.switchAlwaysShowRecorderPill.isChecked = it } }
+                launch { viewModel.hideRecorderOnRecordTab.collect { binding.groupWidgets.switchHideRecorderOnRecordTab.isChecked = it } }
+                launch { viewModel.alwaysShowRecorderPill.collect { binding.groupWidgets.switchAlwaysShowRecorderPill.isChecked = it } }
             }
         }
     }
 
     private fun setupPlaybackWidgetSection() {
-        val playerToggleGroup = binding.togglePlayerVisibility
+        val playerToggleGroup = binding.groupWidgets.togglePlayerVisibility
 
         val playerBtnToMode = mapOf(
             R.id.btnPlayerVisNever        to PlayerWidgetVisibility.NEVER,
@@ -1155,15 +1155,15 @@ class SettingsFragment : Fragment() {
         fun applyPlayerMode(mode: PlayerWidgetVisibility) {
             playerToggleGroup.check(playerModeToBtn[mode] ?: R.id.btnPlayerVisWhilePlaying)
             val dependentEnabled = mode != PlayerWidgetVisibility.NEVER
-            binding.rowHidePlayerOnListenTab.alpha = if (dependentEnabled) 1f else 0.4f
-            binding.switchHidePlayerOnListenTab.isEnabled = dependentEnabled
-            binding.rowPlayerStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
-            binding.switchPlayerStartCollapsed.isEnabled = dependentEnabled
+            binding.groupWidgets.rowHidePlayerOnListenTab.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.groupWidgets.switchHidePlayerOnListenTab.isEnabled = dependentEnabled
+            binding.groupWidgets.rowPlayerStartCollapsed.alpha = if (dependentEnabled) 1f else 0.4f
+            binding.groupWidgets.switchPlayerStartCollapsed.isEnabled = dependentEnabled
         }
 
         applyPlayerMode(viewModel.playerWidgetVisibility.value)
-        binding.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
-        binding.switchPlayerStartCollapsed.isChecked = viewModel.playerStartCollapsed.value
+        binding.groupWidgets.switchHidePlayerOnListenTab.isChecked = viewModel.hidePlayerOnListenTab.value
+        binding.groupWidgets.switchPlayerStartCollapsed.isChecked = viewModel.playerStartCollapsed.value
 
         playerToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -1172,16 +1172,16 @@ class SettingsFragment : Fragment() {
             applyPlayerMode(mode)
         }
 
-        binding.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchHidePlayerOnListenTab.setOnCheckedChangeListener { _, checked ->
             viewModel.setHidePlayerOnListenTab(checked)
         }
 
-        binding.switchAlwaysShowPlayerPill.isChecked = viewModel.alwaysShowPlayerPill.value
-        binding.switchAlwaysShowPlayerPill.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchAlwaysShowPlayerPill.isChecked = viewModel.alwaysShowPlayerPill.value
+        binding.groupWidgets.switchAlwaysShowPlayerPill.setOnCheckedChangeListener { _, checked ->
             viewModel.setAlwaysShowPlayerPill(checked)
         }
 
-        binding.switchPlayerStartCollapsed.setOnCheckedChangeListener { _, checked ->
+        binding.groupWidgets.switchPlayerStartCollapsed.setOnCheckedChangeListener { _, checked ->
             viewModel.setPlayerStartCollapsed(checked)
         }
 
@@ -1191,10 +1191,10 @@ class SettingsFragment : Fragment() {
             R.id.btnPlayerBrowseTopics to PlayerBrowseDestination.TOPICS
         )
         val destModeToBtn = destBtnToMode.entries.associate { (k, v) -> v to k }
-        binding.togglePlayerBrowseDest.check(
+        binding.groupWidgets.togglePlayerBrowseDest.check(
             destModeToBtn[viewModel.playerBrowseDestination.value] ?: R.id.btnPlayerBrowseAll
         )
-        binding.togglePlayerBrowseDest.addOnButtonCheckedListener { _, checkedId, isChecked ->
+        binding.groupWidgets.togglePlayerBrowseDest.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             destBtnToMode[checkedId]?.let { viewModel.setPlayerBrowseDestination(it) }
         }
@@ -1206,12 +1206,12 @@ class SettingsFragment : Fragment() {
                 }
                 launch {
                     viewModel.hidePlayerOnListenTab.collect { hide ->
-                        binding.switchHidePlayerOnListenTab.isChecked = hide
+                        binding.groupWidgets.switchHidePlayerOnListenTab.isChecked = hide
                     }
                 }
                 launch {
                     viewModel.alwaysShowPlayerPill.collect { show ->
-                        binding.switchAlwaysShowPlayerPill.isChecked = show
+                        binding.groupWidgets.switchAlwaysShowPlayerPill.isChecked = show
                     }
                 }
             }
