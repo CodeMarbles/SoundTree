@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  settings_group_migration.xml
+  Included by fragment_settings.xml into scrollTools.
+  Contains: Recording Migration section header + card (description,
+            progress bar, status text, migrate button).
+  Visibility of the entire group is gated on Future Mode — toggled via
+  binding.groupMigration.root.visibility in setupMigrationSection().
+
+  IDs surfaced to FragmentSettingsBinding via <include android:id="@+id/groupMigration">:
+    tvMigrationDescription, progressMigration, tvMigrationStatus,
+    btnMigrateRecordings
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <!-- ── RECORDING MIGRATION section header ───────────────────── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_section_recording_migration"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="8dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        app:cardCornerRadius="@dimen/settings_card_corner_radius"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tvMigrationDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_migration_description"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="13sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Indeterminate progress — visible only while running -->
+            <ProgressBar
+                android:id="@+id/progressMigration"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginBottom="6dp"
+                android:indeterminate="true"
+                android:visibility="gone" />
+
+            <!-- Status line: updated during and after a run -->
+            <TextView
+                android:id="@+id/tvMigrationStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?attr/colorTextSecondary"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMigrateRecordings"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_migration_btn_run" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

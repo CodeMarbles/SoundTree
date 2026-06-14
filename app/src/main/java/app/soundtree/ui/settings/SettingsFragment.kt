@@ -934,13 +934,13 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.futureMode.collect { enabled ->
-                    binding.containerMigrationSection.visibility =
+                    binding.groupMigration.root.visibility =
                         if (enabled) View.VISIBLE else View.GONE
                 }
             }
         }
 
-        binding.btnMigrateRecordings.setOnClickListener {
+        binding.groupMigration.btnMigrateRecordings.setOnClickListener {
             if (viewModel.recordingState.value != RecordingService.State.IDLE) {
                 Toast.makeText(
                     requireContext(),
@@ -972,24 +972,24 @@ class SettingsFragment : Fragment() {
     private fun renderMigrationState(state: MainViewModel.MigrationState) {
         when (state) {
             is MainViewModel.MigrationState.Idle -> {
-                binding.progressMigration.visibility    = View.GONE
-                binding.tvMigrationStatus.visibility    = View.GONE
-                binding.btnMigrateRecordings.isEnabled  = true
+                binding.groupMigration.progressMigration.visibility    = View.GONE
+                binding.groupMigration.tvMigrationStatus.visibility    = View.GONE
+                binding.groupMigration.btnMigrateRecordings.isEnabled  = true
             }
             is MainViewModel.MigrationState.Running -> {
-                binding.progressMigration.visibility    = View.VISIBLE
-                binding.tvMigrationStatus.visibility    = View.VISIBLE
-                binding.tvMigrationStatus.text          = if (state.currentFile.isNotEmpty()) {
+                binding.groupMigration.progressMigration.visibility    = View.VISIBLE
+                binding.groupMigration.tvMigrationStatus.visibility    = View.VISIBLE
+                binding.groupMigration.tvMigrationStatus.text          = if (state.currentFile.isNotEmpty()) {
                     getString(R.string.settings_migration_running, state.currentFile)
                 } else {
                     getString(R.string.settings_migration_scanning)
                 }
-                binding.btnMigrateRecordings.isEnabled  = false
+                binding.groupMigration.btnMigrateRecordings.isEnabled  = false
             }
             is MainViewModel.MigrationState.Done -> {
-                binding.progressMigration.visibility    = View.GONE
-                binding.tvMigrationStatus.visibility    = View.VISIBLE
-                binding.tvMigrationStatus.text          = when {
+                binding.groupMigration.progressMigration.visibility    = View.GONE
+                binding.groupMigration.tvMigrationStatus.visibility    = View.VISIBLE
+                binding.groupMigration.tvMigrationStatus.text          = when {
                     state.moved == 0 && state.failed == 0 ->
                         getString(R.string.settings_migration_done_none)
                     state.failed == 0 ->
@@ -997,7 +997,7 @@ class SettingsFragment : Fragment() {
                     else ->
                         getString(R.string.settings_migration_done, state.moved, state.failed)
                 }
-                binding.btnMigrateRecordings.isEnabled  = true
+                binding.groupMigration.btnMigrateRecordings.isEnabled  = true
             }
         }
     }
