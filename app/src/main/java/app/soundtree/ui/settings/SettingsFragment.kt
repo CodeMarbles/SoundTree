@@ -1754,12 +1754,12 @@ class SettingsFragment : Fragment() {
                 // Total recorded time + last session (one-shot suspends)
                 launch {
                     val totalMs = viewModel.getTotalRecordingTime()
-                    binding.tvTotalRecordedTime.text =
+                    binding.groupStatsDisplay.tvTotalRecordedTime.text =
                         if (totalMs > 0) formatGap(totalMs)
                         else getString(R.string.common_placeholder_empty)
 
                     val lastOpenedAt = viewModel.getLastSessionOpenedAt()
-                    binding.tvLastOpened.text = if (lastOpenedAt != null) {
+                    binding.groupStatsDisplay.tvLastOpened.text = if (lastOpenedAt != null) {
                         getString(R.string.settings_label_time_ago, formatGap(System.currentTimeMillis() - lastOpenedAt))
                     } else {
                         getString(R.string.settings_label_first_use)
@@ -1770,14 +1770,14 @@ class SettingsFragment : Fragment() {
                 // listens to something while Settings is open
                 launch {
                     viewModel.allRecordings.collect { recordings ->
-                        binding.tvRecordingCount.text = recordings.size.toString()
+                        binding.groupStatsDisplay.tvRecordingCount.text = recordings.size.toString()
                     }
                 }
 
                 // Topic count — reactive
                 launch {
                     viewModel.allTopics.collect { topics ->
-                        binding.tvTopicCount.text = topics.size.toString()
+                        binding.groupStatsDisplay.tvTopicCount.text = topics.size.toString()
                     }
                 }
 
@@ -1786,7 +1786,7 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.storageUsageByVolume.collect { usageMap ->
                         val totalBytes = usageMap.values.sum()
-                        binding.tvStatsTotalStorage.text =
+                        binding.groupStatsDisplay.tvStatsTotalStorage.text =
                             if (totalBytes > 0) AppVolume.formatBytes(totalBytes)
                             else getString(R.string.common_placeholder_empty)
                     }
