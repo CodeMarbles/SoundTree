@@ -1258,16 +1258,16 @@ class SettingsFragment : Fragment() {
     private fun setupWaveformStyleSettings() {
 
         // ── View refs ─────────────────────────────────────────────────────────
-        val btnStyleStandard  = binding.btnWaveformStyleStandard
-        val btnStyleSky       = binding.btnWaveformStyleSky
-        val btnStyleSkyLights = binding.btnWaveformStyleSkyLights
-        val rowSubOptions     = binding.rowWaveformSubOptions
-        val switchInvert      = binding.switchInvertWaveformTheme
-        val rowInvert         = binding.rowInvertWaveformTheme
-        val sliderAlpha       = binding.sliderWaveformBgAlpha
-        val rowAlpha          = binding.rowWaveformBgAlpha
-        val switchRuler       = binding.switchWaveformExtendsUnderRuler
-        val switchUnplayed    = binding.switchWaveformUnplayedOnly
+        val btnStyleStandard  = binding.groupWaveform.btnWaveformStyleStandard
+        val btnStyleSky       = binding.groupWaveform.btnWaveformStyleSky
+        val btnStyleSkyLights = binding.groupWaveform.btnWaveformStyleSkyLights
+        val rowSubOptions     = binding.groupWaveform.rowWaveformSubOptions
+        val switchInvert      = binding.groupWaveform.switchInvertWaveformTheme
+        val rowInvert         = binding.groupWaveform.rowInvertWaveformTheme
+        val sliderAlpha       = binding.groupWaveform.sliderWaveformBgAlpha
+        val rowAlpha          = binding.groupWaveform.rowWaveformBgAlpha
+        val switchRuler       = binding.groupWaveform.switchWaveformExtendsUnderRuler
+        val switchUnplayed    = binding.groupWaveform.switchWaveformUnplayedOnly
 
         val btnToKey = mapOf(
             btnStyleStandard  to MainViewModel.STYLE_STANDARD,
