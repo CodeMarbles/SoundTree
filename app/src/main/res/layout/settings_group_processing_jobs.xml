@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  settings_group_processing_jobs.xml
+  Included by fragment_settings.xml into scrollTools.
+  Contains: Processing Jobs section header + card (waveform regeneration,
+            active job row, progress bar, job counts, expandable output list).
+
+  IDs surfaced to FragmentSettingsBinding via <include android:id="@+id/groupProcessingJobs">:
+    cardProcessing,
+    processingSpinner, btnReprocessWaveforms, btnToggleProcessingOutput,
+    rowActiveJob, tvActiveJobTitle,
+    pbWaveformProgress,
+    tvJobCounts,
+    containerProcessingOutput,
+      btnCancelWaveforms, btnClearWaveformOutput,
+      containerRecent, rvRecentJobs,
+    tvProcessingIdle
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- ── PROCESSING JOBS section header ───────────────────────── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_section_processing_jobs"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="8dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        app:cardCornerRadius="@dimen/settings_card_corner_radius"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:id="@+id/cardProcessing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <!-- ── Header row: spinner · Regenerate button · chevron ─────────────── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="4dp">
+
+                <ProgressBar
+                    android:id="@+id/processingSpinner"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="8dp"
+                    android:visibility="gone" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReprocessWaveforms"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_tools_btn_regenerate_waveforms"
+                    android:textSize="13sp"
+                    android:textColor="?attr/colorAccent" />
+
+                <ImageButton
+                    android:id="@+id/btnToggleProcessingOutput"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_chevron_down"
+                    android:contentDescription="@null"
+                    app:tint="?attr/colorTextSecondary"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:layout_marginHorizontal="16dp" />
+
+            <!-- ── Active job row — visible during processing, shown collapsed too ── -->
+            <LinearLayout
+                android:id="@+id/rowActiveJob"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/settings_tools_job_analysing"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvActiveJobTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- ── Determinate progress bar — shown collapsed too ────────────────── -->
+            <ProgressBar
+                android:id="@+id/pbWaveformProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:max="1000"
+                android:progress="0"
+                android:visibility="gone" />
+
+            <!-- ── Job counts — shown collapsed too ─────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvJobCounts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="10dp"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <!-- ── Expandable output section ─────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/containerProcessingOutput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Cancel Remaining + Clear controls -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCancelWaveforms"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_tools_btn_cancel_waveforms"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorError"
+                        android:visibility="gone" />
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnClearWaveformOutput"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_tools_btn_clear_output"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorSurfaceElevated"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Completed jobs RecyclerView — bounded height, internally scrollable -->
+                <LinearLayout
+                    android:id="@+id/containerRecent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvRecentJobs"
+                        android:layout_width="match_parent"
+                        android:layout_height="260dp"
+                        android:scrollbars="vertical"
+                        android:paddingBottom="4dp"
+                        android:clipToPadding="false" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ── Idle state ────────────────────────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvProcessingIdle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp"
+                android:text="@string/settings_tools_no_jobs"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="13sp"
+                android:visibility="visible" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

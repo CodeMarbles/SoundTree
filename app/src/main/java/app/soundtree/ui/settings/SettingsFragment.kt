@@ -676,7 +676,7 @@ class SettingsFragment : Fragment() {
 
     private fun setupProcessingSection() {
         recentJobsAdapter = WaveformJobAdapter()
-        binding.rvRecentJobs.apply {
+        binding.groupProcessingJobs.rvRecentJobs.apply {
             layoutManager = LinearLayoutManager(requireContext()).also {
                 // Newest items are prepended, so we want the list to scroll to
                 // position 0 (top) on each update — no reverseLayout needed.
@@ -685,7 +685,7 @@ class SettingsFragment : Fragment() {
         }
 
         // Confirmation dialog guards the destructive button.
-        binding.btnReprocessWaveforms.setOnClickListener {
+        binding.groupProcessingJobs.btnReprocessWaveforms.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_tools_regenerate_confirm_title)
                 .setMessage(R.string.settings_tools_regenerate_confirm_message)
@@ -696,22 +696,22 @@ class SettingsFragment : Fragment() {
                 .show()
         }
 
-        binding.btnCancelWaveforms.setOnClickListener {
+        binding.groupProcessingJobs.btnCancelWaveforms.setOnClickListener {
             // Optimistically hide the cancel button — WorkManager cancellation is async
             // and the flow won't confirm until WM emits the cancelled state.
-            binding.btnCancelWaveforms.visibility = View.GONE
+            binding.groupProcessingJobs.btnCancelWaveforms.visibility = View.GONE
             viewModel.cancelWaveformProcessing()
         }
 
-        binding.btnClearWaveformOutput.setOnClickListener {
+        binding.groupProcessingJobs.btnClearWaveformOutput.setOnClickListener {
             // Optimistically clear the UI immediately — don't wait for the flow.
-            binding.containerRecent.visibility        = View.GONE
-            binding.btnClearWaveformOutput.visibility = View.GONE
+            binding.groupProcessingJobs.containerRecent.visibility        = View.GONE
+            binding.groupProcessingJobs.btnClearWaveformOutput.visibility = View.GONE
             // Then do the actual data work (also triggers a flow emission as confirmation).
             viewModel.clearCompletedWaveformJobs()
         }
 
-        binding.btnToggleProcessingOutput.setOnClickListener {
+        binding.groupProcessingJobs.btnToggleProcessingOutput.setOnClickListener {
             processingOutputExpanded = !processingOutputExpanded
             // Re-render with the current status so visibility updates immediately.
             renderProcessingOutput(processingOutputExpanded)
@@ -745,31 +745,31 @@ class SettingsFragment : Fragment() {
         if (isIdle) processingOutputExpanded = true
 
         // ── Top-bar controls ──────────────────────────────────────────────────────
-        binding.processingSpinner.visibility     = if (hasActive) View.VISIBLE else View.GONE
-        binding.tvProcessingIdle.visibility      = if (isIdle)   View.VISIBLE else View.GONE
-        binding.btnToggleProcessingOutput.visibility = if (!isIdle) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.processingSpinner.visibility     = if (hasActive) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.tvProcessingIdle.visibility      = if (isIdle)   View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.btnToggleProcessingOutput.visibility = if (!isIdle) View.VISIBLE else View.GONE
 
         // Disable the regenerate button while a pass is in flight.
-        binding.btnReprocessWaveforms.isEnabled = !isActive
+        binding.groupProcessingJobs.btnReprocessWaveforms.isEnabled = !isActive
 
         // ── Active job row ────────────────────────────────────────────────────────
-        binding.rowActiveJob.visibility = if (hasActive) View.VISIBLE else View.GONE
-        status.active?.let { binding.tvActiveJobTitle.text = viewModel.labelForJob(it) }
+        binding.groupProcessingJobs.rowActiveJob.visibility = if (hasActive) View.VISIBLE else View.GONE
+        status.active?.let { binding.groupProcessingJobs.tvActiveJobTitle.text = viewModel.labelForJob(it) }
 
         // ── Progress bar ──────────────────────────────────────────────────────────
         val showProgress = status.totalEnqueued > 0
-        binding.pbWaveformProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.pbWaveformProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
         if (showProgress) {
             val progressFraction = status.completedCount.toFloat() / status.totalEnqueued
-            binding.pbWaveformProgress.progress = (progressFraction * 1000).toInt()
+            binding.groupProcessingJobs.pbWaveformProgress.progress = (progressFraction * 1000).toInt()
         }
 
         // ── Job counts ────────────────────────────────────────────────────────────
-        binding.tvJobCounts.visibility = if (showProgress) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.tvJobCounts.visibility = if (showProgress) View.VISIBLE else View.GONE
         if (showProgress) {
             val remaining = (status.totalEnqueued - status.completedCount - (if (hasActive) 1 else 0))
                 .coerceAtLeast(0)
-            binding.tvJobCounts.text = getString(
+            binding.groupProcessingJobs.tvJobCounts.text = getString(
                 R.string.settings_tools_jobs_summary,
                 status.completedCount,
                 remaining,
@@ -777,7 +777,7 @@ class SettingsFragment : Fragment() {
         }
 
         // ── Recent jobs RecyclerView ──────────────────────────────────────────────
-        binding.containerRecent.visibility = if (hasRecent) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.containerRecent.visibility = if (hasRecent) View.VISIBLE else View.GONE
         if (hasRecent) {
             val rows = status.recent.map { job ->
                 val failed    = job.state == WorkInfo.State.FAILED
@@ -791,12 +791,12 @@ class SettingsFragment : Fragment() {
             }
             recentJobsAdapter.submitList(rows)
             // Scroll to top — newest items appear first (list is already reversed upstream).
-            binding.rvRecentJobs.scrollToPosition(0)
+            binding.groupProcessingJobs.rvRecentJobs.scrollToPosition(0)
         }
 
         // ── Cancel / Clear button visibility ─────────────────────────────────────
-        binding.btnCancelWaveforms.visibility    = if (isActive)  View.VISIBLE else View.GONE
-        binding.btnClearWaveformOutput.visibility = if (hasRecent) View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.btnCancelWaveforms.visibility    = if (isActive)  View.VISIBLE else View.GONE
+        binding.groupProcessingJobs.btnClearWaveformOutput.visibility = if (hasRecent) View.VISIBLE else View.GONE
 
         // ── Expandable output section ─────────────────────────────────────────────
         renderProcessingOutput(processingOutputExpanded)
@@ -804,14 +804,14 @@ class SettingsFragment : Fragment() {
 
     /** Applies the current expanded/collapsed state to the output container. */
     private fun renderProcessingOutput(expanded: Boolean) {
-        val hasAnythingToShow = binding.containerRecent.visibility == View.VISIBLE ||
-                binding.btnCancelWaveforms.visibility == View.VISIBLE ||
-                binding.btnClearWaveformOutput.visibility == View.VISIBLE
-        binding.containerProcessingOutput.visibility =
+        val hasAnythingToShow = binding.groupProcessingJobs.containerRecent.visibility == View.VISIBLE ||
+                binding.groupProcessingJobs.btnCancelWaveforms.visibility == View.VISIBLE ||
+                binding.groupProcessingJobs.btnClearWaveformOutput.visibility == View.VISIBLE
+        binding.groupProcessingJobs.containerProcessingOutput.visibility =
             if (expanded && hasAnythingToShow) View.VISIBLE else View.GONE
 
         // Icon update lives here — the single place that knows the expanded state.
-        binding.btnToggleProcessingOutput.setImageResource(
+        binding.groupProcessingJobs.btnToggleProcessingOutput.setImageResource(
             if (expanded) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down
         )
     }
