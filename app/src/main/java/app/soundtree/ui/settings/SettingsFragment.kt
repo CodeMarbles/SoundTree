@@ -1525,57 +1525,57 @@ class SettingsFragment : Fragment() {
 
     private fun setupPlaybackSettings() {
         // ── Switch to Listen on play ──────────────────────────────────────────────
-        binding.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
-        binding.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
+        binding.groupNavigationControls.switchAutoNavigate.isChecked = viewModel.autoNavigateToListen.value
+        binding.groupNavigationControls.switchAutoNavigate.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setAutoNavigateToListen(isChecked)
         }
 
         // ── Jump to Library on save ───────────────────────────────────────────────
-        binding.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
-        binding.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
+        binding.groupNavigationControls.switchJumpToLibrary.isChecked = viewModel.jumpToLibraryOnSave.value
+        binding.groupNavigationControls.switchJumpToLibrary.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setJumpToLibraryOnSave(isChecked)
         }
 
         // ── Scrub Back ────────────────────────────────────────────────────────
-        binding.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
-        binding.btnScrubBackMinus.setOnClickListener {
+        binding.groupNavigationControls.tvScrubBackSecs.text = viewModel.scrubBackSecs.value.toString()
+        binding.groupNavigationControls.btnScrubBackMinus.setOnClickListener {
             val newVal = (viewModel.scrubBackSecs.value - 5).coerceAtLeast(5)
             viewModel.setScrubBackSecs(newVal)
-            binding.tvScrubBackSecs.text = newVal.toString()
+            binding.groupNavigationControls.tvScrubBackSecs.text = newVal.toString()
         }
-        binding.btnScrubBackPlus.setOnClickListener {
+        binding.groupNavigationControls.btnScrubBackPlus.setOnClickListener {
             val newVal = viewModel.scrubBackSecs.value + 5
             viewModel.setScrubBackSecs(newVal)
-            binding.tvScrubBackSecs.text = newVal.toString()
+            binding.groupNavigationControls.tvScrubBackSecs.text = newVal.toString()
         }
 
         // ── Scrub Forward ─────────────────────────────────────────────────────
-        binding.tvScrubForwardSecs.text = viewModel.scrubForwardSecs.value.toString()
-        binding.btnScrubForwardMinus.setOnClickListener {
+        binding.groupNavigationControls.tvScrubForwardSecs.text = viewModel.scrubForwardSecs.value.toString()
+        binding.groupNavigationControls.btnScrubForwardMinus.setOnClickListener {
             val newVal = (viewModel.scrubForwardSecs.value - 5).coerceAtLeast(5)
             viewModel.setScrubForwardSecs(newVal)
-            binding.tvScrubForwardSecs.text = newVal.toString()
+            binding.groupNavigationControls.tvScrubForwardSecs.text = newVal.toString()
         }
-        binding.btnScrubForwardPlus.setOnClickListener {
+        binding.groupNavigationControls.btnScrubForwardPlus.setOnClickListener {
             val newVal = viewModel.scrubForwardSecs.value + 5
             viewModel.setScrubForwardSecs(newVal)
-            binding.tvScrubForwardSecs.text = newVal.toString()
+            binding.groupNavigationControls.tvScrubForwardSecs.text = newVal.toString()
         }
 
         // ── Mark Rewind Threshold ─────────────────────────────────────────────
         fun Float.toDisplayString() =
             if (this == this.toLong().toFloat()) "${this.toInt()}s" else "${this}s"
 
-        binding.tvMarkRewindSecs.text = viewModel.markRewindThresholdSecs.value.toDisplayString()
-        binding.btnMarkRewindMinus.setOnClickListener {
+        binding.groupNavigationControls.tvMarkRewindSecs.text = viewModel.markRewindThresholdSecs.value.toDisplayString()
+        binding.groupNavigationControls.btnMarkRewindMinus.setOnClickListener {
             val newVal = (viewModel.markRewindThresholdSecs.value - 0.5f).coerceAtLeast(0.5f)
             viewModel.setMarkRewindThresholdSecs(newVal)
-            binding.tvMarkRewindSecs.text = newVal.toDisplayString()
+            binding.groupNavigationControls.tvMarkRewindSecs.text = newVal.toDisplayString()
         }
-        binding.btnMarkRewindPlus.setOnClickListener {
+        binding.groupNavigationControls.btnMarkRewindPlus.setOnClickListener {
             val newVal = (viewModel.markRewindThresholdSecs.value + 0.5f).coerceAtMost(5.0f)
             viewModel.setMarkRewindThresholdSecs(newVal)
-            binding.tvMarkRewindSecs.text = newVal.toDisplayString()
+            binding.groupNavigationControls.tvMarkRewindSecs.text = newVal.toDisplayString()
         }
     }
 
