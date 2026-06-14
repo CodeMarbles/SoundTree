@@ -1363,9 +1363,9 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupPlayheadVis() {
-        val switch   = binding.switchPlayheadVisEnabled
-        val rowIntensity = binding.rowPlayheadVisIntensity
-        val slider   = binding.sliderPlayheadVisIntensity
+        val switch   = binding.groupWaveform.switchPlayheadVisEnabled
+        val rowIntensity = binding.groupWaveform.rowPlayheadVisIntensity
+        val slider   = binding.groupWaveform.sliderPlayheadVisIntensity
 
         // Initial state
         switch.isChecked = viewModel.playheadVisEnabled.value
