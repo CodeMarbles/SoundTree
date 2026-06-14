@@ -1004,14 +1004,14 @@ class SettingsFragment : Fragment() {
 
     private fun setupDevOptionsSection() {
         // ── Future Mode switch ────────────────────────────────────────────────────
-        binding.switchFutureMode.isChecked = viewModel.futureMode.value
-        binding.switchFutureMode.setOnCheckedChangeListener { _, checked ->
+        binding.groupDevOptions.switchFutureMode.isChecked = viewModel.futureMode.value
+        binding.groupDevOptions.switchFutureMode.setOnCheckedChangeListener { _, checked ->
             viewModel.setFutureMode(checked)
         }
 
         // ── Developer Options switch ──────────────────────────────────────────────
-        binding.switchSimulateWfLoading.isChecked = viewModel.simulateWaveformLoading.value
-        binding.switchSimulateWfLoading.setOnCheckedChangeListener { _, checked ->
+        binding.groupDevOptions.switchSimulateWfLoading.isChecked = viewModel.simulateWaveformLoading.value
+        binding.groupDevOptions.switchSimulateWfLoading.setOnCheckedChangeListener { _, checked ->
             viewModel.setSimulateWaveformLoading(checked)
         }
 
@@ -1020,16 +1020,16 @@ class SettingsFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.devOptions.collect { enabled ->
                     val vis = if (enabled) View.VISIBLE else View.GONE
-                    binding.labelDeveloperOptionsSection.visibility = vis
-                    binding.containerDeveloperOptionsCard.visibility = vis
+                    binding.groupDevOptions.labelDeveloperOptionsSection.visibility = vis
+                    binding.groupDevOptions.containerDeveloperOptionsCard.visibility = vis
                     // Reset simulate switch when hiding, mirroring the VM reset.
-                    if (!enabled) binding.switchSimulateWfLoading.isChecked = false
+                    if (!enabled) binding.groupDevOptions.switchSimulateWfLoading.isChecked = false
                 }
             }
         }
 
-        binding.switchDevOptions.isChecked = viewModel.devOptions.value
-        binding.switchDevOptions.setOnCheckedChangeListener { _, checked ->
+        binding.groupDevOptions.switchDevOptions.isChecked = viewModel.devOptions.value
+        binding.groupDevOptions.switchDevOptions.setOnCheckedChangeListener { _, checked ->
             viewModel.setDevOptions(checked)
         }
     }
