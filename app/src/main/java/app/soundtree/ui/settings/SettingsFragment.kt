@@ -267,7 +267,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRecordingRecoverySection() {
-        binding.btnReviewOrphans.setOnClickListener {
+        binding.groupRecordingRecovery.btnReviewOrphans.setOnClickListener {
             OrphanRecoveryDialogFragment
                 .newInstance(viewModel.orphanRecordings.value)
                 .show(parentFragmentManager, OrphanRecoveryDialogFragment.TAG)
@@ -285,8 +285,8 @@ class SettingsFragment : Fragment() {
     private fun renderOrphanSummary(orphans: List<OrphanRecording>) {
         val recoverable   = orphans.filter { it.isPlayable }
         val unrecoverable = orphans.filter { !it.isPlayable }
-        binding.tvOrphanRecoverableSummary.text = formatOrphanSummary(recoverable)
-        binding.tvOrphanCorruptSummary.text     = formatOrphanSummary(unrecoverable)
+        binding.groupRecordingRecovery.tvOrphanRecoverableSummary.text = formatOrphanSummary(recoverable)
+        binding.groupRecordingRecovery.tvOrphanCorruptSummary.text     = formatOrphanSummary(unrecoverable)
     }
 
     private fun formatOrphanSummary(orphans: List<OrphanRecording>): String {
@@ -329,7 +329,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRestoreSection() {
-        binding.btnRestoreFromBackup.setOnClickListener {
+        binding.groupRestore.btnRestoreFromBackup.setOnClickListener {
             openDocumentTreeForRestore.launch(null)
         }
     }
