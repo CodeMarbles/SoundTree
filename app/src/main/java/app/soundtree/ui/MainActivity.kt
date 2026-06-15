@@ -5,6 +5,8 @@ import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import app.soundtree.databinding.ActivityMainBinding
 import app.soundtree.service.RecordingService
 import app.soundtree.ui.library.LibraryFragment
@@ -75,6 +77,17 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // ── Edge-to-edge inset handling (Android 15+ compatibility) ──────────
+        // Android 15 forces all apps to draw behind system bars. We consume the
+        // window insets here and apply them as padding on rootStack, which keeps
+        // our title bar and bottom nav clear of the status bar and nav bar.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.rootStack) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         setupViewPager()
         observeTopTitle()
