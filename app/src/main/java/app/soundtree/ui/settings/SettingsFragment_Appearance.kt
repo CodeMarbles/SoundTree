@@ -67,7 +67,7 @@ internal fun SettingsFragment.setupLayoutSection() {
         widget.showTitleBar = isChecked
 
         // If we aren't in edit mode show the title bar immediately
-        if (!widget.isInEditMode) {
+        if (!widget.editing) {
             viewModel.setShowTitleBar(isChecked)
             viewModel.setLayoutOrder(widget.getOrder())
         }

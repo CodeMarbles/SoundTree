@@ -13,7 +13,6 @@ import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -57,9 +56,6 @@ import app.soundtree.ui.restore.RestoreWizardDialogFragment
 import app.soundtree.ui.setAlwaysShowPlayerPill
 import app.soundtree.ui.setAlwaysShowRecorderPill
 import app.soundtree.ui.setAutoNavigateToListen
-import app.soundtree.ui.setBgAlpha
-import app.soundtree.ui.setBgExtendsUnderRuler
-import app.soundtree.ui.setBgUnplayedOnly
 import app.soundtree.ui.setDbPruneCount
 import app.soundtree.ui.setDbPruneEnabled
 import app.soundtree.ui.setDefaultStorageUuid
@@ -67,9 +63,7 @@ import app.soundtree.ui.setDevOptions
 import app.soundtree.ui.setFutureMode
 import app.soundtree.ui.setHidePlayerOnListenTab
 import app.soundtree.ui.setHideRecorderOnRecordTab
-import app.soundtree.ui.setInvertWaveformTheme
 import app.soundtree.ui.setJumpToLibraryOnSave
-import app.soundtree.ui.setLayoutOrder
 import app.soundtree.ui.setMarkRewindThresholdSecs
 import app.soundtree.ui.setNearEndDurationThresholdSecs
 import app.soundtree.ui.setNearEndEnabled
@@ -78,26 +72,20 @@ import app.soundtree.ui.setNearEndShortSecs
 import app.soundtree.ui.setPlayerBrowseDestination
 import app.soundtree.ui.setPlayerStartCollapsed
 import app.soundtree.ui.setPlayerWidgetVisibility
-import app.soundtree.ui.setPlayheadVisEnabled
-import app.soundtree.ui.setPlayheadVisIntensity
 import app.soundtree.ui.setRecorderStartCollapsed
 import app.soundtree.ui.setRecorderWidgetVisibility
 import app.soundtree.ui.setRememberLongThresholdSecs
 import app.soundtree.ui.setRememberPositionMode
 import app.soundtree.ui.setScrubBackSecs
 import app.soundtree.ui.setScrubForwardSecs
-import app.soundtree.ui.setShowTitleBar
 import app.soundtree.ui.setSimulateWaveformLoading
-import app.soundtree.ui.setThemeMode
 import app.soundtree.ui.setVerboseBackupLogging
-import app.soundtree.ui.setWaveformStyleKey
 import app.soundtree.ui.tickProcessingRefresh
 import app.soundtree.util.BackupProgressCalc
 import app.soundtree.util.OrphanRecording
 import app.soundtree.util.PlaybackPositionHelper
 import app.soundtree.util.themeColor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.slider.Slider
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -105,7 +93,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 
 class SettingsFragment : Fragment() {
 
@@ -1135,133 +1122,6 @@ class SettingsFragment : Fragment() {
             }
         }
     }  // end of setupPlaybackWidgetSection
-
-    private fun setupWaveformStyleSettings() {
-
-        // ── View refs ─────────────────────────────────────────────────────────
-        val btnStyleStandard  = binding.groupWaveform.btnWaveformStyleStandard
-        val btnStyleSky       = binding.groupWaveform.btnWaveformStyleSky
-        val btnStyleSkyLights = binding.groupWaveform.btnWaveformStyleSkyLights
-        val rowSubOptions     = binding.groupWaveform.rowWaveformSubOptions
-        val switchInvert      = binding.groupWaveform.switchInvertWaveformTheme
-        val rowInvert         = binding.groupWaveform.rowInvertWaveformTheme
-        val sliderAlpha       = binding.groupWaveform.sliderWaveformBgAlpha
-        val rowAlpha          = binding.groupWaveform.rowWaveformBgAlpha
-        val switchRuler       = binding.groupWaveform.switchWaveformExtendsUnderRuler
-        val switchUnplayed    = binding.groupWaveform.switchWaveformUnplayedOnly
-
-        val btnToKey = mapOf(
-            btnStyleStandard  to MainViewModel.STYLE_STANDARD,
-            btnStyleSky       to MainViewModel.STYLE_SKY,
-            btnStyleSkyLights to MainViewModel.STYLE_SKY_LIGHTS,
-        )
-
-        fun applyStyleButtonVisuals(activeKey: String) {
-            val activeText   = requireContext().themeColor(R.attr.colorTextPrimary)
-            val activeBg     = requireContext().themeColor(R.attr.colorSurfaceElevated)
-            val inactiveText = requireContext().themeColor(R.attr.colorTextSecondary)
-            btnToKey.forEach { (btn, key) ->
-                val isActive = key == activeKey
-                btn.setTextColor(if (isActive) activeText else inactiveText)
-                btn.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
-                btn.setBackgroundColor(if (isActive) activeBg else android.graphics.Color.TRANSPARENT)
-            }
-        }
-
-        /** Dim and disable the sub-options block when Standard is selected. */
-        fun applySubOptionState(styleKey: String) {
-            val themed = styleKey != MainViewModel.STYLE_STANDARD
-            rowSubOptions.alpha      = if (themed) 1f else 0.38f
-            rowInvert.alpha          = if (themed) 1f else 0.38f
-            rowAlpha.alpha           = if (themed) 1f else 0.38f
-            switchInvert.isEnabled   = themed
-            sliderAlpha.isEnabled    = themed
-            switchRuler.isEnabled    = themed
-            switchUnplayed.isEnabled = themed
-        }
-
-        // ── Seed from ViewModel ───────────────────────────────────────────────
-        val initialKey    = viewModel.waveformStyleKey.value
-        val initialConfig = viewModel.waveformDisplayConfig.value
-
-        applyStyleButtonVisuals(initialKey)
-        applySubOptionState(initialKey)
-
-        switchInvert.isChecked   = viewModel.invertWaveformTheme.value
-        sliderAlpha.value        = (initialConfig.backgroundAlpha * 100f).roundToInt().toFloat().coerceIn(0f, 100f)
-        switchRuler.isChecked    = initialConfig.extendsUnderRuler
-        switchUnplayed.isChecked = initialConfig.unplayedOnly
-
-        // ── Observe ───────────────────────────────────────────────────────────
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.waveformStyleKey.collect { key ->
-                        applyStyleButtonVisuals(key)
-                        applySubOptionState(key)
-                    }
-                }
-                launch {
-                    viewModel.invertWaveformTheme.collect { inverted ->
-                        if (switchInvert.isChecked != inverted) switchInvert.isChecked = inverted
-                    }
-                }
-                launch {
-                    viewModel.waveformDisplayConfig.collect { cfg ->
-                        val sliderTarget = (cfg.backgroundAlpha * 100f).roundToInt().toFloat().coerceIn(0f, 100f)
-                        if (sliderAlpha.value != sliderTarget) sliderAlpha.value = sliderTarget
-                        if (switchRuler.isChecked    != cfg.extendsUnderRuler) switchRuler.isChecked    = cfg.extendsUnderRuler
-                        if (switchUnplayed.isChecked != cfg.unplayedOnly)      switchUnplayed.isChecked = cfg.unplayedOnly
-                    }
-                }
-            }
-        }
-
-        // ── User interaction ──────────────────────────────────────────────────
-        btnToKey.forEach { (btn, key) ->
-            btn.setOnClickListener { viewModel.setWaveformStyleKey(key) }
-        }
-
-        switchInvert.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setInvertWaveformTheme(isChecked)
-        }
-
-        // Slider: commit to ViewModel only on touch-up to avoid rapid pref writes
-        sliderAlpha.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
-            override fun onStartTrackingTouch(slider: Slider) {}
-            override fun onStopTrackingTouch(slider: Slider) {
-                viewModel.setBgAlpha(slider.value / 100f)
-            }
-        })
-
-        switchRuler.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setBgExtendsUnderRuler(isChecked)
-        }
-
-        switchUnplayed.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setBgUnplayedOnly(isChecked)
-        }
-    }
-
-    private fun setupPlayheadVis() {
-        val switch   = binding.groupWaveform.switchPlayheadVisEnabled
-        val rowIntensity = binding.groupWaveform.rowPlayheadVisIntensity
-        val slider   = binding.groupWaveform.sliderPlayheadVisIntensity
-
-        // Initial state
-        switch.isChecked = viewModel.playheadVisEnabled.value
-        slider.value     = viewModel.playheadVisIntensity.value
-        rowIntensity.visibility = if (switch.isChecked) View.VISIBLE else View.GONE
-
-        switch.setOnCheckedChangeListener { _, checked ->
-            viewModel.setPlayheadVisEnabled(checked)
-            rowIntensity.visibility = if (checked) View.VISIBLE else View.GONE
-        }
-
-        slider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) viewModel.setPlayheadVisIntensity(value)
-        }
-    }
 
     private fun setupPlaybackMemory() {
         // Mode picker
