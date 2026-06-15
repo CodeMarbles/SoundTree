@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
-import android.provider.DocumentsContract
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -31,7 +30,6 @@ import app.soundtree.databinding.ItemBackupLogRowBinding
 import app.soundtree.databinding.ViewBackupProgressCardBinding
 import app.soundtree.service.RecordingService
 import app.soundtree.storage.AppVolume
-import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.BackupTargetUiState
 import app.soundtree.ui.BackupUiState
 import app.soundtree.ui.MainViewModel
@@ -45,13 +43,11 @@ import app.soundtree.ui.cancelWaveformProcessing
 import app.soundtree.ui.clearCompletedWaveformJobs
 import app.soundtree.ui.getDbPruneCount
 import app.soundtree.ui.getDbPruneEnabled
-import app.soundtree.ui.getLastSessionOpenedAt
 import app.soundtree.ui.getNearEndDurationThresholdSecs
 import app.soundtree.ui.getNearEndEnabled
 import app.soundtree.ui.getNearEndLongPct
 import app.soundtree.ui.getNearEndShortSecs
 import app.soundtree.ui.getRememberLongThresholdSecs
-import app.soundtree.ui.getTotalRecordingTime
 import app.soundtree.ui.labelForJob
 import app.soundtree.ui.migrateRecordingStructure
 import app.soundtree.ui.recovery.OrphanRecoveryDialogFragment
@@ -114,8 +110,8 @@ import kotlin.math.roundToInt
 class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
-    private val binding get() = _binding!!
-    private val viewModel: MainViewModel by activityViewModels()
+    internal val binding get() = _binding!!
+    internal val viewModel: MainViewModel by activityViewModels()
 
     // ── Tab state ─────────────────────────────────────────────────────
     private enum class Tab { DISPLAY, BEHAVIOR, STORAGE, TOOLS }
@@ -645,28 +641,6 @@ class SettingsFragment : Fragment() {
             container.alpha = 0f
             container.visibility = View.VISIBLE
             container.animate().alpha(1f).setDuration(200).start()
-        }
-    }
-
-    /** Creates a thin horizontal divider consistent with other Storage tab rows. */
-    private fun rowDivider(): View {
-        return View(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 1
-            ).also { lp -> lp.marginStart = 64; lp.marginEnd = 64 }
-            setBackgroundColor(requireContext().themeColor(R.attr.colorSurfaceElevated))
-        }
-    }
-
-    /**
-     * Recursively enables or disables all clickable/focusable children of [group].
-     * Used to prevent interaction with stepper rows when their section is toggled off.
-     */
-    private fun setChildrenEnabled(group: ViewGroup, enabled: Boolean) {
-        for (i in 0 until group.childCount) {
-            val child = group.getChildAt(i)
-            child.isEnabled = enabled
-            if (child is ViewGroup) setChildrenEnabled(child, enabled)
         }
     }
 
@@ -1747,80 +1721,4 @@ class SettingsFragment : Fragment() {
             else AppVolume.formatBytes(totalBytes)
     }
 
-    private fun loadStats() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-
-                // Total recorded time + last session (one-shot suspends)
-                launch {
-                    val totalMs = viewModel.getTotalRecordingTime()
-                    binding.groupStatsDisplay.tvTotalRecordedTime.text =
-                        if (totalMs > 0) formatGap(totalMs)
-                        else getString(R.string.common_placeholder_empty)
-
-                    val lastOpenedAt = viewModel.getLastSessionOpenedAt()
-                    binding.groupStatsDisplay.tvLastOpened.text = if (lastOpenedAt != null) {
-                        getString(R.string.settings_label_time_ago, formatGap(System.currentTimeMillis() - lastOpenedAt))
-                    } else {
-                        getString(R.string.settings_label_first_use)
-                    }
-                }
-
-                // Listened count + total recordings — reactive, updates if user
-                // listens to something while Settings is open
-                launch {
-                    viewModel.allRecordings.collect { recordings ->
-                        binding.groupStatsDisplay.tvRecordingCount.text = recordings.size.toString()
-                    }
-                }
-
-                // Topic count — reactive
-                launch {
-                    viewModel.allTopics.collect { topics ->
-                        binding.groupStatsDisplay.tvTopicCount.text = topics.size.toString()
-                    }
-                }
-
-                // Total storage — reactive, reuses the same flow that drives
-                // the per-volume rows in the Storage card above
-                launch {
-                    viewModel.storageUsageByVolume.collect { usageMap ->
-                        val totalBytes = usageMap.values.sum()
-                        binding.groupStatsDisplay.tvStatsTotalStorage.text =
-                            if (totalBytes > 0) AppVolume.formatBytes(totalBytes)
-                            else getString(R.string.common_placeholder_empty)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun formatGap(ms: Long): String {
-        val hours   = TimeUnit.MILLISECONDS.toHours(ms)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
-        return when {
-            hours >= 24 -> "${hours / 24}d ${hours % 24}h"
-            hours > 0   -> "${hours}h ${minutes}m"
-            else        -> "${minutes}m"
-        }
-    }
-
-    /**
-     * Builds an initial-URI hint for ACTION_OPEN_DOCUMENT_TREE that opens the
-     * picker at the root of the specified storage volume.
-     *
-     * Works on stock Android 8+ and most OEM ROMs. Some Samsung/older OEM
-     * ROMs ignore the hint entirely — the picker still opens, just at its
-     * default location, so this is always safe to pass.
-     *
-     * Returns null for the primary volume since the picker already defaults
-     * there; only meaningful for removable volumes.
-     */
-    private fun buildVolumeRootUri(volumeUuid: String): Uri? {
-        if (volumeUuid == StorageVolumeHelper.UUID_PRIMARY) return null
-        return DocumentsContract.buildRootUri(
-            "com.android.externalstorage.documents",
-            volumeUuid
-        )
-    }
 }
