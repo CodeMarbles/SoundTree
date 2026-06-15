@@ -24,7 +24,6 @@ import app.soundtree.R
 import app.soundtree.databinding.FragmentSettingsBinding
 import app.soundtree.databinding.ViewBackupProgressCardBinding
 import app.soundtree.service.RecordingService
-import app.soundtree.storage.AppVolume
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.ProcessingStatus
 import app.soundtree.ui.addBackupTarget
@@ -32,7 +31,6 @@ import app.soundtree.ui.cancelWaveformProcessing
 import app.soundtree.ui.clearCompletedWaveformJobs
 import app.soundtree.ui.labelForJob
 import app.soundtree.ui.migrateRecordingStructure
-import app.soundtree.ui.recovery.OrphanRecoveryDialogFragment
 import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.reprocessAllWaveforms
 import app.soundtree.ui.restore.RestoreWizardDialogFragment
@@ -40,7 +38,6 @@ import app.soundtree.ui.setDevOptions
 import app.soundtree.ui.setFutureMode
 import app.soundtree.ui.setSimulateWaveformLoading
 import app.soundtree.ui.tickProcessingRefresh
-import app.soundtree.util.OrphanRecording
 import app.soundtree.util.themeColor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -90,7 +87,7 @@ class SettingsFragment : Fragment() {
         viewModel.addBackupTarget(volumeUuid, uri.toString())
     }
 
-    private val openDocumentTreeForRestore = registerForActivityResult(
+    internal val openDocumentTreeForRestore = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
@@ -200,43 +197,6 @@ class SettingsFragment : Fragment() {
 
     private fun setupHeader() {
         binding.tvAppIdentity.text = getString(R.string.app_name)
-    }
-
-    private fun setupRecordingRecoverySection() {
-        binding.groupRecordingRecovery.btnReviewOrphans.setOnClickListener {
-            OrphanRecoveryDialogFragment
-                .newInstance(viewModel.orphanRecordings.value)
-                .show(parentFragmentManager, OrphanRecoveryDialogFragment.TAG)
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.orphanRecordings.collect { orphans ->
-                    renderOrphanSummary(orphans)
-                }
-            }
-        }
-    }
-
-    private fun renderOrphanSummary(orphans: List<OrphanRecording>) {
-        val recoverable   = orphans.filter { it.isPlayable }
-        val unrecoverable = orphans.filter { !it.isPlayable }
-        binding.groupRecordingRecovery.tvOrphanRecoverableSummary.text = formatOrphanSummary(recoverable)
-        binding.groupRecordingRecovery.tvOrphanCorruptSummary.text     = formatOrphanSummary(unrecoverable)
-    }
-
-    private fun formatOrphanSummary(orphans: List<OrphanRecording>): String {
-        if (orphans.isEmpty()) return "None"
-        val count      = orphans.size
-        val totalBytes = orphans.sumOf { it.file.length() }
-        val label      = if (count == 1) "1 recording" else "$count recordings"
-        return "$label · ${AppVolume.formatBytes(totalBytes)}"
-    }
-
-    private fun setupRestoreSection() {
-        binding.groupRestore.btnRestoreFromBackup.setOnClickListener {
-            openDocumentTreeForRestore.launch(null)
-        }
     }
 
     // ── Waveform processing output state ─────────────────────────────────────────
