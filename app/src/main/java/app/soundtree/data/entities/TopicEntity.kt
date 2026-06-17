@@ -53,7 +53,15 @@ data class TopicEntity(
 
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
 
-    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis(),
+
+    /**
+     * Frequency/recency score for the "Frequent Topics" section of the topic picker.
+     * Incremented on each picker use (Mode.PICK only) with ancestor propagation,
+     * and multiplied by DECAY_FACTOR (~0.90) daily by DecayWorker.
+     * All existing rows migrate to 0.0.
+     */
+    @ColumnInfo(name = "topic_score") val topicScore: Double = 0.0
 
     // isCollapsed removed in DB v6 — collapse state is now UI-only,
     // held in MainViewModel._collapsedIds and persisted via SharedPreferences.

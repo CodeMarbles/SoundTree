@@ -27,7 +27,7 @@ import app.soundtree.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -286,6 +286,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_11_12,
                         MIGRATION_12_13,
                         MIGRATION_13_14,
+                        MIGRATION_14_15,
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -382,6 +383,22 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_bytes_on_source  INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_metadata_files   INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE backup_logs ADD COLUMN total_waveform_files   INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v14 → v15: Add topic_score column to topics.
+         *
+         * Stores the frequency/recency score used by the "Frequent Topics"
+         * section of the topic picker. Updated on each picker selection
+         * (Mode.PICK only, with ancestor propagation) and decayed daily
+         * by DecayWorker. All existing rows start at 0.0.
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE topics ADD COLUMN topic_score REAL NOT NULL DEFAULT 0.0"
+                )
             }
         }
 

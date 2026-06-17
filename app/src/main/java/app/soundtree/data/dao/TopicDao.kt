@@ -40,4 +40,21 @@ interface TopicDao {
     /** Total topic count. Used by the restore wizard summary step. */
     @Query("SELECT COUNT(*) FROM topics")
     suspend fun countAll(): Int
+
+    // ── Frequent topics scoring ───────────────────────────────────────────────
+
+    /** Add [delta] to a single topic's score. Delta may be fractional (ancestor propagation). */
+    @Query("UPDATE topics SET topic_score = topic_score + :delta WHERE id = :id")
+    suspend fun addScore(id: Long, delta: Double)
+
+    /** Multiply every topic's score by [factor]. Called daily by DecayWorker. */
+    @Query("UPDATE topics SET topic_score = topic_score * :factor")
+    suspend fun decayAllScores(factor: Double)
+
+    /**
+     * Top [limit] topics by score, excluding any with a score at or below [minScore].
+     * Emits reactively — the picker section updates whenever scores change.
+     */
+    @Query("SELECT * FROM topics WHERE topic_score > :minScore ORDER BY topic_score DESC LIMIT :limit")
+    fun getTopScoring(limit: Int, minScore: Double = 0.1): Flow<List<TopicEntity>>
 }
