@@ -46,6 +46,9 @@
     <string name="common_btn_unlock">Unlock</string>
     <string name="common_btn_ok">OK</string>
     <string name="common_btn_create">Create</string>
+    <string name="common_btn_share">Share</string>
+    <string name="common_btn_copy">Copy</string>
+    <string name="common_toast_copied">Copied to clipboard</string>
 
     <plurals name="common_label_recording_count">
         <item quantity="one">1 recording</item>
@@ -753,6 +756,11 @@
     <string name="settings_dev_simulate_wf_loading">Simulate waveform loading</string>
     <string name="settings_dev_simulate_wf_loading_desc">Always show the generating pattern, even when waveform data is available</string>
 
+    <string name="settings_dev_storage_probe">Storage Volume Probe</string>
+    <string name="settings_dev_storage_probe_desc">Diagnostic: compare volume enumeration methods</string>
+    <string name="settings_dev_storage_probe_btn">Run</string>
+
+    <string name="settings_dev_storage_probe_share_chooser">Share storage probe report</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          notif_  —  Notification and foreground service text

@@ -399,4 +399,9 @@ internal fun SettingsFragment.setupDevOptionsSection() {
     binding.groupDevOptions.switchDevOptions.setOnCheckedChangeListener { _, checked ->
         viewModel.setDevOptions(checked)
     }
+
+    binding.groupDevOptions.btnStorageProbe.setOnClickListener {
+        StorageProbeDialogFragment.newInstance()
+            .show(childFragmentManager, StorageProbeDialogFragment.TAG)
+    }
 }
