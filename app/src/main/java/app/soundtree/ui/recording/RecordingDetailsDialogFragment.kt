@@ -432,15 +432,9 @@ class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
         val volume = StorageVolumeHelper.getVolumeByUuid(requireContext(), recording.storageVolumeUuid)
             ?: return file.name
 
-        // volume.rootDir is <volumeRoot>/Android/data/app.soundtree/files/recordings
-        // We want to display the path relative to the volume root itself,
-        // e.g. "Internal Storage / Android/data/app.soundtree/files/recordings/2026/06/ST_..."
-        //
-        // Walk up from rootDir to find the actual volume mount point: rootDir is
-        // 5 levels deep (Android / data / app.soundtree / files / recordings).
         val volumeMountPoint: File = generateSequence(volume.rootDir) { it.parentFile }
-            .drop(5)
-            .firstOrNull() ?: return file.name
+            .firstOrNull { it.parentFile?.absolutePath == "/storage" }
+            ?: return file.name
 
         val mountCanon = runCatching { volumeMountPoint.canonicalPath }.getOrElse { volumeMountPoint.absolutePath }
         val fileCanon  = runCatching { file.canonicalPath             }.getOrElse { file.absolutePath }

@@ -1,5 +1,6 @@
 package app.soundtree.ui.settings
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
@@ -8,13 +9,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.widget.NestedScrollView
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.button.MaterialButton
 import app.soundtree.R
 import app.soundtree.util.themeColor
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButton
 import java.io.File
 
 /**
@@ -70,6 +70,7 @@ class StorageProbeDialogFragment : BottomSheetDialogFragment() {
         addProbeSection(container, "A · getExternalFilesDirs(null)", probeExternalFilesDirs())
         addProbeSection(container, "B · StorageManager.getStorageVolumes()", probeStorageVolumes())
         addProbeSection(container, "C · /proc/mounts", probeProcMounts())
+        addProbeSection(container, "D · Reconstructed path (GrapheneOS workaround)", probeReconstructedPath())
 
         // Button row: Copy | Share | Close
         val buttonRow = LinearLayout(ctx).apply {
@@ -170,6 +171,7 @@ class StorageProbeDialogFragment : BottomSheetDialogFragment() {
 
     // ── Probe C: /proc/mounts ────────────────────────────────────────────────
 
+    @SuppressLint("SdCardPath")
     private fun probeProcMounts(): String {
         val mounts = File("/proc/mounts")
         if (!mounts.exists() || !mounts.canRead()) return "(not accessible)"
@@ -188,6 +190,89 @@ class StorageProbeDialogFragment : BottomSheetDialogFragment() {
                 .joinToString("\n")
                 .ifBlank { "(no matching mount points found)" }
         }.getOrElse { "(read failed: ${it.message})" }
+    }
+
+    // ── Probe D: reconstructAppFilesDir (GrapheneOS workaround) ─────────────────
+
+    private fun probeReconstructedPath(): String {
+        val ctx = requireContext()
+        val sm  = ctx.getSystemService(StorageManager::class.java)
+
+        // Find volumes that getExternalFilesDirs missed — these are the candidates
+        // for the GrapheneOS workaround path.
+        val dirsByUuid: Map<String, String> = ctx
+            .getExternalFilesDirs(null)
+            .filterNotNull()
+            .mapNotNull { dir ->
+                val sv = sm.getStorageVolume(dir) ?: return@mapNotNull null
+                val uuid = sv.uuid ?: "primary"
+                uuid to dir.absolutePath
+            }
+            .toMap()
+
+        val primaryDirPath = dirsByUuid["primary"]
+        val allVolumes     = sm.storageVolumes
+            .filter { it.state == Environment.MEDIA_MOUNTED }
+
+        val missingVolumes = allVolumes.filter { sv ->
+            val uuid = sv.uuid ?: "primary"
+            uuid !in dirsByUuid
+        }
+
+        if (missingVolumes.isEmpty()) {
+            return if (primaryDirPath != null)
+                "No missing volumes — getExternalFilesDirs covered all mounted volumes.\n" +
+                        "(Primary dir: $primaryDirPath)"
+            else
+                "No missing volumes, and no primary dir found (unexpected)."
+        }
+
+        return buildString {
+            appendLine("Primary dir (from A): $primaryDirPath")
+            appendLine("Volumes missing from A: ${missingVolumes.size}")
+            appendLine()
+
+            missingVolumes.forEach { sv ->
+                val uuid = sv.uuid ?: return@forEach
+                appendLine("Volume: ${sv.getDescription(ctx)} ($uuid)")
+
+                if (primaryDirPath == null) {
+                    appendLine("  → Cannot reconstruct: primary dir unknown")
+                    return@forEach
+                }
+
+                val primaryMount = generateSequence(File(primaryDirPath)) { it.parentFile }
+                    .firstOrNull { it.parentFile?.parentFile?.absolutePath == "/storage" }
+
+                if (primaryMount == null ) {
+                    appendLine("  → Cannot reconstruct: unexpected primary path structure")
+                    appendLine("    primaryMount = $primaryMount")
+                    return@forEach
+                }
+
+                val suffix    = primaryDirPath.removePrefix(primaryMount.absolutePath).trimStart('/')
+                val candidate = File("/storage/$uuid/$suffix")
+
+                appendLine("  candidate path : ${candidate.absolutePath}")
+                appendLine("  exists (before): ${candidate.exists()}")
+
+                appendLine("  /storage/$uuid exists : ${File("/storage/$uuid").exists()}")
+                appendLine("  /storage/$uuid canRead: ${File("/storage/$uuid").canRead()}")
+
+                val mkdirsResult = runCatching { candidate.mkdirs() }
+                appendLine("  mkdirs() result: ${mkdirsResult.getOrElse { "exception: ${it.message}" }}")
+                appendLine("  exists (after) : ${candidate.exists()}")
+                appendLine("  canRead        : ${candidate.canRead()}")
+                appendLine("  canWrite       : ${candidate.canWrite()}")
+
+                runCatching { StatFs(candidate.path) }.onSuccess { sf ->
+                    appendLine("  total          : ${formatBytes(sf.totalBytes)}")
+                    appendLine("  free           : ${formatBytes(sf.availableBytes)}")
+                }.onFailure {
+                    appendLine("  StatFs         : failed (${it.message})")
+                }
+            }
+        }.trimEnd()
     }
 
     // ── Layout helpers ───────────────────────────────────────────────────────
@@ -249,5 +334,10 @@ class StorageProbeDialogFragment : BottomSheetDialogFragment() {
         appendLine("C · /proc/mounts")
         appendLine("════════════════════════════════")
         appendLine(probeProcMounts())
+        appendLine()
+        appendLine("════════════════════════════════")
+        appendLine("D · Reconstructed Paths")
+        appendLine("════════════════════════════════")
+        appendLine(probeReconstructedPath())
     }
 }
