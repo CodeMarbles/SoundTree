@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import app.soundtree.data.db.AppDatabase
 import app.soundtree.data.repository.SoundTreeRepository
+import app.soundtree.worker.DecayWorker
 import app.soundtree.worker.WaveformWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ class SoundTreeApp : Application() {
         enqueuePendingWaveformJobs()
         reconcileScheduledBackups()
         reconcileStaleBackupLogs()
+        enqueueDecayWorker()
     }
 
     /**
@@ -154,6 +156,30 @@ class SoundTreeApp : Application() {
                 android.util.Log.e("BackupReconcile", "Uncaught exception in reconcileStaleBackupLogs", e)
             }
         }
+    }
+
+    /**
+     * Ensures the daily topic-score decay job is live in WorkManager.
+     *
+     * Uses [ExistingPeriodicWorkPolicy.UPDATE] so calling this on every
+     * launch is a cheap no-op when the job is already scheduled.
+     */
+    private fun enqueueDecayWorker() {
+        DecayWorker.enqueue(this)
+    }
+
+    /**
+     * Records the current time as the last moment the app entered the
+     * foreground. Called by [MainActivity.onStart].
+     *
+     * [DecayWorker] reads this to skip decay passes when the user hasn't
+     * opened the app recently, preserving scores during long absences.
+     */
+    fun recordAppForeground() {
+        getSharedPreferences("soundtree_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putLong(DecayWorker.PREF_LAST_APP_FOREGROUND_AT, System.currentTimeMillis())
+            .apply()
     }
 
     companion object {

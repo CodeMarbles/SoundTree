@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import app.soundtree.SoundTreeApp
 import app.soundtree.databinding.ActivityMainBinding
 import app.soundtree.service.RecordingService
 import app.soundtree.ui.library.LibraryFragment
@@ -151,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        (application as SoundTreeApp).recordAppForeground()
         storageVolumeEventReceiver = StorageVolumeEventReceiver {
             // Called on the main thread — safe to update ViewModel directly.
             viewModel.refreshStorageVolumes()
