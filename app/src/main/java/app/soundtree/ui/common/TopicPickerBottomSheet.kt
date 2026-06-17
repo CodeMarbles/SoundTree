@@ -1,22 +1,32 @@
 package app.soundtree.ui.common
 
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import app.soundtree.R
+import app.soundtree.data.entities.TopicEntity
 import app.soundtree.data.repository.TreeBuilder
 import app.soundtree.data.repository.TreeNode
+import app.soundtree.topics.FrequentTopic
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.createTopicReturningId
+import app.soundtree.ui.frequentTopics
+import app.soundtree.ui.recordTopicPickerUse
 import app.soundtree.ui.topics.NewTopicDialog
+import app.soundtree.util.themeColor
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.launch
 
 /**
@@ -91,12 +101,12 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
 
-    private val selectedTopicId: Long?
-        get() = arguments?.getLong(KEY_TOPIC_ID, TOPIC_ID_NONE)
-            ?.takeIf { it != TOPIC_ID_NONE }
-
     private val collapsedNodeIds = mutableSetOf<Long>()
     private var recyclerView: RecyclerView? = null
+
+    // Frequent-section expand state: which frequent topic (by id) is showing
+    // its inline children. Only one can be expanded at a time.
+    private var expandedFrequentTopicId: Long = -1L
 
     private val treeAdapter = TopicTreeAdapter(
         onNodeClick = { node -> deliverResult(node.topic.id) },
@@ -105,6 +115,8 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             refreshList()
         }
     )
+
+    // ── Lifecycle ─────────────────────────────────────────────────────
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -119,6 +131,8 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             it.adapter = treeAdapter
             it.layoutManager = LinearLayoutManager(requireContext())
         }
+
+        treeAdapter.showScores = viewModel.devOptions.value
 
         view.findViewById<View>(R.id.rowUnsorted).setOnClickListener {
             deliverResult(null)
@@ -156,11 +170,211 @@ class TopicPickerBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
+        // Frequent topics section — only in PICK mode
+        if (mode == Mode.PICK) {
+            setupFrequentTopicsSection(view)
+        }
 
         refreshList()
     }
 
+    // ── Frequent topics ───────────────────────────────────────────────
+
+    private fun setupFrequentTopicsSection(view: View) {
+        val section   = view.findViewById<LinearLayout>(R.id.sectionFrequentTopics)
+        val container = view.findViewById<LinearLayout>(R.id.containerFrequentTopics)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.frequentTopics.collect { frequentList ->
+                if (frequentList.isEmpty()) {
+                    section.visibility = View.GONE
+                    return@collect
+                }
+                section.visibility = View.VISIBLE
+                renderFrequentTopics(container, frequentList)
+            }
+        }
+    }
+
+    private fun renderFrequentTopics(
+        container: LinearLayout,
+        frequentList: List<FrequentTopic>
+    ) {
+        container.removeAllViews()
+        val inflater = LayoutInflater.from(requireContext())
+
+        frequentList.forEach { frequent ->
+            val entryView = inflater.inflate(R.layout.item_frequent_topic, container, false)
+            bindFrequentEntry(entryView, frequent)
+            container.addView(entryView)
+        }
+    }
+
+    private fun bindFrequentEntry(view: View, frequent: FrequentTopic) {
+        val entryRoot         = view.findViewById<LinearLayout>(R.id.frequentEntryRoot)
+        val lineageScrollView = view.findViewById<View>(R.id.lineageScrollView)
+        val lineageStrip      = view.findViewById<LinearLayout>(R.id.lineageStrip)
+        val tvIcon            = view.findViewById<TextView>(R.id.tvFrequentIcon)
+        val tvName            = view.findViewById<TextView>(R.id.tvFrequentName)
+        val tvScore           = view.findViewById<TextView>(R.id.tvFrequentScore)
+        val ivChevron         = view.findViewById<ImageView>(R.id.ivFrequentChevron)
+
+        // ── Lineage strip ─────────────────────────────────────────────
+        if (frequent.lineage.isEmpty()) {
+            lineageScrollView.visibility = View.GONE
+        } else {
+            lineageScrollView.visibility = View.VISIBLE
+            buildLineageStrip(lineageStrip, frequent.lineage)
+        }
+
+        // ── Topic row content ─────────────────────────────────────────
+        tvIcon.text = frequent.topic.icon
+        tvName.text = frequent.topic.name
+
+        if (viewModel.devOptions.value && frequent.topic.topicScore > 0.0) {
+            tvScore.text      = "%.2f".format(frequent.topic.topicScore)
+            tvScore.isVisible = true
+        } else {
+            tvScore.isVisible = false
+        }
+
+        if (frequent.hasChildren) {
+            ivChevron.visibility = View.VISIBLE
+            ivChevron.rotation   = if (expandedFrequentTopicId == frequent.topic.id) 0f else -90f
+        } else {
+            ivChevron.visibility = View.INVISIBLE
+        }
+
+        // ── Unified touch target ──────────────────────────────────────
+        entryRoot.setOnClickListener {
+            deliverResult(frequent.topic.id)
+        }
+
+        // ── Chevron intercepts independently ──────────────────────────
+        ivChevron.setOnClickListener {
+            toggleFrequentExpansion(frequent.topic.id, view)
+        }
+    }
+
+    private fun buildLineageStrip(strip: LinearLayout, lineage: List<TopicEntity>) {
+        strip.removeAllViews()
+        val ctx     = strip.context
+        val density = ctx.resources.displayMetrics.density
+
+        // 2/3 scale relative to the main picker icon row (22dp circles, 16sp text)
+        val circleSize  = (15 * density).toInt()   // was 22dp
+        val iconSizeSp  = 10f                       // was 16sp (approx 2/3 of 16 = 10.7)
+        val arrowMargin = (3 * density).toInt()     // was 4dp
+
+        lineage.forEachIndexed { index, ancestor ->
+            val circle = TextView(ctx).apply {
+                text     = ancestor.icon
+                textSize = iconSizeSp
+                gravity  = android.view.Gravity.CENTER
+                isClickable = false
+                isFocusable = false
+                layoutParams = LinearLayout.LayoutParams(circleSize, circleSize).also { lp ->
+                    if (index > 0) lp.marginStart = arrowMargin
+                }
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(
+                        runCatching { Color.parseColor(ancestor.color) }
+                            .getOrDefault(Color.parseColor("#6C63FF"))
+                    )
+                }
+            }
+            strip.addView(circle)
+
+            // Arrow after each node including the last — acts as "points toward" the topic row
+            val arrow = TextView(ctx).apply {
+                text     = "›"
+                textSize = 10f
+                isClickable = false
+                isFocusable = false
+                setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).also { it.marginStart = arrowMargin }
+            }
+            strip.addView(arrow)
+        }
+    }
+
+    private fun toggleFrequentExpansion(topicId: Long, entryView: View) {
+        val ivChevron      = entryView.findViewById<ImageView>(R.id.ivFrequentChevron)
+        val container      = entryView.parent as? LinearLayout ?: return
+        val existingInline = container.findViewWithTag<RecyclerView>("inline_$topicId")
+
+        if (existingInline != null) {
+            // Collapse: remove the inline list
+            container.removeView(existingInline)
+            expandedFrequentTopicId = -1L
+            ivChevron.rotation = -90f
+        } else {
+            // Collapse any previously expanded entry first
+            if (expandedFrequentTopicId != -1L) {
+                val prev = container.findViewWithTag<RecyclerView>("inline_$expandedFrequentTopicId")
+                prev?.let { container.removeView(it) }
+                // Reset the chevron on the previously expanded row
+                for (i in 0 until container.childCount) {
+                    val child = container.getChildAt(i)
+                    val tag = child.tag as? String
+                    if (tag == "entry_$expandedFrequentTopicId") {
+                        child.findViewById<ImageView>(R.id.ivFrequentChevron)?.rotation = -90f
+                        break
+                    }
+                }
+            }
+
+            // Expand: insert inline child list after this entry
+            expandedFrequentTopicId = topicId
+            ivChevron.rotation = 0f
+            entryView.tag = "entry_$topicId"
+
+            val children = viewModel.allTopics.value
+                .filter { it.parentId == topicId }
+                .sortedBy { it.sortOrder }
+
+            if (children.isEmpty()) return
+
+            val childRoots = children.map { child ->
+                TreeNode(
+                    topic    = child,
+                    children = emptyList(),
+                    depth    = 0
+                )
+            }
+            val childItems = childRoots.map { PickerItem(it, 1, false) }
+
+            val inlineAdapter = TopicTreeAdapter(
+                onNodeClick  = { node -> deliverResult(node.topic.id) },
+                onNodeToggle = { /* single-level inline — no further nesting */ }
+            ).also {
+                it.showScores = viewModel.devOptions.value
+                it.submitList(childItems)
+            }
+
+            val inlineRv = RecyclerView(requireContext()).apply {
+                tag          = "inline_$topicId"
+                adapter      = inlineAdapter
+                layoutManager = LinearLayoutManager(requireContext())
+                isNestedScrollingEnabled = false
+            }
+
+            val entryIndex = container.indexOfChild(entryView)
+            container.addView(inlineRv, entryIndex + 1)
+        }
+    }
+
+    // ── deliverResult ─────────────────────────────────────────────────
+
     private fun deliverResult(topicId: Long?) {
+        // Record the use for scoring (Mode.PICK only, non-null topic only)
+        if (mode == Mode.PICK && topicId != null) {
+            viewModel.recordTopicPickerUse(topicId)
+        }
         parentFragmentManager.setFragmentResult(requestKey, Bundle().apply {
             putLong(KEY_TOPIC_ID, topicId ?: TOPIC_ID_NONE)
         })

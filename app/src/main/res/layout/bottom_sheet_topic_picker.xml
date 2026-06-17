@@ -41,6 +41,48 @@
         android:layout_height="1dp"
         android:background="?attr/colorSurfaceElevated" />
 
+    <!-- ── Frequent topics section ────────────────────────────────── -->
+    <!--
+      Visible only in Mode.PICK when at least one topic has a score above
+      the minimum threshold. Toggled VISIBLE/GONE by TopicPickerBottomSheet.
+      The inner LinearLayout is populated programmatically — one inflated
+      item_frequent_topic view per FrequentTopic entry.
+    -->
+    <LinearLayout
+        android:id="@+id/sectionFrequentTopics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvFrequentLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/topic_picker_frequent_label"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:id="@+id/containerFrequentTopics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorSurfaceElevated"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
     <!-- ── Unsorted option ────────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/rowUnsorted"

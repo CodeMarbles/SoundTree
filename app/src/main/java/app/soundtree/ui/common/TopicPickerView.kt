@@ -142,7 +142,8 @@ data class PickerItem(val node: TreeNode, val depth: Int, val isCollapsed: Boole
 
 class TopicTreeAdapter(
     private val onNodeClick:  (TreeNode) -> Unit,
-    private val onNodeToggle: (Long) -> Unit
+    private val onNodeToggle: (Long) -> Unit,
+    var showScores: Boolean = false,
 ) : androidx.recyclerview.widget.ListAdapter<PickerItem, TopicTreeAdapter.VH>(DIFF) {
 
     companion object {
@@ -162,6 +163,7 @@ class TopicTreeAdapter(
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
         private val tvIcon:   TextView  = v.findViewById(R.id.tvIcon)
         private val tvName:   TextView  = v.findViewById(R.id.tvName)
+        private val tvScore:  TextView  = v.findViewById(R.id.tvScore)
         private val ivToggle: ImageView = v.findViewById(R.id.ivToggle)
 
         fun bind(item: PickerItem) {
@@ -173,6 +175,14 @@ class TopicTreeAdapter(
 
             tvIcon.text = topic.icon
             tvName.text = topic.name
+
+            // ── Dev score readout ─────────────────────────────────
+            if (showScores && topic.topicScore > 0.0) {
+                tvScore.text       = "%.2f".format(topic.topicScore)
+                tvScore.visibility = View.VISIBLE
+            } else {
+                tvScore.visibility = View.GONE
+            }
 
             val hasChildren = item.node.children.isNotEmpty()
             ivToggle.visibility = if (hasChildren) View.VISIBLE else View.INVISIBLE

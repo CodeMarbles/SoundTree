@@ -30,6 +30,17 @@
         android:maxLines="1"
         android:layout_marginStart="6dp" />
 
+    <TextView
+        android:id="@+id/tvScore"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="2dp"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:textColor="?attr/colorTextSecondary"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/ivToggle"
         android:layout_width="20dp"

@@ -74,6 +74,8 @@
     <!-- Emoji-prefixed variant used in picker rows and inbox tile -->
     <string name="topic_picker_label_unsorted">📥  Unsorted</string>
 
+    <string name="topic_picker_frequent_label">Frequent</string>
+
     <string name="topic_label_tile_topics">Topics</string>
     <string name="topic_label_tile_inbox">Inbox</string>
 
