@@ -453,6 +453,27 @@
     <string name="settings_unit_minutes">min</string>
     <string name="settings_unit_percent">%%</string>   <!-- %% = literal % in Android strings -->
 
+    <!--  ── Frequent Topics ─────────────────────────────── -->
+    <string name="settings_section_frequent_topics">Frequent Topics</string>
+
+    <!-- Master toggle -->
+    <string name="settings_frequent_topics_enabled">Show frequent topics</string>
+    <string name="settings_frequent_topics_enabled_desc">Display your most-used topics at the top of the picker</string>
+
+    <!-- Entry count stepper -->
+    <string name="settings_frequent_topics_limit">Entries shown</string>
+    <string name="settings_frequent_topics_limit_desc">Maximum number of frequent topics to display</string>
+    <string name="settings_frequent_topics_limit_decrease">Show fewer frequent topics</string>
+    <string name="settings_frequent_topics_limit_increase">Show more frequent topics</string>
+
+    <!-- Lineage toggle -->
+    <string name="settings_frequent_topics_show_lineage">Show topic path</string>
+    <string name="settings_frequent_topics_show_lineage_desc">Display ancestor topics as a breadcrumb trail before each entry</string>
+
+    <!-- Labels toggle (child of lineage) -->
+    <string name="settings_frequent_topics_show_labels">Show path labels</string>
+    <string name="settings_frequent_topics_show_labels_desc">Show the name of each ancestor alongside its icon</string>
+
     <!-- ── Display tab: Playhead Visualisation card ─────────────────────────────── -->
 
     <!-- Section header -->

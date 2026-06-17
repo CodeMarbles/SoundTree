@@ -2,14 +2,19 @@
 <!--
   One entry in the Frequent Topics section of TopicPickerBottomSheet.
 
-  The outer LinearLayout is the single unified touch target — tapping anywhere
-  on the entry (lineage strip or topic row) fires the selection. Only the
-  chevron intercepts touch independently for expand/collapse.
+  The outer LinearLayout is the single unified touch target. The chevron
+  intercepts touch independently for expand/collapse.
 
-  Structure (top → bottom, inside the touch target):
-    lineageRow   — horizontal strip of 2/3-scale ancestor circles + arrows
-                   GONE for root-level topics (no ancestors)
-    topicRow     — icon · name · (score) · chevron at full picker scale
+  Structure:
+    contentRow  — horizontal: [FlowLayout (lineage + icon + name + score)] [chevron]
+                  The FlowLayout wraps when lineage nodes overflow the available
+                  width, so deep hierarchies with labels enabled never clip.
+
+  The old two-row design (lineageRow above topicRow) is replaced by a single
+  FlowLayout whose children are built programmatically in bindFrequentEntry():
+    [ancestorIcon (+ label?)] [›] … [›] [topicIcon] [topicName]
+  The chevron sits outside the FlowLayout so it always anchors to the right
+  edge of the touch target regardless of how many rows the content wraps to.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -17,94 +22,59 @@
     android:id="@+id/frequentEntryRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
     android:paddingHorizontal="12dp"
-    android:paddingTop="2dp"
-    android:paddingBottom="2dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:minHeight="44dp">
 
-    <!-- ── Lineage strip ──────────────────────────────────────────── -->
+    <!-- ── Flow content: lineage nodes + topic icon + name + score ── -->
     <!--
-      Horizontally scrollable so a very deep ancestry never clips.
-      Populated programmatically in bindFrequentEntry().
-      Circles are ~15dp, text ~11sp (2/3 of the 22dp/16sp main scale).
+      layout_weight=1 lets it take all space left of the chevron.
+      Children are added programmatically; see buildFrequentEntryFlow().
     -->
-    <HorizontalScrollView
-        android:id="@+id/lineageScrollView"
-        android:layout_width="match_parent"
+    <app.soundtree.ui.common.FlowLayout
+        android:id="@+id/flowLineageAndTopic"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:scrollbars="none"
+        android:layout_weight="1"
         android:clickable="false"
-        android:focusable="false"
-        android:visibility="gone">
+        android:focusable="false" />
 
-        <LinearLayout
-            android:id="@+id/lineageStrip"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:clickable="false"
-            android:focusable="false" />
+    <!-- ── Score (dev only) ──────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvFrequentScore"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="2dp"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:textColor="?attr/colorTextSecondary"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false" />
 
-    </HorizontalScrollView>
-
-    <!-- ── Topic row ─────────────────────────────────────────────── -->
+    <!-- ── Chevron: expand/collapse children ────────────────────── -->
     <!--
-      Not clickable itself — the outer root handles the tap.
-      The chevron is the one exception: it intercepts touch for expand/collapse.
+      Sits outside the FlowLayout so it always aligns to the top-right of
+      the touch target even when the flow wraps to multiple lines.
+      layout_gravity=top keeps it at the top of the cell when content wraps.
     -->
-    <LinearLayout
-        android:id="@+id/topicRowInner"
-        android:layout_width="match_parent"
+    <ImageView
+        android:id="@+id/ivFrequentChevron"
+        android:layout_width="36dp"
         android:layout_height="36dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:clickable="false"
-        android:focusable="false">
-
-        <TextView
-            android:id="@+id/tvFrequentIcon"
-            android:layout_width="28dp"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:gravity="center" />
-
-        <TextView
-            android:id="@+id/tvFrequentName"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="?attr/colorTextPrimary"
-            android:textSize="14sp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:layout_marginStart="6dp" />
-
-        <TextView
-            android:id="@+id/tvFrequentScore"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginEnd="2dp"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:textColor="?attr/colorTextSecondary"
-            android:visibility="gone" />
-
-        <ImageView
-            android:id="@+id/ivFrequentChevron"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_chevron_down"
-            android:padding="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            app:tint="?attr/colorTextSecondary" />
-
-    </LinearLayout>
+        android:layout_gravity="top"
+        android:src="@drawable/ic_chevron_down"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="?attr/colorTextSecondary" />
 
 </LinearLayout>

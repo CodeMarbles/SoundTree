@@ -88,18 +88,24 @@ class SettingsFragment : Fragment() {
         setupTabs()
         setupHeader()
         setupTheme()
-        setupWaveformStyleSettings()
-        setupPlayheadVis()
-        setupPlaybackMemory()
         setupLayoutSection()
+        setupWaveformStyleSettings()
+
         setupRecordingWidgetSection()
         setupPlaybackWidgetSection()
         setupPlaybackSettings()
+
+        setupPlayheadVis()
+        setupPlaybackMemory()
+        setupFrequentTopicsSection()
+
         setupStorageSection()
         setupBackupProgressCard()
         setupRecordingRecoverySection()
+
         setupBackupSection()
         setupRestoreSection()
+
         setupProcessingSection()
         setupMigrationSection()
         setupDevOptionsSection()

@@ -439,28 +439,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Frequent topics ───────────────────────────────────────────────
     /**
-     * Top [FREQUENT_TOPICS_LIMIT] topics by score, each enriched with their
-     * full ancestor lineage and a flag indicating whether they have children.
-     *
-     * The lineage walk uses the already-loaded [allTopics] list so no extra
-     * DB queries are needed — the combine just does a few in-memory lookups
-     * per topic on each emission.
-     *
-     * Backed by [TopicDao.getTopScoring], which emits reactively whenever any
-     * topic's score changes (after a picker use or a decay pass).
+     * Top [FREQUENT_TOPICS_LIMIT_MAX] topics by score, trimmed at display
+     * time to [_frequentTopicsLimit] so limit changes apply without a new
+     * DB query.
      */
     internal val _frequentTopics: StateFlow<List<FrequentTopic>> =
         combine(
-            repo.getTopScoringTopics(FREQUENT_TOPICS_LIMIT),
+            repo.getTopScoringTopics(FREQUENT_TOPICS_LIMIT_MAX),
             allTopics,
         ) { topScoring, all ->
             val topicMap = all.associateBy { it.id }
             topScoring.mapNotNull { topic ->
-                // Build lineage: walk parentId chain up to root.
                 val lineage = buildList {
                     var cursor = topicMap[topic.parentId]
                     while (cursor != null) {
-                        add(0, cursor)          // prepend so order is root → parent
+                        add(0, cursor)
                         cursor = topicMap[cursor.parentId]
                     }
                 }
@@ -469,6 +462,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // ── Frequent topics picker settings ───────────────────────────
+     internal val _frequentTopicsEnabled =
+         MutableStateFlow(prefs.getBoolean(PREF_FREQUENT_TOPICS_ENABLED, true))
+
+     internal val _frequentTopicsLimit =
+         MutableStateFlow(prefs.getInt(PREF_FREQUENT_TOPICS_LIMIT, FREQUENT_TOPICS_LIMIT_DEFAULT))
+
+     internal val _frequentTopicsShowLineage =
+         MutableStateFlow(prefs.getBoolean(PREF_FREQUENT_TOPICS_SHOW_LINEAGE, true))
+
+     internal val _frequentTopicsShowLabels =
+         MutableStateFlow(prefs.getBoolean(PREF_FREQUENT_TOPICS_SHOW_LABELS, false))
+
+
 
     // ── Library Details navigation ────────────────────────────────────
     internal val _libraryDetailsTopicId = MutableStateFlow<Long?>(null)
