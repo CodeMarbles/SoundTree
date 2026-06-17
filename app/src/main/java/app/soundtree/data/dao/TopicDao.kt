@@ -52,8 +52,8 @@ interface TopicDao {
     suspend fun decayAllScores(factor: Double)
 
     /**
-     * Top [limit] topics by score, excluding any with a score at or below [minScore].
-     * Emits reactively — the picker section updates whenever scores change.
+     * Top [limit] topics by score, excluding those at or below [minScore].
+     * Emits reactively — the frequent section updates whenever scores change.
      */
     @Query("SELECT * FROM topics WHERE topic_score > :minScore ORDER BY topic_score DESC LIMIT :limit")
     fun getTopScoring(limit: Int, minScore: Double = 0.1): Flow<List<TopicEntity>>

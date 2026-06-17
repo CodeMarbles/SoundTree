@@ -17,6 +17,7 @@ import app.soundtree.data.entities.TopicEntity
 import app.soundtree.util.Icons
 import app.soundtree.util.RecordingStructureMigrator
 import app.soundtree.storage.StorageVolumeHelper
+import app.soundtree.topics.TopicScoringManager
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -47,9 +48,33 @@ class SoundTreeRepository(context: Context) {
 
     suspend fun updateTopic(topic: TopicEntity) =
         topicDao.update(topic.copy(updatedAt = System.currentTimeMillis()))
+
     suspend fun deleteTopic(topic: TopicEntity) = topicDao.delete(topic)
+
     fun getAllTopics(): Flow<List<TopicEntity>> = topicDao.getAllTopics()
+
+    fun getTopScoringTopics(limit: Int): Flow<List<TopicEntity>> =
+        topicDao.getTopScoring(limit)
+
     suspend fun topicExists(id: Long): Boolean = topicDao.getById(id) != null
+
+    /**
+     * Records a topic picker selection for scoring purposes.
+     *
+     * Computes score deltas for [topicId] and its ancestors via
+     * [TopicScoringManager], then fires all DB updates concurrently.
+     * Each update is independent — a failure on one ancestor doesn't
+     * block the others. This is intentionally fire-and-forget from
+     * the caller's perspective; no result is returned.
+     *
+     * Only call this for [Mode.PICK] selections — not REPARENT or PICK_PARENT.
+     */
+    suspend fun recordTopicUse(topicId: Long, allTopics: List<TopicEntity>) {
+        val deltas = TopicScoringManager.computeDeltas(topicId, allTopics)
+        deltas.forEach { (id, delta) ->
+            topicDao.addScore(id, delta)
+        }
+    }
 
     // ── Recordings ────────────────────────────────────────────────────────────
 
