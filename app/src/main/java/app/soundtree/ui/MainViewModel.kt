@@ -26,6 +26,7 @@ import app.soundtree.service.PlaybackService
 import app.soundtree.service.RecordingService
 import app.soundtree.storage.AppVolume
 import app.soundtree.storage.StorageVolumeHelper
+import app.soundtree.topics.FrequentTopic
 import app.soundtree.ui.MainViewModel.MigrationState.Idle
 import app.soundtree.ui.waveform.WaveformDisplayConfig
 import app.soundtree.ui.waveform.WaveformStyle
@@ -435,6 +436,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ── Topics ────────────────────────────────────────────────────────
     val allTopics: StateFlow<List<TopicEntity>> = repo.getAllTopics()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // ── Frequent topics ───────────────────────────────────────────────
+    /**
+     * Top [FREQUENT_TOPICS_LIMIT] topics by score, each enriched with their
+     * full ancestor lineage and a flag indicating whether they have children.
+     *
+     * The lineage walk uses the already-loaded [allTopics] list so no extra
+     * DB queries are needed — the combine just does a few in-memory lookups
+     * per topic on each emission.
+     *
+     * Backed by [TopicDao.getTopScoring], which emits reactively whenever any
+     * topic's score changes (after a picker use or a decay pass).
+     */
+    internal val _frequentTopics: StateFlow<List<FrequentTopic>> =
+        combine(
+            repo.getTopScoringTopics(FREQUENT_TOPICS_LIMIT),
+            allTopics,
+        ) { topScoring, all ->
+            val topicMap = all.associateBy { it.id }
+            topScoring.mapNotNull { topic ->
+                // Build lineage: walk parentId chain up to root.
+                val lineage = buildList {
+                    var cursor = topicMap[topic.parentId]
+                    while (cursor != null) {
+                        add(0, cursor)          // prepend so order is root → parent
+                        cursor = topicMap[cursor.parentId]
+                    }
+                }
+                val hasChildren = all.any { it.parentId == topic.id }
+                FrequentTopic(topic = topic, lineage = lineage, hasChildren = hasChildren)
+            }
+        }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // ── Library Details navigation ────────────────────────────────────
     internal val _libraryDetailsTopicId = MutableStateFlow<Long?>(null)
