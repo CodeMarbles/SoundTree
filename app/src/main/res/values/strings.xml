@@ -753,14 +753,29 @@
     <string name="settings_dev_future_mode">Future Mode</string>
     <string name="settings_section_developer_options">Developer Options</string>
     <string name="settings_dev_developer_options">Developer Options</string>
+
+    <!-- Waveform Simulator dev tool -->
     <string name="settings_dev_simulate_wf_loading">Simulate waveform loading</string>
     <string name="settings_dev_simulate_wf_loading_desc">Always show the generating pattern, even when waveform data is available</string>
 
+    <!-- Storage Probe dev tool -->
     <string name="settings_dev_storage_probe">Storage Volume Probe</string>
     <string name="settings_dev_storage_probe_desc">Diagnostic: compare volume enumeration methods</string>
     <string name="settings_dev_storage_probe_btn">Run</string>
 
     <string name="settings_dev_storage_probe_share_chooser">Share storage probe report</string>
+
+    <!-- Storage Event Log dev tool -->
+    <string name="dev_storage_event_log_title">Storage Event Log</string>
+    <string name="dev_storage_event_log_desc">View storage broadcasts received since last launch</string>
+    <string name="dev_storage_event_log_clear">Clear</string>
+    <string name="dev_storage_event_log_empty">No events captured yet. Plug in a USB drive or SD card.</string>
+
+    <!-- Add this to the <plurals> section -->
+    <plurals name="dev_storage_event_log_count">
+        <item quantity="one">1 event captured</item>
+        <item quantity="other">%d events captured</item>
+    </plurals>
 
     <!-- ══════════════════════════════════════════════════════════════
          notif_  —  Notification and foreground service text

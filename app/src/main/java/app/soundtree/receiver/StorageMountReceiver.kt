@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.storage.StorageManager
 import app.soundtree.data.db.AppDatabase
+import app.soundtree.diagnostic.MediaMountEvent
+import app.soundtree.diagnostic.MediaMountEventLog
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.CoroutineScope
@@ -37,10 +39,20 @@ import java.io.File
  * [BroadcastReceiver.onReceive] must return quickly. We use [goAsync] to
  * extend the deadline while performing the DB lookup on [Dispatchers.IO],
  * then call [PendingResult.finish] when done.
+ *
+ * ## Diagnostic logging
+ * Every received broadcast is recorded to [MediaMountEventLog] (in-memory,
+ * process lifetime only) so the Storage Event Log dev tool can show whether
+ * this static receiver is being reached — useful for diagnosing GrapheneOS
+ * broadcast delivery behaviour.
  */
 class StorageMountReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Record the event before any early-return so the diagnostic log
+        // captures even broadcasts we don't act on.
+        MediaMountEventLog.record(context, intent, MediaMountEvent.ReceiverSource.STATIC)
+
         if (intent.action != Intent.ACTION_MEDIA_MOUNTED) return
 
         val mountPath = intent.data?.path ?: return

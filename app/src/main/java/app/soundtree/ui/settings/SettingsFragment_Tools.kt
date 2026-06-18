@@ -382,6 +382,18 @@ internal fun SettingsFragment.setupDevOptionsSection() {
         viewModel.setSimulateWaveformLoading(checked)
     }
 
+    // ── Storage Probe button ──────────────────────────────────────────────
+    binding.groupDevOptions.btnStorageProbe.setOnClickListener {
+        StorageProbeDialogFragment.newInstance()
+            .show(childFragmentManager, StorageProbeDialogFragment.TAG)
+    }
+
+    // ── Storage Event Log button ──────────────────────────────────────────────
+    binding.groupDevOptions.btnStorageEventLog.setOnClickListener {
+        StorageMountEventLogDialog()
+            .show(childFragmentManager, StorageMountEventLogDialog.TAG)
+    }
+
     // ── Show/hide the Developer Options card based on devOptions flag ─────────
     viewLifecycleOwner.lifecycleScope.launch {
         viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -400,8 +412,4 @@ internal fun SettingsFragment.setupDevOptionsSection() {
         viewModel.setDevOptions(checked)
     }
 
-    binding.groupDevOptions.btnStorageProbe.setOnClickListener {
-        StorageProbeDialogFragment.newInstance()
-            .show(childFragmentManager, StorageProbeDialogFragment.TAG)
-    }
 }
