@@ -23,5 +23,7 @@ data class MediaMountEvent(
         STATIC("static"),
         /** [app.soundtree.storage.StorageVolumeEventReceiver] — dynamic, registered in MainActivity. */
         DYNAMIC("dynamic"),
+        /** [app.soundtree.storage.StorageRootsObserver] — ContentObserver on the external storage documents provider. */
+        CONTENT_OBSERVER("content_observer"),
     }
 }

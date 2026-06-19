@@ -76,9 +76,34 @@ object MediaMountEventLog {
             receiverSource = source,
         )
 
-        // Prepend so the list is always newest-first; trim to cap.
-        val updated = listOf(event) + _events.value
-        _events.value = if (updated.size > MAX_EVENTS) updated.take(MAX_EVENTS) else updated
+        append(event)
+    }
+
+    /**
+     * Records a roots-change notification from [app.soundtree.storage.StorageRootsObserver].
+     *
+     * Unlike broadcast events, [ContentObserver.onChange] carries no mount path or
+     * volume UUID — just the URI that changed. We synthesise a synthetic action
+     * string for display purposes and record what we can.
+     *
+     * @param context  Used for [StorageManager] access (no-op here, but kept for consistency).
+     * @param uri      The URI passed to [ContentObserver.onChange], if any.
+     * @param source   Should always be [MediaMountEvent.ReceiverSource.CONTENT_OBSERVER].
+     */
+    fun recordRootsChange(
+        context: Context,
+        uri:     android.net.Uri?,
+        source:  MediaMountEvent.ReceiverSource,
+    ) {
+        val event = MediaMountEvent(
+            timestampMs    = System.currentTimeMillis(),
+            action         = "ROOTS_CHANGED",
+            mountPath      = uri?.toString(),
+            resolvedUuid   = "(n/a — ContentObserver)",
+            receiverSource = source,
+        )
+
+        append(event)
     }
 
     /** Clears all recorded events. */
@@ -87,6 +112,11 @@ object MediaMountEventLog {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private fun append(event: MediaMountEvent) {
+        val updated = listOf(event) + _events.value
+        _events.value = if (updated.size > MAX_EVENTS) updated.take(MAX_EVENTS) else updated
+    }
 
     private fun resolveUuid(context: Context, mountPath: String): String {
         val sm = context.getSystemService(StorageManager::class.java)

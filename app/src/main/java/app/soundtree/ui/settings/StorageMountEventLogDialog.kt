@@ -42,7 +42,7 @@ import java.util.Locale
  *   ┌──────────────────────────────────────────┐
  *   │  [drag handle]                           │
  *   │  Storage Event Log          [Clear]      │ ← fixed header
- *   │  "N events captured" or "No events yet"  │ ← count line
+ *   │  "N events captured" or "No events yet" │ ← count line
  *   ├──────────────────────────────────────────┤
  *   │  [event row] …                           │ ← RecyclerView, fills height
  *   └──────────────────────────────────────────┘
@@ -178,15 +178,23 @@ class StorageMountEventLogDialog : BottomSheetDialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 MediaMountEventLog.events.collect { events ->
-                    eventAdapter.submitList(events)
-                    countView.text = if (events.isEmpty()) {
-                        getString(R.string.dev_storage_event_log_empty)
-                    } else {
-                        resources.getQuantityString(
-                            R.plurals.dev_storage_event_log_count,
-                            events.size,
-                            events.size,
-                        )
+                    try {
+                        eventAdapter.submitList(events)
+                        countView.text = if (events.isEmpty()) {
+                            getString(R.string.dev_storage_event_log_empty)
+                        } else {
+                            resources.getQuantityString(
+                                R.plurals.dev_storage_event_log_count,
+                                events.size,
+                                events.size,
+                            )
+                        }
+                    } catch (t: Throwable) {
+                        android.widget.Toast.makeText(
+                            requireContext(),
+                            "EventLog collector crash: ${t::class.simpleName}: ${t.message}",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
                     }
                 }
             }
@@ -204,11 +212,12 @@ class StorageMountEventLogDialog : BottomSheetDialogFragment() {
     private inner class EventAdapter :
         ListAdapter<MediaMountEvent, EventAdapter.ViewHolder>(eventDiff) {
 
-        inner class ViewHolder(val root: LinearLayout) : RecyclerView.ViewHolder(root) {
-            val tvHeader:    TextView = root.getChildAt(0) as TextView
-            val tvMountPath: TextView = root.getChildAt(1) as TextView
-            val tvUuid:      TextView = root.getChildAt(2) as TextView
-        }
+        inner class ViewHolder(
+            root:                  LinearLayout,
+            val tvHeader:    TextView,
+            val tvMountPath: TextView,
+            val tvUuid:      TextView,
+        ) : RecyclerView.ViewHolder(root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val ctx  = parent.context
@@ -225,8 +234,7 @@ class StorageMountEventLogDialog : BottomSheetDialogFragment() {
                 )
             }
 
-            // Header line: timestamp + source chip + short action name
-            row.addView(TextView(ctx).apply {
+            val tvHeader = TextView(ctx).apply {
                 textSize = 13f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
@@ -234,29 +242,30 @@ class StorageMountEventLogDialog : BottomSheetDialogFragment() {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 ).also { it.bottomMargin = px4 }
-            })
+            }
+            row.addView(tvHeader)
 
-            // Mount path
-            row.addView(TextView(ctx).apply {
+            val tvMountPath = TextView(ctx).apply {
                 textSize = 11f
                 setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
-            })
+            }
+            row.addView(tvMountPath)
 
-            // UUID
-            row.addView(TextView(ctx).apply {
+            val tvUuid = TextView(ctx).apply {
                 textSize = 11f
                 setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
-            })
+            }
+            row.addView(tvUuid)
 
-            return ViewHolder(row)
+            return ViewHolder(row, tvHeader, tvMountPath, tvUuid)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {

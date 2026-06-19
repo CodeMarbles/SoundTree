@@ -10,6 +10,7 @@ import androidx.core.view.WindowInsetsCompat
 import app.soundtree.SoundTreeApp
 import app.soundtree.databinding.ActivityMainBinding
 import app.soundtree.service.RecordingService
+import app.soundtree.storage.StorageRootsObserver
 import app.soundtree.ui.library.LibraryFragment
 import app.soundtree.ui.record.RecordFragment
 import app.soundtree.storage.StorageVolumeEventReceiver
@@ -49,6 +50,8 @@ class MainActivity : AppCompatActivity() {
     val viewModel: MainViewModel by viewModels()
 
     private var storageVolumeEventReceiver: StorageVolumeEventReceiver? = null
+
+    private var storageRootsObserver: StorageRootsObserver? = null
 
     // ── Back-stack navigation ─────────────────────────────────────────
     //
@@ -167,14 +170,25 @@ class MainActivity : AppCompatActivity() {
             }
             registerReceiver(receiver, filter)
         }
+
+        // ContentObserver on the external storage documents provider roots URI.
+        // Fires when any volume mounts or unmounts — an alternative signal path
+        // that may work on GrapheneOS where ACTION_MEDIA_MOUNTED is suppressed.
+        storageRootsObserver = StorageRootsObserver(this) {
+            viewModel.refreshStorageVolumes()
+        }.also { it.register() }
     }
+
 
     override fun onStop() {
         super.onStop()
         viewModel.onAppClose()
         storageVolumeEventReceiver?.let { unregisterReceiver(it) }
         storageVolumeEventReceiver = null
+        storageRootsObserver?.unregister()
+        storageRootsObserver = null
     }
+
 
     /**
      * Called when the app is already running and a new intent arrives — the
