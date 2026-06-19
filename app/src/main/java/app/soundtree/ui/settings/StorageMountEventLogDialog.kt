@@ -27,6 +27,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private val EVENT_DIFF = object : DiffUtil.ItemCallback<MediaMountEvent>() {
+    override fun areItemsTheSame(a: MediaMountEvent, b: MediaMountEvent) =
+        a.timestampMs == b.timestampMs && a.receiverSource == b.receiverSource
+    override fun areContentsTheSame(a: MediaMountEvent, b: MediaMountEvent) = a == b
+}
+
 /**
  * Dev-tool bottom-sheet that displays the in-memory [MediaMountEventLog].
  *
@@ -203,14 +209,8 @@ class StorageMountEventLogDialog : BottomSheetDialogFragment() {
 
     // ── Adapter ───────────────────────────────────────────────────────────────
 
-    private val eventDiff = object : DiffUtil.ItemCallback<MediaMountEvent>() {
-        override fun areItemsTheSame(a: MediaMountEvent, b: MediaMountEvent) =
-            a.timestampMs == b.timestampMs && a.receiverSource == b.receiverSource
-        override fun areContentsTheSame(a: MediaMountEvent, b: MediaMountEvent) = a == b
-    }
-
     private inner class EventAdapter :
-        ListAdapter<MediaMountEvent, EventAdapter.ViewHolder>(eventDiff) {
+        ListAdapter<MediaMountEvent, EventAdapter.ViewHolder>(EVENT_DIFF) {
 
         inner class ViewHolder(
             root:                  LinearLayout,

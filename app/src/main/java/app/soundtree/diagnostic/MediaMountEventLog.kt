@@ -106,6 +106,28 @@ object MediaMountEventLog {
         append(event)
     }
 
+    /**
+     * Records a failed observer/receiver registration attempt.
+     *
+     * Useful for diagnosing platforms (e.g. GrapheneOS) that deny access to
+     * the external storage documents provider without a prior SAF grant.
+     * Shows up in the diagnostic dialog so the failure is visible without logcat.
+     */
+    fun recordRegistrationFailure(
+        context: Context,
+        reason:  String?,
+        source:  MediaMountEvent.ReceiverSource,
+    ) {
+        val event = MediaMountEvent(
+            timestampMs    = System.currentTimeMillis(),
+            action         = "REGISTRATION_FAILED",
+            mountPath      = null,
+            resolvedUuid   = reason ?: "(no detail)",
+            receiverSource = source,
+        )
+        append(event)
+    }
+
     /** Clears all recorded events. */
     fun clear() {
         _events.value = emptyList()

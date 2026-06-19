@@ -66,11 +66,22 @@ class StorageRootsObserver(
     }
 
     fun register() {
-        context.contentResolver.registerContentObserver(
-            ROOTS_URI,
-            /* notifyForDescendants = */ false,
-            this,
-        )
+        try {
+            context.contentResolver.registerContentObserver(
+                ROOTS_URI,
+                /* notifyForDescendants = */ false,
+                this,
+            )
+        } catch (e: SecurityException) {
+            // GrapheneOS (and potentially other hardened ROMs) deny access to the
+            // external storage documents provider without a prior SAF grant.
+            // Silently no-op — the observer simply won't fire on this platform.
+            MediaMountEventLog.recordRegistrationFailure(
+                context = context,
+                reason  = e.message,
+                source  = MediaMountEvent.ReceiverSource.CONTENT_OBSERVER,
+            )
+        }
     }
 
     fun unregister() {
