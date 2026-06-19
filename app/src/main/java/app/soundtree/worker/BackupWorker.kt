@@ -49,58 +49,58 @@ import java.util.concurrent.TimeUnit
 class BackupWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
-    // ── Companion ─────────────────────────────────────────────────────────────
+    // ── Companion ──────────────────────────────────────────────────────────────
 
     companion object {
         const val TAG               = "BackupWorker"
-        const val TAG_VOLUME_PREFIX = "backup_volume_"
-        const val KEY_VOLUME_UUID   = "volume_uuid"
+        const val TAG_TARGET_PREFIX = "backup_target_"
+        const val KEY_TARGET_ID     = "target_id"
         const val KEY_TRIGGER       = "trigger"
 
         /**
-         * Returns a stable per-volume notification ID.
+         * Returns a stable per-target notification ID derived from the surrogate
+         * target [id]. IDs are offset from [AppNotifications.NOTIF_BACKUP_BASE]
+         * so they don't collide with other notification channels.
          *
-         * Uses a bounded hash of [volumeUuid] offset from [AppNotifications.NOTIF_BACKUP].
-         * Range 1003–5097 gives 4 096 slots — far more than any real deployment
-         * will need. The old fixed NOTIFICATION_ID is intentionally vacated so
-         * concurrent jobs on different volumes no longer overwrite each other.
-         *
-         * The same value is also used as the PendingIntent request code for that
-         * volume's deep-link intent, keeping both namespaces consistent per volume.
+         * The same value is used as the PendingIntent request code for the
+         * volume's deep-link intent, keeping both namespaces consistent per target.
          */
-        fun notifIdForVolume(volumeUuid: String): Int =
-            AppNotifications.NOTIF_BACKUP_BASE + (volumeUuid.hashCode() and 0x0FFF)
+        fun notifIdForTarget(id: Long): Int =
+            AppNotifications.NOTIF_BACKUP_BASE + id.toInt()
 
         const val PREF_VERBOSE_LOGGING = "verbose_logging"
 
-        private fun oneTimeName(volumeUuid: String)  = "backup_once_$volumeUuid"
-        private fun periodicName(volumeUuid: String) = "backup_periodic_$volumeUuid"
+        private fun oneTimeName(targetId: Long)  = "backup_once_$targetId"
+        private fun periodicName(targetId: Long) = "backup_periodic_$targetId"
 
-        /** Enqueues a one-time backup for [volumeUuid]. Uses KEEP — no-op if already running. */
-        fun enqueueOneTime(context: Context, volumeUuid: String, trigger: String) {
+        /**
+         * Enqueues a one-time backup for [targetId].
+         * Uses KEEP — no-op if a job for this target is already running or queued.
+         */
+        fun enqueueOneTime(context: Context, targetId: Long, trigger: String) {
             val request = OneTimeWorkRequestBuilder<BackupWorker>()
-                .setInputData(workDataOf(KEY_VOLUME_UUID to volumeUuid, KEY_TRIGGER to trigger))
+                .setInputData(workDataOf(KEY_TARGET_ID to targetId, KEY_TRIGGER to trigger))
                 .addTag(TAG)
-                .addTag("$TAG_VOLUME_PREFIX$volumeUuid")
+                .addTag("$TAG_TARGET_PREFIX$targetId")
                 .build()
             WorkManager.getInstance(context)
-                .enqueueUniqueWork(oneTimeName(volumeUuid), ExistingWorkPolicy.KEEP, request)
+                .enqueueUniqueWork(oneTimeName(targetId), ExistingWorkPolicy.KEEP, request)
         }
 
-        /** Enqueues or replaces the periodic backup request for [volumeUuid]. */
-        fun enqueueOrUpdatePeriodic(context: Context, volumeUuid: String, intervalHours: Long) {
+        /** Enqueues or replaces the periodic backup request for [targetId]. */
+        fun enqueueOrUpdatePeriodic(context: Context, targetId: Long, intervalHours: Long) {
             val request = PeriodicWorkRequestBuilder<BackupWorker>(intervalHours, TimeUnit.HOURS)
-                .setInputData(workDataOf(KEY_VOLUME_UUID to volumeUuid, KEY_TRIGGER to BackupTrigger.SCHEDULED))
+                .setInputData(workDataOf(KEY_TARGET_ID to targetId, KEY_TRIGGER to BackupTrigger.SCHEDULED))
                 .addTag(TAG)
-                .addTag("$TAG_VOLUME_PREFIX$volumeUuid")
+                .addTag("$TAG_TARGET_PREFIX$targetId")
                 .build()
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(periodicName(volumeUuid), ExistingPeriodicWorkPolicy.UPDATE, request)
+                .enqueueUniquePeriodicWork(periodicName(targetId), ExistingPeriodicWorkPolicy.UPDATE, request)
         }
 
-        /** Cancels the periodic backup request for [volumeUuid]. */
-        fun cancelPeriodic(context: Context, volumeUuid: String) {
-            WorkManager.getInstance(context).cancelUniqueWork(periodicName(volumeUuid))
+        /** Cancels the periodic backup request for [targetId]. */
+        fun cancelPeriodic(context: Context, targetId: Long) {
+            WorkManager.getInstance(context).cancelUniqueWork(periodicName(targetId))
         }
     }
 
@@ -227,7 +227,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         }
     }
 
-    // ── Worker entry point ────────────────────────────────────────────────────
+    // ── Worker entry point ────────────────────────────────────────────────────────
 
     /**
      * Orchestrates the backup run. Resolves all inputs, opens the log row,
@@ -242,10 +242,9 @@ class BackupWorker(context: Context, params: WorkerParameters) :
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
 
         // ── 1. Resolve inputs ─────────────────────────────────────────────────
-        val volumeUuid = inputData.getString(KEY_VOLUME_UUID)
-            ?: return@withContext Result.failure()
-        val trigger = inputData.getString(KEY_TRIGGER)
-            ?: BackupTrigger.MANUAL
+        val targetId = inputData.getLong(KEY_TARGET_ID, -1L)
+            .takeIf { it >= 0 } ?: return@withContext Result.failure()
+        val trigger = inputData.getString(KEY_TRIGGER) ?: BackupTrigger.MANUAL
 
         val db        = AppDatabase.getInstance(applicationContext)
         val targetDao = db.backupTargetDao()
@@ -254,7 +253,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             .getSharedPreferences("soundtree_settings", Context.MODE_PRIVATE)
             .getBoolean(PREF_VERBOSE_LOGGING, false)
 
-        val target = targetDao.getByUuid(volumeUuid)
+        val target = targetDao.getById(targetId)
             ?: return@withContext Result.failure()
 
         val dirUriString = target.backupDirUri
@@ -267,25 +266,29 @@ class BackupWorker(context: Context, params: WorkerParameters) :
             return@withContext Result.failure()
         }
 
-        val volumeLabel = StorageVolumeHelper
-            .getVolumeByUuid(applicationContext, volumeUuid)
-            ?.label ?: volumeUuid
+        // volumeUuid may be null for SAF-only targets; fall back to the dir URI
+        // fragment for logging purposes.
+        val volumeUuid  = target.volumeUuid
+        val volumeLabel = volumeUuid?.let {
+            StorageVolumeHelper.getVolumeByUuid(applicationContext, it)?.label
+        } ?: target.volumeLabel ?: dirUriString
 
-        // ── 1b. Reconcile any dangling in-progress rows for this volume ────────
-        // If a previous run for this volume was killed before it could call
-        // finalise(), its log row is stuck with status=NULL. Since WorkManager
-        // won't start a new unique job while the previous one is genuinely
-        // running, the fact that we're here proves any such row is stale.
-        db.backupLogDao().markInterruptedForVolume(
-            volumeUuid = volumeUuid,
-            endedAt    = System.currentTimeMillis(),
-            message    = "Backup was interrupted — the worker process was terminated before the run could complete.",
-        )
+        // ── 1b. Reconcile dangling in-progress rows for this target ───────────
+        // The log still filters by the denormalized volume_uuid column. When
+        // volumeUuid is null we skip this reconciliation — there's no shared
+        // identity across runs to anchor the query.
+        if (volumeUuid != null) {
+            db.backupLogDao().markInterruptedForVolume(
+                volumeUuid = volumeUuid,
+                endedAt    = System.currentTimeMillis(),
+                message    = "Backup was interrupted — the worker process was terminated before the run could complete.",
+            )
+        }
 
         // ── 2. Open log row + initial notification ────────────────────────────
         val logId = db.backupLogDao().insert(
             BackupLogEntity(
-                backupTargetUuid = volumeUuid,
+                backupTargetId   = targetId,
                 volumeUuid       = volumeUuid,
                 volumeLabel      = volumeLabel,
                 backupDirUri     = dirUriString,
@@ -294,24 +297,19 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         )
 
         postNotification(
-            volumeUuid  = volumeUuid,
+            targetId    = targetId,
             volumeLabel = volumeLabel,
             text        = "Backup in progress\u2026",
         )
 
-        // Promote to foreground service so the notification is guaranteed
-        // visible and the OS won't kill this worker mid-run.
         setForeground(getForegroundInfo())
-
-        // run is null → progress bar will be indeterminate, which is correct
-        // since no phase has been signalled yet.
 
         val run = BackupRun(
             db          = db,
             logId       = logId,
             target      = target,
             destRoot    = destRoot,
-            volumeUuid  = volumeUuid,
+            volumeUuid  = volumeUuid ?: "",
             volumeLabel = volumeLabel,
             verbose     = verbose,
         )
@@ -1042,19 +1040,30 @@ class BackupWorker(context: Context, params: WorkerParameters) :
 
         // Stamp the target even on PARTIAL so the UI shows "last attempted" time.
         if (status != BackupStatus.FAILED) {
-            targetDao.setLastBackupAt(run.volumeUuid, System.currentTimeMillis())
+            targetDao.setLastBackupAt(run.target.id, System.currentTimeMillis())
+            // Refresh the cached volume label in case the OS provided a new one.
+            run.volumeUuid.takeIf { it.isNotEmpty() }?.let { uuid ->
+                StorageVolumeHelper.getVolumeByUuid(applicationContext, uuid)?.label?.let { label ->
+                    targetDao.setVolumeLabel(run.target.id, label)
+                }
+            }
         }
-        // Keep the cached label fresh so Settings can show a name when disconnected.
-        // If the volume wasn't in the system list and fell back to the UUID, we still
-        // write it — it's no worse than what was stored before.
-        targetDao.setVolumeLabel(run.volumeUuid, run.volumeLabel)
 
-        val notifText = when (status) {
-            BackupStatus.SUCCESS -> "Backup complete — ${run.filesCopied} file(s) copied"
-            BackupStatus.PARTIAL -> "Backup finished with ${run.filesFailed} error(s)"
-            else                 -> "Backup failed"
+        val summaryText = when (status) {
+            BackupStatus.SUCCESS ->
+                "${run.recordingsCopied} copied · ${run.recordingsSkipped} skipped"
+            BackupStatus.PARTIAL ->
+                "${run.recordingsCopied} copied · ${run.recordingsFailed} failed"
+            else ->
+                "Backup failed"
         }
-        postNotification(run = run, text = notifText, ongoing = false)
+
+        postNotification(
+            targetId    = run.target.id,
+            volumeLabel = run.volumeLabel,
+            text        = summaryText,
+            ongoing     = false,
+        )
 
         return if (status == BackupStatus.FAILED) Result.failure() else Result.success()
     }
@@ -1146,7 +1155,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
      * Extracted so both [postNotification] and [getForegroundInfo] can share
      * identical construction logic without duplication.
      *
-     * @param volumeUuid  Stable volume identifier, used to derive the notification ID.
+     * @param targetId    Stable backup target identifier.
      * @param volumeLabel Human-readable drive name shown in the title.
      * @param text        Body text (phase description or completion summary).
      * @param ongoing     True while the backup is running; false for the terminal notification.
@@ -1156,7 +1165,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
      *                    or no bar respectively.
      */
     private fun buildBackupNotification(
-        volumeUuid  : String,
+        targetId    : Long,
         volumeLabel : String,
         text        : String,
         ongoing     : Boolean,
@@ -1171,7 +1180,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notifIdForVolume(volumeUuid),
+            notifIdForTarget(targetId),
             deepLinkIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -1203,7 +1212,7 @@ class BackupWorker(context: Context, params: WorkerParameters) :
                     false,
                 )
             } else {
-                builder.setProgress(0, 0, true) // indeterminate until phase data arrives
+                builder.setProgress(0, 0, true)
             }
         }
 
@@ -1221,19 +1230,15 @@ class BackupWorker(context: Context, params: WorkerParameters) :
         run         : BackupRun? = null,
         text        : String,
         ongoing     : Boolean = true,
-        volumeUuid  : String = run?.volumeUuid  ?: "",
-        volumeLabel : String = run?.volumeLabel ?: "",
+        targetId    : Long    = run?.target?.id ?: -1L,
+        volumeLabel : String  = run?.volumeLabel ?: "",
     ) {
-        val resolvedUuid  = run?.volumeUuid  ?: volumeUuid
-        val resolvedLabel = run?.volumeLabel ?: volumeLabel
-
         ensureNotificationChannel()
-
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
                 as NotificationManager
         nm.notify(
-            notifIdForVolume(resolvedUuid),
-            buildBackupNotification(resolvedUuid, resolvedLabel, text, ongoing, run),
+            notifIdForTarget(targetId),
+            buildBackupNotification(targetId, volumeLabel, text, ongoing, run),
         )
     }
 
@@ -1246,18 +1251,23 @@ class BackupWorker(context: Context, params: WorkerParameters) :
      * of [doWork].
      */
     override suspend fun getForegroundInfo(): ForegroundInfo {
-        val volumeUuid  = inputData.getString(KEY_VOLUME_UUID) ?: ""
-        val volumeLabel = StorageVolumeHelper
-            .getVolumeByUuid(applicationContext, volumeUuid)?.label ?: volumeUuid
+        val targetId    = inputData.getLong(KEY_TARGET_ID, -1L)
+        val db          = AppDatabase.getInstance(applicationContext)
+        val target      = if (targetId >= 0) db.backupTargetDao().getById(targetId) else null
+        val volumeLabel = target?.let { t ->
+            t.volumeUuid?.let { uuid ->
+                StorageVolumeHelper.getVolumeByUuid(applicationContext, uuid)?.label
+            } ?: t.volumeLabel
+        } ?: ""
         ensureNotificationChannel()
         return ForegroundInfo(
-            notifIdForVolume(volumeUuid),
+            notifIdForTarget(targetId),
             buildBackupNotification(
-                volumeUuid  = volumeUuid,
+                targetId    = targetId,
                 volumeLabel = volumeLabel,
                 text        = "Backup in progress\u2026",
                 ongoing     = true,
-                run         = null, // run object doesn't exist yet; progress bar is indeterminate
+                run         = null,
             )
         )
     }

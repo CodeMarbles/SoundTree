@@ -337,4 +337,29 @@ interface BackupLogDao {
         endedAt    : Long,
         message    : String,
     )
+
+    /**
+     * Marks a single in-progress log row as INTERRUPTED by its surrogate [id].
+     *
+     * Used by [SoundTreeRepository.reconcileStaleBackupLogs] for log rows whose
+     * [BackupLogEntity.volumeUuid] is null (SAF-only targets), where
+     * [markInterruptedForVolume] cannot be used because there is no volume UUID
+     * to anchor the query.
+     *
+     * Only touches rows where status IS NULL — harmless if already finalised.
+     */
+    @Query("""
+    UPDATE backup_logs
+    SET status        = 'INTERRUPTED',
+        ended_at      = :endedAt,
+        error_message = :message
+    WHERE id = :id
+      AND status IS NULL
+    """)
+    suspend fun markInterruptedById(
+        id      : Long,
+        endedAt : Long,
+        message : String,
+    )
+
 }

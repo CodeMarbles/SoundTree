@@ -21,6 +21,7 @@ import app.soundtree.topics.TopicScoringManager
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class SoundTreeRepository(context: Context) {
@@ -261,36 +262,42 @@ class SoundTreeRepository(context: Context) {
     fun getBackupTargets(): Flow<List<BackupTargetEntity>> =
         backupTargetDao.getAll()
 
-    suspend fun getBackupTarget(volumeUuid: String): BackupTargetEntity? =
-        backupTargetDao.getByUuid(volumeUuid)
+    suspend fun getBackupTarget(id: Long): BackupTargetEntity? =
+        backupTargetDao.getById(id)
 
     /**
      * Adds a new backup target with default settings (both triggers enabled,
-     * 24-hour interval, no directory chosen yet).
+     * 24-hour interval, no directory chosen yet). Returns the new target's
+     * surrogate [BackupTargetEntity.id], or -1L if the insert was ignored
+     * due to a duplicate [BackupTargetEntity.backupDirUri].
      *
-     * The caller is responsible for immediately launching the SAF directory
-     * picker and calling [setBackupTargetDirUri] with the result, since a
-     * target with a null [BackupTargetEntity.backupDirUri] cannot run a backup.
+     * The caller is responsible for passing the SAF directory URI immediately
+     * via [setBackupTargetDirUri], since a target with a null
+     * [BackupTargetEntity.backupDirUri] cannot run a backup.
+     *
+     * The periodic WorkManager job is enqueued using the default 24-hour interval.
+     * If the insert is ignored (returns -1L), no job is enqueued.
      */
-    suspend fun addBackupTarget(volumeUuid: String) {
-        backupTargetDao.insert(BackupTargetEntity(volumeUuid = volumeUuid))
-        // Enqueue the periodic job immediately using the default interval.
-        BackupWorker.enqueueOrUpdatePeriodic(
-            context       = appContext,
-            volumeUuid    = volumeUuid,
-            intervalHours = 24L,
-        )
+    suspend fun addBackupTarget(volumeUuid: String?): Long {
+        val id = backupTargetDao.insert(BackupTargetEntity(volumeUuid = volumeUuid))
+        if (id > 0L) {
+            BackupWorker.enqueueOrUpdatePeriodic(
+                context       = appContext,
+                targetId      = id,
+                intervalHours = 24L,
+            )
+        }
+        return id
     }
 
     /**
      * Removes a backup target and cancels its periodic WorkManager job.
-     * One-time (on-connect) jobs that are already enqueued will run to
-     * completion — they are not cancelled, as interrupting an in-progress
-     * backup is worse than letting it finish.
+     * One-time (on-connect) jobs already enqueued will run to completion —
+     * interrupting an in-progress backup is worse than letting it finish.
      */
-    suspend fun removeBackupTarget(volumeUuid: String) {
-        backupTargetDao.deleteByUuid(volumeUuid)
-        BackupWorker.cancelPeriodic(appContext, volumeUuid)
+    suspend fun removeBackupTarget(id: Long) {
+        backupTargetDao.deleteById(id)
+        BackupWorker.cancelPeriodic(appContext, id)
     }
 
     /**
@@ -298,63 +305,60 @@ class SoundTreeRepository(context: Context) {
      * Called immediately after a successful [Intent.ACTION_OPEN_DOCUMENT_TREE]
      * result in the add-target flow.
      */
-    suspend fun setBackupTargetDirUri(volumeUuid: String, uri: String) =
-        backupTargetDao.setBackupDirUri(volumeUuid, uri)
+    suspend fun setBackupTargetDirUri(id: Long, uri: String) =
+        backupTargetDao.setBackupDirUri(id, uri)
 
     /**
-     * Caches the OS-provided display label for a backup target volume.
-     * Called when a target is first added (label available from live AppVolume)
-     * and after each backup run (BackupWorker has the label via StorageVolumeHelper).
+     * Caches the OS-provided display label for a backup target.
+     * Called when a target is first added and after each backup run.
      */
-    suspend fun setBackupTargetLabel(volumeUuid: String, label: String) =
-        backupTargetDao.setVolumeLabel(volumeUuid, label)
+    suspend fun setBackupTargetLabel(id: Long, label: String) =
+        backupTargetDao.setVolumeLabel(id, label)
 
     /**
      * Toggles the on-connect backup trigger for a target.
      * No WorkManager changes needed — [StorageMountReceiver] reads this flag
      * live from the DB at mount time.
      */
-    suspend fun setBackupOnConnectEnabled(volumeUuid: String, enabled: Boolean) =
-        backupTargetDao.setOnConnectEnabled(volumeUuid, enabled)
+    suspend fun setBackupOnConnectEnabled(id: Long, enabled: Boolean) =
+        backupTargetDao.setOnConnectEnabled(id, enabled)
 
     /**
      * Toggles the scheduled backup trigger for a target.
      * Enqueues or cancels the periodic WorkManager job accordingly.
      */
-    suspend fun setBackupScheduledEnabled(volumeUuid: String, enabled: Boolean) {
-        backupTargetDao.setScheduledEnabled(volumeUuid, enabled)
+    suspend fun setBackupScheduledEnabled(id: Long, enabled: Boolean) {
+        backupTargetDao.setScheduledEnabled(id, enabled)
         if (enabled) {
-            val intervalHours = backupTargetDao.getByUuid(volumeUuid)?.intervalHours?.toLong()
-                ?: return
-            BackupWorker.enqueueOrUpdatePeriodic(appContext, volumeUuid, intervalHours)
+            val intervalHours = backupTargetDao.getById(id)?.intervalHours?.toLong() ?: return
+            BackupWorker.enqueueOrUpdatePeriodic(appContext, id, intervalHours)
         } else {
-            BackupWorker.cancelPeriodic(appContext, volumeUuid)
+            BackupWorker.cancelPeriodic(appContext, id)
         }
     }
 
     /**
-     * Updates the scheduled backup interval for a target.
-     * If scheduled backups are currently enabled, the periodic WorkManager
-     * job is replaced immediately so the new interval takes effect without
-     * waiting for the next scheduled fire.
+     * Updates the scheduled backup interval for a target. If scheduling is
+     * currently enabled, the periodic WorkManager job is replaced immediately
+     * so the new interval takes effect without waiting for the next fire.
      */
-    suspend fun setBackupIntervalHours(volumeUuid: String, hours: Int) {
-        backupTargetDao.setIntervalHours(volumeUuid, hours)
-        val target = backupTargetDao.getByUuid(volumeUuid) ?: return
+    suspend fun setBackupIntervalHours(id: Long, hours: Int) {
+        backupTargetDao.setIntervalHours(id, hours)
+        val target = backupTargetDao.getById(id) ?: return
         if (target.scheduledEnabled) {
-            BackupWorker.enqueueOrUpdatePeriodic(appContext, volumeUuid, hours.toLong())
+            BackupWorker.enqueueOrUpdatePeriodic(appContext, id, hours.toLong())
         }
     }
 
-    suspend fun setBackupPreferencesEnabled(volumeUuid: String, enabled: Boolean) =
-        backupTargetDao.setBackupPreferences(volumeUuid, enabled)
+    suspend fun setBackupPreferencesEnabled(id: Long, enabled: Boolean) =
+        backupTargetDao.setBackupPreferences(id, enabled)
 
     /**
      * Toggles writing companion .json metadata files during backup for a target.
      * No WorkManager changes needed — BackupWorker reads this flag at run time.
      */
-    suspend fun setExportMetadataEnabled(volumeUuid: String, enabled: Boolean) =
-        backupTargetDao.setExportMetadataEnabled(volumeUuid, enabled)
+    suspend fun setExportMetadataEnabled(id: Long, enabled: Boolean) =
+        backupTargetDao.setExportMetadataEnabled(id, enabled)
 
     /**
      * Re-enqueues a periodic WorkManager job for every backup target that has
@@ -364,18 +368,19 @@ class SoundTreeRepository(context: Context) {
      * queue can be silently lost after a force-stop, an OS-level job pruning,
      * or certain app updates. Calling this on every launch is cheap (it is a
      * no-op for jobs that are already live, because [BackupWorker.enqueueOrUpdatePeriodic]
-     * uses [ExistingPeriodicWorkPolicy.REPLACE]) and ensures the schedule is
+     * uses [ExistingPeriodicWorkPolicy.UPDATE]) and ensures the schedule is
      * always consistent with the DB, even after those edge-case losses.
      */
     suspend fun reconcileScheduledBackups() {
         backupTargetDao.getScheduledTargets().forEach { target ->
             BackupWorker.enqueueOrUpdatePeriodic(
                 context       = appContext,
-                volumeUuid    = target.volumeUuid,
+                targetId      = target.id,
                 intervalHours = target.intervalHours.toLong(),
             )
         }
     }
+
 
     // ── Backup logs ───────────────────────────────────────────────────────────
 
@@ -476,13 +481,26 @@ class SoundTreeRepository(context: Context) {
         )
     }
 
+
     /**
      * Cross-references in-progress DB rows against WorkManager's live job state
      * and marks any rows with no corresponding RUNNING/ENQUEUED job as INTERRUPTED.
      *
      * Called once at app startup from [SoundTreeApp]. Handles the population of
      * dangling rows left from prior crashes or force-stops where no subsequent
-     * backup for that volume has been triggered to self-heal via [markStaleBackupLogInterrupted].
+     * backup for that target has been triggered to self-heal via
+     * [markStaleBackupLogInterrupted].
+     *
+     * ## v16 changes
+     * Job tags now use [BackupWorker.TAG_TARGET_PREFIX] + targetId (Long) rather
+     * than the old TAG_VOLUME_PREFIX + volumeUuid. Step 3 extracts target IDs from
+     * the live job tags and step 4 cross-references them against the stale log rows
+     * via [BackupLogEntity.backupTargetId] (the new FK column).
+     *
+     * Logs whose [BackupLogEntity.backupTargetId] is null (target was deleted) or
+     * whose [BackupLogEntity.volumeUuid] is null (SAF-only target with no UUID
+     * identity) are always considered stale — there is no active job that could
+     * legitimately own them.
      */
     suspend fun reconcileStaleBackupLogs() {
         val tag = "BackupReconcile"
@@ -498,16 +516,16 @@ class SoundTreeRepository(context: Context) {
         staleLogs.forEach { log ->
             val ageMs  = System.currentTimeMillis() - log.startedAt
             val ageSec = ageMs / 1000
-            Log.i(tag, "    • logId=${log.id}  volume=${log.volumeUuid}  " +
-                    "startedAt=${log.startedAt}  age=${ageSec}s")
+            Log.i(tag, "    • logId=${log.id}  targetId=${log.backupTargetId}  " +
+                    "volume=${log.volumeUuid}  startedAt=${log.startedAt}  age=${ageSec}s")
         }
 
         // ── 2. Query WorkManager for all BackupWorker jobs ────────────────────
         Log.i(tag, "Querying WorkManager for tag \"${BackupWorker.TAG}\"…")
         val workInfos = try {
             WorkManager.getInstance(appContext)
-                .getWorkInfosByTag(BackupWorker.TAG)
-                .await()
+                .getWorkInfosByTagFlow(BackupWorker.TAG)
+                .first()
         } catch (e: Exception) {
             Log.e(tag, "✘ WorkManager query failed — aborting reconcile: ${e.message}", e)
             return
@@ -518,36 +536,58 @@ class SoundTreeRepository(context: Context) {
         } else {
             Log.i(tag, "WorkManager returned ${workInfos.size} job(s):")
             workInfos.forEach { wi ->
-                val volumeTag = wi.tags.firstOrNull { it.startsWith(BackupWorker.TAG_VOLUME_PREFIX) }
-                Log.i(tag, "    • id=${wi.id}  state=${wi.state}  volumeTag=$volumeTag")
+                val targetTag = wi.tags.firstOrNull { it.startsWith(BackupWorker.TAG_TARGET_PREFIX) }
+                Log.i(tag, "    • id=${wi.id}  state=${wi.state}  targetTag=$targetTag")
             }
         }
 
-        // ── 3. Build the set of volumes that are genuinely active ─────────────
-        val activeVolumeUuids = workInfos
-            .filter { it.state == WorkInfo.State.RUNNING }
+        // ── 3. Build the set of target IDs that are genuinely active ──────────
+        // Extract Long IDs from tags shaped "backup_target_<id>".
+        val activeTargetIds = workInfos
+            .filter { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
             .flatMap { it.tags }
-            .filter { it.startsWith(BackupWorker.TAG_VOLUME_PREFIX) }
-            .mapTo(mutableSetOf()) { it.removePrefix(BackupWorker.TAG_VOLUME_PREFIX) }
+            .filter { it.startsWith(BackupWorker.TAG_TARGET_PREFIX) }
+            .mapNotNullTo(mutableSetOf()) {
+                it.removePrefix(BackupWorker.TAG_TARGET_PREFIX).toLongOrNull()
+            }
 
-        Log.i(tag, "Active volume UUIDs (RUNNING or ENQUEUED): " +
-                if (activeVolumeUuids.isEmpty()) "(none)" else activeVolumeUuids.joinToString())
+        Log.i(tag, "Active target IDs (RUNNING or ENQUEUED): " +
+                if (activeTargetIds.isEmpty()) "(none)" else activeTargetIds.joinToString())
 
         // ── 4. Mark stale rows as INTERRUPTED ────────────────────────────────
+        // A log row is stale if its backupTargetId is not in the active set.
+        // Rows with null backupTargetId (target deleted) are always stale.
+        // Rows with null volumeUuid skip the markInterruptedForVolume call (no
+        // volume identity to anchor the query) and are stamped directly by id.
         val now = System.currentTimeMillis()
         var markedCount = 0
         staleLogs.forEach { log ->
-            if (log.volumeUuid in activeVolumeUuids) {
-                Log.i(tag, "    SKIP  logId=${log.id}  volume=${log.volumeUuid} — job is genuinely running")
-            } else {
-                Log.w(tag, "    MARK  logId=${log.id}  volume=${log.volumeUuid} — no active job found, marking INTERRUPTED")
+            val targetId = log.backupTargetId
+            if (targetId != null && targetId in activeTargetIds) {
+                Log.i(tag, "    SKIP  logId=${log.id}  targetId=$targetId — job is genuinely running")
+                return@forEach
+            }
+
+            Log.w(tag, "    MARK  logId=${log.id}  targetId=$targetId  volume=${log.volumeUuid} " +
+                    "— no active job found, marking INTERRUPTED")
+
+            val volumeUuid = log.volumeUuid
+            if (volumeUuid != null) {
+                // Fast path: mark all stale rows for this volume in one query.
                 backupLogDao.markInterruptedForVolume(
-                    volumeUuid = log.volumeUuid,
+                    volumeUuid = volumeUuid,
                     endedAt    = now,
                     message    = "Backup was interrupted — the app or worker process was terminated before the run could complete.",
                 )
-                markedCount++
+            } else {
+                // SAF-only target with no volume UUID — stamp by log id directly.
+                backupLogDao.markInterruptedById(
+                    id      = log.id,
+                    endedAt = now,
+                    message = "Backup was interrupted — the app or worker process was terminated before the run could complete.",
+                )
             }
+            markedCount++
         }
 
         Log.i(tag, "✔ reconcileStaleBackupLogs() complete — marked $markedCount row(s) as INTERRUPTED")

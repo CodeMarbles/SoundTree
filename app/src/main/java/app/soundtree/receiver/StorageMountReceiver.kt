@@ -15,9 +15,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * Receives [Intent.ACTION_MEDIA_MOUNTED] and triggers an on-connect backup
- * for any volume that the user has designated as a backup target with
- * [app.soundtree.data.entities.BackupTargetEntity.onConnectEnabled] = true.
+ * Receives [Intent.ACTION_MEDIA_MOUNTED] and triggers on-connect backups
+ * for every target configured for the newly-mounted volume.
  *
  * ## Why static registration is correct here
  * Most storage-related broadcasts ([Intent.ACTION_MEDIA_REMOVED] etc.) cannot
@@ -35,6 +34,12 @@ import java.io.File
  * a null UUID (primary volume) to [StorageVolumeHelper.UUID_PRIMARY] to stay
  * consistent with the rest of the app.
  *
+ * ## Multiple targets per volume
+ * After the v16 surrogate-key refactor, a single volume may have multiple
+ * backup targets (e.g. one per SAF directory). [BackupWorker.getOnConnectTargets]
+ * returns all on-connect-enabled targets; we filter by the resolved UUID and
+ * enqueue one independent job per matching target.
+ *
  * ## Coroutine usage
  * [BroadcastReceiver.onReceive] must return quickly. We use [goAsync] to
  * extend the deadline while performing the DB lookup on [Dispatchers.IO],
@@ -43,36 +48,34 @@ import java.io.File
  * ## Diagnostic logging
  * Every received broadcast is recorded to [MediaMountEventLog] (in-memory,
  * process lifetime only) so the Storage Event Log dev tool can show whether
- * this static receiver is being reached — useful for diagnosing GrapheneOS
- * broadcast delivery behaviour.
+ * this static receiver is being reached.
  */
 class StorageMountReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        // Record the event before any early-return so the diagnostic log
-        // captures even broadcasts we don't act on.
         MediaMountEventLog.record(context, intent, MediaMountEvent.ReceiverSource.STATIC)
 
         if (intent.action != Intent.ACTION_MEDIA_MOUNTED) return
 
         val mountPath = intent.data?.path ?: return
-
-        // Resolve the volume UUID from the mount path.
         val volumeUuid = resolveVolumeUuid(context, mountPath) ?: return
 
-        // Extend receiver lifetime for the async DB lookup.
         val pendingResult = goAsync()
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val dao = AppDatabase.getInstance(context).backupTargetDao()
-                val target = dao.getByUuid(volumeUuid)
 
-                if (target != null && target.onConnectEnabled) {
+                // All on-connect targets for ANY volume — filter to the one that mounted.
+                // After the v16 refactor there may be more than one target per volume.
+                val matchingTargets = dao.getOnConnectTargets()
+                    .filter { it.volumeUuid == volumeUuid }
+
+                for (target in matchingTargets) {
                     BackupWorker.enqueueOneTime(
-                        context    = context,
-                        volumeUuid = volumeUuid,
-                        trigger    = app.soundtree.data.entities.BackupLogEntity.BackupTrigger.ON_CONNECT,
+                        context  = context,
+                        targetId = target.id,
+                        trigger  = app.soundtree.data.entities.BackupLogEntity.BackupTrigger.ON_CONNECT,
                     )
                 }
             } finally {

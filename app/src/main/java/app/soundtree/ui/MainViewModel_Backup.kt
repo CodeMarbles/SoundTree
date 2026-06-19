@@ -3,7 +3,10 @@ package app.soundtree.ui
 // ─────────────────────────────────────────────────────────────────────────────
 // MainViewModel_Backup.kt
 //
-// Extension functions on MainViewModel covering the automatic backup system
+// Extension functions on MainViewModel covering the automatic backup system.
+//
+// v16 change: all per-target mutations now take targetId: Long (the surrogate
+// PK) instead of volumeUuid: String.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import androidx.lifecycle.viewModelScope
@@ -19,9 +22,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Live single-row query for [BackupLogDetailDialog].
- * Emits on every write the worker makes to this log row (stats update,
- * status flip, etc.). The dialog observes this to keep its header and
- * metadata grid live while the backup is in progress.
+ * Emits on every write the worker makes to this log row.
  */
 fun MainViewModel.getBackupLog(logId: Long): Flow<BackupLogEntity?> =
     repo.getBackupLog(logId)
@@ -29,20 +30,19 @@ fun MainViewModel.getBackupLog(logId: Long): Flow<BackupLogEntity?> =
 /**
  * Backup log entries for a specific volume, newest first.
  * Consumed by [BackupTargetConfigDialog] to show per-volume recent runs.
+ * Note: still keyed on volumeUuid because the log denormalizes that column.
  */
 fun MainViewModel.getBackupLogsForVolume(volumeUuid: String): Flow<List<BackupLogEntity>> =
     repo.getBackupLogsForVolume(volumeUuid)
 
 /**
  * All events (INFO + WARNING + ERROR) for a specific backup run.
- * Used by [BackupLogDetailDialog] when the "Show milestones" toggle is on.
  */
 fun MainViewModel.getBackupLogEvents(logId: Long): Flow<List<BackupLogEventEntity>> =
     repo.getBackupLogEvents(logId)
 
 /**
  * WARNING + ERROR events only for a specific backup run.
- * The default view in [BackupLogDetailDialog]; hides INFO milestone rows.
  */
 fun MainViewModel.getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEntity>> =
     repo.getBackupLogProblems(logId)
@@ -50,20 +50,25 @@ fun MainViewModel.getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEnt
 // ── Target management ─────────────────────────────────────────────────────────
 
 /**
- * Designates [volumeUuid] as a backup target and persists the SAF
- * directory URI chosen by the user. Called immediately after a
- * successful [Intent.ACTION_OPEN_DOCUMENT_TREE] result in [SettingsFragment].
+ * Designates a new backup target and persists the SAF directory URI chosen
+ * by the user. Called immediately after a successful
+ * [Intent.ACTION_OPEN_DOCUMENT_TREE] result in [SettingsFragment].
+ *
+ * [volumeUuid] may be null for SAF-only targets where no volume UUID could
+ * be resolved from the tree URI.
  */
-fun MainViewModel.addBackupTarget(volumeUuid: String, dirUri: String) {
+fun MainViewModel.addBackupTarget(volumeUuid: String?, dirUri: String) {
     viewModelScope.launch {
-        repo.addBackupTarget(volumeUuid)
-        repo.setBackupTargetDirUri(volumeUuid, dirUri)
-        // Cache the label while we know the volume is mounted (it's in
-        // backupAvailableVolumes, so the OS label is guaranteed available).
-        storageVolumes.value
-            .firstOrNull { it.uuid == volumeUuid }
-            ?.label
-            ?.let { repo.setBackupTargetLabel(volumeUuid, it) }
+        val targetId = repo.addBackupTarget(volumeUuid)
+        if (targetId <= 0L) return@launch   // insert was ignored (duplicate URI)
+        repo.setBackupTargetDirUri(targetId, dirUri)
+        // Cache the label while we know the volume is mounted.
+        if (volumeUuid != null) {
+            storageVolumes.value
+                .firstOrNull { it.uuid == volumeUuid }
+                ?.label
+                ?.let { repo.setBackupTargetLabel(targetId, it) }
+        }
     }
 }
 
@@ -71,40 +76,39 @@ fun MainViewModel.addBackupTarget(volumeUuid: String, dirUri: String) {
  * Removes a backup target and cancels its periodic WorkManager job.
  * Any currently-running or enqueued one-time backup is left to complete.
  */
-fun MainViewModel.removeBackupTarget(volumeUuid: String) {
-    viewModelScope.launch { repo.removeBackupTarget(volumeUuid) }
+fun MainViewModel.removeBackupTarget(targetId: Long) {
+    viewModelScope.launch { repo.removeBackupTarget(targetId) }
 }
 
-fun MainViewModel.setBackupOnConnectEnabled(volumeUuid: String, enabled: Boolean) {
-    viewModelScope.launch { repo.setBackupOnConnectEnabled(volumeUuid, enabled) }
+fun MainViewModel.setBackupOnConnectEnabled(targetId: Long, enabled: Boolean) {
+    viewModelScope.launch { repo.setBackupOnConnectEnabled(targetId, enabled) }
 }
 
-fun MainViewModel.setBackupTargetLabel(volumeUuid: String, label: String) {
-    viewModelScope.launch { repo.setBackupTargetLabel(volumeUuid, label) }
+fun MainViewModel.setBackupTargetLabel(targetId: Long, label: String) {
+    viewModelScope.launch { repo.setBackupTargetLabel(targetId, label) }
 }
 
 /**
- * Toggles scheduled backups for [volumeUuid]. Enqueues or cancels the
+ * Toggles scheduled backups for [targetId]. Enqueues or cancels the
  * WorkManager [PeriodicWorkRequest] accordingly via the repository.
  */
-fun MainViewModel.setBackupScheduledEnabled(volumeUuid: String, enabled: Boolean) {
-    viewModelScope.launch { repo.setBackupScheduledEnabled(volumeUuid, enabled) }
+fun MainViewModel.setBackupScheduledEnabled(targetId: Long, enabled: Boolean) {
+    viewModelScope.launch { repo.setBackupScheduledEnabled(targetId, enabled) }
 }
 
 /**
- * Toggles companion .json metadata export for recordings backed up to [volumeUuid].
- * No WorkManager side-effects — the worker reads this flag at the start of each run.
+ * Toggles companion .json metadata export for recordings backed up to [targetId].
  */
-fun MainViewModel.setExportMetadataEnabled(volumeUuid: String, enabled: Boolean) {
-    viewModelScope.launch { repo.setExportMetadataEnabled(volumeUuid, enabled) }
+fun MainViewModel.setExportMetadataEnabled(targetId: Long, enabled: Boolean) {
+    viewModelScope.launch { repo.setExportMetadataEnabled(targetId, enabled) }
 }
 
 /**
- * Updates the scheduled interval and replaces the live WorkManager
- * periodic request if scheduling is currently enabled.
+ * Updates the scheduled interval and replaces the live WorkManager periodic
+ * request if scheduling is currently enabled.
  */
-fun MainViewModel.setBackupIntervalHours(volumeUuid: String, hours: Int) {
-    viewModelScope.launch { repo.setBackupIntervalHours(volumeUuid, hours) }
+fun MainViewModel.setBackupIntervalHours(targetId: Long, hours: Int) {
+    viewModelScope.launch { repo.setBackupIntervalHours(targetId, hours) }
 }
 
 // ── Log management ────────────────────────────────────────────────────────────
@@ -114,9 +118,7 @@ fun MainViewModel.setBackupIntervalHours(volumeUuid: String, hours: Int) {
  *
  * Silently no-ops if a backup is currently running for this volume —
  * the UI is responsible for checking [backupUiState] first and showing
- * a [Toast] so the user understands why nothing happened. The guard here
- * is a secondary safety net so a direct ViewModel call can never corrupt
- * an in-progress log row.
+ * a Toast so the user understands why nothing happened.
  */
 fun MainViewModel.clearBackupLogsForVolume(volumeUuid: String) {
     if (backupUiState.value.activeJobs.any { it.log.volumeUuid == volumeUuid }) return
@@ -135,36 +137,41 @@ fun MainViewModel.clearAllBackupLogs() {
 // ── Operational ───────────────────────────────────────────────────────────────
 
 /**
- * Enqueues a one-time manual backup for [volumeUuid]. Safe to call even
- * if a backup is already running — ExistingWorkPolicy.KEEP makes it a
- * no-op until the current job finishes.
+ * Enqueues a one-time manual backup for [targetId]. Safe to call even if a
+ * backup is already running — ExistingWorkPolicy.KEEP makes it a no-op until
+ * the current job finishes.
  */
-fun MainViewModel.triggerManualBackup(volumeUuid: String) {
-    BackupWorker.enqueueOneTime(
-        context    = getApplication(),
-        volumeUuid = volumeUuid,
-        trigger    = BackupLogEntity.BackupTrigger.MANUAL,
-    )
+fun MainViewModel.triggerManualBackup(targetId: Long) {
+    viewModelScope.launch {
+        BackupWorker.enqueueOneTime(
+            context  = getApplication(),
+            targetId = targetId,
+            trigger  = BackupLogEntity.BackupTrigger.MANUAL,
+        )
+    }
 }
 
 /**
- * Cancels all WorkManager jobs tagged with this volume's per-volume tag.
- * BackupWorker checks [ListenableWorker.isStopped] and will finalise the
- * log row with FAILED status on cancellation.
+ * Cancels all WorkManager jobs for a specific backup target (both the running
+ * one-time job and any enqueued periodic job).
+ *
+ * Uses the per-target WorkManager tag [BackupWorker.TAG_TARGET_PREFIX] + targetId,
+ * which is attached to every job enqueued via [BackupWorker.enqueueOneTime] and
+ * [BackupWorker.enqueueOrUpdatePeriodic]. WorkManager will call
+ * [ListenableWorker.onStopped] on any in-progress worker, which gives it a chance
+ * to finalise the log row before exiting.
+ *
+ * Replaces the old `cancelBackupForVolume(volumeUuid)` after the v16 surrogate-key
+ * refactor. Call sites that previously passed a volume UUID now pass the target's
+ * surrogate id instead.
  */
-fun MainViewModel.cancelBackupForVolume(volumeUuid: String) {
+fun MainViewModel.cancelBackupForTarget(targetId: Long) {
     WorkManager.getInstance(getApplication())
-        .cancelAllWorkByTag("${BackupWorker.TAG_VOLUME_PREFIX}$volumeUuid")
+        .cancelAllWorkByTag("${BackupWorker.TAG_TARGET_PREFIX}$targetId")
 }
 
-// ── Strip / navigation ────────────────────────────────────────────────────────
-
-/**
- * Dismisses [logId] from the title-bar strip.
- * Called by auto-dismiss timers and direct user taps on a Completed strip.
- */
 fun MainViewModel.dismissBackupStrip(logId: Long) {
-    _stripDismissedIds.value += logId
+    _stripDismissedIds.value = _stripDismissedIds.value + logId
 }
 
 /**

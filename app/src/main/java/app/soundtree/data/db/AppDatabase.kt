@@ -27,7 +27,7 @@ import app.soundtree.data.entities.TopicEntity
         BackupLogEntity::class,
         BackupLogEventEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -287,6 +287,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_12_13,
                         MIGRATION_13_14,
                         MIGRATION_14_15,
+                        MIGRATION_15_16,
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -399,6 +400,202 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE topics ADD COLUMN topic_score REAL NOT NULL DEFAULT 0.0"
                 )
+            }
+        }
+
+        /**
+         * v15 → v16: Surrogate-key refactor for backup_targets.
+         *
+         * ## What changes
+         *
+         * ### backup_targets
+         * - Introduces `id INTEGER PRIMARY KEY AUTOINCREMENT` as the new stable
+         *   surrogate identity for every target.
+         * - Demotes `volume_uuid` to a nullable attribute (TEXT, no longer PK).
+         * - Adds a UNIQUE index on `backup_dir_uri` — a SAF tree URI is globally
+         *   unique, so no two targets may share the same destination directory.
+         *   This constraint also handles the nullable-UUID case correctly: uniqueness
+         *   is enforced on the URI regardless of whether the UUID is set.
+         * - All existing rows receive auto-incremented ids (AUTOINCREMENT starts
+         *   at 1 for fresh tables; existing rows get sequential values via the
+         *   recreate-and-copy dance).
+         *
+         * ### backup_logs
+         * - The FK column `backup_target_uuid TEXT` is replaced by
+         *   `backup_target_id INTEGER`, referencing `backup_targets(id)`.
+         * - Existing log rows whose `backup_target_uuid` (old FK) matches a
+         *   surviving target row are updated to carry the new numeric id.
+         *   Orphaned rows (target was deleted) retain `backup_target_id = NULL`.
+         * - The denormalized `volume_uuid` column is unchanged and continues to
+         *   anchor all log queries that filter by volume.
+         *
+         * ## Why recreate-and-copy (not ALTER TABLE)
+         * SQLite does not support dropping a PRIMARY KEY or adding a new
+         * AUTOINCREMENT column via ALTER TABLE. The standard workaround is the
+         * recreate-copy-drop-rename dance. Foreign key enforcement is disabled
+         * for the duration.
+         *
+         * ## Order of operations
+         * 1. Disable FK enforcement.
+         * 2. Recreate backup_targets_new with the new schema; copy all rows;
+         *    SQLite assigns new sequential ids. Drop old table, rename new.
+         * 3. Recreate backup_logs_new with backup_target_id INTEGER?; populate
+         *    via JOIN on the old volume_uuid → new id mapping; drop old, rename.
+         * 4. Re-enable FK enforcement.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("PRAGMA foreign_keys=OFF")
+
+                // ── Step 1: rebuild backup_targets with surrogate PK ──────────────
+
+                db.execSQL("""
+            CREATE TABLE backup_targets_new (
+                id                      INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                volume_uuid             TEXT,
+                volume_label            TEXT,
+                on_connect_enabled      INTEGER NOT NULL,
+                scheduled_enabled       INTEGER NOT NULL,
+                interval_hours          INTEGER NOT NULL,
+                last_backup_at          INTEGER,
+                backup_dir_uri          TEXT,
+                backup_preferences      INTEGER NOT NULL,
+                export_metadata_enabled INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+                // Copy all existing rows; SQLite assigns new sequential ids.
+                db.execSQL("""
+            INSERT INTO backup_targets_new
+                (volume_uuid, volume_label, on_connect_enabled, scheduled_enabled,
+                 interval_hours, last_backup_at, backup_dir_uri, backup_preferences,
+                 export_metadata_enabled)
+            SELECT
+                volume_uuid, volume_label, on_connect_enabled, scheduled_enabled,
+                interval_hours, last_backup_at, backup_dir_uri, backup_preferences,
+                export_metadata_enabled
+            FROM backup_targets
+        """.trimIndent())
+
+                db.execSQL("DROP TABLE backup_targets")
+                db.execSQL("ALTER TABLE backup_targets_new RENAME TO backup_targets")
+
+                // Unique index on backup_dir_uri (the new uniqueness constraint).
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_backup_targets_backup_dir_uri ON backup_targets(backup_dir_uri)"
+                )
+
+                // ── Step 2: rebuild backup_logs with Long? FK ──────────────────────
+
+                // backup_logs has a large number of columns that were added across
+                // several migrations (v8–v14). Rather than listing them inline here,
+                // we use the exact CREATE TABLE string that Room will generate for v16,
+                // which must match the entity definition precisely.
+                db.execSQL("""
+            CREATE TABLE backup_logs_new (
+                id                          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                backup_target_id            INTEGER,
+                volume_uuid                 TEXT,
+                volume_label                TEXT    NOT NULL,
+                backup_dir_uri              TEXT    NOT NULL,
+                trigger                     TEXT    NOT NULL,
+                started_at                  INTEGER NOT NULL,
+                ended_at                    INTEGER,
+                status                      TEXT,
+                error_message               TEXT,
+                db_backed_up                INTEGER NOT NULL,
+                preferences_backed_up       INTEGER NOT NULL,
+                files_examined              INTEGER NOT NULL,
+                files_copied                INTEGER NOT NULL,
+                files_skipped               INTEGER NOT NULL,
+                files_failed                INTEGER NOT NULL,
+                bytes_copied                INTEGER NOT NULL,
+                recordings_copied           INTEGER NOT NULL,
+                recordings_skipped          INTEGER NOT NULL,
+                recordings_failed           INTEGER NOT NULL,
+                metadata_generated          INTEGER NOT NULL,
+                metadata_skipped            INTEGER NOT NULL,
+                metadata_failed             INTEGER NOT NULL,
+                waveforms_copied            INTEGER NOT NULL,
+                waveforms_skipped           INTEGER NOT NULL,
+                waveforms_failed            INTEGER NOT NULL,
+                total_recordings_on_source  INTEGER NOT NULL,
+                total_recordings_on_dest    INTEGER NOT NULL,
+                total_bytes_on_destination  INTEGER NOT NULL,
+                current_phase               TEXT,
+                total_bytes_on_source       INTEGER NOT NULL,
+                total_metadata_files        INTEGER NOT NULL,
+                total_waveform_files        INTEGER NOT NULL,
+                FOREIGN KEY(backup_target_id) REFERENCES backup_targets(id) ON DELETE SET NULL
+            )
+        """.trimIndent())
+
+                // Remap the FK: join old logs on volume_uuid → new target id.
+                // Logs whose old backup_target_uuid is NULL (target was already deleted)
+                // or doesn't match any surviving target get backup_target_id = NULL.
+                //
+                // Note: volume_uuid in backup_logs was NOT NULL in v15, but the new
+                // entity declares it nullable (SAF-only targets may not have a UUID).
+                // Existing rows all have a non-null value; the schema change is forward-
+                // compatible only.
+                db.execSQL("""
+            INSERT INTO backup_logs_new (
+                id, backup_target_id, volume_uuid, volume_label, backup_dir_uri,
+                trigger, started_at, ended_at, status, error_message,
+                db_backed_up, preferences_backed_up,
+                files_examined, files_copied, files_skipped, files_failed, bytes_copied,
+                recordings_copied, recordings_skipped, recordings_failed,
+                metadata_generated, metadata_skipped, metadata_failed,
+                waveforms_copied, waveforms_skipped, waveforms_failed,
+                total_recordings_on_source, total_recordings_on_dest, total_bytes_on_destination,
+                current_phase, total_bytes_on_source, total_metadata_files, total_waveform_files
+            )
+            SELECT
+                l.id,
+                t.id AS backup_target_id,
+                l.volume_uuid,
+                l.volume_label,
+                l.backup_dir_uri,
+                l.trigger,
+                l.started_at,
+                l.ended_at,
+                l.status,
+                l.error_message,
+                l.db_backed_up,
+                l.preferences_backed_up,
+                l.files_examined,
+                l.files_copied,
+                l.files_skipped,
+                l.files_failed,
+                l.bytes_copied,
+                l.recordings_copied,
+                l.recordings_skipped,
+                l.recordings_failed,
+                l.metadata_generated,
+                l.metadata_skipped,
+                l.metadata_failed,
+                l.waveforms_copied,
+                l.waveforms_skipped,
+                l.waveforms_failed,
+                l.total_recordings_on_source,
+                l.total_recordings_on_dest,
+                l.total_bytes_on_destination,
+                l.current_phase,
+                l.total_bytes_on_source,
+                l.total_metadata_files,
+                l.total_waveform_files
+            FROM backup_logs l
+            LEFT JOIN backup_targets t ON t.volume_uuid = l.backup_target_uuid
+        """.trimIndent())
+
+                db.execSQL("DROP TABLE backup_logs")
+                db.execSQL("ALTER TABLE backup_logs_new RENAME TO backup_logs")
+
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_backup_logs_backup_target_id ON backup_logs(backup_target_id)"
+                )
+
+                db.execSQL("PRAGMA foreign_keys=ON")
             }
         }
 

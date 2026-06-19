@@ -86,7 +86,8 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
     companion object {
         const val TAG = "backup_target_config"
 
-        private const val ARG_VOLUME_UUID     = "volume_uuid"
+        private const val ARG_TARGET_ID       = "target_id"          // Long — surrogate PK
+        private const val ARG_VOLUME_UUID     = "volume_uuid"        // String? — display only
         private const val ARG_ON_CONNECT      = "on_connect_enabled"
         private const val ARG_SCHEDULED       = "scheduled_enabled"
         private const val ARG_INTERVAL_HOURS  = "interval_hours"
@@ -103,7 +104,8 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         fun newInstance(state: BackupTargetUiState): BackupTargetConfigDialog =
             BackupTargetConfigDialog().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_VOLUME_UUID,    state.entity.volumeUuid)
+                    putLong(ARG_TARGET_ID,        state.entity.id)
+                    putString(ARG_VOLUME_UUID,    state.entity.volumeUuid)   // nullable; display only
                     putBoolean(ARG_ON_CONNECT,    state.entity.onConnectEnabled)
                     putBoolean(ARG_SCHEDULED,     state.entity.scheduledEnabled)
                     putInt(ARG_INTERVAL_HOURS,    state.entity.intervalHours)
@@ -132,11 +134,12 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
 
     // ── Args convenience ──────────────────────────────────────────────────────
 
-    private val volumeUuid   get() = requireArguments().getString(ARG_VOLUME_UUID)!!
+    private val targetId     get() = requireArguments().getLong(ARG_TARGET_ID)
+    private val volumeUuid   get() = requireArguments().getString(ARG_VOLUME_UUID)  // nullable; display/log only
     private val isMounted    get() = requireArguments().getBoolean(ARG_IS_MOUNTED)
     private val displayLabel get() = requireArguments().getString(ARG_DISPLAY_LABEL)!!
-    private val volumeLabel  get() = requireArguments().getString(ARG_VOLUME_LABEL)   // null = unnamed
-    private val backupDirUri get() = requireArguments().getString(ARG_BACKUP_DIR_URI) // null = not set
+    private val volumeLabel  get() = requireArguments().getString(ARG_VOLUME_LABEL)
+    private val backupDirUri get() = requireArguments().getString(ARG_BACKUP_DIR_URI)
 
     // ── Bottom-sheet behaviour ────────────────────────────────────────────────
 
@@ -263,7 +266,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).also { it.setMargins(px24, px16, px24, 0) }
                 setOnClickListener {
-                    viewModel.triggerManualBackup(volumeUuid)
+                    viewModel.triggerManualBackup(targetId)
                     dismissAllowingStateLoss()
                 }
             })
@@ -276,7 +279,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
             sublabel  = getString(R.string.settings_backup_config_sublabel_on_connect),
             checked   = args.getBoolean(ARG_ON_CONNECT),
             px24      = px24,
-            onChanged = { enabled -> viewModel.setBackupOnConnectEnabled(volumeUuid, enabled) },
+            onChanged = { enabled -> viewModel.setBackupOnConnectEnabled(targetId, enabled) },
         ))
 
         headerZone.addView(divider(px24))
@@ -295,7 +298,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
             sublabel  = getString(R.string.settings_backup_config_sublabel_export_metadata),
             checked   = args.getBoolean(ARG_EXPORT_METADATA),
             px24      = px24,
-            onChanged = { enabled -> viewModel.setExportMetadataEnabled(volumeUuid, enabled) },
+            onChanged = { enabled -> viewModel.setExportMetadataEnabled(targetId, enabled) },
         ))
 
         // ── History section header — title + Clear button (2D) ───────────────
@@ -415,7 +418,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         val intervalGroup = buildIntervalGroup(ctx, currentSelectedHours, px24) { hours ->
             currentSelectedHours = hours
             tvSublabel.text = labelForHours(hours)
-            viewModel.setBackupIntervalHours(volumeUuid, hours)
+            viewModel.setBackupIntervalHours(targetId, hours)
         }
         intervalGroup.visibility =
             if (scheduledEnabled && intervalExpanded) View.VISIBLE else View.GONE
@@ -480,7 +483,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                 if (isChecked) row.setOnClickListener { toggleExpanded() }
                 else           row.setOnClickListener(null)
 
-                viewModel.setBackupScheduledEnabled(volumeUuid, isChecked)
+                viewModel.setBackupScheduledEnabled(targetId, isChecked)
             }
         }
 
@@ -566,7 +569,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
             .setMessage(getString(R.string.backup_log_clear_volume_message))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(getString(R.string.backup_log_clear_action)) { _, _ ->
-                viewModel.clearBackupLogsForVolume(volumeUuid)
+                volumeUuid?.let { viewModel.clearBackupLogsForVolume(it) }
             }
             .show()
     }
@@ -577,12 +580,18 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.getBackupLogsForVolume(volumeUuid).collect { logs ->
-                    backupLogAdapter.submitList(logs)
+                // Log rows are still filtered by the denormalized volume_uuid column;
+                // pass whatever UUID we have (may be null for SAF-only targets).
+                val uuid = volumeUuid
+                if (uuid != null) {
+                    viewModel.getBackupLogsForVolume(uuid).collect { logs ->
+                        backupLogAdapter.submitList(logs)
+                    }
                 }
             }
         }
     }
+
 
     // ── Remove confirmation ───────────────────────────────────────────────────
 
@@ -598,11 +607,12 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
             .setMessage(getString(R.string.settings_backup_config_remove_confirm_message))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(getString(R.string.settings_backup_config_remove_confirm_action)) { _, _ ->
-                viewModel.removeBackupTarget(volumeUuid)
+                viewModel.removeBackupTarget(targetId)
                 dismissAllowingStateLoss()
             }
             .show()
     }
+
 
     // ── RecyclerView adapter ──────────────────────────────────────────────────
 

@@ -7,7 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Records a single backup run to one [BackupTargetEntity] volume.
+ * Records a single backup run to one [BackupTargetEntity].
  *
  * Each row is created when a backup starts and updated in-place as the run
  * progresses. [BackupLogEventEntity] rows referencing this row's [id] are
@@ -17,26 +17,37 @@ import androidx.room.PrimaryKey
  * [volumeUuid], [volumeLabel], and [backupDirUri] duplicate data from
  * [BackupTargetEntity] intentionally. The log is a historical record — if
  * the user later removes a target or changes the directory, old entries
- * remain fully readable without a join. The FK [backupTargetUuid] is
- * nullable and set to NULL on target deletion for the same reason.
+ * remain fully readable without a join. The FK [backupTargetId] is nullable
+ * and set to NULL on target deletion for the same reason.
  *
  * ## Stats model
  * Stats are split into two groups:
  *  - **Totals** — the state of the destination at the end of this run
  *    (how many recordings exist there, how many bytes).
  *  - **Deltas** — what this specific run did (copied, skipped, failed).
+ *
+ * ## Schema history
+ * - v8:  Initial schema. FK was `backup_target_uuid TEXT → backup_targets(volume_uuid)`.
+ * - v13: Added per-category stats columns (recordings_*, metadata_*, waveforms_*).
+ * - v14: Added live progress columns (current_phase, total_bytes_on_source,
+ *        total_metadata_files, total_waveform_files).
+ * - v16: **FK migrated.** `backup_target_uuid` (TEXT) replaced by
+ *        `backup_target_id` (INTEGER) referencing `backup_targets(id)`.
+ *        The denormalized `volume_uuid` column is unchanged and continues to
+ *        be the anchor for all log queries that filter by volume
+ *        ([BackupLogDao.getByVolume], [BackupLogDao.markInterruptedForVolume], etc.).
  */
 @Entity(
     tableName = "backup_logs",
     foreignKeys = [
         ForeignKey(
             entity = BackupTargetEntity::class,
-            parentColumns = ["volume_uuid"],
-            childColumns = ["backup_target_uuid"],
+            parentColumns = ["id"],
+            childColumns = ["backup_target_id"],
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("backup_target_uuid")]
+    indices = [Index("backup_target_id")]
 )
 data class BackupLogEntity(
 
@@ -47,15 +58,17 @@ data class BackupLogEntity(
     // ── Provenance ────────────────────────────────────────────────────────────
 
     /**
-     * FK to [BackupTargetEntity.volumeUuid]. Nullable — set to NULL if the
-     * target is removed so the log entry is preserved rather than cascade-deleted.
+     * FK to [BackupTargetEntity.id]. Nullable — set to NULL if the target is
+     * removed so the log entry is preserved rather than cascade-deleted.
+     * Nothing in the app reads through this join; it is integrity-only.
      */
-    @ColumnInfo(name = "backup_target_uuid")
-    val backupTargetUuid: String?,
+    @ColumnInfo(name = "backup_target_id")
+    val backupTargetId: Long?,
 
-    /** Denormalized copy of the volume UUID at time of backup. */
+    /** Denormalized copy of the volume UUID at time of backup. May be null for
+     *  SAF-only targets that had no parseable UUID. */
     @ColumnInfo(name = "volume_uuid")
-    val volumeUuid: String,
+    val volumeUuid: String?,
 
     /** Denormalized human-readable volume label at time of backup. */
     @ColumnInfo(name = "volume_label")
@@ -145,59 +158,36 @@ data class BackupLogEntity(
     val bytesCopied: Long = 0L,
 
     // ── Per-category delta stats (v13+) ───────────────────────────────────────
-    //
-    // Break the aggregate files_* columns into per-category counters so the
-    // detail screen can show "recordings / metadata / waveforms" rows rather
-    // than a single opaque total.
-    //
-    // Invariant (checkable per category):
-    //   *_copied + *_skipped + *_failed == files_examined  (recordings only)
-    //
-    // Pre-v13 rows will have all six fields as 0. The UI must treat all-zero
-    // as "no breakdown available" and fall back to the legacy aggregate display.
 
-    /** Audio .m4a files successfully copied to the backup destination this run. */
+    /** Recording .m4a files copied this run. */
     @ColumnInfo(name = "recordings_copied")
     val recordingsCopied: Int = 0,
 
-    /**
-     * Audio .m4a files skipped because an identical copy (same name + size)
-     * already existed on the destination.
-     */
+    /** Recording .m4a files that were already up to date and skipped. */
     @ColumnInfo(name = "recordings_skipped")
     val recordingsSkipped: Int = 0,
 
-    /** Audio .m4a files attempted but failed to copy. */
+    /** Recording .m4a files that failed to copy. */
     @ColumnInfo(name = "recordings_failed")
     val recordingsFailed: Int = 0,
 
-    /**
-     * Companion .json metadata sidecar files written (generated) this run.
-     * "Generated" rather than "copied" because the file is always rebuilt
-     * from live DB data rather than transferred from a source location.
-     */
+    /** Metadata .json sidecar files written (generated fresh or updated). */
     @ColumnInfo(name = "metadata_generated")
     val metadataGenerated: Int = 0,
 
-    /**
-     * Metadata sidecars skipped because the destination copy was already
-     * up to date (mtime / size match, or metadata_updated_at unchanged).
-     */
+    /** Metadata .json files that were already current and skipped. */
     @ColumnInfo(name = "metadata_skipped")
     val metadataSkipped: Int = 0,
 
-    /** Metadata sidecar writes that failed. */
+    /** Metadata .json files that failed to write. */
     @ColumnInfo(name = "metadata_failed")
     val metadataFailed: Int = 0,
 
-    /** Waveform .wfm cache files successfully copied to the backup destination. */
+    /** Waveform cache .wfm files copied this run. */
     @ColumnInfo(name = "waveforms_copied")
     val waveformsCopied: Int = 0,
 
-    /**
-     * Waveform cache files skipped because an identical copy already existed
-     * on the destination. This is the normal steady-state outcome on most runs.
-     */
+    /** Waveform cache .wfm files that were already up to date and skipped. */
     @ColumnInfo(name = "waveforms_skipped")
     val waveformsSkipped: Int = 0,
 
@@ -220,43 +210,26 @@ data class BackupLogEntity(
     val totalBytesOnDestination: Long = 0L,
 
     // ── Live progress fields (v14+) ───────────────────────────────────────────
-    //
-    // Written by BackupWorker during an active run so the UI can render
-    // meaningful phase-aware progress without relying on the prior run's
-    // destination totals as a proxy.
-    //
-    // All four default to 0/null. Pre-v14 completed rows leave them at
-    // defaults, which the UI treats as "no phase data — show indeterminate".
 
     /**
      * The phase currently executing. One of "DB", "RECORDINGS", "METADATA",
      * "WAVEFORMS". Null before the first step starts or once the run finalises.
-     * Used by the progress card to pick the correct slice formula.
      */
     @ColumnInfo(name = "current_phase")
     val currentPhase: String? = null,
 
-    /**
-     * Total bytes of all source `.m4a` recording files, computed once at the
-     * start of [stepCopyRecordings] before the copy loop begins.
-     * Denominator for the RECORDINGS slice (10–75 %) of the progress bar.
-     */
+    /** Total bytes of all source `.m4a` files. Denominator for the RECORDINGS
+     *  slice of the progress bar. */
     @ColumnInfo(name = "total_bytes_on_source")
     val totalBytesOnSource: Long = 0L,
 
-    /**
-     * Total number of recordings to process during [stepExportMetadata].
-     * Written at the start of that step; denominator for the METADATA slice
-     * (75–88 %). Zero when metadata export is disabled for this target.
-     */
+    /** Total recordings to process during metadata export. Denominator for
+     *  the METADATA slice. Zero when metadata export is disabled. */
     @ColumnInfo(name = "total_metadata_files")
     val totalMetadataFiles: Int = 0,
 
-    /**
-     * Total number of `.wfm` files found during [stepSyncWaveforms].
-     * Written at the start of that step; denominator for the WAVEFORMS slice
-     * (88–100 %).
-     */
+    /** Total `.wfm` files found during waveform sync. Denominator for the
+     *  WAVEFORMS slice. */
     @ColumnInfo(name = "total_waveform_files")
     val totalWaveformFiles: Int = 0,
 ) {
@@ -271,16 +244,11 @@ data class BackupLogEntity(
     object BackupStatus {
         /** All operations completed without error. */
         const val SUCCESS = "SUCCESS"
-        /** Completed but one or more files failed — see BackupLogErrorEntity. */
+        /** Completed but one or more files failed — see BackupLogEventEntity. */
         const val PARTIAL = "PARTIAL"
-        /** Run aborted by a fatal error — see [errorMessage]. */
+        /** Run could not complete — see [errorMessage]. */
         const val FAILED  = "FAILED"
-        /**
-         * The worker process was terminated before the run could finalise.
-         * Set retroactively by [reconcileStaleBackupLogs] at app startup or
-         * by [BackupWorker] when it detects a dangling in-progress row for
-         * the same volume at the start of a new run.
-         */
+        /** Worker process was killed before the run could finalise. */
         const val INTERRUPTED = "INTERRUPTED"
     }
 }

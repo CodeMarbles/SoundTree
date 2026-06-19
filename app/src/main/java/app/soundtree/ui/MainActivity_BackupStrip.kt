@@ -131,5 +131,6 @@ internal fun MainActivity.setupBackupStatusStrip() {
  * When the volume has no name — which happens when [BackupWorker] falls back
  * to the raw UUID as the label — returns just the UUID to avoid redundancy.
  */
-internal fun volumeStripLabel(volumeLabel: String, volumeUuid: String): String =
-    if (volumeLabel != volumeUuid) "$volumeLabel ($volumeUuid)" else volumeUuid
+internal fun volumeStripLabel(volumeLabel: String, volumeUuid: String?): String =
+    if (volumeUuid != null && volumeLabel != volumeUuid) "$volumeLabel ($volumeUuid)"
+    else volumeLabel

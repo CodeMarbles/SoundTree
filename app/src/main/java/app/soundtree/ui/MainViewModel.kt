@@ -180,9 +180,14 @@ data class BackupTargetUiState(
     val volume: AppVolume?,
 ) {
     val isMounted: Boolean get() = volume?.isMounted == true
-    val displayLabel: String get() = volume?.label ?: entity.volumeLabel ?: entity.volumeUuid
+    // volumeUuid is now nullable — fall back to the entity id as a last resort
+    // so the display string is always non-empty.
+    val displayLabel: String get() =
+        volume?.label
+            ?: entity.volumeLabel
+            ?: entity.volumeUuid
+            ?: "Target #${entity.id}"
 }
-
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     internal val repo: SoundTreeRepository = (app as app.soundtree.SoundTreeApp).repository
@@ -1048,18 +1053,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      *
      * Shown as the "available to add" list in the Storage tab. Empty when no
      * undesignated removable volumes are connected.
+     *
+     * SAF-only targets (null volumeUuid) should not filter out any volume from the
+     * available to add" list — their null UUID never matches any real volume UUID.
      */
     val backupAvailableVolumes: StateFlow<List<AppVolume>> = combine(
         storageVolumes,
         repo.getBackupTargets(),
     ) { volumes, targets ->
-        val targetUuids = targets.map { it.volumeUuid }.toSet()
+        // Only non-null UUIDs act as exclusions; null means no volume association.
+        val targetUuids = targets.mapNotNull { it.volumeUuid }.toSet()
         volumes.filter { vol ->
             vol.isMounted
                     && vol.uuid != StorageVolumeHelper.UUID_PRIMARY
                     && vol.uuid !in targetUuids
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
 
     // ── Backup progress state ──────────────────────────────────────────────────
 

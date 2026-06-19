@@ -133,8 +133,8 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
         // blank for the brief moment before the first DB emission arrives.
         val seedLog = BackupLogEntity(
             id               = logId,
-            backupTargetUuid = null,
-            volumeUuid       = args.getString(ARG_VOLUME_UUID, ""),
+            backupTargetId   = null,
+            volumeUuid     = args.getString(ARG_VOLUME_UUID),
             volumeLabel      = args.getString(ARG_VOLUME_LABEL, ""),
             backupDirUri     = args.getString(ARG_BACKUP_DIR_URI, ""),
             trigger          = args.getString(ARG_TRIGGER, ""),
@@ -199,8 +199,8 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
      * The layout mirrors the volume info header in [BackupTargetConfigDialog].
      */
     private fun bindHeader(log: BackupLogEntity) {
-        binding.tvDetailVolume.text     = log.volumeLabel.ifBlank { log.volumeUuid }
-        binding.tvDetailVolumeUuid.text = log.volumeUuid
+        binding.tvDetailVolume.text     = log.volumeLabel.ifBlank { log.volumeUuid ?: ""}
+        binding.tvDetailVolumeUuid.text = log.volumeUuid ?: ""
 
         val path = backupDirDisplayPath(log.backupDirUri)
         if (path != null) {

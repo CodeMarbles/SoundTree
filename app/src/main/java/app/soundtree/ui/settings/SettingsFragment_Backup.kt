@@ -15,7 +15,7 @@ import app.soundtree.databinding.ViewBackupProgressCardBinding
 import app.soundtree.storage.AppVolume
 import app.soundtree.ui.BackupTargetUiState
 import app.soundtree.ui.BackupUiState
-import app.soundtree.ui.cancelBackupForVolume
+import app.soundtree.ui.cancelBackupForTarget
 import app.soundtree.ui.settings.SettingsFragment.Tab
 import app.soundtree.util.BackupProgressCalc
 import app.soundtree.util.themeColor
@@ -83,7 +83,8 @@ internal fun SettingsFragment.renderBackupProgressCard(state: BackupUiState) {
     card.tvBackupProgressTitle.text =
         getString(R.string.backup_progress_title, log.volumeLabel)
     card.btnCancelBackup.setOnClickListener {
-        viewModel.cancelBackupForVolume(log.volumeUuid)
+        val targetId = log.backupTargetId ?: return@setOnClickListener
+        viewModel.cancelBackupForTarget(targetId)
     }
 
     // Progress bar — phase-aware single continuous bar.
