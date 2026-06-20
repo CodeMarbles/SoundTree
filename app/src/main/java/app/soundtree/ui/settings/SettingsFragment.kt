@@ -14,7 +14,6 @@ import app.soundtree.R
 import app.soundtree.databinding.FragmentSettingsBinding
 import app.soundtree.databinding.ViewBackupProgressCardBinding
 import app.soundtree.ui.MainViewModel
-import app.soundtree.ui.addBackupTarget
 import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.restore.RestoreWizardDialogFragment
 import app.soundtree.util.themeColor
@@ -29,37 +28,7 @@ class SettingsFragment : Fragment() {
     internal enum class Tab { DISPLAY, BEHAVIOR, STORAGE, TOOLS }
     private var activeTab = Tab.DISPLAY
 
-    /**
-     * Stores the UUID of the volume the user tapped "Add" on while the SAF
-     * directory picker is open. Cleared when the picker returns.
-     */
-    internal var pendingBackupVolumeUuid: String? = null
-
     internal var backupProgressCardBinding: ViewBackupProgressCardBinding? = null
-
-    /**
-     * SAF directory picker launcher.
-     *
-     * Opened when the user taps "Add as backup target" on an available volume.
-     * On a successful result:
-     *   1. Persist read+write permission so it survives app restart.
-     *   2. Hand the volume UUID + URI to the ViewModel to insert the target row.
-     *
-     * A null result (user cancelled) is silently ignored.
-     */
-    internal val openDocumentTree = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        val volumeUuid = pendingBackupVolumeUuid ?: return@registerForActivityResult
-        pendingBackupVolumeUuid = null
-        if (uri == null) return@registerForActivityResult
-
-        requireContext().contentResolver.takePersistableUriPermission(
-            uri,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-        )
-        viewModel.addBackupTarget(volumeUuid, uri.toString())
-    }
 
     internal val openDocumentTreeForRestore = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()

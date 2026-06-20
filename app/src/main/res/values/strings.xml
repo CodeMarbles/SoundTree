@@ -533,7 +533,7 @@
     <string name="settings_label_total_used">Total used by SoundTree</string>
 
     <!-- Backup: card section titles -->
-    <string name="settings_backup_title">Automatic Backup Devices</string>
+    <string name="settings_backup_destinations_title">Backup Destinations</string>
     <string name="settings_backup_available_title">Available Backup Devices</string>
 
     <!-- Backup: designated target list — row content and empty states -->
@@ -576,6 +576,60 @@
         <item>Every 2 days</item>
         <item>Weekly</item>
     </string-array>
+
+    <!-- ── "Back Up to Folder…" trigger button (header row) ─────────────── -->
+    <string name="backup_setup_btn_back_up_to_folder">Back Up to Folder…</string>
+
+    <!-- ── BackupSetupDialog: titles ─────────────────────────────────────── -->
+    <string name="backup_setup_title_one_time">Back Up to Folder</string>
+    <string name="backup_setup_title_add_dir">Add Backup Directory</string>
+
+    <!-- ── BackupSetupDialog: info panel — ONE_TIME mode ────────────────── -->
+    <!--
+        %1$s = formatted total bytes of all recordings (e.g. "1.4 GB")
+        The "≈" prefix communicates that this is a DB-derived estimate
+        covering recordings only, not the full backup (DB + waveforms).
+    -->
+    <string name="backup_setup_source_summary">≈ %1$s of recordings to back up</string>
+    <string name="backup_setup_source_summary_unknown">Calculating backup size…</string>
+
+    <!-- ── BackupSetupDialog: info panel — ADD_VOLUME_DIR mode ──────────── -->
+    <!-- %1$s = formatted free bytes on destination volume -->
+    <string name="backup_setup_dest_free">%1$s free on this drive</string>
+    <!-- %1$s = formatted estimated backup size (recordings total) -->
+    <string name="backup_setup_est_size">≈ %1$s estimated backup size</string>
+    <!-- Fallback label when volumeLabel is null -->
+    <string name="backup_setup_unknown_volume">External Drive</string>
+
+    <!-- ── BackupSetupDialog: folder row ─────────────────────────────────── -->
+    <string name="backup_setup_dir_placeholder">No folder selected</string>
+    <string name="backup_setup_btn_select_folder">Select Folder</string>
+    <string name="backup_setup_btn_change_folder">Change</string>
+
+    <!-- ── BackupSetupDialog: space warning ──────────────────────────────── -->
+    <!--
+        %1$s = estimated backup size, %2$s = free bytes on volume.
+        Also used as the view tag to locate/update the warning TextView.
+    -->
+    <string name="backup_setup_space_warning">Warning: estimated backup (≈ %1$s) may exceed available space (%2$s free)</string>
+
+    <!-- ── BackupSetupDialog: footer note (ONE_TIME only) ────────────────── -->
+    <string name="backup_setup_note_saved">This destination will be saved. You can configure or remove it under Backup Destinations.</string>
+
+    <!-- ── BackupSetupDialog: confirm buttons ────────────────────────────── -->
+    <string name="backup_setup_btn_back_up">Back Up</string>
+    <string name="backup_setup_btn_add_dir">Add Directory</string>
+
+    <!-- ── BackupSetupDialog: toasts ─────────────────────────────────────── -->
+    <string name="backup_setup_toast_queued">Backup queued</string>
+    <string name="backup_setup_toast_dir_added">Backup directory added</string>
+
+    <!-- ── BackupTargetConfigDialog: new "Add another directory" button ──── -->
+    <string name="settings_backup_config_btn_add_dir">Add another directory…</string>
+
+    <!-- ── Backup target subtitle: manual-only trigger label ─────────────── -->
+    <!-- Shown in buildBackupSubtitle() when both triggers are disabled -->
+    <string name="settings_backup_trigger_manual_only">Manual only</string>
 
     <!-- Restore from backup (Storage tab) -->
     <string name="settings_section_restore">Restore</string>

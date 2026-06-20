@@ -95,6 +95,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         private const val ARG_DISPLAY_LABEL   = "display_label"
         private const val ARG_VOLUME_LABEL    = "volume_label"    // raw OS label; null when unnamed/unmounted
         private const val ARG_BACKUP_DIR_URI  = "backup_dir_uri"  // SAF tree URI; null when not yet chosen
+        private const val ARG_VOLUME_FREE_BYTES = "volume_free_bytes"  // Long; -1 = unknown/unmounted
         private const val ARG_EXPORT_METADATA = "export_metadata_enabled"
 
         /** Interval options shown in the selector.
@@ -113,6 +114,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                     putString(ARG_DISPLAY_LABEL,  state.displayLabel)
                     putString(ARG_VOLUME_LABEL,   state.volume?.label ?: state.entity.volumeLabel)
                     putString(ARG_BACKUP_DIR_URI, state.entity.backupDirUri)
+                    putLong(ARG_VOLUME_FREE_BYTES, state.volume?.freeBytes ?: -1L)
                     putBoolean(ARG_EXPORT_METADATA, state.entity.exportMetadataEnabled)
                 }
             }
@@ -140,6 +142,7 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
     private val displayLabel get() = requireArguments().getString(ARG_DISPLAY_LABEL)!!
     private val volumeLabel  get() = requireArguments().getString(ARG_VOLUME_LABEL)
     private val backupDirUri get() = requireArguments().getString(ARG_BACKUP_DIR_URI)
+    private val volumeFreeBytes get() = requireArguments().getLong(ARG_VOLUME_FREE_BYTES, -1L)
 
     // ── Bottom-sheet behaviour ────────────────────────────────────────────────
 
@@ -257,8 +260,9 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
 
         headerZone.addView(divider(px24))
 
-        // ── Back up now (only when mounted) ───────────────────────────────────
+        // ── Actions (only when mounted) ───────────────────────────────────────
         if (isMounted) {
+            // "Back up now" — triggers an immediate one-time backup to this target.
             headerZone.addView(MaterialButton(ctx).apply {
                 text = getString(R.string.settings_backup_config_btn_back_up_now)
                 layoutParams = LinearLayout.LayoutParams(
@@ -270,6 +274,47 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
                     dismissAllowingStateLoss()
                 }
             })
+
+            // "Add another directory…" — opens BackupSetupDialog in ADD_VOLUME_DIR
+            // mode, allowing the user to configure a second (or third…) backup
+            // destination on the same physical volume without leaving Settings.
+            //
+            // Only shown when we have a known volumeUuid — SAF-only targets
+            // (null volumeUuid, created via "Back Up to Folder…") are already
+            // volume-agnostic and don't need a volume-scoped add-directory flow;
+            // the user can just press "Back Up to Folder…" again.
+            if (volumeUuid != null) {
+                val sourceTotalBytes = viewModel.storageUsageByVolume.value.values.sum()
+                // Reconstruct a minimal AppVolume for the dialog. We only need
+                // the uuid, label, and freeBytes fields — the rest are unused
+                // by BackupSetupDialog.newInstanceAddVolumeDir.
+                val syntheticVolume = app.soundtree.storage.AppVolume(
+                    uuid       = volumeUuid!!,
+                    label      = volumeLabel ?: displayLabel,
+                    rootDir    = java.io.File(""),   // unused by the dialog
+                    totalBytes = 0L,                  // unused by the dialog
+                    freeBytes  = volumeFreeBytes.takeIf { it >= 0L } ?: 0L,
+                    isMounted  = true,
+                )
+                headerZone.addView(MaterialButton(
+                    ctx,
+                    null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle,
+                ).apply {
+                    text = getString(R.string.settings_backup_config_btn_add_dir)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).also { it.setMargins(px24, px8, px24, 0) }
+                    setOnClickListener {
+                        BackupSetupDialog.newInstanceAddVolumeDir(
+                            volume           = syntheticVolume,
+                            sourceTotalBytes = sourceTotalBytes,
+                        ).show(parentFragmentManager, BackupSetupDialog.TAG)
+                        dismissAllowingStateLoss()
+                    }
+                })
+            }
         }
 
         // ── On-connect toggle ─────────────────────────────────────────────────

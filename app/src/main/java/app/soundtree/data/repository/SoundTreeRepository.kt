@@ -291,6 +291,34 @@ class SoundTreeRepository(context: Context) {
     }
 
     /**
+     * Adds a new backup target with **both automatic triggers disabled**.
+     * Used by the "Back Up to Folder…" one-time SAF flow.
+     *
+     * Inserts a [BackupTargetEntity] with [BackupTargetEntity.onConnectEnabled]
+     * and [BackupTargetEntity.scheduledEnabled] both false, so the target
+     * appears in "Backup Destinations" as "Manual only" and never fires
+     * automatically unless the user explicitly enables a trigger via the gear
+     * dialog.
+     *
+     * No periodic WorkManager job is enqueued. The caller is responsible for
+     * immediately calling [setBackupTargetDirUri] and then enqueuing a one-time
+     * job via [BackupWorker.enqueueOneTime] (done by the ViewModel extension
+     * [addOneTimeBackupTarget]).
+     *
+     * Returns the new target's surrogate id, or -1L if the insert was ignored
+     * due to a duplicate [BackupTargetEntity.backupDirUri].
+     */
+    suspend fun addManualBackupTarget(volumeUuid: String?): Long =
+        backupTargetDao.insert(
+            BackupTargetEntity(
+                volumeUuid       = volumeUuid,
+                onConnectEnabled = false,
+                scheduledEnabled = false,
+            )
+        )
+
+
+    /**
      * Removes a backup target and cancels its periodic WorkManager job.
      * One-time (on-connect) jobs already enqueued will run to completion —
      * interrupting an in-progress backup is worse than letting it finish.

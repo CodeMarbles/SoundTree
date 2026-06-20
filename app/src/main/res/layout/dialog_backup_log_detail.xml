@@ -47,8 +47,7 @@
                 android:textColor="?attr/colorTextPrimary"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:ellipsize="end"
-                android:maxLines="1"
+                android:maxLines="8"
                 tools:text="USB Drive" />
 
             <!--

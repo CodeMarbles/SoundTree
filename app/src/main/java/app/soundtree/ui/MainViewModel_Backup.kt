@@ -73,6 +73,37 @@ fun MainViewModel.addBackupTarget(volumeUuid: String?, dirUri: String) {
 }
 
 /**
+ * Inserts a manual-only backup target for the given SAF [dirUri] and
+ * immediately enqueues a one-time WorkManager backup.
+ *
+ * This is the "Back Up to Folder…" path:
+ *  - Both automatic triggers are disabled on the new target.
+ *  - A [BackupWorker] one-time job is enqueued with trigger = MANUAL.
+ *  - The target appears in "Backup Destinations" as "Manual only" and can
+ *    be promoted to a recurring target via the gear dialog at any time.
+ *
+ * A duplicate [dirUri] is silently ignored (the unique constraint on
+ * backup_dir_uri returns -1L from the DAO); no job is enqueued in that case.
+ *
+ * [volumeUuid] is null for true one-time SAF targets where no volume UUID
+ * could be extracted from the URI. Passed through to the entity for any
+ * future volume-association logic in StorageMountReceiver.
+ */
+fun MainViewModel.addOneTimeBackupTarget(dirUri: String, volumeUuid: String? = null) {
+    viewModelScope.launch {
+        val targetId = repo.addManualBackupTarget(volumeUuid)
+        if (targetId <= 0L) return@launch   // duplicate URI — already a target
+        repo.setBackupTargetDirUri(targetId, dirUri)
+        BackupWorker.enqueueOneTime(
+            context  = getApplication(),
+            targetId = targetId,
+            trigger  = app.soundtree.data.entities.BackupLogEntity.BackupTrigger.MANUAL,
+        )
+    }
+}
+
+
+/**
  * Removes a backup target and cancels its periodic WorkManager job.
  * Any currently-running or enqueued one-time backup is left to complete.
  */

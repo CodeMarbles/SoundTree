@@ -3,14 +3,16 @@
   settings_group_backups.xml
   Included by fragment_settings.xml into scrollStorage.
   Contains: Backups section header + card (progress card slot, recent backups
-            mini-log, automatic backup volumes, verbose logging toggle,
-            DB pruning toggle + count stepper, available-to-add section).
+            mini-log, backup destinations section with "Back Up to Folder…"
+            action button, verbose logging toggle, DB pruning toggle + count
+            stepper, available-to-add section).
 
   IDs surfaced to FragmentSettingsBinding via <include android:id="@+id/groupBackups">:
     containerBackupProgressCard,
     btnViewAllHistory,
     containerBackupLog,
     containerBackupTargets,
+    btnBackUpToFolder,
     switchVerboseBackupLogging,
     switchDbPrune,
     rowDbPruneCount, tvDbPruneCount, btnDbPruneMinus, btnDbPrunePlus,
@@ -111,7 +113,7 @@
                 android:orientation="vertical"
                 android:paddingBottom="8dp" />
 
-            <!-- ── Automatic Backup Volumes subsection ─────────────────────── -->
+            <!-- ── Backup Destinations subsection ──────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -125,11 +127,27 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/settings_backup_title"
+                    android:text="@string/settings_backup_destinations_title"
                     android:textColor="?attr/colorTextPrimary"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.06" />
+
+                <!--
+                    "Back Up to Folder…" — launches BackupSetupDialog in ONE_TIME
+                    mode. Sits right-aligned in the section header row so it is
+                    visually paired with the "Backup Destinations" label without
+                    consuming a full row of its own.
+                -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBackUpToFolder"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/backup_setup_btn_back_up_to_folder"
+                    android:textSize="12sp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
 
             </LinearLayout>
 
@@ -188,18 +206,25 @@
                     android:id="@+id/switchVerboseBackupLogging"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp" />
+                    android:layout_marginStart="16dp" />
 
             </LinearLayout>
 
-            <!-- DB snapshot pruning toggle -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:layout_marginHorizontal="16dp" />
+
+            <!-- DB Pruning toggle -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="16dp"
-                android:paddingVertical="14dp">
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -208,14 +233,14 @@
                     android:orientation="vertical">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_backup_prune_label"
                         android:textColor="?attr/colorTextPrimary"
                         android:textSize="15sp" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_backup_prune_desc"
                         android:textColor="?attr/colorTextSecondary"
@@ -228,11 +253,11 @@
                     android:id="@+id/switchDbPrune"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp" />
+                    android:layout_marginStart="16dp" />
 
             </LinearLayout>
 
-            <!-- DB snapshot count (enabled/disabled by toggle above) -->
+            <!-- DB Prune count stepper row (shown when pruning is enabled) -->
             <LinearLayout
                 android:id="@+id/rowDbPruneCount"
                 android:layout_width="match_parent"
@@ -240,22 +265,23 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="16dp"
-                android:paddingVertical="14dp">
+                android:paddingBottom="14dp"
+                android:visibility="gone">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/settings_backup_prune_count_label"
-                    android:textColor="?attr/colorTextPrimary"
-                    android:textSize="15sp" />
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="13sp" />
 
                 <!-- Stepper: minus / value / plus -->
                 <LinearLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
+                    android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:background="?attr/colorSurfaceBase">
+                    android:gravity="center_vertical">
 
                     <TextView
                         android:id="@+id/btnDbPruneMinus"
@@ -269,8 +295,8 @@
 
                     <TextView
                         android:id="@+id/tvDbPruneCount"
-                        android:layout_width="36dp"
-                        android:layout_height="match_parent"
+                        android:layout_width="40dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center"
                         android:textSize="15sp"
                         android:textColor="?attr/colorTextPrimary" />

@@ -7,6 +7,9 @@ import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import app.soundtree.R
 import app.soundtree.data.entities.BackupLogEntity
 import app.soundtree.databinding.ItemBackupAvailableVolumeBinding
@@ -19,9 +22,6 @@ import app.soundtree.ui.cancelBackupForTarget
 import app.soundtree.ui.settings.SettingsFragment.Tab
 import app.soundtree.util.BackupProgressCalc
 import app.soundtree.util.themeColor
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -136,13 +136,23 @@ internal fun SettingsFragment.renderBackupProgressCard(state: BackupUiState) {
     }
 }
 
-// ── Backup section ────────────────────────────────────────────────────────────
-
+/**
+ * Wires up all backup-related UI in the Storage tab.
+ *
+ * Observers:
+ *  A. backupTargetUiStates + backupAvailableVolumes → renders both target
+ *     lists together so a single volume change updates both in one pass.
+ *  B. backupLogs (last 3) → mini-log.
+ *
+ * Button wiring:
+ *  • btnViewAllHistory → BackupLogHistoryDialog
+ *  • btnBackUpToFolder → BackupSetupDialog (Mode.ONE_TIME)
+ */
 internal fun SettingsFragment.setupBackupSection() {
     viewLifecycleOwner.lifecycleScope.launch {
-        viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            // Observe designated targets and available volumes together so
-            // a single volume moving between the two lists re-renders atomically.
+        viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+
+            // ── Target lists ──────────────────────────────────────────────────
             launch {
                 combine(
                     viewModel.backupTargetUiStates,
@@ -167,10 +177,20 @@ internal fun SettingsFragment.setupBackupSection() {
         BackupLogHistoryDialog()
             .show(childFragmentManager, BackupLogHistoryDialog.TAG)
     }
+
+    // ── "Back Up to Folder…" ─────────────────────────────────────────────────
+    // Passes the current total recording bytes as the size estimate shown in
+    // the dialog. storageUsageByVolume.value is already live in the ViewModel;
+    // this is a synchronous read that reflects the last-emitted map.
+    binding.groupBackups.btnBackUpToFolder.setOnClickListener {
+        val sourceTotalBytes = viewModel.storageUsageByVolume.value.values.sum()
+        BackupSetupDialog.newInstanceOneTime(sourceTotalBytes)
+            .show(childFragmentManager, BackupSetupDialog.TAG)
+    }
 }
 
 /**
- * Renders the "Designated backup volumes" list.
+ * Renders the "Backup Destinations" list.
  * Each row shows label, mount status, last-backup time, and a gear icon
  * that opens [BackupTargetConfigDialog].
  */
@@ -252,6 +272,11 @@ internal fun SettingsFragment.renderBackupTargets(targets: List<BackupTargetUiSt
  * Always visible. Shows a placeholder when no volumes are available rather
  * than hiding the section, so the user understands the feature exists even
  * when no drives are currently connected.
+ *
+ * Tapping "Add as backup target" now opens [BackupSetupDialog] in
+ * [BackupSetupDialog.Mode.ADD_VOLUME_DIR] rather than launching the SAF picker
+ * directly. The dialog shows destination context (free space, estimated size)
+ * before the user commits to a folder.
  */
 internal fun SettingsFragment.renderBackupAvailable(available: List<AppVolume>) {
     val container = binding.groupBackups.containerBackupAvailable
@@ -274,8 +299,11 @@ internal fun SettingsFragment.renderBackupAvailable(available: List<AppVolume>) 
         itemBinding.tvVolumeName.text = volume.label
         itemBinding.tvVolumeInfo.text = volume.freeLabel()
         itemBinding.btnAddAsTarget.setOnClickListener {
-            pendingBackupVolumeUuid = volume.uuid
-            openDocumentTree.launch(buildVolumeRootUri(volume.uuid))
+            val sourceTotalBytes = viewModel.storageUsageByVolume.value.values.sum()
+            BackupSetupDialog.newInstanceAddVolumeDir(
+                volume           = volume,
+                sourceTotalBytes = sourceTotalBytes,
+            ).show(childFragmentManager, BackupSetupDialog.TAG)
         }
         container.addView(itemBinding.root)
     }
@@ -318,7 +346,12 @@ internal fun SettingsFragment.renderBackupMiniLog(logs: List<BackupLogEntity>) {
 
 /**
  * Builds the subtitle line for a backup target row.
- * Shows mount status, trigger modes enabled, and last backup time.
+ * Shows mount status, trigger modes enabled (or "Manual only"), and last
+ * backup time.
+ *
+ * "Manual only" is shown when both [BackupTargetEntity.onConnectEnabled] and
+ * [BackupTargetEntity.scheduledEnabled] are false — the state created by the
+ * "Back Up to Folder…" one-time flow.
  */
 internal fun SettingsFragment.buildBackupSubtitle(state: BackupTargetUiState): String {
     val parts = mutableListOf<String>()
@@ -327,9 +360,18 @@ internal fun SettingsFragment.buildBackupSubtitle(state: BackupTargetUiState): S
         parts += getString(R.string.settings_backup_status_not_connected)
     } else {
         val triggers = mutableListOf<String>()
-        if (state.entity.onConnectEnabled) triggers += getString(R.string.settings_backup_trigger_on_connect)
-        if (state.entity.scheduledEnabled) triggers += getString(R.string.settings_backup_trigger_scheduled, state.entity.intervalHours)
-        if (triggers.isNotEmpty()) parts += triggers.joinToString(" · ")
+        if (state.entity.onConnectEnabled)
+            triggers += getString(R.string.settings_backup_trigger_on_connect)
+        if (state.entity.scheduledEnabled)
+            triggers += getString(R.string.settings_backup_trigger_scheduled, state.entity.intervalHours)
+
+        if (triggers.isNotEmpty()) {
+            parts += triggers.joinToString(" · ")
+        } else {
+            // Both triggers disabled — target was created via "Back Up to Folder…"
+            // or the user manually turned both off in the gear dialog.
+            parts += getString(R.string.settings_backup_trigger_manual_only)
+        }
     }
 
     val lastBackup = state.entity.lastBackupAt
