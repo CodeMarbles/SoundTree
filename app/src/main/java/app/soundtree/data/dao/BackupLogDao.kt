@@ -34,6 +34,21 @@ interface BackupLogDao {
     fun getAll(): Flow<List<BackupLogEntity>>
 
     /**
+     * Log entries for a specific backup target by surrogate PK, newest first.
+     *
+     * Used by [BackupTargetConfigDialog] for SAF-only targets whose
+     * [BackupLogEntity.volumeUuid] is null, making [getByVolume] useless for them.
+     * Keying on [BackupLogEntity.backupTargetId] (indexed) is the correct identity
+     * anchor for these targets.
+     */
+    @Query("""
+    SELECT * FROM backup_logs
+    WHERE backup_target_id = :targetId
+    ORDER BY started_at DESC
+    """)
+    fun getByTargetId(targetId: Long): Flow<List<BackupLogEntity>>
+
+    /**
      * Log entries for a specific backup target, newest first.
      * Used to populate per-target history in the Storage tab.
      */

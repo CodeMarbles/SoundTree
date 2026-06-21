@@ -27,6 +27,18 @@ interface BackupTargetDao {
     suspend fun getById(id: Long): BackupTargetEntity?
 
     /**
+     * Returns the target whose [BackupTargetEntity.backupDirUri] matches [dirUri],
+     * or null if no target uses that directory.
+     *
+     * Used by [SoundTreeRepository.getOrCreateManualBackupTarget] to detect
+     * duplicate SAF directory selections before attempting an insert, preventing
+     * the UNIQUE constraint violation that would otherwise occur on the subsequent
+     * [setBackupDirUri] UPDATE.
+     */
+    @Query("SELECT * FROM backup_targets WHERE backup_dir_uri = :dirUri LIMIT 1")
+    suspend fun getByDirUri(dirUri: String): BackupTargetEntity?
+
+    /**
      * Returns all targets whose [BackupTargetEntity.volumeUuid] matches.
      * Returns a list because after the v16 refactor multiple targets may share
      * the same volume UUID (each pointing to a different SAF directory).

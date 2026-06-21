@@ -29,11 +29,19 @@ fun MainViewModel.getBackupLog(logId: Long): Flow<BackupLogEntity?> =
 
 /**
  * Backup log entries for a specific volume, newest first.
- * Consumed by [BackupTargetConfigDialog] to show per-volume recent runs.
+ * Consumed by [BackupTargetConfigDialog] for targets that have a volumeUuid.
  * Note: still keyed on volumeUuid because the log denormalizes that column.
  */
 fun MainViewModel.getBackupLogsForVolume(volumeUuid: String): Flow<List<BackupLogEntity>> =
     repo.getBackupLogsForVolume(volumeUuid)
+
+/**
+ * Backup log entries for a specific target by surrogate PK, newest first.
+ * Used by [BackupTargetConfigDialog] for SAF-only targets where volumeUuid
+ * is null and [getBackupLogsForVolume] would return nothing.
+ */
+fun MainViewModel.getBackupLogsForTarget(targetId: Long): Flow<List<BackupLogEntity>> =
+    repo.getBackupLogsForTarget(targetId)
 
 /**
  * All events (INFO + WARNING + ERROR) for a specific backup run.
@@ -50,18 +58,22 @@ fun MainViewModel.getBackupLogProblems(logId: Long): Flow<List<BackupLogEventEnt
 // ── Target management ─────────────────────────────────────────────────────────
 
 /**
- * Designates a new backup target and persists the SAF directory URI chosen
- * by the user. Called immediately after a successful
+ * Designates a new recurring backup target and persists the SAF directory URI
+ * chosen by the user. Called immediately after a successful
  * [Intent.ACTION_OPEN_DOCUMENT_TREE] result in [SettingsFragment].
  *
  * [volumeUuid] may be null for SAF-only targets where no volume UUID could
  * be resolved from the tree URI.
+ *
+ * The [dirUri] is passed directly into the entity at insert time (rather than
+ * via a separate [setBackupTargetDirUri] UPDATE) to ensure the UNIQUE constraint
+ * on backup_dir_uri fires cleanly on the insert if the directory is already
+ * a configured target.
  */
 fun MainViewModel.addBackupTarget(volumeUuid: String?, dirUri: String) {
     viewModelScope.launch {
-        val targetId = repo.addBackupTarget(volumeUuid)
+        val targetId = repo.addBackupTarget(volumeUuid, dirUri)
         if (targetId <= 0L) return@launch   // insert was ignored (duplicate URI)
-        repo.setBackupTargetDirUri(targetId, dirUri)
         // Cache the label while we know the volume is mounted.
         if (volumeUuid != null) {
             storageVolumes.value
@@ -73,35 +85,42 @@ fun MainViewModel.addBackupTarget(volumeUuid: String?, dirUri: String) {
 }
 
 /**
- * Inserts a manual-only backup target for the given SAF [dirUri] and
- * immediately enqueues a one-time WorkManager backup.
+ * Finds or creates a manual-only backup target for [dirUri], then immediately
+ * enqueues a one-time WorkManager backup.
  *
  * This is the "Back Up to Folder…" path:
- *  - Both automatic triggers are disabled on the new target.
- *  - A [BackupWorker] one-time job is enqueued with trigger = MANUAL.
- *  - The target appears in "Backup Destinations" as "Manual only" and can
- *    be promoted to a recurring target via the gear dialog at any time.
- *
- * A duplicate [dirUri] is silently ignored (the unique constraint on
- * backup_dir_uri returns -1L from the DAO); no job is enqueued in that case.
+ *  - If a target already exists for [dirUri], the existing target is reused
+ *    (its trigger settings are not modified).
+ *  - If no target exists, a new one is created with both automatic triggers
+ *    disabled. The target appears in "Backup Destinations" as "Manual only"
+ *    and can be promoted via the gear dialog at any time.
+ *  - A [BackupWorker] one-time job is always enqueued (WorkManager's KEEP
+ *    policy means it's a no-op if a job for this target is already running).
  *
  * [volumeUuid] is null for true one-time SAF targets where no volume UUID
- * could be extracted from the URI. Passed through to the entity for any
- * future volume-association logic in StorageMountReceiver.
+ * could be extracted from the URI.
+ *
+ * [exportMetadata] controls whether JSON sidecars are written during the
+ * backup run. Only applied when a **new** target is created.
  */
-fun MainViewModel.addOneTimeBackupTarget(dirUri: String, volumeUuid: String? = null) {
+fun MainViewModel.addOneTimeBackupTarget(
+    dirUri: String,
+    volumeUuid: String? = null,
+    exportMetadata: Boolean = true,
+) {
     viewModelScope.launch {
-        val targetId = repo.addManualBackupTarget(volumeUuid)
-        if (targetId <= 0L) return@launch   // duplicate URI — already a target
-        repo.setBackupTargetDirUri(targetId, dirUri)
+        val targetId = repo.getOrCreateManualBackupTarget(
+            dirUri        = dirUri,
+            volumeUuid    = volumeUuid,
+            exportMetadata = exportMetadata,
+        )
         BackupWorker.enqueueOneTime(
             context  = getApplication(),
             targetId = targetId,
-            trigger  = app.soundtree.data.entities.BackupLogEntity.BackupTrigger.MANUAL,
+            trigger  = BackupLogEntity.BackupTrigger.MANUAL,
         )
     }
 }
-
 
 /**
  * Removes a backup target and cancels its periodic WorkManager job.
@@ -189,12 +208,8 @@ fun MainViewModel.triggerManualBackup(targetId: Long) {
  * Uses the per-target WorkManager tag [BackupWorker.TAG_TARGET_PREFIX] + targetId,
  * which is attached to every job enqueued via [BackupWorker.enqueueOneTime] and
  * [BackupWorker.enqueueOrUpdatePeriodic]. WorkManager will call
- * [ListenableWorker.onStopped] on any in-progress worker, which gives it a chance
+ * [ListenableWorker.onStopped] on any in-progress worker, giving it a chance
  * to finalise the log row before exiting.
- *
- * Replaces the old `cancelBackupForVolume(volumeUuid)` after the v16 surrogate-key
- * refactor. Call sites that previously passed a volume UUID now pass the target's
- * surrogate id instead.
  */
 fun MainViewModel.cancelBackupForTarget(targetId: Long) {
     WorkManager.getInstance(getApplication())

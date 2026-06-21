@@ -253,7 +253,7 @@ class SoundTreeRepository(context: Context) {
         recordingDao.touchMetadata(recordingId, System.currentTimeMillis())
     }
 
-    // ── Backup targets ────────────────────────────────────────────────────────
+    // ── Backup targets ────────────────────────────────────────────────────────────
 
     /**
      * All configured backup targets, observed reactively.
@@ -266,20 +266,23 @@ class SoundTreeRepository(context: Context) {
         backupTargetDao.getById(id)
 
     /**
-     * Adds a new backup target with default settings (both triggers enabled,
-     * 24-hour interval, no directory chosen yet). Returns the new target's
-     * surrogate [BackupTargetEntity.id], or -1L if the insert was ignored
-     * due to a duplicate [BackupTargetEntity.backupDirUri].
+     * Adds a new recurring backup target with default trigger settings
+     * (on-connect + 24h schedule). The [dirUri] is set on the entity at
+     * insert time so the UNIQUE constraint on [BackupTargetEntity.backupDirUri]
+     * fires cleanly on insert (returning -1L) rather than on a later UPDATE.
      *
-     * The caller is responsible for passing the SAF directory URI immediately
-     * via [setBackupTargetDirUri], since a target with a null
-     * [BackupTargetEntity.backupDirUri] cannot run a backup.
+     * Returns the new target's surrogate [BackupTargetEntity.id], or -1L if the
+     * insert was ignored due to a duplicate [dirUri].
      *
-     * The periodic WorkManager job is enqueued using the default 24-hour interval.
-     * If the insert is ignored (returns -1L), no job is enqueued.
+     * The periodic WorkManager job is enqueued immediately if the insert succeeds.
      */
-    suspend fun addBackupTarget(volumeUuid: String?): Long {
-        val id = backupTargetDao.insert(BackupTargetEntity(volumeUuid = volumeUuid))
+    suspend fun addBackupTarget(volumeUuid: String?, dirUri: String): Long {
+        val id = backupTargetDao.insert(
+            BackupTargetEntity(
+                volumeUuid   = volumeUuid,
+                backupDirUri = dirUri,
+            )
+        )
         if (id > 0L) {
             BackupWorker.enqueueOrUpdatePeriodic(
                 context       = appContext,
@@ -291,32 +294,55 @@ class SoundTreeRepository(context: Context) {
     }
 
     /**
-     * Adds a new backup target with **both automatic triggers disabled**.
-     * Used by the "Back Up to Folder…" one-time SAF flow.
+     * Finds or creates a manual-only backup target for [dirUri].
      *
-     * Inserts a [BackupTargetEntity] with [BackupTargetEntity.onConnectEnabled]
-     * and [BackupTargetEntity.scheduledEnabled] both false, so the target
-     * appears in "Backup Destinations" as "Manual only" and never fires
-     * automatically unless the user explicitly enables a trigger via the gear
-     * dialog.
+     * - If a target already exists for [dirUri], returns its id immediately.
+     *   No new entity is created; the existing target's trigger settings are
+     *   left untouched (the user may have already promoted it to a recurring
+     *   target via the gear dialog).
+     * - If no target exists, inserts a new one with both automatic triggers
+     *   disabled ([BackupTargetEntity.onConnectEnabled] = false,
+     *   [BackupTargetEntity.scheduledEnabled] = false) and [dirUri] set upfront
+     *   so the UNIQUE constraint fires on insert rather than on a subsequent UPDATE.
+     *   If the insert is still somehow ignored (race condition), falls back to
+     *   a second lookup.
      *
-     * No periodic WorkManager job is enqueued. The caller is responsible for
-     * immediately calling [setBackupTargetDirUri] and then enqueuing a one-time
-     * job via [BackupWorker.enqueueOneTime] (done by the ViewModel extension
-     * [addOneTimeBackupTarget]).
+     * [exportMetadata] is applied only when a **new** target is created; it is
+     * not retroactively applied to an existing target.
      *
-     * Returns the new target's surrogate id, or -1L if the insert was ignored
-     * due to a duplicate [BackupTargetEntity.backupDirUri].
+     * Always returns a valid target id ≥ 1. Callers may immediately enqueue a
+     * one-time [BackupWorker] job without additional null-checking.
      */
-    suspend fun addManualBackupTarget(volumeUuid: String?): Long =
-        backupTargetDao.insert(
+    suspend fun getOrCreateManualBackupTarget(
+        dirUri: String,
+        volumeUuid: String? = null,
+        exportMetadata: Boolean = true,
+    ): Long {
+        // Fast path — target already exists for this directory.
+        backupTargetDao.getByDirUri(dirUri)?.let { return it.id }
+
+        // Slow path — insert a new manual-only target.
+        val id = backupTargetDao.insert(
             BackupTargetEntity(
-                volumeUuid       = volumeUuid,
-                onConnectEnabled = false,
-                scheduledEnabled = false,
+                volumeUuid            = volumeUuid,
+                backupDirUri          = dirUri,
+                onConnectEnabled      = false,
+                scheduledEnabled      = false,
+                exportMetadataEnabled = exportMetadata,
             )
         )
 
+        // If insert was IGNORED (duplicate — extremely unlikely but possible in a
+        // race), fall back to a second lookup to guarantee a valid id.
+        if (id <= 0L) {
+            return backupTargetDao.getByDirUri(dirUri)?.id
+                ?: error("getOrCreateManualBackupTarget: insert failed and fallback lookup returned null for dirUri=$dirUri")
+        }
+
+        backupTargetDao.setVolumeLabel(id, dirUri)   // use the SAF URI as the display label
+
+        return id
+    }
 
     /**
      * Removes a backup target and cancels its periodic WorkManager job.
@@ -329,12 +355,11 @@ class SoundTreeRepository(context: Context) {
     }
 
     /**
-     * Persists the SAF directory URI chosen by the user for this target.
-     * Called immediately after a successful [Intent.ACTION_OPEN_DOCUMENT_TREE]
-     * result in the add-target flow.
+     * Backup log entries for a specific target by surrogate PK, newest first.
+     * Used for SAF-only targets where volume_uuid is null.
      */
-    suspend fun setBackupTargetDirUri(id: Long, uri: String) =
-        backupTargetDao.setBackupDirUri(id, uri)
+    fun getBackupLogsForTarget(targetId: Long): Flow<List<BackupLogEntity>> =
+        backupLogDao.getByTargetId(targetId)
 
     /**
      * Caches the OS-provided display label for a backup target.

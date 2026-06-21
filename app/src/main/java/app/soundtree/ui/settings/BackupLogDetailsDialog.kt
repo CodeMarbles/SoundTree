@@ -220,22 +220,18 @@ class BackupLogDetailDialog : BottomSheetDialogFragment() {
     // ── Metadata ──────────────────────────────────────────────────────────────
 
     private fun bindMetadata(log: BackupLogEntity) {
-        binding.tvDetailTrigger.text = formatTrigger(log.trigger)
+        binding.tvDetailTrigger.text  = formatTrigger(log.trigger)
         binding.tvDetailDuration.text = formatDuration(log.startedAt, log.endedAt, requireContext())
 
-        // Detect v13+ entries: any per-category field non-zero means the new
-        // breakdown columns were populated. Fall back to the legacy single row
-        // for pre-v13 log entries where all nine fields are 0.
-        val args = requireArguments()
-        val recCopied = args.getInt(ARG_RECORDINGS_COPIED)
-        val recSkipped = args.getInt(ARG_RECORDINGS_SKIPPED)
-        val recFailed = args.getInt(ARG_RECORDINGS_FAILED)
-        val metaGen = args.getInt(ARG_METADATA_GENERATED)
-        val metaSkip = args.getInt(ARG_METADATA_SKIPPED)
-        val metaFail = args.getInt(ARG_METADATA_FAILED)
-        val wfmCopied = args.getInt(ARG_WAVEFORMS_COPIED)
-        val wfmSkipped = args.getInt(ARG_WAVEFORMS_SKIPPED)
-        val wfmFailed = args.getInt(ARG_WAVEFORMS_FAILED)
+        val recCopied  = log.recordingsCopied
+        val recSkipped = log.recordingsSkipped
+        val recFailed  = log.recordingsFailed
+        val metaGen    = log.metadataGenerated
+        val metaSkip   = log.metadataSkipped
+        val metaFail   = log.metadataFailed
+        val wfmCopied  = log.waveformsCopied
+        val wfmSkipped = log.waveformsSkipped
+        val wfmFailed  = log.waveformsFailed
 
         val hasBreakdown = recCopied + recSkipped + recFailed +
                 metaGen + metaSkip + metaFail +

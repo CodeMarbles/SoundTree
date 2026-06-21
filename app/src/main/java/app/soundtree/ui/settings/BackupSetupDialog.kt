@@ -49,20 +49,17 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.lifecycleScope
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.button.MaterialButton
 import app.soundtree.R
 import app.soundtree.storage.AppVolume
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.MainViewModel
-import app.soundtree.ui.addOneTimeBackupTarget
 import app.soundtree.ui.addBackupTarget
+import app.soundtree.ui.addOneTimeBackupTarget
 import app.soundtree.util.backupDirDisplayPath
 import app.soundtree.util.themeColor
-import kotlinx.coroutines.launch
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButton
 
 class BackupSetupDialog : BottomSheetDialogFragment() {
 
@@ -138,6 +135,14 @@ class BackupSetupDialog : BottomSheetDialogFragment() {
     /** URI chosen by the user via the SAF picker; null until picker returns. */
     private var selectedUri: Uri? = null
 
+    /**
+     * Whether to export JSON metadata sidecars during this backup.
+     * Defaults to true — erring on the side of recoverability.
+     * Persisted to [BackupTargetEntity.exportMetadataEnabled] on confirm.
+     * Only used in [Mode.ONE_TIME]; ADD_VOLUME_DIR uses the gear dialog flow.
+     */
+    private var exportMetadata: Boolean = true
+
     // ── ViewModel ─────────────────────────────────────────────────────────────
 
     private val viewModel: MainViewModel by activityViewModels()
@@ -177,6 +182,7 @@ class BackupSetupDialog : BottomSheetDialogFragment() {
     private lateinit var btnConfirm:      MaterialButton
     private lateinit var btnCancel:       MaterialButton
     private lateinit var containerInfo:   LinearLayout
+    private lateinit var switchExportMetadata: com.google.android.material.switchmaterial.SwitchMaterial
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -262,6 +268,11 @@ class BackupSetupDialog : BottomSheetDialogFragment() {
                 setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
                 setPadding(px24, px8, px24, 0)
             })
+
+            // ── Export metadata toggle (ONE_TIME only) ────────────────────────
+            // Shown here rather than in the gear dialog so users who want a
+            // complete backup don't have to take an extra step. Default on.
+            root.addView(buildExportMetadataRow(ctx, dp, px24, px16))
         }
 
         // ── Buttons ───────────────────────────────────────────────────────────
@@ -447,6 +458,59 @@ class BackupSetupDialog : BottomSheetDialogFragment() {
         return row
     }
 
+    /**
+     * Builds the "Export recording metadata" toggle row for [Mode.ONE_TIME].
+     *
+     * Mirrors the layout of the same toggle in [BackupTargetConfigDialog] so
+     * the two surfaces feel consistent. The switch updates [exportMetadata]
+     * directly; no callback needed since [onConfirm] reads the field.
+     */
+    private fun buildExportMetadataRow(
+        ctx: android.content.Context,
+        dp: Float,
+        px24: Int,
+        px16: Int,
+    ): LinearLayout {
+        val px2 = (2 * dp).toInt()
+
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity     = Gravity.CENTER_VERTICAL
+            setPadding(px24, px16, px24, 0)
+        }
+
+        val textCol = LinearLayout(ctx).apply {
+            orientation  = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+        }
+        textCol.addView(TextView(ctx).apply {
+            text = getString(R.string.settings_backup_config_label_export_metadata)
+            textSize = 14f
+            setTextColor(ctx.themeColor(R.attr.colorTextPrimary))
+        })
+        textCol.addView(TextView(ctx).apply {
+            text = getString(R.string.settings_backup_config_sublabel_export_metadata)
+            textSize = 12f
+            setTextColor(ctx.themeColor(R.attr.colorTextSecondary))
+            setPadding(0, px2, 0, 0)
+        })
+
+        switchExportMetadata = com.google.android.material.switchmaterial.SwitchMaterial(ctx).apply {
+            isChecked = exportMetadata
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).also { it.marginStart = px16 }
+            setOnCheckedChangeListener { _, checked -> exportMetadata = checked }
+        }
+
+        row.addView(textCol)
+        row.addView(switchExportMetadata)
+        return row
+    }
+
     // ── Picker launch ─────────────────────────────────────────────────────────
 
     /**
@@ -550,7 +614,7 @@ class BackupSetupDialog : BottomSheetDialogFragment() {
 
         when (mode) {
             Mode.ONE_TIME -> {
-                viewModel.addOneTimeBackupTarget(uriString)
+                viewModel.addOneTimeBackupTarget(uriString, exportMetadata = exportMetadata)
                 Toast.makeText(
                     requireContext(),
                     getString(R.string.backup_setup_toast_queued),

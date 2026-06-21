@@ -31,6 +31,7 @@ import app.soundtree.databinding.ItemBackupLogRowBinding
 import app.soundtree.ui.BackupTargetUiState
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.clearBackupLogsForVolume
+import app.soundtree.ui.getBackupLogsForTarget
 import app.soundtree.ui.getBackupLogsForVolume
 import app.soundtree.ui.removeBackupTarget
 import app.soundtree.ui.setBackupIntervalHours
@@ -625,13 +626,16 @@ class BackupTargetConfigDialog : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Log rows are still filtered by the denormalized volume_uuid column;
-                // pass whatever UUID we have (may be null for SAF-only targets).
-                val uuid = volumeUuid
-                if (uuid != null) {
-                    viewModel.getBackupLogsForVolume(uuid).collect { logs ->
-                        backupLogAdapter.submitList(logs)
-                    }
+                // SAF-only targets (volumeUuid == null) must be queried by surrogate
+                // targetId because their log rows have a null volume_uuid column.
+                // Volume-backed targets continue to use the volumeUuid path so that
+                // logs from before the v16 surrogate-key migration (which may have a
+                // null backup_target_id) are still visible.
+                val logsFlow = volumeUuid
+                    ?.let { viewModel.getBackupLogsForVolume(it) }
+                    ?: viewModel.getBackupLogsForTarget(targetId)
+                logsFlow.collect { logs ->
+                    backupLogAdapter.submitList(logs)
                 }
             }
         }
