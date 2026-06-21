@@ -1,0 +1,4 @@
+• Fixed a crash when using "Back Up to Folder" on a directory that was already a backup destination
+• "Back Up to Folder" on an existing destination now queues a new backup run instead of silently doing nothing
+• Fixed backup history not appearing when opening the settings for a folder-only backup destination
+• Fixed backup progress (recordings copied, metadata, waveforms) not updating live in the backup detail view
