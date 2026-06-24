@@ -13,12 +13,16 @@ import android.os.Build
 import app.soundtree.util.PassthroughPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+
 
 /**
  * Manages real-time audio passthrough during a recording session.
@@ -45,9 +49,12 @@ import kotlinx.coroutines.launch
  *
  * ── Threading ─────────────────────────────────────────────────────────────────
  *
- * The monitoring loop runs on [Dispatchers.IO] inside a coroutine. All public
- * methods are safe to call from the main thread — they post state updates to
- * [MutableStateFlow]s and manipulate coroutine jobs, which are thread-safe.
+ * The monitoring loop runs on a single dedicated thread ("SoundTree-Passthrough")
+ * owned by this class, raised to THREAD_PRIORITY_URGENT_AUDIO. It is deliberately
+ * NOT on Dispatchers.IO — see the audioDispatcher field for the full rationale.
+ * All public methods are safe to call from the main thread — they post state
+ * updates to [MutableStateFlow]s and manipulate coroutine jobs, which are
+ * thread-safe.
  *
  * ── Audio format ──────────────────────────────────────────────────────────────
  *
@@ -119,6 +126,28 @@ class PassthroughManager(
     private val audioTracks = mutableMapOf<String, AudioTrack>() // key → track
     private var monitorJob: Job? = null
 
+    // ── Dedicated audio thread ────────────────────────────────────────────────
+    //
+    // The monitor loop is a real-time workload: it must refill each AudioTrack
+    // buffer before the previous one drains, or the user hears dropouts. It must
+    // NOT run on Dispatchers.IO, for two reasons:
+    //
+    //   1. The loop blocks on audioRecord.read() for the entire recording, holding
+    //      one pool thread captive — not what the shared IO pool is for.
+    //   2. We raise this thread to THREAD_PRIORITY_URGENT_AUDIO inside the loop.
+    //      On a pooled thread that priority would ride home with the thread when
+    //      the loop ends and leak into unrelated background work that lands on it
+    //      next. A thread we own exclusively has no such leak.
+    //
+    // Owned for the manager's lifetime: created here, closed in onDestroy(). The
+    // loop re-asserts its priority each time it (re)starts, so a single named
+    // thread persists cleanly across record sessions. An idle high-priority thread
+    // costs nothing — priority only matters under CPU contention.
+        private val audioDispatcher: ExecutorCoroutineDispatcher =
+            Executors.newSingleThreadExecutor { r ->
+                Thread(r, "SoundTree-Passthrough")
+            }.asCoroutineDispatcher()
+
     private val deviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
             refreshOutputDeviceList()
@@ -159,6 +188,7 @@ class PassthroughManager(
     fun onDestroy() {
         stopMonitoring()
         audioManager.unregisterAudioDeviceCallback(deviceCallback)
+        audioDispatcher.close()
     }
 
     /**
@@ -329,6 +359,11 @@ class PassthroughManager(
             )
             .setBufferSizeInBytes(minBuf)
             .setTransferMode(AudioTrack.MODE_STREAM)
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                }
+            }
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -344,7 +379,14 @@ class PassthroughManager(
 
     private fun startMonitorLoop() {
         monitorJob?.cancel()
-        monitorJob = serviceScope.launch(Dispatchers.IO) {
+        monitorJob = serviceScope.launch(audioDispatcher) {
+            // Real-time priority for this loop. Safe here (not on Dispatchers.IO)
+            // because audioDispatcher is a single thread we own exclusively, so the
+            // elevated priority can't leak into other work. Re-asserted on every
+            // (re)start of the loop.
+            android.os.Process.setThreadPriority(
+                android.os.Process.THREAD_PRIORITY_URGENT_AUDIO
+            )
             val buffer = ShortArray(bufferSize / 2) // bufferSize is in bytes; Short = 2 bytes
             while (isActive) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: break
