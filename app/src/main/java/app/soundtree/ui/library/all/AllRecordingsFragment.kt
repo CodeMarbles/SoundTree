@@ -22,6 +22,7 @@ import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.renameRecording
 import app.soundtree.ui.selectRecording
 import app.soundtree.ui.recording.RecordingsAdapter
+import app.soundtree.ui.share.ShareRecordingDialogFragment
 import kotlinx.coroutines.launch
 
 /**
@@ -95,8 +96,12 @@ class AllRecordingsFragment : Fragment() {
             onRename                = { id, title -> viewModel.renameRecording(id, title) },
             onMoveRequested         = { recId, topicId -> recordingListController.requestMove(recId, topicId) },
             onDelete                = { rec -> viewModel.deleteRecording(rec) },
+            onShareRequested        = { id ->
+                ShareRecordingDialogFragment.newInstance(id)
+                    .show(childFragmentManager, ShareRecordingDialogFragment.TAG)
+            },
             onTopicDetailsRequested = { topicId ->
-                val activity = requireActivity() as? MainActivity ?: return@RecordingsAdapter
+            val activity = requireActivity() as? MainActivity ?: return@RecordingsAdapter
                 if (topicId == null) activity.navigateToLibraryUnsorted()
                 else activity.navigateToTopicDetails(topicId)
             },

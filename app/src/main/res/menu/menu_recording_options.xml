@@ -11,6 +11,9 @@
         android:id="@+id/action_move"
         android:title="@string/recording_action_move_to_topic" />
     <item
+        android:id="@+id/action_share"
+        android:title="@string/common_btn_share" />
+    <item
         android:id="@+id/action_delete"
         android:title="@string/common_btn_delete" />
     <item

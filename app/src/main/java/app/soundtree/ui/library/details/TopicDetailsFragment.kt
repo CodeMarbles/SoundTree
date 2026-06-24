@@ -41,6 +41,7 @@ import app.soundtree.storage.AppVolume
 import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.selectRecording
 import app.soundtree.ui.setLibraryDetailsTopic
+import app.soundtree.ui.share.ShareRecordingDialogFragment
 import app.soundtree.util.emojiToColor
 import app.soundtree.util.themeColor
 import kotlinx.coroutines.launch
@@ -183,6 +184,10 @@ class TopicDetailsFragment : Fragment() {
             onRename                = { id, title -> viewModel.renameRecording(id, title) },
             onMoveRequested         = { recId, topicId -> recordingListController.requestMove(recId, topicId) },
             onDelete                = { rec -> viewModel.deleteRecording(rec) },
+            onShareRequested        = { id ->
+                ShareRecordingDialogFragment.newInstance(id)
+                    .show(childFragmentManager, ShareRecordingDialogFragment.TAG)
+            },
             onTopicDetailsRequested = {}, // hidden on this tab
             onSelect                = { id ->
                 viewModel.selectRecording(id)

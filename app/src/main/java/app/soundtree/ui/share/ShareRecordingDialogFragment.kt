@@ -8,13 +8,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import app.soundtree.R
 import app.soundtree.databinding.DialogShareRecordingBinding
 import app.soundtree.ui.MainViewModel
-import java.io.File
+import app.soundtree.ui.share.ShareRecordingDialogFragment.Companion.MAX_FILENAME_LENGTH
+import app.soundtree.ui.share.ShareRecordingDialogFragment.Companion.newInstance
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 

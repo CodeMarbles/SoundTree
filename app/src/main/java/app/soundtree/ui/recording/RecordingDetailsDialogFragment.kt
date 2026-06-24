@@ -30,6 +30,7 @@ import app.soundtree.util.Icons
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.ui.getMarksForRecording
 import app.soundtree.ui.moveRecording
+import app.soundtree.ui.share.ShareRecordingDialogFragment
 import app.soundtree.util.WaveformCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -143,6 +144,10 @@ class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
     private fun setupTopBar() {
         binding.btnClose.setOnClickListener { dismissAllowingStateLoss() }
         binding.btnOverflow.setOnClickListener { showOverflowMenu() }
+        binding.btnShare.setOnClickListener {
+            ShareRecordingDialogFragment.newInstance(recordingId)
+                .show(childFragmentManager, ShareRecordingDialogFragment.TAG)
+        }
     }
 
     private fun setupTopicHeader() {
@@ -339,6 +344,11 @@ class RecordingDetailsDialogFragment : BottomSheetDialogFragment() {
                             selectedTopicId = recording.topicId,
                             requestKey      = MOVE_REQUEST_KEY
                         ).show(childFragmentManager, "details_overflow_move")
+                        true
+                    }
+                    R.id.action_share -> {
+                        ShareRecordingDialogFragment.newInstance(recordingId)
+                            .show(childFragmentManager, ShareRecordingDialogFragment.TAG)
                         true
                     }
                     R.id.action_delete -> {

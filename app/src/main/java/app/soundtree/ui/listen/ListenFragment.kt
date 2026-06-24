@@ -50,6 +50,7 @@ import app.soundtree.ui.seekTo
 import app.soundtree.ui.seekToMark
 import app.soundtree.ui.selectMark
 import app.soundtree.ui.setPlaybackSpeed
+import app.soundtree.ui.share.ShareRecordingDialogFragment
 import app.soundtree.ui.skipBack
 import app.soundtree.ui.skipForward
 import app.soundtree.ui.stopAndClear
@@ -822,6 +823,11 @@ class ListenFragment : Fragment() {
                             selectedTopicId = recording.topicId,
                             requestKey      = TopicPickerBottomSheet.REQUEST_KEY + "_listen"
                         ).show(childFragmentManager, "listen_move_picker")
+                        true
+                    }
+                    R.id.action_share -> {
+                        ShareRecordingDialogFragment.newInstance(recording.id)
+                            .show(childFragmentManager, ShareRecordingDialogFragment.TAG)
                         true
                     }
                     R.id.action_delete -> {

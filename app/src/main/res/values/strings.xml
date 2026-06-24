@@ -218,15 +218,18 @@
     <string name="recording_cd_storage_offline">Storage offline</string>
     <string name="recording_cd_rename">Rename recording</string>
     <string name="recording_cd_move_to_topic">Move to topic</string>
+    <string name="recording_cd_share">Share</string>
     <string name="recording_cd_delete">Delete recording</string>
     <string name="recording_cd_topic_details">View topic details</string>
     <string name="recording_cd_overflow">Recording options</string>
     <string name="recording_cd_restart">Restart from beginning</string>
 
+
     <!-- Snackbar shown when the user taps a row whose storage volume is offline -->
     <string name="recording_msg_storage_not_connected">Storage device not connected</string>
 
     <string name="recording_details_cd_close">Close recording details</string>
+    <string name="recording_details_cd_share">Share recording</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab
@@ -985,6 +988,5 @@
     <string name="share_dialog_date_append">Append</string>
     <string name="share_dialog_date_include_time">Include time</string>
 
-    <!-- Share button — reuses common_btn_share from the common_ section -->
-
+    <string name="share_error_file_missing">Recording file not found on disk. It may be on an offline storage volume.</string>
 </resources>

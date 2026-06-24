@@ -59,6 +59,22 @@
         android:layout_marginEnd="4dp"
         android:layout_marginTop="4dp" />
 
+    <ImageView
+        android:id="@+id/btnShare"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_share"
+        android:padding="12dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/recording_details_cd_share"
+        app:tint="?attr/colorTextSecondary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnOverflow"
+        android:layout_marginTop="4dp" />
+
+
     <!-- ══════════════════════════════════════════════════════════════
          Topic zone — icon pill + topic name, tappable.
          Matches the topicHeader pattern used in the Record and Listen

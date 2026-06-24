@@ -78,6 +78,7 @@ class RecordingsAdapter(
     private val onRename:                (id: Long, newTitle: String) -> Unit,
     private val onMoveRequested:         (recordingId: Long, currentTopicId: Long?) -> Unit,
     private val onDelete:                (RecordingEntity) -> Unit,
+    private val onShareRequested:        (recordingId: Long) -> Unit = {},
     private val onTopicDetailsRequested: (topicId: Long?) -> Unit = {},
     private val onSelect:                (Long) -> Unit = {},
 ) : ListAdapter<RecordingListItem, RecyclerView.ViewHolder>(DIFF) {
@@ -326,6 +327,7 @@ class RecordingsAdapter(
                     when (item.itemId) {
                         R.id.action_rename        -> { showRenameDialog(rec); true }
                         R.id.action_move          -> { onMoveRequested(rec.id, rec.topicId); true }
+                        R.id.action_share         -> { onShareRequested(rec.id); true }
                         R.id.action_delete        -> { showDeleteDialog(rec); true }
                         R.id.action_topic_details -> { onTopicDetailsRequested(rec.topicId); true }
                         else                      -> false
@@ -362,6 +364,15 @@ class RecordingsAdapter(
                 showDeleteDialog(rec)
                 true
             }
+            // "Share" — always available
+            ViewCompat.addAccessibilityAction(
+                itemView,
+                itemView.context.getString(R.string.recording_cd_share)
+            ) { _, _ ->
+                onShareRequested(rec.id)
+                true
+            }
+
             // Only register "Topic Details" where it's visible — keeps TalkBack
             // actions menu clean on Inbox and Topic Details contexts.
             if (showTopicDetails) {
