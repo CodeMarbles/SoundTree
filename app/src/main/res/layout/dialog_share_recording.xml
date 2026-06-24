@@ -345,9 +345,7 @@
                 android:paddingVertical="10dp"
                 android:textColor="?attr/colorTextPrimary"
                 android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:ellipsize="middle"
-                android:maxLines="2" />
+                android:fontFamily="monospace" />
 
         </LinearLayout>
 

@@ -1,0 +1,1 @@
+Added a Share Recording feature allowing the user to share audio files and JSON metadata, and set custom filenames.

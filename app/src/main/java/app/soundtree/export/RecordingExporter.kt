@@ -69,6 +69,11 @@ object RecordingExporter {
      * @param marks      All marks belonging to this recording.
      * @param allTopics  Full flat topic list — used to walk the ancestor chain.
      * @param destDir    Directory to write the JSON into (must already exist).
+     * @param audioFilename Overrides the `audioFilename` field written into the
+     *                      JSON. Defaults to the audio file's on-disk name. The
+     *                      share flow passes the user's chosen name so the JSON's
+     *                      companion reference matches the renamed audio; backup
+     *                      and restore callers omit it to keep a faithful snapshot.
      * @return           The [File] that was written.
      * @throws IOException if the JSON file cannot be written.
      */
@@ -77,11 +82,17 @@ object RecordingExporter {
         marks:     List<MarkEntity>,
         allTopics: List<TopicEntity>,
         destDir:   File,
+        audioFilename: String? = null,
     ): File {
         val stem     = File(recording.filePath).nameWithoutExtension
         val jsonFile = File(destDir, "$stem.json")
 
-        val metadata = buildMetadata(recording, marks, allTopics, File(recording.filePath).name)
+        val metadata = buildMetadata(
+            recording,
+            marks,
+            allTopics,
+            audioFilename ?: File(recording.filePath).name,
+        )
         jsonFile.writeText(metadata.toJson().toString(2))
         return jsonFile
     }

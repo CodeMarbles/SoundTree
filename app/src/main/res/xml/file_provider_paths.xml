@@ -1,50 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  file_provider_paths.xml
-  ─────────────────────────────────────────────────────────────────────────────
-  Defines the path roots that app.soundtree.fileprovider is authorised to
-  expose via content:// URIs.
-
-  Authority: app.soundtree.fileprovider
-  Declared in: AndroidManifest.xml (<provider> inside <application>)
-
-  ── Paths ────────────────────────────────────────────────────────────────────
-
-  external-files-path  name="recordings"  path="."
-    Maps Context.getExternalFilesDirs(null)[*] — the app-private directories
-    on all mounted storage volumes (internal storage, SD card, etc.).
-    Recording .m4a files live here under year/month subdirectories, e.g.:
-      /sdcard/Android/data/app.soundtree/files/2026/06/ST_20260623_111213.m4a
-    The "." path root allows sharing from any subdirectory under the app's
-    external files root, accommodating the year/month layout and any future
-    restructuring.
-
-    Note: <external-files-path> covers ALL volumes returned by
-    getExternalFilesDirs, not just primary storage. This means SD card
-    recordings can be shared without any additional path configuration.
-
-  cache-path  name="share_cache"  path="share/"
-    Maps Context.getCacheDir()/share/ — the ephemeral staging directory used
-    by ShareManager for:
-      - Audio files renamed to the user's chosen filename before sharing
-      - JSON metadata exports generated at share time
-
-    Files here are pruned by ShareManager.pruneShareCache() (24-hour TTL)
-    and are also cleared automatically when the OS reclaims cache space.
--->
 <paths>
 
     <!--
-        App-private external files on all mounted storage volumes.
-        Covers: internal storage, SD card, and any future volumes.
-        Recording .m4a files live here under year/month subdirectories.
+        Primary (emulated) volume app-specific recordings.
+        Resolves to getExternalFilesDirs()[0]/recordings, i.e.
+        /storage/emulated/0/Android/data/app.soundtree/files/recordings.
+        <external-files-path> covers ONLY the primary volume ([0]); secondary
+        volumes need the root-path entry below.
     -->
     <external-files-path
-        name="recordings"
-        path="." />
+        name="recordings_primary"
+        path="recordings/" />
 
     <!--
-        Ephemeral share cache: renamed audio files and JSON exports.
+        Secondary / removable volumes (SD cards).
+        App-specific dirs on secondary volumes live at
+        /storage/<volume-uuid>/Android/data/app.soundtree/files/..., which no
+        external-* root reaches (all are anchored to the primary volume). The
+        volume UUID is per-card and dynamic, so /storage/ is the narrowest
+        stable root that spans them.
+
+        Breadth note: this only defines which files are ELIGIBLE to be mapped to
+        a content:// URI. ShareManager still mints one URI per file explicitly
+        via getUriForFile() (only ever for recording.filePath values from Room),
+        and grants are per-intent. It does not expose /storage to other apps.
+    -->
+    <root-path
+        name="recordings_secondary"
+        path="storage/" />
+
+    <!--
+        Ephemeral share cache: JSON metadata exports.
         Only ShareManager writes here; files are short-lived.
     -->
     <cache-path

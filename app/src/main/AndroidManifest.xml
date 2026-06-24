@@ -123,10 +123,17 @@
             grantUriPermissions="true" — required for the per-intent grant to work.
 
             Paths covered by res/xml/file_provider_paths.xml:
-              · external-files-path "recordings" → all mounted storage volumes
-                (internal + SD card) where .m4a files live
-              · cache-path "share_cache" → cacheDir/share/ for ephemeral
-                renamed audio copies and JSON metadata exports
+              · external-files-path "recordings_primary" → primary volume only
+                (getExternalFilesDirs()[0]/recordings); internal-storage .m4a files.
+              · root-path "recordings_secondary" (path="storage/") → app-specific
+                dirs on removable volumes (SD cards, USB) at
+                /storage/<volume-id>/Android/data/app.soundtree/files/...; no
+                external-* root reaches these, as all are anchored to the primary
+                volume.
+              · cache-path "share_cache" → cacheDir/share/ for ephemeral JSON
+                metadata exports. Audio is served no-copy from its on-disk
+                location (see SoundTreeFileProvider display-name override), so no
+                audio is ever staged here.
 
             Authority: app.soundtree.fileprovider
             Used by:   ShareManager (ui/share/ShareManager.kt)

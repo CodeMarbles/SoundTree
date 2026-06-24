@@ -6,53 +6,53 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import app.soundtree.R
+import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.databinding.DialogShareRecordingBinding
+import app.soundtree.share.ShareContent
+import app.soundtree.share.ShareManager
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.getMarksForRecording
 import app.soundtree.ui.share.ShareRecordingDialogFragment.Companion.MAX_FILENAME_LENGTH
-import app.soundtree.ui.share.ShareRecordingDialogFragment.Companion.newInstance
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.io.File
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
  * Bottom-sheet dialog for sharing a single recording.
  *
- * ## Responsibilities (UI pass — Phase 1)
- * - Render all selection state: content type, filename mode, date injection.
- * - Compute and display the live filename preview.
- * - Expose a wired-but-stubbed Share button (TODO: ShareManager in Phase 2).
+ * ## Lifecycle
+ * On open, the dialog loads the recording synchronously from the ViewModel's
+ * in-memory [MainViewModel.allRecordings] StateFlow (no DB query needed — the
+ * list is always loaded). Marks are loaded once from [MainViewModel.getMarksForRecording].
  *
- * ## What this does NOT do yet
- * - Actually share anything (ShareManager not yet implemented).
- * - Fetch the recording from the DB (recordingId is stored for Phase 2).
+ * ## Share flow
+ * 1. User selects content type and filename options.
+ * 2. User taps Share.
+ * 3. Dialog launches a coroutine that calls [ShareManager.prepareIntent] on IO.
+ * 4. On success the system chooser is fired; dialog dismisses.
+ * 5. On failure (file missing) a toast is shown and the dialog stays open.
  *
  * ## Filename modes
  * [FilenameMode.FROM_TITLE]  — sanitized title, 80-char max.
- * [FilenameMode.CUSTOM]      — user-editable field, pre-filled with sanitized title.
- * [FilenameMode.ORIGINAL]    — on-disk stem unchanged; no date injection available.
+ * [FilenameMode.CUSTOM]      — user-editable, pre-filled with sanitized title.
+ * [FilenameMode.ORIGINAL]    — on-disk stem unchanged; no date injection.
  *
- * ## Date injection
- * Available for FROM_TITLE and CUSTOM only.
- * Three positions: PREPEND / NONE / APPEND.
- * When PREPEND or APPEND: optional "include time" checkbox (default checked).
- *
- * ## JSON filename
- * Always mirrors the audio filename stem (same name, .json extension).
- * The preview shows only the audio filename; the JSON pairing is implied.
- *
- * ## Future extension point — clips
- * The [ContentType] sealed class is the natural place to add clip variants:
- *   object ClipOnly : ContentType()
- *   object ClipWithMetadata : ContentType()
- * The content RadioGroup will grow a clip section once clip support lands.
- *
- * Launched via [newInstance].
- * Show via: ShareRecordingDialogFragment.newInstance(id).show(fm, TAG)
+ * ## Future extension — clips
+ * The [ShareContent] sealed class is the extension point. The content
+ * RadioGroup grows a clip section; [ShareManager] grows matching branches.
+ * No structural changes needed in this dialog.
  */
 class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
 
@@ -65,23 +65,18 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
 
         private const val ARG_RECORDING_ID = "recording_id"
 
+        /** Maximum characters in the filename stem before the extension. */
+        private const val MAX_FILENAME_LENGTH = 80
+
         fun newInstance(recordingId: Long) = ShareRecordingDialogFragment().apply {
             arguments = Bundle().apply { putLong(ARG_RECORDING_ID, recordingId) }
         }
-
-        /** Maximum characters in the filename stem before the extension. */
-        private const val MAX_FILENAME_LENGTH = 80
     }
 
     // ── Enums ─────────────────────────────────────────────────────────────────
 
-    /** What files will be included in the share intent. */
     private enum class ContentType { AUDIO_ONLY, AUDIO_AND_METADATA, METADATA_ONLY }
-
-    /** How the output filename stem is derived. */
     private enum class FilenameMode { FROM_TITLE, CUSTOM, ORIGINAL }
-
-    /** Where (if anywhere) the date/time stamp is injected. */
     private enum class DatePosition { PREPEND, NONE, APPEND }
 
     // ── Fields ────────────────────────────────────────────────────────────────
@@ -95,20 +90,25 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
 
     // ── UI state ──────────────────────────────────────────────────────────────
 
-    private var contentType   = ContentType.AUDIO_ONLY
-    private var filenameMode  = FilenameMode.FROM_TITLE
-    private var datePosition  = DatePosition.NONE
-    private var includeTime   = true
+    private var contentType  = ContentType.AUDIO_ONLY
+    private var filenameMode = FilenameMode.FROM_TITLE
+    private var datePosition = DatePosition.NONE
+    private var includeTime  = true
 
-    /**
-     * The sanitized, length-capped title used as the default stem.
-     * Populated in [onViewCreated] once we have the recording title.
-     * Placeholder until Phase 2 wires the DB fetch.
-     */
+    // ── Recording data (populated in onViewCreated) ───────────────────────────
+
+    /** Sanitized, length-capped title — used as the FROM_TITLE stem and CUSTOM pre-fill. */
     private var sanitizedTitle: String = ""
 
-    /** The raw on-disk filename stem (no extension). Populated in Phase 2. */
+    /** On-disk stem (no extension) — used as the ORIGINAL stem. */
     private var originalStem: String = ""
+
+    /**
+     * The recording's own creation timestamp, used for date injection.
+     * Stamped from the recording rather than "now" so the filename reflects
+     * when the recording was made, not when it was shared.
+     */
+    private var recordingCreatedAt: LocalDateTime = LocalDateTime.now()
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -132,14 +132,21 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // TODO (Phase 2): load recording from viewModel by recordingId, then:
-        //   sanitizedTitle = sanitizeFilename(recording.title)
-        //   originalStem   = File(recording.filePath).nameWithoutExtension
-        //   binding.etCustomFilename.setText(sanitizedTitle)
-        //
-        // For now, use placeholders so the UI is exercisable.
-        sanitizedTitle = "Recording Title"
-        originalStem   = "ST_20261010_111213"
+        // Load recording from the in-memory StateFlow — always available, no suspend needed.
+        val recording = viewModel.allRecordings.value.find { it.id == recordingId }
+        if (recording == null) {
+            // Guard: recording deleted between tap and dialog open.
+            dismissAllowingStateLoss()
+            return
+        }
+
+        sanitizedTitle     = sanitizeFilename(recording.title)
+        originalStem       = File(recording.filePath).nameWithoutExtension
+        recordingCreatedAt = LocalDateTime.ofInstant(
+            Instant.ofEpochMilli(recording.createdAt),
+            ZoneId.systemDefault(),
+        )
+
         binding.etCustomFilename.setText(sanitizedTitle)
 
         wireContentRadios()
@@ -147,7 +154,7 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
         wireDateToggle()
         wireIncludeTimeCheckbox()
         wireCustomFilenameField()
-        wireShareButton()
+        wireShareButton(recording)
 
         updatePreview()
     }
@@ -167,9 +174,11 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
                 R.id.rbMetadataOnly     -> ContentType.METADATA_ONLY
                 else                    -> ContentType.AUDIO_ONLY
             }
-            // The filename section is irrelevant for metadata-only since the
-            // JSON name is always title-derived. Hide it to reduce noise.
-            binding.layoutFilenameSection.isVisible = (contentType != ContentType.METADATA_ONLY)
+            // The filename section applies to every content type, including
+            // metadata-only — it names the JSON export just as it names the audio.
+            // Re-run applyFilenameMode so the ORIGINAL hint's extension tracks the
+            // newly selected content type (.m4a ↔ .json).
+            applyFilenameMode()
             updatePreview()
         }
     }
@@ -199,7 +208,6 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
             binding.cbIncludeTime.isVisible = (datePosition != DatePosition.NONE)
             updatePreview()
         }
-        // Select "None" as the initial checked button.
         binding.toggleDatePosition.check(R.id.btnDateNone)
     }
 
@@ -218,58 +226,77 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
         })
     }
 
-    private fun wireShareButton() {
+    private fun wireShareButton(recording: RecordingEntity) {
         binding.btnShare.setOnClickListener {
-            // TODO (Phase 2): invoke ShareManager with current state.
-            // shareManager.share(
-            //     recordingId  = recordingId,
-            //     contentType  = contentType,
-            //     filename     = buildFilename(),   // stem only, no extension
-            // )
-            dismiss()
+            val stem         = buildFilenameStem()
+            val shareContent = when (contentType) {
+                ContentType.AUDIO_ONLY         -> ShareContent.AudioOnly
+                ContentType.AUDIO_AND_METADATA -> ShareContent.AudioWithMetadata
+                ContentType.METADATA_ONLY      -> ShareContent.MetadataOnly
+            }
+
+            // Disable while the intent is being prepared to prevent double-taps.
+            // Re-enabled only in the error branch; success dismisses the dialog.
+            binding.btnShare.isEnabled = false
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                val marks     = viewModel.getMarksForRecording(recordingId).first()
+                val intent = ShareManager.prepareIntent(
+                    context    = requireContext(),
+                    recording  = recording,
+                    marks      = marks,
+                    allTopics  = viewModel.allTopics.value,
+                    content    = shareContent,
+                    outputStem = stem,
+                )
+
+                if (intent == null) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.share_error_file_missing,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    binding.btnShare.isEnabled = true
+                } else {
+                    startActivity(intent)
+                    dismissAllowingStateLoss()
+                }
+            }
         }
     }
 
     // ── Mode visibility ───────────────────────────────────────────────────────
 
-    /**
-     * Adjusts visibility of the custom EditText, original hint text, and the
-     * date-injection controls to match the current [filenameMode].
-     */
     private fun applyFilenameMode() {
         val isTitle    = filenameMode == FilenameMode.FROM_TITLE
         val isCustom   = filenameMode == FilenameMode.CUSTOM
         val isOriginal = filenameMode == FilenameMode.ORIGINAL
 
-        binding.tilCustomFilename.isVisible    = isCustom
+        binding.tilCustomFilename.isVisible      = isCustom
         binding.tvOriginalFilenameHint.isVisible = isOriginal
-        binding.layoutDateOptions.isVisible    = isTitle || isCustom
+        binding.layoutDateOptions.isVisible      = isTitle || isCustom
 
         if (isOriginal) {
-            // Reset date state when switching to Original so there's no
-            // stale state if the user switches back.
             binding.toggleDatePosition.check(R.id.btnDateNone)
             datePosition = DatePosition.NONE
             binding.cbIncludeTime.isVisible = false
-        }
-
-        if (isOriginal) {
-            binding.tvOriginalFilenameHint.text = "$originalStem.m4a"
+            binding.tvOriginalFilenameHint.text =
+                outputFilenames(originalStem).joinToString("\n")
         }
     }
 
     // ── Preview ───────────────────────────────────────────────────────────────
 
     private fun updatePreview() {
-        val stem      = buildFilenameStem()
-        val extension = if (contentType == ContentType.METADATA_ONLY) "json" else "m4a"
-        binding.tvFilenamePreview.text = "$stem.$extension"
+        binding.tvFilenamePreview.text = outputFilenames(buildFilenameStem()).joinToString("\n")
     }
 
+    // ── Filename building ─────────────────────────────────────────────────────
+
     /**
-     * Builds the filename stem (no extension) from current UI state.
-     *
-     * Called on every state change that affects the preview.
+     * Builds the filename stem from the current UI state.
+     * Single source of truth used by both [updatePreview] and [wireShareButton] —
+     * guarantees the preview and the actual shared filename are always identical.
      */
     private fun buildFilenameStem(): String {
         val base = when (filenameMode) {
@@ -278,66 +305,73 @@ class ShareRecordingDialogFragment : BottomSheetDialogFragment() {
                 val typed = binding.etCustomFilename.text?.toString()?.trim() ?: ""
                 typed.ifEmpty { sanitizedTitle }
             }
-            FilenameMode.ORIGINAL   -> return originalStem
+            FilenameMode.ORIGINAL -> return originalStem
         }
 
         if (datePosition == DatePosition.NONE) return base
 
-        val dateStamp = buildDateStamp()
+        val stamp = buildDateStamp()
         return when (datePosition) {
-            DatePosition.PREPEND -> "$dateStamp - $base"
-            DatePosition.APPEND  -> "$base - $dateStamp"
-            DatePosition.NONE    -> base   // unreachable; kept for exhaustiveness
+            DatePosition.PREPEND -> "$stamp - $base"
+            DatePosition.APPEND  -> "$base - $stamp"
+            DatePosition.NONE    -> base
         }
     }
 
     /**
-     * Returns a date or datetime string for the current moment.
+     * The output filename(s) produced for [stem] under the current [contentType].
      *
-     * Format:
-     *   Date only:     2026-06-23
-     *   Date + time:   2026-06-23_11-12-13
+     * Single source of truth for what actually leaves the dialog — both the preview
+     * and the ORIGINAL-mode hint render this, and it mirrors exactly what
+     * [ShareManager.buildIntent] attaches:
+     *   AUDIO_ONLY          → [stem].m4a
+     *   METADATA_ONLY       → [stem].json
+     *   AUDIO_AND_METADATA  → [stem].m4a + [stem].json   (shared stem)
      *
-     * Uses the recording's own timestamp in Phase 2 rather than "now".
-     * TODO (Phase 2): pass recording.createdAt here instead of LocalDateTime.now().
+     * When clip support lands, add its branch here and every surface updates for free.
      */
-    private fun buildDateStamp(): String {
-        val now = LocalDateTime.now()
-        return if (includeTime) {
-            now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-        } else {
-            now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        }
+    private fun outputFilenames(stem: String): List<String> = when (contentType) {
+        ContentType.AUDIO_ONLY         -> listOf("$stem.m4a")
+        ContentType.METADATA_ONLY      -> listOf("$stem.json")
+        ContentType.AUDIO_AND_METADATA -> listOf("$stem.m4a", "$stem.json")
     }
 
-    // ── Filename sanitization (Phase 2 will use recording.title) ─────────────
+    /**
+     * Formats [recordingCreatedAt] as a date or datetime string for filename injection.
+     *
+     * Uses the recording's creation time (not the current time) so
+     * "Interview with Dad - 2026-06-23.m4a" reflects when the recording
+     * was made, not when it was shared.
+     *
+     * Date only:    2026-06-23
+     * Date + time:  2026-06-23_11-12-13
+     */
+    private fun buildDateStamp(): String = if (includeTime) {
+        recordingCreatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
+    } else {
+        recordingCreatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    }
+
+    // ── Filename sanitization ─────────────────────────────────────────────────
 
     /**
-     * Strips characters that are illegal or problematic in filenames across
-     * Android, Windows, and macOS, collapses runs of spaces and hyphens,
-     * and caps the result at [MAX_FILENAME_LENGTH] characters.
+     * Strips characters illegal or problematic in filenames across Android,
+     * Windows, and macOS; collapses runs of whitespace and hyphens; caps at
+     * [MAX_FILENAME_LENGTH].
      *
-     * Kept here rather than in ShareManager so the preview can run it
-     * client-side without any async work.
-     *
-     * ## Character policy
      * Allowed: letters, digits, spaces, hyphens, underscores, dots.
-     * Everything else (slashes, colons, quotes, emoji, etc.) is removed.
-     * Runs of spaces or hyphens that result from removal are collapsed to one.
      *
-     * ## Empty result
-     * If sanitization produces an empty string (e.g. a title that is entirely
-     * emoji), returns the [originalStem] as a safe fallback.
+     * Falls back to [originalStem] when sanitization produces an empty string
+     * (e.g. an all-emoji title). [originalStem] may not be set yet on the
+     * very first call, so the innermost fallback is the raw input.
      */
     private fun sanitizeFilename(raw: String): String {
         val cleaned = raw
-            .replace(Regex("[^\\w\\s\\-.]"), "")    // strip illegal chars
-            .replace(Regex("[\\s]+"), " ")           // collapse whitespace runs
-            .replace(Regex("-{2,}"), "-")            // collapse hyphen runs
+            .replace(Regex("[^\\w\\s\\-.]"), "")  // strip illegal chars
+            .replace(Regex("\\s+"), " ")           // collapse whitespace runs
+            .replace(Regex("-{2,}"), "-")          // collapse hyphen runs
             .trim()
             .take(MAX_FILENAME_LENGTH)
-
-        return cleaned.ifEmpty { originalStem }
+        return cleaned.ifEmpty { originalStem.ifEmpty { raw } }
     }
-
 }

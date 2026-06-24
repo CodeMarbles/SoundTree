@@ -41,8 +41,15 @@ import java.io.File
  * ## FileProvider authority
  * `app.soundtree.fileprovider` — declared in AndroidManifest.xml, backed by
  * `res/xml/file_provider_paths.xml`. Covers:
- *   - `external-files-path` → all mounted volumes where .m4a files live
- *   - `cache-path "share_cache"` → cacheDir/share/ for ephemeral JSON exports
+ *   - `external-files-path "recordings_primary"` → primary volume only
+ *     (getExternalFilesDirs()[0]); internal-storage .m4a files.
+ *   - `root-path "recordings_secondary"` → app-specific dirs on removable
+ *     volumes (SD cards, USB) under /storage/. The standard external-* roots
+ *     all anchor to the primary volume and cannot reach secondary volumes,
+ *     so root-path is required here; ShareManager still mints one URI per
+ *     file via getUriForFile() and grants are per-intent.
+ *   - `cache-path "share_cache"` → cacheDir/share/ for ephemeral JSON
+ *     exports. Audio is served no-copy and is never staged in cache.
  *
  * ## Future extension — clips
  * Add new [ShareContent] subtypes and corresponding `when` branches in
@@ -119,8 +126,9 @@ object ShareManager {
         }
 
         ShareContent.AudioWithMetadata -> {
-            val audioUri = uriForAudio(context, audioFile, "$outputStem.m4a")
-            val jsonUri  = uriForJson(context, recording, marks, allTopics, outputStem)
+            val audioName = "$outputStem.m4a"
+            val audioUri  = uriForAudio(context, audioFile, audioName)
+            val jsonUri   = uriForJson(context, recording, marks, allTopics, outputStem, audioName)
 
             // ACTION_SEND_MULTIPLE requires */* when MIME types differ.
             ShareCompat.IntentBuilder(context)
@@ -131,7 +139,10 @@ object ShareManager {
         }
 
         ShareContent.MetadataOnly -> {
-            val jsonUri = uriForJson(context, recording, marks, allTopics, outputStem)
+            // No audio is shared here, but the JSON's companion reference still
+            // reflects the user's chosen name so it pairs with a separately
+            // shared/renamed audio file.
+            val jsonUri = uriForJson(context, recording, marks, allTopics, outputStem, "$outputStem.m4a")
             ShareCompat.IntentBuilder(context)
                 .setType("application/json")
                 .addStream(jsonUri)
@@ -165,14 +176,21 @@ object ShareManager {
      * state of the recording's metadata and marks at share time.
      */
     private fun uriForJson(
-        context:    Context,
-        recording:  RecordingEntity,
-        marks:      List<MarkEntity>,
-        allTopics:  List<TopicEntity>,
-        outputStem: String,
+        context:       Context,
+        recording:     RecordingEntity,
+        marks:         List<MarkEntity>,
+        allTopics:     List<TopicEntity>,
+        outputStem:    String,
+        audioFilename: String,
     ): android.net.Uri {
         val dir          = shareDir(context)
-        val exportedFile = RecordingExporter.exportToDir(recording, marks, allTopics, dir)
+        val exportedFile = RecordingExporter.exportToDir(
+            recording     = recording,
+            marks         = marks,
+            allTopics     = allTopics,
+            destDir       = dir,
+            audioFilename = audioFilename,
+        )
 
         // exportToDir names the file after the recording's on-disk stem.
         // Rename to the user's chosen outputStem so JSON and audio share a name.
