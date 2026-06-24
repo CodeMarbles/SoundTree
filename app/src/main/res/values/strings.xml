@@ -954,4 +954,37 @@
     <string name="restore_progress_failed">Restore failed</string>
     <string name="restore_progress_post_swap_note">The database has already been replaced. Your original data is preserved in the safety snapshot at Files → Android → data → app.soundtree → files → restore-safety.</string>
 
+    <!-- ══════════════════════════════════════════════════════════════
+         share_  —  Share Recording dialog
+         (ShareRecordingDialogFragment / dialog_share_recording.xml)
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Dialog title -->
+    <string name="share_dialog_title">Share Recording</string>
+
+    <!-- Section headers (rendered with textAllCaps="true" in layout) -->
+    <string name="share_dialog_section_content">What to Share</string>
+    <string name="share_dialog_section_filename">Filename</string>
+    <string name="share_dialog_preview_label">Preview</string>
+
+    <!-- Content type radio options -->
+    <string name="share_dialog_content_audio_only">Audio only</string>
+    <string name="share_dialog_content_audio_and_metadata">Audio + metadata</string>
+    <string name="share_dialog_content_metadata_only">Metadata only</string>
+
+    <!-- Filename mode radio options -->
+    <string name="share_dialog_filename_from_title">From title</string>
+    <string name="share_dialog_filename_custom">Custom</string>
+    <!-- "Original" in the sense of "the file as it exists on disk" -->
+    <string name="share_dialog_filename_original">Original filename</string>
+
+    <!-- Date injection controls -->
+    <string name="share_dialog_date_label">Add date</string>
+    <string name="share_dialog_date_prepend">Prepend</string>
+    <string name="share_dialog_date_none">None</string>
+    <string name="share_dialog_date_append">Append</string>
+    <string name="share_dialog_date_include_time">Include time</string>
+
+    <!-- Share button — reuses common_btn_share from the common_ section -->
+
 </resources>

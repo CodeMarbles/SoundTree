@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  dialog_share_recording.xml
+  ─────────────────────────────────────────────────────────────────────────────
+  Bottom-sheet dialog for sharing a single recording.
+
+  Structure:
+    ┌─ ScrollView ─────────────────────────────────────────────────────────────┐
+    │  Drag handle                                                             │
+    │  Title: "Share Recording"                                                │
+    │  ── WHAT TO SHARE ────────────────────────────────────────────────────── │
+    │    ○ Audio only                                                          │
+    │    ○ Audio + metadata                                                    │
+    │    ○ Metadata only                                                       │
+    │  ── FILENAME ─────────────────────────────────────────────────────────── │
+    │    ○ From title       [sanitized title, 80-char max]                     │
+    │    ○ Custom           [EditText, pre-filled with sanitized title]        │
+    │    ○ Original         [on-disk stem — no further options]                │
+    │                                                                          │
+    │    [Date options — visible when From title or Custom selected]           │
+    │      [ Prepend ] [ None ] [ Append ]                                     │
+    │      ☑ Include time   [visible when Prepend or Append selected]         │
+    │                                                                          │
+    │  ── PREVIEW ──────────────────────────────────────────────────────────── │
+    │    filename.m4a                                                          │
+    │                                                                          │
+    │  [ Share ]                                                               │
+    └──────────────────────────────────────────────────────────────────────────┘
+
+  Fragment class: ShareRecordingDialogFragment
+  Theme:         Theme.SoundTree.BottomSheet
+-->
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="24dp">
+
+        <!-- ── Drag handle ─────────────────────────────────────────────────── -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_drag_handle_pill" />
+
+        <!-- ── Title ───────────────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="20dp"
+            android:text="@string/share_dialog_title"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             SECTION: What to share
+             ══════════════════════════════════════════════════════════════════ -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="8dp"
+            android:text="@string/share_dialog_section_content"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1" />
+
+        <RadioGroup
+            android:id="@+id/rgShareContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp">
+
+            <RadioButton
+                android:id="@+id/rbAudioOnly"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="10dp"
+                android:paddingStart="12dp"
+                android:text="@string/share_dialog_content_audio_only"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="15sp"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rbAudioAndMetadata"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="10dp"
+                android:paddingStart="12dp"
+                android:text="@string/share_dialog_content_audio_and_metadata"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="15sp" />
+
+            <RadioButton
+                android:id="@+id/rbMetadataOnly"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="10dp"
+                android:paddingStart="12dp"
+                android:text="@string/share_dialog_content_metadata_only"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="15sp" />
+
+        </RadioGroup>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             SECTION: Filename
+             Entire section hidden when Metadata-only is selected, since
+             the JSON name is always driven by the recording title in that case.
+             ══════════════════════════════════════════════════════════════════ -->
+
+        <LinearLayout
+            android:id="@+id/layoutFilenameSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="24dp"
+                android:paddingBottom="8dp"
+                android:text="@string/share_dialog_section_filename"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1" />
+
+            <RadioGroup
+                android:id="@+id/rgFilename"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp">
+
+                <!-- Option 1: From title -->
+                <RadioButton
+                    android:id="@+id/rbFilenameTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="10dp"
+                    android:paddingStart="12dp"
+                    android:text="@string/share_dialog_filename_from_title"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="15sp"
+                    android:checked="true" />
+
+                <!-- Option 2: Custom -->
+                <RadioButton
+                    android:id="@+id/rbFilenameCustom"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="10dp"
+                    android:paddingStart="12dp"
+                    android:text="@string/share_dialog_filename_custom"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="15sp" />
+
+                <!-- Custom filename EditText — visible only when Custom is selected -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilCustomFilename"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone"
+                    app:counterEnabled="true"
+                    app:counterMaxLength="80">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etCustomFilename"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textNoSuggestions"
+                        android:maxLength="80"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="14sp" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Option 3: Original filename -->
+                <RadioButton
+                    android:id="@+id/rbFilenameOriginal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="10dp"
+                    android:paddingStart="12dp"
+                    android:text="@string/share_dialog_filename_original"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="15sp" />
+
+                <!-- Original filename hint text — visible when Original is selected -->
+                <TextView
+                    android:id="@+id/tvOriginalFilenameHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+            </RadioGroup>
+
+            <!-- ── Date/time injection ───────────────────────────────────────
+                 Visible when Title or Custom is selected.
+                 3-segment toggle: Prepend | None | Append
+                 ──────────────────────────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/layoutDateOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="8dp"
+                    android:text="@string/share_dialog_date_label"
+                    android:textColor="?attr/colorTextSecondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleDatePosition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDatePrepend"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/share_dialog_date_prepend"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDateNone"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/share_dialog_date_none"
+                        android:textSize="12sp"
+                        android:checked="true" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDateAppend"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/share_dialog_date_append"
+                        android:textSize="12sp" />
+
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Include time checkbox — visible when Prepend or Append selected -->
+                <CheckBox
+                    android:id="@+id/cbIncludeTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/share_dialog_date_include_time"
+                    android:textColor="?attr/colorTextPrimary"
+                    android:textSize="14sp"
+                    android:checked="true"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="?attr/colorSurfaceElevated" />
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             PREVIEW — live filename preview
+             ══════════════════════════════════════════════════════════════════ -->
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="6dp"
+                android:text="@string/share_dialog_preview_label"
+                android:textColor="?attr/colorTextSecondary"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1" />
+
+            <TextView
+                android:id="@+id/tvFilenamePreview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/colorSurfaceBase"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp"
+                android:textColor="?attr/colorTextPrimary"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:ellipsize="middle"
+                android:maxLines="2" />
+
+        </LinearLayout>
+
+        <!-- ── Share button ─────────────────────────────────────────────────── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnShare"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:text="@string/common_btn_share"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

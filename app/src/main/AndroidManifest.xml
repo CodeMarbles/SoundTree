@@ -114,6 +114,33 @@
             </intent-filter>
         </receiver>
 
+        <!--
+            FileProvider for outbound shares (recordings and ephemeral JSON exports).
+
+            exported="false"  — content:// URIs are granted per-intent via
+                                FLAG_GRANT_READ_URI_PERMISSION; no app needs
+                                permanent access to this authority.
+            grantUriPermissions="true" — required for the per-intent grant to work.
+
+            Paths covered by res/xml/file_provider_paths.xml:
+              · external-files-path "recordings" → all mounted storage volumes
+                (internal + SD card) where .m4a files live
+              · cache-path "share_cache" → cacheDir/share/ for ephemeral
+                renamed audio copies and JSON metadata exports
+
+            Authority: app.soundtree.fileprovider
+            Used by:   ShareManager (ui/share/ShareManager.kt)
+        -->
+        <provider
+            android:name="app.soundtree.share.SoundTreeFileProvider"
+            android:authorities="app.soundtree.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
     </application>
 
 </manifest>
