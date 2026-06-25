@@ -1,0 +1,1 @@
+Improved audio passthrough so live monitoring no longer stutters or drops out during recording, removing the need to toggle it off and on to clear up the sound.
