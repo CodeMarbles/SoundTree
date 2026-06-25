@@ -10,9 +10,9 @@ import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.os.Build
+import app.soundtree.service.PassthroughManager.Companion.BURST_MULTIPLIER
 import app.soundtree.util.PassthroughPreferences
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
+import kotlin.math.ceil
 
 
 /**
@@ -58,8 +59,15 @@ import java.util.concurrent.Executors
  *
  * ── Audio format ──────────────────────────────────────────────────────────────
  *
- * Mono, 44100 Hz, PCM 16-bit. Matches [RecordingService]'s MediaRecorder
- * configuration so the monitoring mix sounds identical to the recording.
+ * Mono, PCM 16-bit, at the device's native output sample rate (queried via
+ * PROPERTY_OUTPUT_SAMPLE_RATE; falls back to 44100 Hz). Buffers are aligned to
+ * the native burst (PROPERTY_OUTPUT_FRAMES_PER_BUFFER) to qualify for the
+ * low-latency path.
+ *
+ * This intentionally no longer pins to MediaRecorder's 44.1 kHz: the monitor
+ * only needs to sound right to the ear, not be sample-accurate to the recording,
+ * and native-rate capture is what unlocks the fast path. The two run as
+ * independent capture clients and the OS reconciles their rates.
  *
  * ── Device callback ───────────────────────────────────────────────────────────
  *
@@ -162,11 +170,23 @@ class PassthroughManager(
         }
     }
 
-    private val sampleRate   = 44_100
+    private val sampleRate    = queryNativeSampleRate()
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val encoding      = AudioFormat.ENCODING_PCM_16BIT
-    private val bufferSize    = AudioRecord.getMinBufferSize(sampleRate, channelConfig, encoding)
-        .coerceAtLeast(4096)
+
+    // Mono today. When stereo monitoring is added later, this and the channel
+    // masks below are the coordinated knobs to change.
+    private val channelCount  = 1
+
+    // Queried once; null when the device doesn't report it (→ fallback path).
+    private val nativeFramesPerBurst: Int? = queryNativeFramesPerBurst()
+
+    // Burst-aligned input buffer (bytes). The loop's ShortArray(bufferSize / 2)
+    // stays correct since bufferSize is bytes and Short = 2 bytes.
+    private val bufferSize = alignedBufferBytes(
+        AudioRecord.getMinBufferSize(sampleRate, channelConfig, encoding)
+    )
+
 
     // ── Lifecycle — called by RecordingService ────────────────────────────────
 
@@ -320,13 +340,17 @@ class PassthroughManager(
 
     @SuppressLint("MissingPermission")
     private fun startAudioRecord(inputDevice: AudioDeviceInfo?) {
-        val record = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            sampleRate,
-            channelConfig,
-            encoding,
-            bufferSize,
-        )
+        val record = AudioRecord.Builder()
+            .setAudioSource(MediaRecorder.AudioSource.MIC)
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setEncoding(encoding)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(channelConfig)
+                    .build()
+            )
+            .setBufferSizeInBytes(bufferSize)
+            .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             inputDevice?.let { record.setPreferredDevice(it) }
         }
@@ -337,11 +361,12 @@ class PassthroughManager(
     private fun addOutputTrack(key: String, device: AudioDeviceInfo) {
         if (audioTracks.containsKey(key)) return // already active
 
-        val minBuf = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            encoding,
-        ).coerceAtLeast(bufferSize)
+        val minBuf = alignedBufferBytes(
+            AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                encoding)
+        )
 
         val track = AudioTrack.Builder()
             .setAudioAttributes(
@@ -541,6 +566,43 @@ class PassthroughManager(
         }
     }
 
+    // ── Native audio parameter alignment ──────────────────────────────────────
+    //
+    // Qualifying for the platform fast/low-latency path requires matching the
+    // hardware's native config. Two parameters matter most:
+    //   • Sample rate — requesting a non-native rate forces a resampler, which
+    //     disqualifies the fast path outright (and costs CPU). 48 kHz is native
+    //     on much modern hardware; we were hardcoded to 44.1 kHz.
+    //   • Buffer size — must be an integer multiple of the native burst.
+    // Both getProperty() calls can return null/garbage on some devices and most
+    // emulators, so each has a fallback to our previous behaviour.
+
+    private fun queryNativeSampleRate(): Int =
+        audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)
+            ?.toIntOrNull()
+            ?: FALLBACK_SAMPLE_RATE
+
+    private fun queryNativeFramesPerBurst(): Int? =
+        audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+
+    /**
+     * Rounds [minBytes] up to the smallest integer multiple of the native burst
+     * that is also ≥ [BURST_MULTIPLIER]× the burst — keeping the buffer both legal
+     * (never below the framework minimum) and burst-aligned (fast-path eligible).
+     * Falls back to the old getMinBufferSize-with-floor behaviour when the native
+     * burst is unknown.
+     */
+    private fun alignedBufferBytes(minBytes: Int): Int {
+        val burstFrames = nativeFramesPerBurst
+            ?: return minBytes.coerceAtLeast(FALLBACK_MIN_BYTES)
+        val burstBytes = burstFrames * channelCount * BYTES_PER_SAMPLE
+        val floor      = maxOf(minBytes, burstBytes * BURST_MULTIPLIER)
+        val multiples  = ceil(floor.toDouble() / burstBytes).toInt()
+        return multiples * burstBytes
+    }
+
     /**
      * Produces a human-readable name for a device key that is no longer
      * connected. Falls back to extracting the product name from the key string
@@ -551,5 +613,16 @@ class PassthroughManager(
 
     companion object {
         private const val TAG = "PassthroughManager"
+
+        // Headroom multiple over the device's native burst. 1× is lowest latency
+        // but zero slack — one stall underruns. 2–4× keeps fast-path eligibility on
+        // most devices while leaving room for an occasional scheduling hiccup.
+        // This is the knob to dial if you hear dropouts (raise) or want tighter
+        // monitor latency (lower).
+        private const val BURST_MULTIPLIER = 2
+
+        private const val FALLBACK_SAMPLE_RATE = 44_100
+        private const val FALLBACK_MIN_BYTES   = 4096
+        private const val BYTES_PER_SAMPLE     = 2   // ENCODING_PCM_16BIT
     }
 }
