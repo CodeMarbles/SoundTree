@@ -96,6 +96,7 @@ class PassthroughDialogFragment : BottomSheetDialogFragment() {
         }
 
         wireEnabledToggle()
+        wireVolumeSlider()
 
         val mgr = passthroughManager ?: return
 
@@ -139,6 +140,18 @@ class PassthroughDialogFragment : BottomSheetDialogFragment() {
             if (isChecked != isArmed) {
                 recordFragment?.recordingService?.togglePassthrough()
             }
+        }
+    }
+
+    // ── Volume slider ─────────────────────────────────────────────────────────
+
+    private fun wireVolumeSlider() {
+        val mgr = passthroughManager ?: return
+        // Seed from the persisted value before attaching the listener so the
+        // programmatic set isn't echoed back as a user change.
+        binding.sliderVolume.value = mgr.monitorVolume.coerceIn(0f, 1f)
+        binding.sliderVolume.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) passthroughManager?.setMonitorVolume(value)
         }
     }
 

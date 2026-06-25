@@ -171,6 +171,7 @@
 
     <!-- Audio passthrough dialog -->
     <string name="passthrough_dialog_title">Audio passthrough</string>
+    <string name="passthrough_dialog_volume_label">Volume</string>
     <string name="passthrough_dialog_section_output">Output devices</string>
     <string name="passthrough_dialog_auto_enable">Enable automatically when connected</string>
     <string name="passthrough_dialog_callout">Disconnected devices can\'t receive audio. Auto-enable will activate passthrough when they reconnect.</string>
