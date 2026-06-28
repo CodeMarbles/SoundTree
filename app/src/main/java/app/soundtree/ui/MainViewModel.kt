@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -1097,14 +1098,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 when (inProgressLogs.size) {
                     0    -> flowOf(emptyList())
                     1    -> {
-                        val log = inProgressLogs[0]
-                        repo.getLatestInfoMessageForLog(log.id)
-                            .map { msg -> listOf(ActiveBackupInfo(log, msg)) }
+                        val logId = inProgressLogs[0].id
+                        combine(
+                            repo.observeBackupLog(logId).filterNotNull(),
+                            repo.getLatestInfoMessageForLog(logId),
+                        ) { log, msg -> listOf(ActiveBackupInfo(log, msg)) }
                     }
                     else -> combine(
-                        inProgressLogs.map { log ->
-                            repo.getLatestInfoMessageForLog(log.id)
-                                .map { msg -> ActiveBackupInfo(log, msg) }
+                        inProgressLogs.map { initialLog ->
+                            combine(
+                                repo.observeBackupLog(initialLog.id).filterNotNull(),
+                                repo.getLatestInfoMessageForLog(initialLog.id),
+                            ) { log, msg -> ActiveBackupInfo(log, msg) }
                         }
                     ) { array -> array.toList() }
                 }
