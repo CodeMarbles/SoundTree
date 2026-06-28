@@ -325,6 +325,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             },
             MoreExecutors.directExecutor()
         )
+
+        // Scan for orphaned recordings in the background.
+        // Results are observed by MainActivity; the dialog shows once this completes.
+        scanOrphans()
     }
 
     private val playerListener = object : Player.Listener {
@@ -848,9 +852,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Orphan recordings ─────────────────────────────────────────────────────
     //
-    // Populated by MainActivity on startup from the SplashActivity intent extras,
-    // so the Settings card always shows accurate counts even when the recovery
-    // dialog is not shown (zero orphans).
+    // Populated once at init time by a background scan, so MainActivity can
+    // show OrphanRecoveryDialogFragment as soon as results are available
+    // without blocking launch.
     //
     // Re-populated by rescanOrphans() which OrphanRecoveryDialogFragment calls
     // on dismiss, so any recoveries or deletions the user just made are reflected
@@ -858,18 +862,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _orphanRecordings = MutableStateFlow<List<OrphanRecording>>(emptyList())
     val orphanRecordings: StateFlow<List<OrphanRecording>> = _orphanRecordings.asStateFlow()
-
-    /**
-     * Called by [app.soundtree.ui.MainActivity] immediately after reading
-     * the orphan intent extras at startup.  Populates [orphanRecordings] from
-     * the already-computed list so no extra I/O is needed here.
-     *
-     * Always called — even when [orphans] is empty — so the Settings card
-     * updates to "None" rather than remaining on the initial "—" placeholder.
-     */
-    fun setOrphanResults(orphans: List<OrphanRecording>) {
-        _orphanRecordings.value = orphans
-    }
 
     /**
      * Re-scans all recording directories and refreshes [orphanRecordings].
@@ -881,7 +873,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * The scan runs on [kotlinx.coroutines.Dispatchers.IO] inside
      * [OrphanRecordingScanner]; this function is safe to call from any thread.
      */
-    fun rescanOrphans() {
+    fun scanOrphans() {
         viewModelScope.launch {
             val knownPaths = repo.getKnownFilePaths()
             _orphanRecordings.value = OrphanRecordingScanner.scan(getApplication(), knownPaths)

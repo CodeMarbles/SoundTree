@@ -27,13 +27,6 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SAVED_RECORDING_ID = "saved_recording_id"
         const val EXTRA_SAVED_TOPIC_ID     = "saved_topic_id"
 
-        // Orphan-recovery extras: set by SplashActivity when OrphanRecordingScanner
-        // finds TC_*.m4a files on disk with no matching database row.
-        // MainActivity reads these in onCreate and shows OrphanRecoveryDialogFragment.
-        const val EXTRA_ORPHAN_PLAYABLE_PATHS         = "orphan_playable_paths"
-        const val EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS  = "orphan_playable_durations_ms"
-        const val EXTRA_ORPHAN_CORRUPT_PATHS          = "orphan_corrupt_paths"
-
         const val PAGE_SETTINGS = 0
         const val PAGE_RECORD   = 1
         const val PAGE_LIBRARY  = 2
@@ -73,6 +66,8 @@ class MainActivity : AppCompatActivity() {
 
     // Track whether we're restoring from a config change
     internal var isRestoredFromState = false
+
+    private var orphanDialogShownThisSession = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
