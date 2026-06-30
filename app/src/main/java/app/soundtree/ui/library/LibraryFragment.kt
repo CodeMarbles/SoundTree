@@ -135,9 +135,20 @@ class LibraryFragment : Fragment() {
             MainViewModel.STARTUP_LIBRARY_TAB_TOPICS   -> PAGE_TOPICS
             else                                        -> PAGE_ALL
         }
-        binding.tilePager.setCurrentItem(startSubPage, false)
-        updateSubNavSelection(startSubPage)
-        updateTopTitle(startSubPage)
+
+        // Deferred to .post{} because ViewPager2.setCurrentItem(pos, false) called
+        // before the pager's first layout pass is unreliable on older Android
+        // versions — confirmed: works on API 37, silently no-ops on API 29. Same
+        // class of issue as the Android 10 guard in MainActivity.onCreate. Without
+        // this, the pager quietly stays on its default resting position (0 / ALL)
+        // instead of moving to PAGE_UNSORTED/PAGE_TOPICS. PAGE_ALL itself never
+        // exposed this because 0 already IS the pager's default position.
+        binding.tilePager.post {
+            if (_binding == null) return@post   // fragment view torn down before this ran
+            binding.tilePager.setCurrentItem(startSubPage, false)
+            updateSubNavSelection(startSubPage)
+            updateTopTitle(startSubPage)
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────
