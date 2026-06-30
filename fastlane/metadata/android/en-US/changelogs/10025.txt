@@ -1,2 +1,5 @@
-- Fixed startup behavior where sometimes the app would restore to the Listen tab or Library/Details tab with nothing loaded.
-- Added configuration option for the default startup tab (Record or Library with subtab options).
+- Improved the Audio Passthrough feature by moving it to a dedicated thread. This should reduce cases where passthrough audio sounds choppy while recording.
+- Reduced startup time on devices with many recordings in the library. This was caused by the orphaned-audio-file safety scan blocking startup until it finished; the scan now runs asynchronously.
+- Fixed a startup bug where the app would sometimes restore to the Listen tab or Library/Details tab with nothing loaded.
+- Added a setting for the default startup tab (Record or Library, with Library sub-tab options).
+- Improved responsiveness of the backup progress bar during the audio file copy phase.
