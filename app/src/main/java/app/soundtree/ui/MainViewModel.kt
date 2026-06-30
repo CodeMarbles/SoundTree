@@ -189,6 +189,13 @@ data class BackupTargetUiState(
             ?: entity.volumeUuid
             ?: "Target #${entity.id}"
 }
+
+private fun resolveStartupPage(prefs: SharedPreferences): Int =
+    when (prefs.getString(MainViewModel.PREF_STARTUP_TAB, MainViewModel.STARTUP_TAB_RECORD)) {
+        MainViewModel.STARTUP_TAB_LIBRARY -> MainActivity.PAGE_LIBRARY
+        else                               -> MainActivity.PAGE_RECORD
+    }
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     internal val repo: SoundTreeRepository = (app as app.soundtree.SoundTreeApp).repository
@@ -232,7 +239,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         const val SPEED_STEP = 0.05f
         const val SPEED_DEFAULT = 1.0f
 
-
         // ── Waveform style prefs ──────────────────────────────────────────────
         internal const val PREF_WAVEFORM_STYLE        = "waveform_style"          // "standard" | "sky" | "sky_lights"
         internal const val PREF_INVERT_WAVEFORM_THEME = "invert_waveform_theme"
@@ -253,6 +259,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         const val STYLE_STANDARD   = "standard"
         const val STYLE_SKY        = "sky"
         const val STYLE_SKY_LIGHTS = "sky_lights"
+
+        // Tab preset, startup, and navigation preferences
+        internal const val PREF_STARTUP_TAB         = "startup_tab"          // "record" | "library"
+        internal const val PREF_STARTUP_LIBRARY_TAB = "startup_library_tab"  // "all" | "unsorted" | "topics"
+
+        const val STARTUP_TAB_RECORD  = "record"
+        const val STARTUP_TAB_LIBRARY = "library"
+
+        const val STARTUP_LIBRARY_TAB_ALL      = "all"
+        const val STARTUP_LIBRARY_TAB_UNSORTED = "unsorted"
+        const val STARTUP_LIBRARY_TAB_TOPICS   = "topics"
     }
 
     // ── Top title ─────────────────────────────────────────────────────
@@ -731,9 +748,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val simulateWaveformLoading: StateFlow<Boolean> = _simulateWaveformLoading
 
     // ── Current page (tab index) — driven by MainActivity on every tab change ─
-
-    internal val _currentPage = MutableStateFlow(MainActivity.PAGE_RECORD)
+    //
+    // Initial value is resolved once, at construction, from the user's
+    // configured startup-tab pref. Because this initializer only runs for a
+    // *new* MainViewModel instance (true cold start, or a fresh process after
+    // death) and not on a config-change recreation (the ViewModel survives
+    // those), this gives us "use my configured default on a fresh launch, but
+    // keep whatever tab I was on across rotation/theme changes" automatically.
+    // See MainActivity_Navigation.setupViewPager for the read site.
+    internal val _currentPage = MutableStateFlow(resolveStartupPage(prefs))
     val currentPage: StateFlow<Int> = _currentPage
+
+    // ── Startup tab preferences ─────────────────────────────────────────────
+    internal val _startupTab = MutableStateFlow(
+        prefs.getString(PREF_STARTUP_TAB, STARTUP_TAB_RECORD) ?: STARTUP_TAB_RECORD
+    )
+    val startupTab: StateFlow<String> = _startupTab
+
+    internal val _startupLibraryTab = MutableStateFlow(
+        prefs.getString(PREF_STARTUP_LIBRARY_TAB, STARTUP_LIBRARY_TAB_ALL) ?: STARTUP_LIBRARY_TAB_ALL
+    )
+    val startupLibraryTab: StateFlow<String> = _startupLibraryTab
+
+    // One-shot: which Library sub-page to land on. Consumed by LibraryFragment
+    // the first time its view is created in this process — but only set to a
+    // real value if Library was actually the resolved startup destination.
+    // Cleared after consuming, so a later Library visit within the same
+    // process (e.g. swiping back after a config change) always falls back to
+    // LibraryFragment's normal ALL default rather than re-applying this.
+    internal val _pendingStartupLibrarySubPage = MutableStateFlow(
+        if (_currentPage.value == MainActivity.PAGE_LIBRARY) _startupLibraryTab.value else null
+    )
 
     // ── Selected recording ────────────────────────────────────────────
     internal val _selectedRecordingId = MutableStateFlow(-1L)

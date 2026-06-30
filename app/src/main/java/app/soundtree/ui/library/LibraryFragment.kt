@@ -18,6 +18,7 @@ import app.soundtree.R
 import app.soundtree.databinding.FragmentLibraryBinding
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
+import app.soundtree.ui.consumePendingStartupLibrarySubPage
 import app.soundtree.ui.setLibraryDetailsTopic
 import app.soundtree.util.themeColor
 import kotlinx.coroutines.launch
@@ -125,10 +126,18 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        // Start on ALL page
-        binding.tilePager.setCurrentItem(PAGE_ALL, false)
-        updateSubNavSelection(PAGE_ALL)
-        updateTopTitle(PAGE_ALL)
+        // Normally ALL — but if this fragment's view is being created because
+        // Library is itself the user's configured startup destination, land on
+        // whichever Library sub-tab they picked instead. One-shot: later
+        // recreations of this fragment within the same process always get ALL.
+        val startSubPage = when (viewModel.consumePendingStartupLibrarySubPage()) {
+            MainViewModel.STARTUP_LIBRARY_TAB_UNSORTED -> PAGE_UNSORTED
+            MainViewModel.STARTUP_LIBRARY_TAB_TOPICS   -> PAGE_TOPICS
+            else                                        -> PAGE_ALL
+        }
+        binding.tilePager.setCurrentItem(startSubPage, false)
+        updateSubNavSelection(startSubPage)
+        updateTopTitle(startSubPage)
     }
 
     // ── Public API ────────────────────────────────────────────────────

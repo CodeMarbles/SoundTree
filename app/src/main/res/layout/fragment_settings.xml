@@ -188,6 +188,13 @@
                 android:orientation="vertical"
                 android:padding="24dp">
 
+                <!-- ── STARTUP TAB PREFERENCE sections ───────────────────── -->
+                <include
+                    android:id="@+id/groupStartup"
+                    layout="@layout/settings_group_startup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <!-- ── NAVIGATION + CONTROLS sections ───────────────────── -->
                 <include
                     android:id="@+id/groupNavigationControls"

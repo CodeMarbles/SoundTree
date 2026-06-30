@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  settings_group_startup.xml
+  Included by fragment_settings.xml into scrollBehavior, ahead of
+  groupNavigationControls.
+
+  IDs surfaced via <include android:id="@+id/groupStartup">:
+    btnStartupTabRecord, btnStartupTabLibrary
+    dividerBeforeStartupLibraryTab, rowStartupLibraryTab
+    btnStartupLibraryTabAll, btnStartupLibraryTabUnsorted, btnStartupLibraryTabTopics
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_section_startup"
+        android:textColor="?attr/colorTextSecondary"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="8dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:cardBackgroundColor="?attr/colorSurfaceBase"
+        app:cardCornerRadius="@dimen/settings_card_corner_radius"
+        app:cardElevation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <!-- Default tab -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_startup_default_tab"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_startup_default_tab_desc"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:orientation="horizontal"
+                    android:background="?attr/colorSurfaceBase"
+                    android:layout_marginStart="12dp">
+
+                    <TextView
+                        android:id="@+id/btnStartupTabRecord"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="@string/tab_record"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnStartupTabLibrary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="@string/tab_library"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <View
+                android:id="@+id/dividerBeforeStartupLibraryTab"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?attr/colorSurfaceElevated"
+                android:layout_marginHorizontal="16dp" />
+
+            <!-- Default Library sub-tab — only relevant when default tab = Library -->
+            <LinearLayout
+                android:id="@+id/rowStartupLibraryTab"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_startup_default_library_tab"
+                        android:textColor="?attr/colorTextPrimary"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_startup_default_library_tab_desc"
+                        android:textColor="?attr/colorTextSecondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:orientation="horizontal"
+                    android:background="?attr/colorSurfaceBase"
+                    android:layout_marginStart="12dp">
+
+                    <TextView
+                        android:id="@+id/btnStartupLibraryTabAll"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="@string/library_subnav_all"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnStartupLibraryTabUnsorted"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="@string/library_subnav_unsorted"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnStartupLibraryTabTopics"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="@string/library_subnav_topics"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

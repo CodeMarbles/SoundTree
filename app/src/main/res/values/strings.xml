@@ -336,6 +336,8 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_widgets">Widgets</string>
     <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_startup">Startup</string>
+    <string name="settings_section_playback">Playback</string>
     <string name="settings_section_controls">Controls</string>
     <string name="settings_section_storage">Storage</string>
     <string name="settings_section_backups">Backups</string>
@@ -415,10 +417,12 @@
     <string name="settings_player_hide_on_listen_tab_desc">Don\'t show widget while Listen tab is active</string>
     <string name="settings_player_always_show_shortcut">Always show player shortcut</string>
 
-    <!-- ── Behavior tab: Playback Memory card ──────────────────────────────────── -->
+    <string name="settings_startup_default_tab">Default tab</string>
+    <string name="settings_startup_default_tab_desc">Tab to open on a fresh app launch</string>
+    <string name="settings_startup_default_library_tab">Default Library tab</string>
+    <string name="settings_startup_default_library_tab_desc">Library sub-tab to land on when Library is your default tab</string>
 
-    <!-- Section header (all-caps label above the card) -->
-    <string name="settings_section_playback">Playback</string>
+    <!-- ── Behavior tab: Playback Memory card ──────────────────────────────────── -->
 
     <!-- Card header -->
     <string name="settings_playback_memory_title">Remember Position</string>

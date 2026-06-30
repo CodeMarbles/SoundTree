@@ -64,6 +64,7 @@ class SettingsFragment : Fragment() {
         setupPlaybackWidgetSection()
         setupPlaybackSettings()
 
+        setupStartupTab()
         setupPlayheadVis()
         setupPlaybackMemory()
         setupFrequentTopicsSection()

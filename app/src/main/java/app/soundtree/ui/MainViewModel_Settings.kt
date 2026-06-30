@@ -36,6 +36,8 @@ import app.soundtree.ui.MainViewModel.Companion.PREF_SCRUB_BACK_SECS
 import app.soundtree.ui.MainViewModel.Companion.PREF_SCRUB_FORWARD_SECS
 import app.soundtree.ui.MainViewModel.Companion.PREF_SHOW_TITLE_BAR
 import app.soundtree.ui.MainViewModel.Companion.PREF_SIMULATE_WF_LOADING
+import app.soundtree.ui.MainViewModel.Companion.PREF_STARTUP_LIBRARY_TAB
+import app.soundtree.ui.MainViewModel.Companion.PREF_STARTUP_TAB
 import app.soundtree.ui.MainViewModel.Companion.PREF_THEME_MODE
 import app.soundtree.ui.MainViewModel.Companion.PREF_VERBOSE_BACKUP_LOGGING
 import app.soundtree.ui.MainViewModel.Companion.SPEED_MAX
@@ -333,4 +335,27 @@ fun MainViewModel.getDbPruneCount(): Int =
 
 fun MainViewModel.setDbPruneCount(count: Int) {
     prefs.edit().putInt(PREF_DB_PRUNE_COUNT, count.coerceAtLeast(1)).apply()
+}
+
+// ── Startup tab prefs ──────────────────────────────────────────────────────
+fun MainViewModel.setStartupTab(tab: String) {
+    _startupTab.value = tab
+    prefs.edit().putString(PREF_STARTUP_TAB, tab).apply()
+}
+
+fun MainViewModel.setStartupLibraryTab(tab: String) {
+    _startupLibraryTab.value = tab
+    prefs.edit().putString(PREF_STARTUP_LIBRARY_TAB, tab).apply()
+}
+
+/**
+ * Consumed once by [LibraryFragment] the first time its view is created.
+ * Returns the configured Library startup sub-tab only if this launch
+ * actually resolved Library as the startup destination — null otherwise,
+ * including on every call after the first.
+ */
+fun MainViewModel.consumePendingStartupLibrarySubPage(): String? {
+    val value = _pendingStartupLibrarySubPage.value
+    _pendingStartupLibrarySubPage.value = null
+    return value
 }

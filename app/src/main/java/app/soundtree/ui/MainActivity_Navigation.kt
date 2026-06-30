@@ -54,8 +54,9 @@ internal fun MainActivity.setupViewPager() {
     binding.viewPager.isUserInputEnabled = false
     binding.viewPager.offscreenPageLimit = 5
 
-    val startPage = if (isRestoredFromState) viewModel.currentPage.value else PAGE_RECORD
-    binding.viewPager.setCurrentItem(startPage, false)
+    // viewModel.currentPage already holds the right value in both cases — see
+    // MainViewModel._currentPage's init for where that's actually decided now.
+    binding.viewPager.setCurrentItem(viewModel.currentPage.value, false)
 
     binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
         override fun onPageSelected(position: Int) {
