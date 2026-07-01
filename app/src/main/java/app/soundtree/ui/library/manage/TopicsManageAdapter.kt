@@ -79,7 +79,11 @@ class TopicsManageAdapter(
     private val onRenameClick:    (topicId: Long) -> Unit,
     private val onIconClick:      (topicId: Long) -> Unit,
     private val onDeleteClick:    (topicId: Long) -> Unit,
+    private val onRecordNowClick: (topicId: Long) -> Unit,
 ) : ListAdapter<TreeItem.Node, TopicsManageAdapter.VH>(DIFF) {
+
+    /** Set by TopicsManageFragment whenever recordingState changes. */
+    var isRecordingActive: Boolean = false
 
     companion object {
         val DIFF = object : DiffUtil.ItemCallback<TreeItem.Node>() {
@@ -134,7 +138,7 @@ class TopicsManageAdapter(
             ivOverflow.visibility = View.VISIBLE
             ivOverflow.contentDescription =
                 itemView.context.getString(R.string.topic_cd_overflow, topic.name)
-            ivOverflow.setOnClickListener { showOptionsMenu(topic.id, isEmpty) }
+            ivOverflow.setOnClickListener { showOptionsMenu(topic.id, isEmpty, isRecordingActive) }
 
             // ── Chevron ───────────────────────────────────────────────
             if (item.treeNode.children.isNotEmpty()) {
@@ -156,7 +160,7 @@ class TopicsManageAdapter(
 
             // ── Long press → same menu as overflow ────────────────────
             itemView.setOnLongClickListener {
-                showOptionsMenu(topic.id, isEmpty)
+                showOptionsMenu(topic.id, isEmpty, isRecordingActive)
                 true
             }
 
@@ -166,12 +170,19 @@ class TopicsManageAdapter(
 
         // ── Popup menu ────────────────────────────────────────────────
 
-        private fun showOptionsMenu(topicId: Long, isEmpty: Boolean) {
+        private fun showOptionsMenu(topicId: Long, isEmpty: Boolean, isRecording: Boolean) {
             PopupMenu(ivOverflow.context, ivOverflow).apply {
                 menuInflater.inflate(R.menu.menu_topic_options, menu)
+
                 menu.findItem(R.id.action_delete)?.isVisible = isEmpty
+                // Hide "Record Now" if a recording session is already in progress —
+                // starting a new one is not possible while the service is active.
+                // isRecording is a lambda passed from the VH bind site.
+                menu.findItem(R.id.action_record_now)?.isVisible = !isRecording
+
                 setOnMenuItemClickListener { item ->
                     when (item.itemId) {
+                        R.id.action_record_now   -> { onRecordNowClick(topicId); true }
                         R.id.action_new_subtopic -> { onNewSubtopic(topicId); true }
                         R.id.action_move         -> { onMoveClick(topicId); true }
                         R.id.action_rename       -> { onRenameClick(topicId); true }

@@ -232,6 +232,22 @@
     <string name="recording_details_cd_close">Close recording details</string>
     <string name="recording_details_cd_share">Share recording</string>
 
+    <!-- RecordIndicatorView: text labels (Large placement only) -->
+    <!-- record_btn_rec and record_btn_resume likely already exist — skip if so -->
+    <string name="record_btn_pause">PAUSE</string>
+
+    <!-- RecordIndicatorView: accessibility content descriptions -->
+    <string name="record_cd_start">Start recording</string>
+    <string name="record_cd_pause">Pause recording</string>
+    <string name="record_cd_resume">Resume recording</string>
+    <string name="record_cd_session_elsewhere">Recording in progress</string>
+
+    <!-- Topic Details header button: distinct content description -->
+    <string name="topic_details_cd_record_for_topic">Record for this topic</string>
+
+    <!-- Topic context menu: Record Now action -->
+    <string name="topic_action_record_now">Record Now</string>
+
     <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab
          ══════════════════════════════════════════════════════════════ -->
@@ -344,6 +360,8 @@
     <string name="settings_section_recording_recovery">Recording Recovery</string>
     <string name="settings_section_processing_jobs">Processing Jobs</string>
     <string name="settings_section_dev_options">Dev Options</string>
+    <string name="settings_section_recording_workflow">Recording Workflow</string>
+
 
     <!-- Appearance: theme picker -->
     <string name="settings_label_theme">Theme</string>
@@ -500,6 +518,14 @@
     <!-- Colour intensity row -->
     <string name="settings_playhead_vis_intensity">Tint intensity</string>
     <string name="settings_playhead_vis_intensity_desc">How strong the played/unplayed colour difference appears</string>
+
+    <!-- Settings: Quick Record — Details swap toggle -->
+    <string name="settings_quick_record_details_swap">Switch to Record tab after quick record</string>
+    <string name="settings_quick_record_details_swap_desc">When starting a recording from Topic Details, navigate to the Record tab.</string>
+
+    <!-- Settings: Quick Record — Topics swap toggle -->
+    <string name="settings_quick_record_topics_swap">Switch to Record tab from Topics menu</string>
+    <string name="settings_quick_record_topics_swap_desc">When starting a recording from the Topics context menu, navigate to the Record tab.</string>
 
     <!-- Stats section header -->
     <string name="settings_section_stats">Stats</string>

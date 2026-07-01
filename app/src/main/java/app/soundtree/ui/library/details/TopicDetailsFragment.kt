@@ -2,12 +2,9 @@ package app.soundtree.ui.library.details
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.PopupMenu
 import androidx.core.view.ViewCompat
@@ -21,27 +18,31 @@ import app.soundtree.R
 import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.data.entities.TopicEntity
 import app.soundtree.databinding.FragmentTopicDetailsBinding
+import app.soundtree.service.RecordingService
+import app.soundtree.storage.AppVolume
 import app.soundtree.ui.MainActivity
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.common.EmojiPickerBottomSheet
-import app.soundtree.ui.recording.RecordingListController
 import app.soundtree.ui.common.TopicPickerBottomSheet
 import app.soundtree.ui.createTopic
 import app.soundtree.ui.deleteRecording
 import app.soundtree.ui.deleteTopic
 import app.soundtree.ui.getTopicWithDescendantIds
 import app.soundtree.ui.library.LibraryFragment
+import app.soundtree.ui.library.details.TopicDetailsFragment.Companion.REQUEST_REPARENT
 import app.soundtree.ui.recording.RecordingDetailsDialogFragment
+import app.soundtree.ui.recording.RecordingListController
+import app.soundtree.ui.recording.RecordingsAdapter
+import app.soundtree.ui.refreshStorageVolumes
 import app.soundtree.ui.renameRecording
 import app.soundtree.ui.reparentTopic
-import app.soundtree.ui.topics.NewTopicDialog
-import app.soundtree.ui.recording.RecordingsAdapter
-import app.soundtree.ui.updateTopic
-import app.soundtree.storage.AppVolume
-import app.soundtree.ui.refreshStorageVolumes
+import app.soundtree.ui.requestQuickRecordForTopic
 import app.soundtree.ui.selectRecording
 import app.soundtree.ui.setLibraryDetailsTopic
 import app.soundtree.ui.share.ShareRecordingDialogFragment
+import app.soundtree.ui.topics.NewTopicDialog
+import app.soundtree.ui.updateTopic
+import app.soundtree.ui.widget.RecordIndicatorView
 import app.soundtree.util.emojiToColor
 import app.soundtree.util.themeColor
 import kotlinx.coroutines.launch
@@ -129,6 +130,7 @@ class TopicDetailsFragment : Fragment() {
         // 3. Wire prefs + move-result listener into the controller.
         recordingListController.setup(recordingsAdapter)
 
+        setupQuickRecordButton()
         setupSortButton()
         setupHeaderInteractions()
         setupMoveButton()
@@ -165,6 +167,18 @@ class TopicDetailsFragment : Fragment() {
                         val filtered = recordings.filter { it.topicId == topicId }
                         submitSortedRecordings(filtered)
                         updateTopicStats(filtered)
+                    }
+                }
+
+                // Recording button observer
+                launch {
+                    viewModel.recordingState.collect { state ->
+                        binding.btnRecordForTopic.setState(
+                            if (state == RecordingService.State.IDLE)
+                                RecordIndicatorView.IndicatorState.IDLE
+                            else
+                                RecordIndicatorView.IndicatorState.SESSION_ELSEWHERE
+                        )
                     }
                 }
             }
@@ -310,8 +324,11 @@ class TopicDetailsFragment : Fragment() {
         PopupMenu(anchor.context, anchor).apply {
             menuInflater.inflate(R.menu.menu_topic_options, menu)
             menu.findItem(R.id.action_delete)?.isVisible = isEmpty
+            menu.findItem(R.id.action_record_now)?.isVisible =
+                viewModel.recordingState.value == RecordingService.State.IDLE
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
+                    R.id.action_record_now   -> { viewModel.requestQuickRecordForTopic(topicId); true }
                     R.id.action_new_subtopic -> { showHierarchyNewSubtopicDialog(topicId); true }
                     R.id.action_move         -> { showHierarchyMovePicker(topicId); true }
                     R.id.action_rename       -> { showHierarchyRenameDialog(topicId); true }
@@ -383,7 +400,16 @@ class TopicDetailsFragment : Fragment() {
             .show()
     }
 
-    // ── Sort button ───────────────────────────────────────────────────────────
+    private fun setupQuickRecordButton() {
+        // Wire the idle-tap action — emits topic ID to RecordFragment via ViewModel.
+        binding.btnRecordForTopic.onIdleClick = onIdleClick@{
+            val topicId = viewModel.libraryDetailsTopicId.value ?: return@onIdleClick
+            viewModel.requestQuickRecordForTopic(topicId)
+        }
+    }
+
+
+        // ── Sort button ───────────────────────────────────────────────────────────
 
     private fun setupSortButton() {
         binding.btnSortRecordings.setOnClickListener {

@@ -254,6 +254,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_VERBOSE_BACKUP_LOGGING = BackupWorker.PREF_VERBOSE_LOGGING
         internal const val DEFAULT_DB_PRUNE_COUNT = 10
 
+        // ── Quick Record workflow prefs ───────────────────────────────────────
+        internal const val PREF_QUICK_RECORD_DETAILS_SWAP = "quick_record_details_swap_to_tab"
+        internal const val PREF_QUICK_RECORD_TOPICS_SWAP  = "quick_record_topics_swap_to_tab"
+
         // ── Waveform style key constants ──────────────────────────────────────
         // Public so SettingsFragment can reference them without string literals.
         const val STYLE_STANDARD   = "standard"
@@ -295,6 +299,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     internal val _recordingTopicId = MutableStateFlow<Long?>(null)
     val recordingTopicId: StateFlow<Long?> = _recordingTopicId
+
+    // ── Quick Record event ────────────────────────────────────────────────
+    internal val _quickRecordForTopicEvent = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val quickRecordForTopicEvent: SharedFlow<Long> = _quickRecordForTopicEvent.asSharedFlow()
 
     // Current elapsed recording time in ms — pushed by RecordFragment.
     internal val _recordingElapsedMs = MutableStateFlow(0L)

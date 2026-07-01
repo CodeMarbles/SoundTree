@@ -30,6 +30,8 @@ import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYER_START_COLLAPSED
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYER_WIDGET_VISIBILITY
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_ENABLED
 import app.soundtree.ui.MainViewModel.Companion.PREF_PLAYHEAD_VIS_INTENSITY
+import app.soundtree.ui.MainViewModel.Companion.PREF_QUICK_RECORD_DETAILS_SWAP
+import app.soundtree.ui.MainViewModel.Companion.PREF_QUICK_RECORD_TOPICS_SWAP
 import app.soundtree.ui.MainViewModel.Companion.PREF_RECORDER_START_COLLAPSED
 import app.soundtree.ui.MainViewModel.Companion.PREF_RECORDER_WIDGET_VISIBILITY
 import app.soundtree.ui.MainViewModel.Companion.PREF_SCRUB_BACK_SECS
@@ -78,6 +80,43 @@ fun MainViewModel.setThemeMode(mode: String) {
         }
     )
 }
+
+// ── Quick Record workflow settings ────────────────────────────────────────────
+
+/**
+ * Whether tapping the "Record Now" button in the Topic Details header
+ * should switch to the Record tab after starting the recording.
+ * Default: false (stay in context — the mini recorder widget handles control).
+ */
+val MainViewModel.quickRecordDetailsSwap: Boolean
+    get() = prefs.getBoolean(PREF_QUICK_RECORD_DETAILS_SWAP, false)
+
+fun MainViewModel.setQuickRecordDetailsSwap(enabled: Boolean) {
+    prefs.edit().putBoolean(PREF_QUICK_RECORD_DETAILS_SWAP, enabled).apply()
+}
+
+/**
+ * Whether selecting "Record Now" from the Topics context menu
+ * should switch to the Record tab after starting the recording.
+ * Default: true (context menu feels like deliberate navigation intent).
+ */
+val MainViewModel.quickRecordTopicsSwap: Boolean
+    get() = prefs.getBoolean(PREF_QUICK_RECORD_TOPICS_SWAP, true)
+
+fun MainViewModel.setQuickRecordTopicsSwap(enabled: Boolean) {
+    prefs.edit().putBoolean(PREF_QUICK_RECORD_TOPICS_SWAP, enabled).apply()
+}
+
+/**
+ * Emits a quick-record request for [topicId].
+ * Called by TopicDetailsFragment (header button) and TopicsManageFragment
+ * (context menu). RecordFragment observes [quickRecordForTopicEvent] and
+ * starts the recording after setting the topic.
+ */
+fun MainViewModel.requestQuickRecordForTopic(topicId: Long) {
+    _quickRecordForTopicEvent.tryEmit(topicId)
+}
+
 
 // ── Navigation prefs ──────────────────────────────────────────────────────────
 

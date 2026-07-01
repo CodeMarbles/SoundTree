@@ -88,4 +88,72 @@
     <attr name="colorStatusFailedBackground"   format="color" />
     <attr name="colorStatusFailedForeground"   format="color" />
 
+    <!--
+      ══════════════════════════════════════════════════════════════════
+      RecordIndicatorView
+
+      Paste this block into res/values/attrs.xml, before the closing
+      </resources> tag.
+      ══════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Quick-record settings ──────────────────────────────────────────── -->
+    <!--
+      These two attrs are referenced by MainViewModel companion constants
+      and are kept here as a record of the pref keys for clarity; they are
+      not used as XML view attrs — they live only in SharedPreferences.
+
+      PREF_QUICK_RECORD_DETAILS_SWAP = "quick_record_details_swap_to_tab"  (Boolean, default false)
+      PREF_QUICK_RECORD_TOPICS_SWAP  = "quick_record_topics_swap_to_tab"   (Boolean, default true)
+    -->
+
+    <declare-styleable name="RecordIndicatorView">
+
+        <!--
+          Size bucket.
+          Drives default onMeasure dimensions and border stroke width.
+          Hosts may set explicit width/height; the bucket still controls stroke scaling.
+
+            large  (0) — 80dp, stroke 1.5dp  — main Record tab
+            small  (1) — 36dp, stroke 1.0dp  — Mini Recorder      [default]
+            header (2) — 28dp, stroke 0.75dp — Topic Details header
+        -->
+        <attr name="riv_size" format="enum">
+            <enum name="large"  value="0" />
+            <enum name="small"  value="1" />
+            <enum name="header" value="2" />
+        </attr>
+
+        <!--
+          Show text label inside the circle.
+          IDLE → "REC", RECORDING → "PAUSE", PAUSED → "RESUME".
+          Only meaningful at riv_size="large". Default: false.
+        -->
+        <attr name="riv_showLabel" format="boolean" />
+
+        <!--
+          Show state icon inside the circle.
+          RECORDING → pause bars; PAUSED → resume triangle.
+          SESSION_ELSEWHERE always shows mic+dot regardless of this flag.
+          Default: true.
+        -->
+        <attr name="riv_showStateIcon" format="boolean" />
+
+        <!--
+          Draw the outer border ring in IDLE and PAUSED states.
+          RECORDING always suppresses the border. Default: true.
+        -->
+        <attr name="riv_showBorder" format="boolean" />
+
+        <!--
+          Controls SESSION_ELSEWHERE appearance.
+          true  → greyed mic+dot indicator, touches blocked internally.
+                  Use for Topic Details header button.
+          false → SESSION_ELSEWHERE treated as IDLE (always interactive).
+                  Use for Mini Recorder and main Record tab.
+          Default: false.
+        -->
+        <attr name="riv_externalSessionBehavior" format="boolean" />
+
+    </declare-styleable>
 </resources>

@@ -3,8 +3,14 @@
   Context menu for topic rows in the Topics tab and hierarchy widget.
   The Delete item is hidden programmatically for topics that still have
   recordings or child topics.
+  The Record Now item is hidden programmatically while a recording is active
+  (handled in TopicsManageAdapter.showOptionsMenu and
+  TopicDetailsFragment.showHierarchyTopicOptionsMenu).
 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_record_now"
+        android:title="@string/topic_action_record_now" />
     <item
         android:id="@+id/action_new_subtopic"
         android:title="@string/topic_action_new_subtopic" />
