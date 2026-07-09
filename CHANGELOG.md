@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.10.27
+- Fixed: hardware volume keys had no effect during playback over Bluetooth headphones
+## 0.10.26
+- Added a quick recording button to the Library section so that a recording can be initiated directly from Topic-contexts
 ## 0.10.25
 - Fixed startup behavior where sometimes the app would restore to the Listen tab or Library/Details tab with nothing loaded.
 - Added configuration option for the default startup tab (Record or Library with subtab options).
