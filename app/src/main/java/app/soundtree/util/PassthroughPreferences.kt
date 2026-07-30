@@ -64,6 +64,11 @@ class PassthroughPreferences(context: Context) {
     val isFirstRun: Boolean
         get() = prefs.getStringSet(PREF_KNOWN_KEYS, null) == null
 
+    /** Monitor volume in [0f, 1f]. Applied to every output AudioTrack. */
+    var monitorVolume: Float
+        get() = prefs.getFloat(PREF_VOLUME, 1f)
+        set(value) = prefs.edit { putFloat(PREF_VOLUME, value.coerceIn(0f, 1f)) }
+
     /**
      * Returns all device keys the user has ever interacted with (selected or
      * configured auto-enable for). Used to reconstruct the full device list in
@@ -152,6 +157,7 @@ class PassthroughPreferences(context: Context) {
         private const val PREF_KNOWN_KEYS       = "passthrough_known_device_keys"
         private const val PREF_SELECTED_KEYS    = "passthrough_selected_device_keys"
         private const val PREF_AUTO_ENABLE_KEYS = "passthrough_auto_enable_device_keys"
+        private const val PREF_VOLUME           = "passthrough_volume"
 
         /**
          * Derives a stable-enough string key for an [AudioDeviceInfo].

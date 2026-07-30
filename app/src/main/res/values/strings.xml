@@ -171,6 +171,7 @@
 
     <!-- Audio passthrough dialog -->
     <string name="passthrough_dialog_title">Audio passthrough</string>
+    <string name="passthrough_dialog_volume_label">Volume</string>
     <string name="passthrough_dialog_section_output">Output devices</string>
     <string name="passthrough_dialog_auto_enable">Enable automatically when connected</string>
     <string name="passthrough_dialog_callout">Disconnected devices can\'t receive audio. Auto-enable will activate passthrough when they reconnect.</string>
@@ -230,6 +231,22 @@
 
     <string name="recording_details_cd_close">Close recording details</string>
     <string name="recording_details_cd_share">Share recording</string>
+
+    <!-- RecordIndicatorView: text labels (Large placement only) -->
+    <!-- record_btn_rec and record_btn_resume likely already exist — skip if so -->
+    <string name="record_btn_pause">PAUSE</string>
+
+    <!-- RecordIndicatorView: accessibility content descriptions -->
+    <string name="record_cd_start">Start recording</string>
+    <string name="record_cd_pause">Pause recording</string>
+    <string name="record_cd_resume">Resume recording</string>
+    <string name="record_cd_session_elsewhere">Recording in progress</string>
+
+    <!-- Topic Details header button: distinct content description -->
+    <string name="topic_details_cd_record_for_topic">Record for this topic</string>
+
+    <!-- Topic context menu: Record Now action -->
+    <string name="topic_action_record_now">Record Now</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          listen_  —  Listen tab
@@ -335,12 +352,16 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_widgets">Widgets</string>
     <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_startup">Startup</string>
+    <string name="settings_section_playback">Playback</string>
     <string name="settings_section_controls">Controls</string>
     <string name="settings_section_storage">Storage</string>
     <string name="settings_section_backups">Backups</string>
     <string name="settings_section_recording_recovery">Recording Recovery</string>
     <string name="settings_section_processing_jobs">Processing Jobs</string>
     <string name="settings_section_dev_options">Dev Options</string>
+    <string name="settings_section_recording_workflow">Recording Workflow</string>
+
 
     <!-- Appearance: theme picker -->
     <string name="settings_label_theme">Theme</string>
@@ -414,10 +435,12 @@
     <string name="settings_player_hide_on_listen_tab_desc">Don\'t show widget while Listen tab is active</string>
     <string name="settings_player_always_show_shortcut">Always show player shortcut</string>
 
-    <!-- ── Behavior tab: Playback Memory card ──────────────────────────────────── -->
+    <string name="settings_startup_default_tab">Default tab</string>
+    <string name="settings_startup_default_tab_desc">Tab to open on a fresh app launch</string>
+    <string name="settings_startup_default_library_tab">Default Library tab</string>
+    <string name="settings_startup_default_library_tab_desc">Library sub-tab to land on when Library is your default tab</string>
 
-    <!-- Section header (all-caps label above the card) -->
-    <string name="settings_section_playback">Playback</string>
+    <!-- ── Behavior tab: Playback Memory card ──────────────────────────────────── -->
 
     <!-- Card header -->
     <string name="settings_playback_memory_title">Remember Position</string>
@@ -495,6 +518,14 @@
     <!-- Colour intensity row -->
     <string name="settings_playhead_vis_intensity">Tint intensity</string>
     <string name="settings_playhead_vis_intensity_desc">How strong the played/unplayed colour difference appears</string>
+
+    <!-- Settings: Quick Record — Details swap toggle -->
+    <string name="settings_quick_record_details_swap">Switch to Record tab after quick record</string>
+    <string name="settings_quick_record_details_swap_desc">When starting a recording from Topic Details, navigate to the Record tab.</string>
+
+    <!-- Settings: Quick Record — Topics swap toggle -->
+    <string name="settings_quick_record_topics_swap">Switch to Record tab from Topics menu</string>
+    <string name="settings_quick_record_topics_swap_desc">When starting a recording from the Topics context menu, navigate to the Record tab.</string>
 
     <!-- Stats section header -->
     <string name="settings_section_stats">Stats</string>

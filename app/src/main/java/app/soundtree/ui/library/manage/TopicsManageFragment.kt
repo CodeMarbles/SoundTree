@@ -5,8 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -15,8 +13,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.soundtree.R
-import app.soundtree.databinding.FragmentTopicsManageBinding
 import app.soundtree.data.repository.TreeItem
+import app.soundtree.databinding.FragmentTopicsManageBinding
+import app.soundtree.service.RecordingService
 import app.soundtree.ui.MainViewModel
 import app.soundtree.ui.common.EmojiPickerBottomSheet
 import app.soundtree.ui.common.TopicPickerBottomSheet
@@ -25,6 +24,7 @@ import app.soundtree.ui.deleteTopic
 import app.soundtree.ui.getTopicWithDescendantIds
 import app.soundtree.ui.library.LibraryFragment
 import app.soundtree.ui.reparentTopic
+import app.soundtree.ui.requestQuickRecordForTopic
 import app.soundtree.ui.toggleCollapse
 import app.soundtree.ui.topics.NewTopicDialog
 import app.soundtree.ui.updateTopic
@@ -129,7 +129,10 @@ class TopicsManageFragment : Fragment() {
                     .setPositiveButton(R.string.common_btn_delete) { _, _ -> viewModel.deleteTopic(topic) }
                     .setNegativeButton(R.string.common_btn_cancel, null)
                     .show()
-            }
+            },
+            onRecordNowClick = { topicId ->
+               viewModel.requestQuickRecordForTopic(topicId)
+            },
         )
 
         binding.recyclerTopicsManage.apply {
@@ -146,8 +149,7 @@ class TopicsManageFragment : Fragment() {
         }
 
 
-
-        // ── Observe tree items + unsorted count ───────────────────────
+        // ── Observe tree items, unsorted count, and recording state ──────────────
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -161,6 +163,11 @@ class TopicsManageFragment : Fragment() {
                 launch {
                     viewModel.allRecordings.collect { recordings ->
                         unsortedRowAdapter.unsortedCount = recordings.count { it.topicId == null }
+                    }
+                }
+                launch {
+                    viewModel.recordingState.collect { state ->
+                        topicsAdapter.isRecordingActive = state != RecordingService.State.IDLE
                     }
                 }
             }

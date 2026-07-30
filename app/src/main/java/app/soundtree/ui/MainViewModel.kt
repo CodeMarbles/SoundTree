@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -188,6 +189,13 @@ data class BackupTargetUiState(
             ?: entity.volumeUuid
             ?: "Target #${entity.id}"
 }
+
+private fun resolveStartupPage(prefs: SharedPreferences): Int =
+    when (prefs.getString(MainViewModel.PREF_STARTUP_TAB, MainViewModel.STARTUP_TAB_RECORD)) {
+        MainViewModel.STARTUP_TAB_LIBRARY -> MainActivity.PAGE_LIBRARY
+        else                               -> MainActivity.PAGE_RECORD
+    }
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     internal val repo: SoundTreeRepository = (app as app.soundtree.SoundTreeApp).repository
@@ -231,7 +239,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         const val SPEED_STEP = 0.05f
         const val SPEED_DEFAULT = 1.0f
 
-
         // ── Waveform style prefs ──────────────────────────────────────────────
         internal const val PREF_WAVEFORM_STYLE        = "waveform_style"          // "standard" | "sky" | "sky_lights"
         internal const val PREF_INVERT_WAVEFORM_THEME = "invert_waveform_theme"
@@ -247,11 +254,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         internal const val PREF_VERBOSE_BACKUP_LOGGING = BackupWorker.PREF_VERBOSE_LOGGING
         internal const val DEFAULT_DB_PRUNE_COUNT = 10
 
+        // ── Quick Record workflow prefs ───────────────────────────────────────
+        internal const val PREF_QUICK_RECORD_DETAILS_SWAP = "quick_record_details_swap_to_tab"
+        internal const val PREF_QUICK_RECORD_TOPICS_SWAP  = "quick_record_topics_swap_to_tab"
+
         // ── Waveform style key constants ──────────────────────────────────────
         // Public so SettingsFragment can reference them without string literals.
         const val STYLE_STANDARD   = "standard"
         const val STYLE_SKY        = "sky"
         const val STYLE_SKY_LIGHTS = "sky_lights"
+
+        // Tab preset, startup, and navigation preferences
+        internal const val PREF_STARTUP_TAB         = "startup_tab"          // "record" | "library"
+        internal const val PREF_STARTUP_LIBRARY_TAB = "startup_library_tab"  // "all" | "unsorted" | "topics"
+
+        const val STARTUP_TAB_RECORD  = "record"
+        const val STARTUP_TAB_LIBRARY = "library"
+
+        const val STARTUP_LIBRARY_TAB_ALL      = "all"
+        const val STARTUP_LIBRARY_TAB_UNSORTED = "unsorted"
+        const val STARTUP_LIBRARY_TAB_TOPICS   = "topics"
     }
 
     // ── Top title ─────────────────────────────────────────────────────
@@ -277,6 +299,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     internal val _recordingTopicId = MutableStateFlow<Long?>(null)
     val recordingTopicId: StateFlow<Long?> = _recordingTopicId
+
+    // ── Quick Record event ────────────────────────────────────────────────
+    internal val _quickRecordForTopicEvent = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val quickRecordForTopicEvent: SharedFlow<Long> = _quickRecordForTopicEvent.asSharedFlow()
 
     // Current elapsed recording time in ms — pushed by RecordFragment.
     internal val _recordingElapsedMs = MutableStateFlow(0L)
@@ -324,6 +350,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             },
             MoreExecutors.directExecutor()
         )
+
+        // Scan for orphaned recordings in the background.
+        // Results are observed by MainActivity; the dialog shows once this completes.
+        scanOrphans()
     }
 
     private val playerListener = object : Player.Listener {
@@ -726,9 +756,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val simulateWaveformLoading: StateFlow<Boolean> = _simulateWaveformLoading
 
     // ── Current page (tab index) — driven by MainActivity on every tab change ─
-
-    internal val _currentPage = MutableStateFlow(MainActivity.PAGE_RECORD)
+    //
+    // Initial value is resolved once, at construction, from the user's
+    // configured startup-tab pref. Because this initializer only runs for a
+    // *new* MainViewModel instance (true cold start, or a fresh process after
+    // death) and not on a config-change recreation (the ViewModel survives
+    // those), this gives us "use my configured default on a fresh launch, but
+    // keep whatever tab I was on across rotation/theme changes" automatically.
+    // See MainActivity_Navigation.setupViewPager for the read site.
+    internal val _currentPage = MutableStateFlow(resolveStartupPage(prefs))
     val currentPage: StateFlow<Int> = _currentPage
+
+    // ── Startup tab preferences ─────────────────────────────────────────────
+    internal val _startupTab = MutableStateFlow(
+        prefs.getString(PREF_STARTUP_TAB, STARTUP_TAB_RECORD) ?: STARTUP_TAB_RECORD
+    )
+    val startupTab: StateFlow<String> = _startupTab
+
+    internal val _startupLibraryTab = MutableStateFlow(
+        prefs.getString(PREF_STARTUP_LIBRARY_TAB, STARTUP_LIBRARY_TAB_ALL) ?: STARTUP_LIBRARY_TAB_ALL
+    )
+    val startupLibraryTab: StateFlow<String> = _startupLibraryTab
+
+    // One-shot: which Library sub-page to land on. Consumed by LibraryFragment
+    // the first time its view is created in this process — but only set to a
+    // real value if Library was actually the resolved startup destination.
+    // Cleared after consuming, so a later Library visit within the same
+    // process (e.g. swiping back after a config change) always falls back to
+    // LibraryFragment's normal ALL default rather than re-applying this.
+    internal val _pendingStartupLibrarySubPage = MutableStateFlow(
+        if (_currentPage.value == MainActivity.PAGE_LIBRARY) _startupLibraryTab.value else null
+    )
 
     // ── Selected recording ────────────────────────────────────────────
     internal val _selectedRecordingId = MutableStateFlow(-1L)
@@ -847,9 +905,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Orphan recordings ─────────────────────────────────────────────────────
     //
-    // Populated by MainActivity on startup from the SplashActivity intent extras,
-    // so the Settings card always shows accurate counts even when the recovery
-    // dialog is not shown (zero orphans).
+    // Populated once at init time by a background scan, so MainActivity can
+    // show OrphanRecoveryDialogFragment as soon as results are available
+    // without blocking launch.
     //
     // Re-populated by rescanOrphans() which OrphanRecoveryDialogFragment calls
     // on dismiss, so any recoveries or deletions the user just made are reflected
@@ -857,18 +915,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _orphanRecordings = MutableStateFlow<List<OrphanRecording>>(emptyList())
     val orphanRecordings: StateFlow<List<OrphanRecording>> = _orphanRecordings.asStateFlow()
-
-    /**
-     * Called by [app.soundtree.ui.MainActivity] immediately after reading
-     * the orphan intent extras at startup.  Populates [orphanRecordings] from
-     * the already-computed list so no extra I/O is needed here.
-     *
-     * Always called — even when [orphans] is empty — so the Settings card
-     * updates to "None" rather than remaining on the initial "—" placeholder.
-     */
-    fun setOrphanResults(orphans: List<OrphanRecording>) {
-        _orphanRecordings.value = orphans
-    }
 
     /**
      * Re-scans all recording directories and refreshes [orphanRecordings].
@@ -880,7 +926,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * The scan runs on [kotlinx.coroutines.Dispatchers.IO] inside
      * [OrphanRecordingScanner]; this function is safe to call from any thread.
      */
-    fun rescanOrphans() {
+    fun scanOrphans() {
         viewModelScope.launch {
             val knownPaths = repo.getKnownFilePaths()
             _orphanRecordings.value = OrphanRecordingScanner.scan(getApplication(), knownPaths)
@@ -1097,14 +1143,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 when (inProgressLogs.size) {
                     0    -> flowOf(emptyList())
                     1    -> {
-                        val log = inProgressLogs[0]
-                        repo.getLatestInfoMessageForLog(log.id)
-                            .map { msg -> listOf(ActiveBackupInfo(log, msg)) }
+                        val logId = inProgressLogs[0].id
+                        combine(
+                            repo.observeBackupLog(logId).filterNotNull(),
+                            repo.getLatestInfoMessageForLog(logId),
+                        ) { log, msg -> listOf(ActiveBackupInfo(log, msg)) }
                     }
                     else -> combine(
-                        inProgressLogs.map { log ->
-                            repo.getLatestInfoMessageForLog(log.id)
-                                .map { msg -> ActiveBackupInfo(log, msg) }
+                        inProgressLogs.map { initialLog ->
+                            combine(
+                                repo.observeBackupLog(initialLog.id).filterNotNull(),
+                                repo.getLatestInfoMessageForLog(initialLog.id),
+                            ) { log, msg -> ActiveBackupInfo(log, msg) }
                         }
                     ) { array -> array.toList() }
                 }

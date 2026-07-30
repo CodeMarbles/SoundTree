@@ -161,7 +161,7 @@ class OrphanRecoveryDialogFragment : DialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         stopPreview()
-        viewModel.rescanOrphans()
+        viewModel.scanOrphans()
         super.onDismiss(dialog)
     }
 

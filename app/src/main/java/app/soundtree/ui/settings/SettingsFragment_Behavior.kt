@@ -14,10 +14,14 @@ import app.soundtree.ui.frequentTopicsEnabled
 import app.soundtree.ui.frequentTopicsLimit
 import app.soundtree.ui.frequentTopicsShowLabels
 import app.soundtree.ui.frequentTopicsShowLineage
+import app.soundtree.ui.quickRecordDetailsSwap
+import app.soundtree.ui.quickRecordTopicsSwap
 import app.soundtree.ui.setFrequentTopicsEnabled
 import app.soundtree.ui.setFrequentTopicsLimit
 import app.soundtree.ui.setFrequentTopicsShowLabels
 import app.soundtree.ui.setFrequentTopicsShowLineage
+import app.soundtree.ui.setQuickRecordDetailsSwap
+import app.soundtree.ui.setQuickRecordTopicsSwap
 import kotlinx.coroutines.launch
 
 internal fun SettingsFragment.setupFrequentTopicsSection() {
@@ -136,5 +140,21 @@ internal fun SettingsFragment.setupFrequentTopicsSection() {
                 }
             }
         }
+    }
+}
+
+internal fun SettingsFragment.setupRecordingWorkflowSection() {
+    val detailsSwitch = binding.groupRecordingWorkflow.switchQuickRecordDetailsSwap
+    val topicsSwitch  = binding.groupRecordingWorkflow.switchQuickRecordTopicsSwap
+
+    // Seed from current prefs (read directly — no StateFlow needed for these).
+    detailsSwitch.isChecked = viewModel.quickRecordDetailsSwap
+    topicsSwitch.isChecked  = viewModel.quickRecordTopicsSwap
+
+    detailsSwitch.setOnCheckedChangeListener { _, checked ->
+        viewModel.setQuickRecordDetailsSwap(checked)
+    }
+    topicsSwitch.setOnCheckedChangeListener { _, checked ->
+        viewModel.setQuickRecordTopicsSwap(checked)
     }
 }

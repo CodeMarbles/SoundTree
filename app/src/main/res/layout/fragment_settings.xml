@@ -188,6 +188,13 @@
                 android:orientation="vertical"
                 android:padding="24dp">
 
+                <!-- ── STARTUP TAB PREFERENCE sections ───────────────────── -->
+                <include
+                    android:id="@+id/groupStartup"
+                    layout="@layout/settings_group_startup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <!-- ── NAVIGATION + CONTROLS sections ───────────────────── -->
                 <include
                     android:id="@+id/groupNavigationControls"
@@ -208,6 +215,14 @@
                     layout="@layout/settings_group_topic_picker"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
+
+                <!-- ── RECORDING WORKFLOW section ──────────────────────────── -->
+                <include
+                    android:id="@+id/groupRecordingWorkflow"
+                    layout="@layout/settings_group_recording_workflow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
 
 
             </LinearLayout>

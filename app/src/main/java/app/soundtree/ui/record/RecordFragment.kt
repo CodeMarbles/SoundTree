@@ -56,6 +56,8 @@ import app.soundtree.storage.AppVolume
 import app.soundtree.util.Icons
 import app.soundtree.util.RecordingTitleHelper
 import app.soundtree.storage.StorageVolumeHelper
+import app.soundtree.ui.quickRecordDetailsSwap
+import app.soundtree.ui.quickRecordTopicsSwap
 import app.soundtree.ui.resolveRecordingVolume
 import app.soundtree.ui.selectRecording
 import app.soundtree.ui.setLocked
@@ -166,6 +168,31 @@ class RecordFragment : Fragment() {
         if (isBound && recordingService != null) startRecording()
         else pendingQuickRecord = true
     }
+
+       /**
+    * Called via [MainViewModel.quickRecordForTopicEvent] when the user taps
+    * "Record Now" from the Topic Details header or Topics context menu.
+    *
+    * Sets [selectedTopicId] before delegating to the normal record flow so
+    * the recording is immediately associated with the correct topic.
+    *
+    * If the service isn't bound yet, the topic is stored and the record
+    * starts once [pendingQuickRecord] fires (same pattern as triggerQuickRecord).
+    */
+   fun triggerQuickRecordForTopic(topicId: Long) {
+       selectedTopicId = topicId
+       // Sync the topic header immediately so it's correct if the user
+       // navigates to the Record tab during the recording.
+       val topic = viewModel.allTopics.value.firstOrNull { it.id == topicId }
+       if (topic != null) {
+           updateRecordTopicHeader(topic.name, topic.icon)
+           recordingService?.setTopic(topicId, topic.color, topic.icon)
+       }
+       if (isBound && recordingService != null) startRecording()
+       else pendingQuickRecord = true
+   }
+
+
 
     /**
      * Called by MainActivity when the Mini Recorder's save button is tapped
@@ -675,6 +702,26 @@ class RecordFragment : Fragment() {
                         updatePassthroughButton(state)
                     }
                 }
+
+               // ── Quick Record for topic — from Topic Details / Topics menu ─────
+               launch {
+                   viewModel.quickRecordForTopicEvent.collect { topicId ->
+                       // Only act if IDLE — if a recording is already running, ignore.
+                       if (recordingService?.state?.value != RecordingService.State.IDLE) return@collect
+                       triggerQuickRecordForTopic(topicId)
+                       // Navigate to Record tab if the relevant setting is on.
+                       // The caller (TopicDetailsFragment or TopicsManageFragment) sets
+                       // the appropriate pref key; we check both here since this single
+                       // observer handles both entry points. The most recent emission's
+                       // source is encoded in which pref the UI checked — but since both
+                       // share the same event stream, we navigate if EITHER is true.
+                       // (In practice only one fires per tap — this is conservative.)
+                       if (viewModel.quickRecordDetailsSwap || viewModel.quickRecordTopicsSwap) {
+                           (requireActivity() as? MainActivity)?.navigateTo(MainActivity.PAGE_RECORD)
+                       }
+                   }
+               }
+
 
             }
         }

@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- ── Header: icon + name (tap → dialog) + stats column ──────── -->
+        <!-- ── Header: icon + name (tap → dialog) + record button + stats column -->
         <LinearLayout
             android:id="@+id/headerLayout"
             android:layout_width="match_parent"
@@ -52,6 +52,25 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:contentDescription="@string/topic_cd_rename" />
+
+            <!--
+              Quick Record button — NEW
+              IDLE:              red circle → tapping starts a recording for this topic
+              SESSION_ELSEWHERE: greyed mic+dot → non-interactive, indicates active session
+              Wired in TopicDetailsFragment.setupQuickRecordButton()
+            -->
+            <app.soundtree.ui.widget.RecordIndicatorView
+                android:id="@+id/btnRecordForTopic"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/topic_details_cd_record_for_topic"
+                app:riv_size="header"
+                app:riv_showLabel="false"
+                app:riv_showStateIcon="false"
+                app:riv_showBorder="true"
+                app:riv_externalSessionBehavior="true" />
 
             <!-- Stats column: recording count / total duration / total size -->
             <LinearLayout

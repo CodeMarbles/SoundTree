@@ -1,0 +1,2 @@
+- Added a quick recording button to the Library section so that a recording can be initiated directly from Topic-contexts
+- Fixed an issue where volume buttons didn't work during playback over Bluetooth headphones.

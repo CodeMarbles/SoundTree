@@ -2,6 +2,7 @@ package app.soundtree.ui
 
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -26,13 +27,6 @@ class MainActivity : AppCompatActivity() {
         // save, unlikely but handled) to navigate to the saved recording.
         const val EXTRA_SAVED_RECORDING_ID = "saved_recording_id"
         const val EXTRA_SAVED_TOPIC_ID     = "saved_topic_id"
-
-        // Orphan-recovery extras: set by SplashActivity when OrphanRecordingScanner
-        // finds TC_*.m4a files on disk with no matching database row.
-        // MainActivity reads these in onCreate and shows OrphanRecoveryDialogFragment.
-        const val EXTRA_ORPHAN_PLAYABLE_PATHS         = "orphan_playable_paths"
-        const val EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS  = "orphan_playable_durations_ms"
-        const val EXTRA_ORPHAN_CORRUPT_PATHS          = "orphan_corrupt_paths"
 
         const val PAGE_SETTINGS = 0
         const val PAGE_RECORD   = 1
@@ -74,6 +68,22 @@ class MainActivity : AppCompatActivity() {
     // Track whether we're restoring from a config change
     internal var isRestoredFromState = false
 
+    /* ── onCreate: one-time wiring for the single-activity shell ───────────────
+     *
+     * SoundTree is single-activity, so this is the *only* Activity — every screen
+     * (Settings, Record, Library, Listen, Workspace) is a page inside the
+     * ViewPager2 built here, not a separate Activity. onCreate runs once per
+     * Activity instance and does all the assembly:
+     *   • inflates the ViewBinding + applies system-bar insets (edge-to-edge)
+     *   • builds the pager, bottom nav, and the persistent mini-player /
+     *     mini-recorder overlays that sit above whichever page is showing
+     *   • wires back-stack navigation and observes lock + layout-order state
+     *   • routes the launch intent (quick-record, notification-save deep links)
+     *
+     * What it deliberately does NOT do: run audio. Playback lives in
+     * PlaybackService (reached through a MediaController in MainViewModel) and
+     * recording in RecordingService. This Activity only reflects their state.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // helps track whether this is a first launch or an app reconfig launch on older android devices
@@ -81,6 +91,11 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Hardware volume keys always target media playback while this Activity
+        // is foreground. Without this, the platform guesses the "active" stream,
+        // which fails over Bluetooth A2DP (absolute volume never gets the keypress).
+        volumeControlStream = AudioManager.STREAM_MUSIC
 
         // ── Edge-to-edge inset handling (Android 15+ compatibility) ──────────
         // Android 15 forces all apps to draw behind system bars. We consume the
@@ -195,7 +210,7 @@ class MainActivity : AppCompatActivity() {
      * primary path for notification-save navigation since the back stack is
      * almost always alive when the user is actively recording.
      *
-     * [FLAG_ACTIVITY_SINGLE_TOP] on the intent from [RecordingService] ensures
+     * [android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP] on the intent from [RecordingService] ensures
      * this is called rather than a second instance of MainActivity being created.
      */
     override fun onNewIntent(intent: Intent?) {

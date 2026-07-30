@@ -1,14 +1,13 @@
 package app.soundtree.ui
 
 import android.content.Intent
-import app.soundtree.ui.MainActivity.Companion.EXTRA_ORPHAN_CORRUPT_PATHS
-import app.soundtree.ui.MainActivity.Companion.EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS
-import app.soundtree.ui.MainActivity.Companion.EXTRA_ORPHAN_PLAYABLE_PATHS
+import androidx.lifecycle.lifecycleScope
 import app.soundtree.ui.MainActivity.Companion.EXTRA_SAVED_RECORDING_ID
 import app.soundtree.ui.MainActivity.Companion.EXTRA_SAVED_TOPIC_ID
 import app.soundtree.ui.recovery.OrphanRecoveryDialogFragment
-import app.soundtree.util.OrphanRecording
-import java.io.File
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity_IntentHandling.kt
@@ -38,51 +37,31 @@ internal fun MainActivity.handleNotificationSaveIntent(intent: Intent) {
 }
 
 /**
- * Reads orphan-recording extras placed by [app.soundtree.ui.SplashActivity],
- * publishes the results to [MainViewModel.setOrphanResults] unconditionally
- * (so the Settings card always shows accurate counts), then shows
- * [OrphanRecoveryDialogFragment] only when the list is non-empty.
+ * Observes [MainViewModel.orphanRecordings] and shows
+ * [OrphanRecoveryDialogFragment] the first time the scan result arrives
+ * with a non-empty list.
  *
- * Only shows the dialog on a genuine cold start — not when the activity is
- * being recreated due to a configuration change (e.g. a theme switch on
- * Android 10), which would re-surface the dialog after the user dismissed it.
+ * The scan itself runs in [MainViewModel.init] on a background coroutine;
+ * this function just wires up the observer and guards against re-showing
+ * the dialog on a configuration change.
  *
  * Called once from [MainActivity.onCreate].
  */
 internal fun MainActivity.checkAndShowOrphanRecovery() {
-    val playablePaths     = intent.getStringArrayListExtra(EXTRA_ORPHAN_PLAYABLE_PATHS).orEmpty()
-    val playableDurations = intent.getLongArrayExtra(EXTRA_ORPHAN_PLAYABLE_DURATIONS_MS) ?: LongArray(0)
-    val corruptPaths      = intent.getStringArrayListExtra(EXTRA_ORPHAN_CORRUPT_PATHS).orEmpty()
+    if (isRestoredFromState) return  // Don't re-show on config change
 
-    val orphans = buildList {
-        playablePaths.forEachIndexed { i, path ->
-            add(
-                OrphanRecording(
-                    file           = File(path),
-                    suggestedTitle = "",   // re-derived inside the dialog
-                    durationMs     = playableDurations.getOrElse(i) { 0L },
-                )
-            )
-        }
-        corruptPaths.forEach { path ->
-            add(
-                OrphanRecording(
-                    file           = File(path),
-                    suggestedTitle = "",
-                    durationMs     = 0L,
-                )
-            )
-        }
-    }
-
-    // Always publish — SettingsFragment observes this to show counts/sizes.
-    viewModel.setOrphanResults(orphans)
-
-    if (orphans.isEmpty()) return
-
-    if (!isRestoredFromState) {
-        OrphanRecoveryDialogFragment
-            .newInstance(orphans)
-            .show(supportFragmentManager, OrphanRecoveryDialogFragment.TAG)
+    lifecycleScope.launch {
+        // Wait for the scan result (emits once on init, again after rescanOrphans())
+        viewModel.orphanRecordings
+            .filter { it.isNotEmpty() }
+            .take(1)
+            .collect { orphans ->
+                // Guard again inside collect — config change can race the emission
+                if (!isRestoredFromState && !isFinishing) {
+                    OrphanRecoveryDialogFragment
+                        .newInstance(orphans)
+                        .show(supportFragmentManager, OrphanRecoveryDialogFragment.TAG)
+                }
+            }
     }
 }

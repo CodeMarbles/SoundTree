@@ -295,6 +295,25 @@ class PassthroughManager(
         }
     }
 
+    // ── Monitor volume ────────────────────────────────────────────────────────
+    // Attenuation only (0f–1f), applied via AudioTrack.setVolume so the
+    // real-time monitor loop stays untouched. Seeded from prefs at construction.
+    private var _monitorVolume: Float = prefs.monitorVolume
+    val monitorVolume: Float get() = _monitorVolume
+
+    /**
+     * Sets the monitor volume, persists it, and applies it immediately to any
+     * currently-playing output tracks. Safe to call from the main thread.
+     */
+    fun setMonitorVolume(volume: Float) {
+        val v = volume.coerceIn(0f, 1f)
+        _monitorVolume = v
+        prefs.monitorVolume = v
+        synchronized(audioTracks) {
+            audioTracks.values.forEach { it.setVolume(v) }
+        }
+    }
+
     // ── Private — monitoring lifecycle ────────────────────────────────────────
 
     /**
@@ -394,6 +413,7 @@ class PassthroughManager(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             track.setPreferredDevice(device)
         }
+        track.setVolume(_monitorVolume)
         track.play()
         audioTracks[key] = track
     }

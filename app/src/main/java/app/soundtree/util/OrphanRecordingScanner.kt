@@ -33,7 +33,7 @@ data class OrphanRecording(
  * have no matching row in the Room database, and classifies each as playable
  * or corrupt using [MediaMetadataRetriever].
  *
- * Intended to be called once at startup from [app.soundtree.ui.SplashActivity]
+ * Intended to be called at startup from [app.soundtree.ui.MainViewModel]
  * so that [app.soundtree.ui.MainActivity] can show a recovery prompt if
  * any orphans are found.
  */

@@ -60,10 +60,13 @@ class SettingsFragment : Fragment() {
         setupLayoutSection()
         setupWaveformStyleSettings()
 
+        setupRecordingWorkflowSection()
+
         setupRecordingWidgetSection()
         setupPlaybackWidgetSection()
         setupPlaybackSettings()
 
+        setupStartupTab()
         setupPlayheadVis()
         setupPlaybackMemory()
         setupFrequentTopicsSection()

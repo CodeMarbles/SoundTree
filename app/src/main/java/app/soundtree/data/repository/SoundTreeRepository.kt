@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import androidx.work.await
 import app.soundtree.data.dao.VolumeUsage
 import app.soundtree.data.db.AppDatabase
 import app.soundtree.data.entities.BackupLogEntity
@@ -14,10 +13,10 @@ import app.soundtree.data.entities.BackupTargetEntity
 import app.soundtree.data.entities.MarkEntity
 import app.soundtree.data.entities.RecordingEntity
 import app.soundtree.data.entities.TopicEntity
-import app.soundtree.util.Icons
-import app.soundtree.util.RecordingStructureMigrator
 import app.soundtree.storage.StorageVolumeHelper
 import app.soundtree.topics.TopicScoringManager
+import app.soundtree.util.Icons
+import app.soundtree.util.RecordingStructureMigrator
 import app.soundtree.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -440,6 +439,9 @@ class SoundTreeRepository(context: Context) {
     fun getBackupLog(logId: Long): Flow<BackupLogEntity?> {
         return backupLogDao.observeById(logId)
     }
+
+    fun observeBackupLog(logId: Long): Flow<BackupLogEntity?> =
+        backupLogDao.observeById(logId)
 
     /**
      * All backup log entries, newest first.
