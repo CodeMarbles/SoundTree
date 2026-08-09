@@ -1,6 +1,7 @@
 package app.soundtree.ui.record
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -8,6 +9,9 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.GradientDrawable.RECTANGLE
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Bundle
@@ -61,6 +65,7 @@ import app.soundtree.ui.quickRecordTopicsSwap
 import app.soundtree.ui.resolveRecordingVolume
 import app.soundtree.ui.selectRecording
 import app.soundtree.ui.setLocked
+import app.soundtree.util.PassthroughPreferences
 import app.soundtree.util.themeColor
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -96,6 +101,30 @@ class RecordFragment : Fragment() {
     // the service in doStartRecording(). Intentionally not persisted — resets
     // to Default on cold start, which is the safest behaviour.
     private var preferredInputDevice: AudioDeviceInfo? = null
+
+    // Devices the user has explicitly selected as the preferred input source
+    // during this fragment's lifetime. Not persisted — consistent with
+    // preferredInputDevice itself resetting on cold start. Lets the picker still
+    // show a device that was chosen and has since disconnected (greyed out,
+    // "not connected"), the same way PassthroughDialogFragment treats output
+    // devices, instead of it just disappearing from the list with no context.
+    private val knownInputDeviceKeys = mutableSetOf<String>()
+
+    // Watches for the currently selected input device disappearing (e.g. a USB
+    // mic unplugged) and falls back to Default instead of leaving the button
+    // pointed at a device that no longer exists. Mirrors the pattern
+    // PassthroughManager already uses for output devices.
+    private val inputDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            val current = preferredInputDevice ?: return
+            if (removedDevices.any { it.id == current.id }) {
+                knownInputDeviceKeys.add(PassthroughPreferences.deviceKey(current))
+                preferredInputDevice = null
+                recordingService?.setPreferredInputDevice(null)
+                updateInputSourceUi()
+            }
+        }
+    }
 
     // ── Recording service ─────────────────────────────────────────────
     internal var recordingService: RecordingService? = null
@@ -153,6 +182,9 @@ class RecordFragment : Fragment() {
         observeWaveformStyle()
         observeLock()
         bindRecordingService()
+
+        context?.getSystemService(AudioManager::class.java)
+            ?.registerAudioDeviceCallback(inputDeviceCallback, null)
     }
 
     override fun onDestroyView() {
@@ -161,6 +193,8 @@ class RecordFragment : Fragment() {
             requireContext().unbindService(serviceConnection)
             isBound = false
         }
+        context?.getSystemService(AudioManager::class.java)
+            ?.unregisterAudioDeviceCallback(inputDeviceCallback)
         _binding = null
     }
 
@@ -291,6 +325,18 @@ class RecordFragment : Fragment() {
         }
     }
 
+    /**
+     * One row in the Input Source picker. Mirrors [PassthroughManager.OutputDevice]:
+     * [info] is null for the Default row and for known-but-disconnected devices;
+     * [key] is null only for Default.
+     */
+    private data class InputSourceEntry(
+        val info: AudioDeviceInfo?,
+        val key: String?,
+        val displayName: String,
+        val isConnected: Boolean,
+    )
+
     private fun showInputSourceDialog() {
         val audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val isRecording  = recordingService?.state?.value != RecordingService.State.IDLE
@@ -304,21 +350,45 @@ class RecordFragment : Fragment() {
             AudioDeviceInfo.TYPE_USB_DEVICE,
             AudioDeviceInfo.TYPE_USB_HEADSET
         )
-        val devices = audioManager
+        val connectedDevices = audioManager
             .getDevices(AudioManager.GET_DEVICES_INPUTS)
             .filter { it.type in relevantTypes }
 
-        // Build parallel display-name and device-reference lists.
-        // Index 0 is always "Default" (null device).
-        val labels  = mutableListOf(getString(R.string.record_input_source_default))
-        val entries = mutableListOf<AudioDeviceInfo?>(null)
-        devices.forEach { device ->
-            labels.add(device.productName.toString())
-            entries.add(device)
+        val connectedKeys    = connectedDevices.map { PassthroughPreferences.deviceKey(it) }.toSet()
+        val disconnectedKeys = knownInputDeviceKeys - connectedKeys
+
+        // Row 0 is always "Default" (null device, always selectable).
+        val entries = mutableListOf(
+            InputSourceEntry(
+                info        = null,
+                key         = null,
+                displayName = getString(R.string.record_input_source_default),
+                isConnected = true,
+            )
+        )
+        entries += connectedDevices.map {
+            InputSourceEntry(
+                info        = it,
+                key         = PassthroughPreferences.deviceKey(it),
+                displayName = it.productName.toString(),
+                isConnected = true,
+            )
+        }
+        entries += disconnectedKeys.map { key ->
+            InputSourceEntry(
+                info        = null,
+                key         = key,
+                displayName = getString(R.string.record_input_source_disconnected_row, labelForInputKey(key)),
+                isConnected = false,
+            )
         }
 
-        // Determine which row is currently selected.
-        val currentIndex = entries.indexOf(preferredInputDevice).takeIf { it >= 0 } ?: 0
+        val labels = entries.map { it.displayName }
+
+        // Match by key, not object reference — getDevices() isn't guaranteed to
+        // hand back the same AudioDeviceInfo instance across calls.
+        val currentKey   = preferredInputDevice?.let { PassthroughPreferences.deviceKey(it) }
+        val currentIndex = entries.indexOfFirst { it.key == currentKey }.takeIf { it >= 0 } ?: 0
 
         val builder = MaterialAlertDialogBuilder(requireContext())
 
@@ -338,10 +408,20 @@ class RecordFragment : Fragment() {
                     typeface = android.graphics.Typeface.DEFAULT_BOLD
                 })
                 addView(TextView(requireContext()).apply {
-                    text = getString(R.string.record_input_source_recording_note)
-                    setTextColor(context.themeColor(R.attr.colorTextSecondary))
-                    textSize = 14f
-                    setPadding(0, (6 * dp).toInt(), 0, 0)
+                    text = "⚠️ ${getString(R.string.record_input_source_recording_note)}"
+                    setTextColor(context.themeColor(R.attr.colorStatusWarningForeground))
+                    textSize = 13f
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+                    background = GradientDrawable().apply {
+                        shape        = RECTANGLE
+                        cornerRadius = 8f * dp
+                        setColor(context.themeColor(R.attr.colorStatusWarningBackground))
+                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = (10 * dp).toInt() }
                 })
             }
             builder.setCustomTitle(customTitle)
@@ -367,12 +447,35 @@ class RecordFragment : Fragment() {
             builder.setPositiveButton(R.string.common_btn_close, null)
         } else {
             builder.setTitle(R.string.record_dialog_input_source_title)
+
+            // Custom adapter so known-but-disconnected rows render greyed out and
+            // reject taps, while Default + connected devices stay selectable —
+            // same treatment PassthroughDialogFragment gives disconnected outputs.
+            val selectableAdapter = object : ArrayAdapter<String>(
+                requireContext(),
+                android.R.layout.simple_list_item_single_choice,
+                labels
+            ) {
+                override fun isEnabled(position: Int) = entries[position].isConnected
+
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    val view = super.getView(position, convertView, parent) as CheckedTextView
+                    val connected = entries[position].isConnected
+                    val color = context.themeColor(
+                        if (connected) R.attr.colorTextPrimary else R.attr.colorTextSecondary
+                    )
+                    view.setTextColor(color)
+                    view.checkMarkDrawable?.setTint(color)
+                    view.alpha = if (connected) 1f else 0.5f
+                    return view
+                }
+            }
+
             // Interactive mode: selection updates preferredInputDevice immediately.
-            builder.setSingleChoiceItems(
-                labels.toTypedArray(),
-                currentIndex
-            ) { dialog, which ->
-                preferredInputDevice = entries[which]
+            builder.setSingleChoiceItems(selectableAdapter, currentIndex) { dialog, which ->
+                val chosen = entries[which]
+                preferredInputDevice = chosen.info
+                chosen.key?.let { knownInputDeviceKeys.add(it) }
                 updateInputSourceUi()
                 dialog.dismiss()
             }
@@ -395,6 +498,8 @@ class RecordFragment : Fragment() {
             ?: getString(R.string.record_input_source_default)
     }
 
+    private fun labelForInputKey(key: String): String =
+        key.substringAfter(':', missingDelimiterValue = key)
 
     // ── Multi-line waveform ───────────────────────────────────────────
     private fun setupMultiLineWaveform() {
@@ -761,6 +866,7 @@ class RecordFragment : Fragment() {
         return (pixels * resources.displayMetrics.density).toInt()
     }
 
+    @SuppressLint("SetTextI18n")
     private fun updateUiForState(state: RecordingService.State) {
         when (state) {
             RecordingService.State.IDLE -> {

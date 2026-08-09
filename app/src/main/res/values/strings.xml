@@ -190,6 +190,8 @@
     <!-- Message shown at the top of the dialog while a recording is active -->
     <string name="record_input_source_recording_note">Source can\'t be changed while recording.</string>
 
+    <!-- Input source picker row for a previously-selected device no longer connected -->
+    <string name="record_input_source_disconnected_row">%1$s — not connected</string>
 
     <!-- ══════════════════════════════════════════════════════════════
          mini_recorder_  —  Mini Recorder widget strings.
