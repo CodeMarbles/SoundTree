@@ -395,7 +395,11 @@ class RecordingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // API 31+: setCommunicationDevice replaces startBluetoothSco.
             // Returns false if the device isn't available; fall back immediately.
-            val accepted = preferredInputDevice?.let { audioManager.setCommunicationDevice(it) } ?: false
+            var accepted : Boolean = preferredInputDevice?.let { audioManager.setCommunicationDevice(it) } ?: false
+            if (!accepted) {
+                accepted = audioManager.availableCommunicationDevices.find { it.address == preferredInputDevice?.address }
+                    ?.let { audioManager.setCommunicationDevice(it) } ?: false
+            }
             if (!accepted) {
                 mainHandler.removeCallbacks(scoTimeoutRunnable)
                 unregisterScoReceiver()
